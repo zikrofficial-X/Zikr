@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { readAdminRows } from "@/features/admin/services/safe-read";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { hasAdminPermission } from "@/features/admin/services/permissions";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
@@ -68,13 +69,16 @@ async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
 
 export default async function AdminUsersPage() {
   const currentAdmin = await requireAdminPermission("users.read");
+  const canReadAudit = hasAdminPermission(currentAdmin.role, "audit.read");
+  const canManageRoles = hasAdminPermission(currentAdmin.role, "users.roles");
+  const canAssignFullAdminAccounts = currentAdmin.role === "super_admin";
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [users, totalUsers, recentActions, adminAssignments, legacyAdmins, recentProfiles] = await Promise.all([
     getUsers(),
     supabaseServerAdminCount("profiles"),
-    getRecentAdminActions(),
+    canReadAudit ? getRecentAdminActions() : Promise.resolve({ rows: [], ok: false }),
     readAdminRows<{ user_id: string }>(
       "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
       { cache: "no-store" },
@@ -102,7 +106,7 @@ export default async function AdminUsersPage() {
       <section className="space-y-3">
         <h1 className="text-3xl font-bold text-brand-gold">إدارة المستخدمين</h1>
         <p className="max-w-3xl leading-8 arabic-muted">
-          عرض وإدارة جميع مستخدمي الموقع والتحكم في الأدوار والصلاحيات
+          {canManageRoles ? "عرض وإدارة المستخدمين والأدوار المسموح بها" : "عرض بيانات المستخدمين دون صلاحيات تعديل الأدوار"}
         </p>
       </section>
 
@@ -138,12 +142,18 @@ export default async function AdminUsersPage() {
             تعذر تحميل قائمة المستخدمين. لا يعني ذلك أنه لا يوجد مستخدمون؛ أعد المحاولة أو راجع صحة النظام.
           </p>
         ) : (
-          <UsersTable users={users.rows} currentAdminId={currentAdmin.id} />
+          <UsersTable
+            users={users.rows}
+            currentAdminId={currentAdmin.id}
+            canManageRoles={canManageRoles}
+            canAssignFullAdminAccounts={canAssignFullAdminAccounts}
+          />
         )}
       </Card>
 
       <RolePermissionsMatrix />
 
+      {canReadAudit && (
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -190,6 +200,7 @@ export default async function AdminUsersPage() {
           </div>
         )}
       </Card>
+      )}
     </Container>
   );
 }
