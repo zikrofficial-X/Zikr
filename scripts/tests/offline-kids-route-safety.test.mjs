@@ -29,6 +29,12 @@ assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
 assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows\)/);
 assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
+const exportOrders = [...exporter.matchAll(/'order=([^']+)'/g)].map(match => match[1]);
+assert.ok(exportOrders.length >= 20, "offline exporter must retain the complete dataset inventory");
+for (const order of exportOrders) {
+  assert.match(order, /(?:^|,)id\.asc$/, `offline pagination order must have a unique ID tie-breaker: ${order}`);
+}
+
 
 
 console.log("Offline Kids route revocation contracts passed.");
