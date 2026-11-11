@@ -8,6 +8,7 @@ const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
 const authActions = read("src/features/auth/actions.ts");
+const googleOAuth = read("src/features/auth/integrations/google-oauth.ts");
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
@@ -59,6 +60,11 @@ assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forwa
 assert.ok(proxy.includes('request.headers.get("host")'), "Canonical-host logic must inspect the incoming Host header");
 assert.ok(proxy.includes('process.env.VERCEL_ENV === "production"'), "Preview deployments must not be redirected to production");
 assert.ok(proxy.includes("PRODUCTION_URL"), "Production canonical host must come from the single source of truth");
+assert.match(proxy, /isProductionDeployment &&\\s*requestHost !== canonicalHost/);
+assert.doesNotMatch(proxy, /requestHost\\.endsWith\\("\\\\.vercel\\.app"\\)/, "production canonicalization must cover custom domains as well as Vercel aliases");
+assert.match(googleOAuth, /request\\.nextUrl\\.origin !== canonicalOrigin\\.origin/);
+assert.match(googleOAuth, /NextResponse\\.redirect\\(canonicalStart, 307\\)/);
+assert.match(googleOAuth, /Cache-Control", "private, no-store, max-age=0"/);
 
 assert.match(nativeBridge, /addListener\?\.\("appUrlOpen"/);
 assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
