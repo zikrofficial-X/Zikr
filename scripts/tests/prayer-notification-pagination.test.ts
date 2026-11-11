@@ -107,6 +107,26 @@ assert.match(reminderMigration, /left join pg_catalog\.pg_timezone_names/);
 assert.match(reminderMigration, /local_clock\.local_time < preferences\.quiet_hours_start/);
 assert.match(reminderMigration, /local_clock\.local_time >= preferences\.quiet_hours_end/);
 assert.match(reminderMigration, /preferences\.quiet_hours_start = preferences\.quiet_hours_end/);
+assert.match(
+  reminderMigration,
+  /else\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_start\s+or\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_end/i,
+  "overnight quiet hours must schedule only before the quiet window starts or after it ends",
+);
+assert.doesNotMatch(
+  reminderMigration,
+  /else\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_start\s+and\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_end/i,
+  "overnight quiet hours must not use the impossible AND predicate",
+);
+const isOutsideQuietHours = (minute: number, start: number, end: number) =>
+  start === end
+    ? true
+    : start < end
+      ? minute < start || minute >= end
+      : minute >= start || minute < end;
+assert.equal(isOutsideQuietHours(23 * 60, 22 * 60, 7 * 60), false, "23:00 is inside overnight quiet hours");
+assert.equal(isOutsideQuietHours(6 * 60 + 30, 22 * 60, 7 * 60), false, "06:30 is inside overnight quiet hours");
+assert.equal(isOutsideQuietHours(7 * 60 + 30, 22 * 60, 7 * 60), true, "07:30 is outside overnight quiet hours");
+assert.equal(isOutsideQuietHours(21 * 60 + 30, 22 * 60, 7 * 60), true, "21:30 is outside overnight quiet hours");
 assert.match(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to service_role/i);
 assert.doesNotMatch(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to (?:public|anon|authenticated)/i);
 assert.match(reminderService, /normalizeIanaTimeZone\(body\.timezone\)/);
