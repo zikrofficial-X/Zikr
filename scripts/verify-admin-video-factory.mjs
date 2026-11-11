@@ -46,8 +46,8 @@ const generationGet = generation.match(/export async function GET\([\s\S]*?(?=ex
 const generationDelete = generation.match(/export async function DELETE\([\s\S]*?(?=export async function PATCH|$)/)?.[0] ?? "";
 const generationPatch = generation.match(/export async function PATCH\([\s\S]*$/)?.[0] ?? "";
 if (!generationGet.includes("requireAdminApi('video.manage')")) failures.push("video generation GET must require video.manage");
-if (!generationPatch.includes("requireAdminStepUpApi('video.manage')")) failures.push("video generation PATCH must require video.manage step-up");
-if (!generationDelete.includes("requireAdminStepUpApi('video.delete')")) failures.push("video generation DELETE must require video.delete step-up");
+if (!generationPatch.includes("requireAdminStepUpApi('video.manage'")) failures.push("video generation PATCH must require video.manage step-up");
+if (!generationDelete.includes("requireAdminStepUpApi('video.delete'")) failures.push("video generation DELETE must require video.delete step-up");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
 const retryPublishStart = generation.search(/if\s*\(\s*action\s*===\s*["']retry_publish["']\s*\)/);
