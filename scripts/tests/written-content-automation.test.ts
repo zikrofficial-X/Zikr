@@ -258,6 +258,7 @@ assert.match(worker, /offset\+=rows\.length/, "backfill pagination must advance 
 assert.match(worker, /select=id,content_type,automation_key,metadata&limit=1000/, "Kids reservation scans must inspect the complete UTC-day written-post metadata rather than only the newest audience marker");
 assert.match(worker, /todaysKidsPosts\.some\(isKidsWrittenPostCandidate\)/, "backfill must recognize both current and legacy Kids queue reservations");
 assert.match(worker, /todaysKidsArticles\.some\(\(row\) => isKidsWrittenSourceReservation\(row\.metadata\)\)/, "backfill must reserve a Kids source article even if its social queue insert has not completed");
+assert.match(worker, /articles\?metadata->>automation=eq\.written-content-v2&published=eq\.true&created_at=/, "unpublished generated articles must not reserve the daily approved Kids slot");
 assert.match(worker, /shouldBackfillKidsWrittenPost\(sourceType,hasKidsPostToday\)/, "Kids backfill must stop after one daily reservation");
 assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(now\)/, "Kids backfill must not schedule its reserved slot into a future UTC day");
 assert.match(worker, /if\(sourceType==="kids_story"\)hasKidsPostToday=true/, "a successful Kids backfill must reserve the current UTC day for later rows");
