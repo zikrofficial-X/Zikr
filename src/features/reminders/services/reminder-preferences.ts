@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeIanaTimeZone } from "@/lib/timezone";
 
 const ALLOWED_INTERVALS = new Set([15, 30, 60, 120]);
 
@@ -50,20 +51,6 @@ function isClockTime(value: unknown): value is string {
     typeof value === "string" &&
     /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
   );
-}
-
-function normalizeTimeZone(value: unknown): string | null {
-  if (typeof value !== "string" || !value.trim() || value.trim().length > 64) {
-    return null;
-  }
-
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      timeZone: value.trim(),
-    }).resolvedOptions().timeZone;
-  } catch {
-    return null;
-  }
 }
 
 function parseUpdate(value: unknown): ReminderPreferenceUpdate | { error: string } {
@@ -118,7 +105,7 @@ function parseUpdate(value: unknown): ReminderPreferenceUpdate | { error: string
 
 
   if (body.timezone !== undefined) {
-    const timezone = normalizeTimeZone(body.timezone);
+    const timezone = normalizeIanaTimeZone(body.timezone);
     if (!timezone) return { error: "Invalid timezone" };
     updates.timezone = timezone;
   }
