@@ -22,8 +22,8 @@ assert.deepEqual(
   ["App/AppDebug.entitlements", "App/App.entitlements"],
   "iOS Debug and Release must use separate APNs entitlement environments",
 );
-assert.match(debugEntitlements, /<key>aps-environment<\\/key>\\s*<string>development<\\/string>/);
-assert.match(releaseEntitlements, /<key>aps-environment<\\/key>\\s*<string>production<\\/string>/);
+assert.match(debugEntitlements, /<key>aps-environment<\/key>\s*<string>development<\/string>/);
+assert.match(releaseEntitlements, /<key>aps-environment<\/key>\s*<string>production<\/string>/);
 for (const source of [debugEntitlements, releaseEntitlements]) {
   assert.ok(source.includes("applinks:zikrmediaofficial.vercel.app"), "both build configurations must retain the Universal Links entitlement");
 }
