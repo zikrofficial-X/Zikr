@@ -16,6 +16,7 @@ import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateG
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
+import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -550,10 +551,11 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   // Daily quota: keys are unique per UTC day (kind:day:counter) so every run can create new
   // videos, and the DAILY_VIDEO_TARGET is spread evenly across the day instead of bursting.
   // Urgent admin "Run Now" requests bypass the pacing and use the requested batch size.
-  const todaysRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id&limit=1000`,
+  const todaysRows = await supabaseServerAdminRequest<Array<{ id: string; status: string; automation_key: string | null }>>(
+    `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id,status,automation_key&limit=1000`,
   );
-  const alreadySeededToday = todaysRows?.length ?? 0;
+  const dailyQuota = calculateDailyVideoQuotaState(todaysRows ?? []);
+  const alreadySeededToday = dailyQuota.reservedCount;
   const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
   // The workflow runs in four six-hour UTC windows; release a quarter of the daily target per window.
   const scheduleWindow = Math.min(4, Math.max(1, Math.floor(now.getUTCHours() / 6) + 1));
@@ -563,7 +565,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
 
   for (let i = 0; i < allowed; i += 1) {
     if (await isVideoGenerationPaused()) break;
-    const slot = alreadySeededToday + i;
+    const slot = dailyQuota.nextSlot + i;
     const mode = slot % 7;
 
     let payload: Record<string, unknown>;
