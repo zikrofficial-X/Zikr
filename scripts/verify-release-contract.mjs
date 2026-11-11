@@ -219,11 +219,12 @@ assert.ok(!finalization.includes("secrets.POSTGRES_URL_NON_POOLING || secrets.SU
 const baselineStep = finalization.indexOf("Verify production data and baseline schema against parent commit");
 const buildStep = finalization.indexOf("Build production artifact");
 const deployStep = finalization.indexOf("Deploy prebuilt artifact to production");
-const migrationStep = finalization.indexOf("Apply pending production migrations after deployment");
+const migrationStep = finalization.indexOf("Apply pending production migrations before deployment");
 const schemaStep = finalization.indexOf("Verify production schema after migration");
-const finalSmokeStep = finalization.indexOf("Post-migration production smoke test");
-assert.ok(baselineStep >= 0 && baselineStep < buildStep, "pre-release schema/data preflight must occur before building");
-assert.ok(buildStep < deployStep && deployStep < migrationStep && migrationStep < schemaStep && schemaStep < finalSmokeStep, "deploy compatible code before applying breaking access-policy changes, then verify schema and smoke-test");
+const finalSmokeStep = finalization.indexOf("Production smoke test after schema migration and deployment");
+assert.ok(baselineStep >= 0 && baselineStep < migrationStep, "pre-release schema/data preflight must occur before production migrations");
+assert.ok(migrationStep < schemaStep && schemaStep < buildStep && buildStep < deployStep && deployStep < finalSmokeStep, "production migrations and schema verification must finish before deploying dependent code and smoke-testing it");
+assert.ok(!finalization.includes("Smoke test deployed app before schema migration"), "the application must never be smoke-tested against a schema that has not received its pending migrations");
 
 const gameRegistry = read("src/lib/games/registry.ts");
 const productionSmoke = read("scripts/verify-production-smoke.mjs");
