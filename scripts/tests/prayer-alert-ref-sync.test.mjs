@@ -8,8 +8,9 @@ assert.match(
   refSync,
   "the latest prayer settings ref must be synchronized in an effect, not during render",
 );
+const hookWithoutRefSyncEffect = hook.replace(refSync, "");
 assert.doesNotMatch(
-  hook,
+  hookWithoutRefSyncEffect,
   /^\s*settingsRef\.current\s*=\s*settings\s*;\s*$/m,
   "render must not write settingsRef.current",
 );
