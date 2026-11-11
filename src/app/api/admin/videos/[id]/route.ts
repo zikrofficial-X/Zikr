@@ -46,6 +46,9 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         heygen_status: null,
         heygen_submitted_at: null,
         heygen_last_polled_at: null,
+        youtube_id: null,
+        facebook_id: null,
+        video_url: null,
       });
     }
 

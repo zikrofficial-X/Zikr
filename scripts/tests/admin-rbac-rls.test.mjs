@@ -259,6 +259,12 @@ assert.match(
   /recordAdminAuditEvent\([\s\S]*?video_generation\.update[\s\S]*?recordAdminAuditEvent\([\s\S]*?video_generation\.delete_failed/,
   "video mutation endpoints must append audit events",
 );
+const legacyVideoPatch = videoRoute.match(/export async function PATCH\([\s\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
+assert.match(
+  legacyVideoPatch,
+  /status === 'pending'[\s\S]*?youtube_id: null[\s\S]*?facebook_id: null[\s\S]*?video_url: null/,
+  "resetting a legacy video request must clear stale platform IDs and media URLs before it returns to the generation queue",
+);
 
 
 assert.match(
