@@ -168,7 +168,10 @@ assert.ok(cloudinaryUploadRoute.includes("audit event unavailable after upload")
 assert.ok(cloudinaryUploadRoute.includes("4 * 1024 * 1024"), "the generic upload route must stay within the Vercel request-body ceiling");
 assert.ok(cloudinaryUploadRoute.includes("حجم الصورة يجب ألا يتجاوز 4 ميجابايت."), "the generic upload validation message must match its enforced 4 MB limit");
 assert.equal(cloudinaryUploadRoute.includes("8 ميجابايت"), false, "the upload route must not advertise a size that the server rejects");
-assert.ok(adminManager.includes('{ok ? `${rows.length} سجل` : "غير متاح"}'), "the Kids admin count must not display zero when the database read failed");
+assert.ok(adminManager.includes('supabaseServerAdminCount("kids_content")'), "the Kids admin total must come from an exact database count rather than the 300-row sample");
+assert.ok(adminManager.includes("totalCount !== null ? totalCount"), "the Kids admin total must distinguish an unavailable count from zero");
+assert.ok(adminManager.includes("آخر 300 سجل"), "the Kids admin list must disclose its bounded sample size");
+assert.ok(adminManager.includes('{ok ? totalCount === null ? `عرض ${rows.length} سجل؛ الإجمالي غير متاح` : `عرض ${rows.length} من ${totalCount} سجل` : "غير متاح"}'), "the Kids list must distinguish displayed sample size from total rows");
 assert.ok(adminManager.includes("{ok && rows.length === 0 && <p"), "the empty state must appear only after a successful empty database read");
 assert.ok(adminManager.includes('label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)"'), "the quiz field must explain that quiz records require structured questions");
 assert.ok(imageField.includes("3 * 1024 * 1024"), "the Kids server-action upload must stay below the 4 MB action body limit");
@@ -235,6 +238,9 @@ assert.match(kidsHomePage, /visibleContent\.length < featuredContent\.length/, "
 assert.match(kidsHomePage, /setVisibleContentCount\(\(count\) => Math\.min\(count \+ 12, featuredContent\.length\)\)/, "the Kids home page must reveal the next bounded content batch");
 assert.doesNotMatch(kidsHomePage, /featuredContent\.map\(/, "the Kids home page must not bypass its bounded visible-content slice");
 assert.doesNotMatch(kidsHomePage, /\.slice\(0,\s*6\)/, "the Kids home page must not silently hide all but six database records");
+assert.ok(kidsGamesAdminPage.includes('supabaseServerAdminCount("kids_games")'), "the Kids games total must use an exact count rather than the 100-row sample");
+assert.ok(kidsGamesAdminPage.includes("ضمن آخر 100"), "published/featured game counts must disclose their sample scope");
+assert.ok(kidsGamesAdminPage.includes("آخر 100 سجل"), "the game comparison table must disclose its bounded sample size");
 assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingRuntime.length > 0'), "runtime mismatch warnings must not be inferred from a failed games query");
 assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingDatabase.length > 0'), "missing database game warnings must only appear after a successful read");
 assert.ok(kidsLevelsAdminPage.includes('gamesResult.status === "fulfilled" ? gameNames.get(level.game_id) ?? "لعبة غير معروفة" : "غير متاح"'), "level rows must distinguish unavailable game metadata from a real missing game");

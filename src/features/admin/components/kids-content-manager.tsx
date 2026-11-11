@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { saveKidsContentAction } from "@/app/admin/kids/actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
@@ -73,21 +73,27 @@ function Field({
   );
 }
 
-async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean }> {
-  try {
-    const rows = await supabaseServerAdminRequest<KidsRow[]>(
+async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean; totalCount: number | null }> {
+  const [rowsResult, countResult] = await Promise.allSettled([
+    supabaseServerAdminRequest<KidsRow[]>(
       "/rest/v1/kids_content?select=id,title_ar,title_en,slug,type,age_group,published,is_active,created_at,updated_at,metadata&order=updated_at.desc&limit=300",
       { method: "GET" },
-    );
-    return { rows, ok: true };
-  } catch (error) {
-    console.error("[admin/kids] failed to load database content:", error);
-    return { rows: [], ok: false };
+    ),
+    supabaseServerAdminCount("kids_content"),
+  ]);
+  if (rowsResult.status === "rejected") {
+    console.error("[admin/kids] failed to load database content:", rowsResult.reason);
+    return { rows: [], ok: false, totalCount: null };
   }
+  const totalCount = countResult.status === "fulfilled" ? countResult.value : null;
+  if (countResult.status === "rejected") {
+    console.error("[admin/kids] failed to count database content:", countResult.reason);
+  }
+  return { rows: rowsResult.value, ok: true, totalCount };
 }
 
 export async function AdminKidsContentManager() {
-  const { rows, ok } = await getKidsContent();
+  const { rows, ok, totalCount } = await getKidsContent();
   const publishedCount = rows.filter((item) => item.published && item.is_active).length;
   const draftCount = rows.length - publishedCount;
   const automationApprovalRequiredCount = rows.filter((item) => item.type === "story" && item.metadata?.age_appropriate !== true).length;
@@ -111,11 +117,11 @@ export async function AdminKidsContentManager() {
       )}
 
       <section className="grid gap-4 md:grid-cols-5">
-        <Card><p className="text-sm arabic-muted">إجمالي السجلات الفعلية</p><strong className="text-3xl text-brand-gold">{ok ? rows.length : "غير متاح"}</strong></Card>
-        <Card><p className="text-sm arabic-muted">منشور ومفعّل</p><strong className="text-3xl text-emerald-300">{ok ? publishedCount : "غير متاح"}</strong></Card>
-        <Card><p className="text-sm arabic-muted">مسودة / مخفي</p><strong className="text-3xl text-amber-300">{ok ? draftCount : "غير متاح"}</strong></Card>
-        <Card><p className="text-sm arabic-muted">أنواع المحتوى</p><strong className="text-3xl text-brand-gold">{ok ? Object.keys(typeCounts).length : "غير متاح"}</strong></Card>
-        <Card><p className="text-sm arabic-muted">قصص غير معتمدة للتوليد الآلي</p><strong className="text-3xl text-amber-300">{ok ? automationApprovalRequiredCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">إجمالي السجلات الفعلية</p><strong className="text-3xl text-brand-gold">{ok && totalCount !== null ? totalCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">منشور ومفعّل ضمن آخر 300</p><strong className="text-3xl text-emerald-300">{ok ? publishedCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">مسودة / مخفي ضمن آخر 300</p><strong className="text-3xl text-amber-300">{ok ? draftCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">أنواع المحتوى ضمن آخر 300</p><strong className="text-3xl text-brand-gold">{ok ? Object.keys(typeCounts).length : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">قصص غير معتمدة للتوليد ضمن آخر 300</p><strong className="text-3xl text-amber-300">{ok ? automationApprovalRequiredCount : "غير متاح"}</strong></Card>
       </section>
 
       <section className="flex flex-wrap gap-2">
@@ -172,9 +178,9 @@ export async function AdminKidsContentManager() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl text-brand-gold">المحتوى الحالي</h2>
-            <p className="text-sm arabic-muted mt-1">هذه القائمة تقرأ مباشرة من جدول kids_content، وليست من بيانات ثابتة داخل الكود.</p>
+            <p className="text-sm arabic-muted mt-1">هذه القائمة تعرض آخر 300 سجل من جدول kids_content، بينما إجمالي العدد يُقرأ بصورة منفصلة من قاعدة البيانات.</p>
           </div>
-          <span className="text-xs text-brand-cream/40">{ok ? `${rows.length} سجل` : "غير متاح"}</span>
+          <span className="text-xs text-brand-cream/40">{ok ? totalCount === null ? `عرض ${rows.length} سجل؛ الإجمالي غير متاح` : `عرض ${rows.length} من ${totalCount} سجل` : "غير متاح"}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-sm">
