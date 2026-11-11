@@ -12,6 +12,9 @@ const video = read(".github/workflows/generate-ai-video.yml");
 const social = read(".github/workflows/publish-social.yml");
 const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
+const productionSmoke = read("scripts/verify-production-smoke.mjs");
+const aasaRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
+const assetLinksRoute = read("src/app/.well-known/assetlinks.json/route.ts");
 const supabaseTokenPreflight = release.indexOf("Verify Supabase Edge Function deployment credential before production changes");
 const migrationPush = release.indexOf("supabase db push --db-url");
 const edgeFunctionDeploy = release.indexOf("supabase functions deploy prayer-notification-worker --project-ref");
@@ -29,6 +32,30 @@ assert.ok(
     edgeFunctionDeploy > schemaReconcile &&
     webDeploy > edgeFunctionDeploy,
   "Controlled release must deploy the source-controlled prayer Edge Function only after the database migrations/schema reconciliation and before Vercel production deployment",
+);
+const vercelPull = release.indexOf("Pull production Vercel configuration");
+const aasaPreflight = release.indexOf("Verify Apple App Site Association configuration before production build");
+const productionBuild = release.indexOf("Build production artifact");
+assert.ok(
+  release.includes("IOS_ASSOCIATED_DOMAIN_APP_ID") &&
+    vercelPull >= 0 &&
+    aasaPreflight > vercelPull &&
+    aasaPreflight < productionBuild &&
+    aasaPreflight < migrationPush,
+  "Controlled release must validate the iOS App ID from the pulled Vercel production environment before build or production database changes",
+);
+assert.ok(
+  productionSmoke.includes("/.well-known/apple-app-site-association") &&
+    productionSmoke.includes("/.well-known/assetlinks.json") &&
+    productionSmoke.includes("sha256_cert_fingerprints") &&
+    productionSmoke.includes("com.zikr.app"),
+  "Production smoke must verify iOS Universal Links and Android App Links association documents",
+);
+assert.ok(
+  aasaRoute.includes("IOS_ASSOCIATED_DOMAIN_APP_ID") &&
+    aasaRoute.includes("dynamic = \"force-static\"") &&
+    assetLinksRoute.includes("ANDROID_APP_LINKS_SHA256"),
+  "App association endpoints must use the documented build-time iOS App ID and Android signing fingerprint",
 );
 const prayerWorkerSource = read("supabase/functions/prayer-notification-worker/index.ts");
 assert.ok(
