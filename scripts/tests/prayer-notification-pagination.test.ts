@@ -163,6 +163,11 @@ assert.doesNotMatch(
   /date_trunc\('minute',\s*now_at\)\s*\+/i,
   "the interval calculation must not double-count elapsed minutes by adding an elapsed-day offset to now_at",
 );
+assert.match(
+  reminderMigration,
+  /on conflict \(push_subscription_id, notification_kind, scheduled_at\) do nothing/i,
+  "delivery planning must target the existing notification-kind idempotency index",
+);
 const nextUtcInterval = (now: Date, intervalMinutes: number) => {
   const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   const elapsedMinutes = (now.getTime() - dayStart) / 60_000;
