@@ -53,7 +53,10 @@ export function getConfirmedYoutubeFallbackId(row: Record<string, unknown>): str
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  if (metadata.generator === "zikr_internal_video_factory" && mediaState === "purged") {
+  if (
+    metadata.generator === "zikr_internal_video_factory" &&
+    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState)
+  ) {
     return getConfirmedYoutubeFallbackId(row);
   }
   const id = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
@@ -124,9 +127,10 @@ export function resolveVideoThumbnail(
 ): string {
   const metadata = metadataFor(row);
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  const internalPurged = metadata.generator === "zikr_internal_video_factory" && mediaState === "purged";
+  const internalFallbackState = metadata.generator === "zikr_internal_video_factory" &&
+    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState);
   const youtubeId = resolveVideoYoutubeId(row);
-  if (internalPurged) {
+  if (internalFallbackState) {
     return youtubeId
       ? "https://i.ytimg.com/vi/" + encodeURIComponent(youtubeId) + "/hqdefault.jpg"
       : fallbackImage;
