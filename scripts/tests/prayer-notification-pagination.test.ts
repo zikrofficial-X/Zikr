@@ -181,6 +181,7 @@ const reminderService = readFileSync(
 const timezoneUtility = readFileSync("src/lib/timezone.ts", "utf8");
 const dhikrHook = readFileSync("src/features/reminders/hooks/use-dhikr-reminder.ts", "utf8");
 const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
+const profileSettings = readFileSync("src/features/profile/components/profile-local-settings.tsx", "utf8");
 const supabaseTypes = readFileSync("src/lib/types/supabase.ts", "utf8");
 
 assert.match(reminderMigration, /add column if not exists timezone text not null default 'UTC'/);
@@ -258,6 +259,8 @@ assert.match(reminderService, /updates\.timezone = timezone/);
 assert.match(reminderService, /quiet_hours_end,timezone,updated_at/);
 assert.match(dhikrHook, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/);
 assert.match(salawatHook, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/);
+assert.match(profileSettings, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/,
+  "Quran-only preference creation must also persist the browser timezone so future background reminders do not inherit UTC by default");
 const reminderTypesStart = supabaseTypes.indexOf("background_reminder_preferences: {");
 const reminderTypesEnd = supabaseTypes.indexOf("battle_events:", reminderTypesStart);
 assert.ok(reminderTypesStart >= 0 && reminderTypesEnd > reminderTypesStart);
