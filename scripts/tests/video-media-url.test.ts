@@ -100,9 +100,9 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /youtubePublicationsByRequest/);
   assert.match(auditScript, /status=in\.\(published,partial\)/);
   assert.match(auditScript, /!\["published", "partial"\]\.includes\(row\.status\)/);
-  assert.match(auditScript, /else if \(!assetUrl && queueYouTubeId\) mediaState = "youtube_only"/);
+  assert.match(auditScript, /else if \(!assetUrl && hasConfirmedYoutubeFallback\) mediaState = "youtube_only"/);
   assert.match(auditScript, /else if \(!assetUrl\) mediaState = "unavailable"/);
-  assert.match(auditScript, /thumbnailFor\(metadata, queueYouTubeId, row\.thumbnail_url\)/);
+  assert.match(auditScript, /thumbnailFor\(metadata, confirmedYoutubeFallbackId, row\.thumbnail_url\)/);
 
 });
 
