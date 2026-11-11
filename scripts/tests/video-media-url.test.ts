@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   assertCloudinaryVideoUrl,
   isGeneratedCloudinaryVideoUrl,
 } from "../../src/features/videos/services/video-media-url";
+import { resolveVideoMediaUrl } from "../../src/features/videos/services/video-media-contract";
 
 test("accepts HTTPS Cloudinary video delivery URLs", () => {
   const url = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
@@ -57,4 +59,26 @@ test("protects generated Cloudinary MP4 references with transformation segments"
   assert.equal(isGeneratedCloudinaryVideoUrl(direct, "another-cloud"), false);
   assert.equal(isGeneratedCloudinaryVideoUrl(direct.replace(".mp4", ".jpg"), "zikr"), false);
   assert.equal(isGeneratedCloudinaryVideoUrl("https://evil.example/video/upload/auto-episode.mp4", "zikr"), false);
+});
+
+test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
+  const purgedVideo = {
+    youtube_id: null,
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "purged",
+      generatedVideoUrl: null,
+      videoUrl: null,
+      sourceVideoUrl: "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(purgedVideo), null);
+
+  const kidsDetailPage = readFileSync("src/app/kids/videos/[slug]/page.tsx", "utf8");
+  assert.match(kidsDetailPage, /resolveVideoMediaUrl\(/);
+  assert.doesNotMatch(
+    kidsDetailPage,
+    /const candidate = \[metadata\.generatedVideoUrl, metadata\.videoUrl, metadata\.video_url, metadata\.sourceVideoUrl\]/,
+    "Kids detail playback must use the canonical media-state resolver instead of stale metadata candidates",
+  );
 });
