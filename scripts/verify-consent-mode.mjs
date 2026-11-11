@@ -8,7 +8,7 @@ const advertisingRuntime = readFileSync(
 
 const consentDefault = layout.indexOf("gtag('consent', 'default'");
 const cmpScript = advertisingRuntime.indexOf('"google-funding-choices"');
-const analytics = layout.indexOf('id="google-analytics-src"');
+const analytics = advertisingRuntime.indexOf('id="google-analytics-src"');
 const tagManager = advertisingRuntime.indexOf('"google-tag-manager"');
 const nativeGuard = advertisingRuntime.indexOf(
   "if (Capacitor.isNativePlatform())",
@@ -51,9 +51,10 @@ for (const token of [
     throw new Error("Web-only third-party tag loader is missing: " + token);
   }
 }
-if (analytics < 0 || analytics < consentDefault) {
+const canonicalHostGuard = advertisingRuntime.indexOf("if (!isCanonicalProductionHost())");
+if (analytics < 0 || consentDefault < 0 || canonicalHostGuard < 0 || analytics < canonicalHostGuard) {
   throw new Error(
-    "Google Analytics must load only after the denied-by-default consent state is established",
+    "Google Analytics must load only after the denied-by-default consent state and canonical production-host guard are established",
   );
 }
 if (
