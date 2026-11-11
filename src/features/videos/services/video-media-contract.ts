@@ -52,11 +52,9 @@ export function getConfirmedYoutubeFallbackId(row: Record<string, unknown>): str
 
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
-  const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  if (
-    metadata.generator === "zikr_internal_video_factory" &&
-    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState)
-  ) {
+  if (metadata.generator === "zikr_internal_video_factory") {
+    // Internal factory IDs are usable only after the publisher recorded the
+    // remote ID and matching canonical URL, regardless of the current media state.
     return getConfirmedYoutubeFallbackId(row);
   }
   const id = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
