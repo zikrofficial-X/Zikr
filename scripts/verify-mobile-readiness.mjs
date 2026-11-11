@@ -85,8 +85,8 @@ if (/android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel.app"[
   failures.push("Android must leave the HTTPS OAuth callback in the browser for the server-side code exchange.");
 }
 for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {
-  if (!androidManifest.includes(\`android:pathPrefix="\${routePrefix}"\`)) {
-    failures.push(\`Android App Links missing public route prefix \${routePrefix}\`);
+  if (!androidManifest.includes('android:pathPrefix="' + routePrefix + '"')) {
+    failures.push("Android App Links missing public route prefix " + routePrefix);
   }
 }
 
