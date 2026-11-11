@@ -17,7 +17,8 @@ export function enforceCanonicalProductionUrl(_value?: string): string {
  * the production origin has no access to the preview's PKCE verifier cookie.
  */
 export function isV0PreviewHost(host?: string | null): boolean {
-  if (!process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || !host) return false;
+  const configuredRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL?.trim();
+  if (!configuredRedirect || !host) return false;
   if (
     process.env.VERCEL_ENV === "production" ||
     process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
@@ -27,11 +28,25 @@ export function isV0PreviewHost(host?: string | null): boolean {
 
   const hostname = host.toLowerCase().split(":")[0];
   if (hostname === "localhost" || hostname === "127.0.0.1") return false;
-  if (hostname === new URL(PRODUCTION_URL).hostname) return false;
-  if (hostname.endsWith(".vercel.app") || hostname.endsWith(".supabase.co")) {
+  if (hostname === new URL(PRODUCTION_URL).hostname.toLowerCase()) return false;
+  if (hostname.endsWith(".vercel.app") || hostname.endsWith(".supabase.co")) return false;
+
+  try {
+    const configuredUrl = new URL(configuredRedirect);
+    const configuredHost = configuredUrl.hostname.toLowerCase();
+    if (
+      configuredUrl.protocol !== "https:" ||
+      !configuredHost ||
+      configuredHost === new URL(PRODUCTION_URL).hostname.toLowerCase() ||
+      configuredHost.endsWith(".vercel.app") ||
+      configuredHost.endsWith(".supabase.co")
+    ) {
+      return false;
+    }
+    return hostname === configuredHost;
+  } catch {
     return false;
   }
-  return true;
 }
 
 export const siteConfig = {
