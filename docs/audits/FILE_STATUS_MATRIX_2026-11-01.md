@@ -2009,3 +2009,95 @@ These entries are branch overlays, not part of the `main@c4560d9` manifest basel
 | `src/features/social/services/social-publishing.ts` | `a6c9bd96ccdb65993078ecaa72cc7dba8ef7bb43` | 54101 | reviewed; exact-head CI pending |
 | `src/features/social/services/written-content.ts` | `6cfa1dfd8d3945f73c35012c6330a9742060e74e` | 16640 | reviewed; exact-head CI pending |
 | `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | `3fc6d98a1107be2c64033f69b4bbcb8b059b6295` | 1138 | reviewed; exact-head CI pending |
+
+
+## Active audit PR #320 branch delta — 2026-11-11
+
+**Code checkpoint:** `audit/zikr-kids-daily-priority-20261110@2216e178348441c83745d19ac7489bedcc9a5b8e`  
+**Base:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
+**Diff:** 163 commits ahead, 0 behind, 68 changed paths.  
+**Exact-head verification:** GitHub Quality Gate #2151 SUCCESS; canonical `pnpm verify` completed; CircleCI config-guard, source-verify, and application-build-docs SUCCESS.  
+**Deployment/review:** no Vercel Preview deployment; production remains on main; CODEOWNERS owner review pending; no merge or deploy.
+
+The 68 changed paths below were reviewed through their actual changed content, relevant consumers, tests, and runtime contracts. Very large files were inspected at the changed code path and dependent call sites rather than treating the entire file as manually line-read. This delta does not close the remaining main-baseline REVIEW_REQUIRED rows.
+
+| Changed path | Status |
+|---|---|
+| `.circleci/config.yml` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `.env.example` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `.github/workflows/quality-gate.yml` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `PROJECT_STATUS.md` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `android/app/src/main/AndroidManifest.xml` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `docs/environment-variables.md` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `ios/App/App/Info.plist` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `mobile/README.md` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `package.json` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/jobs/template-video-automation.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/jobs/written-content-automation.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/platform-route-baseline.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/admin-role-resolution.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/kids-content-visibility.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/kids-share-rate-limit.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/native-google-oauth-contract.test.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/profile-sync.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/video-duplicate-recovery.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/video-media-url.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/written-content-automation.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/tests/youtube-oauth-credentials.test.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/verify-ci-architecture.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/verify-information-architecture.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/verify-mobile-ads-free.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/verify-mobile-readiness.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `scripts/verify-video-queue-priority.mjs` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/admin/kids/actions.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/admin/kids/games/page.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/admin/kids/levels/page.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/admin/cloudinary/image/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/admin/social/written/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/admin/social/youtube/callback/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/kids/content/[slug]/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/kids/content/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/kids/social-posts/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/kids/track-share/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/api/kids/videos/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/auth/callback/route.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/kids/[slug]/layout.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/kids/[slug]/page.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/kids/page.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/app/sitemap.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/components/layout/native-capacitor-bridge.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/admin/components/cloudinary-image-upload-field.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/admin/components/kids-content-manager.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/admin/services/admin.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/admin/services/permissions.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/components/kids-share.tsx` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/data/content.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/services/client-address.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/services/kids-content-validation.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/services/kids-content-visibility.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/services/kids-content.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/kids/services/share-rate-limit.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/profile/services/profile-sync.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/profile/services/profile.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/social/services/social-publishing.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/social/services/written-content.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/social/services/youtube-oauth-credentials.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/videos/services/video-automation-quota.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/videos/services/video-automation.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `src/features/videos/services/video-media-url.ts` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+| `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql` | changed-path review completed at code-path/consumer level; exact-head CI #2151 passed on code checkpoint 2216e178; repository-wide audit remains open |
+
+### Branch-specific closeout notes
+
+- Kids written automation reserves one approved Kids source per UTC day and fails closed on Kids source/reservation read errors.
+- Kids public feed and social publisher revalidate published/active/age-appropriate source state; private-contact screening and video embed validation have regression tests.
+- Kids sitemap is pinned to Arabic locale; the detail iframe is sandboxed and only accepts trusted HTTPS YouTube embed URLs.
+- The three branch migrations are pending in production; no migration was applied. Production currently has no inactive/unpublished Kids rows, but the live RLS policy still omits is_active.
+- The recursive manifest in this PR is a snapshot of main@c4560d9, not the unmerged branch tree. Keep it pinned to that baseline and regenerate it only after merge against the new main tree.
+- This PR's 68-path delta is not a full review of all 1,662 files. The main-baseline matrix still has 1,525 REVIEW_REQUIRED rows and zero closed modules.
+- The documentation reconciliation commits d0c5694c8e4a7a10132c62f96cf77dd5d122148b and 4eee2c28af4969ebb6b6a8a5c1a6a69c386415a follow the verified code checkpoint; final CI must be checked on the final documentation head before any merge decision.
