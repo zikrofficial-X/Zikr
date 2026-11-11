@@ -57,7 +57,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
     const ids = idsFromBody(body);
-    const deleteFailed = Boolean((body as { deleteFailed?: unknown })?.deleteFailed);
+    const deleteFailed =
+      body !== null &&
+      typeof body === "object" &&
+      (body as { deleteFailed?: unknown }).deleteFailed === true;
 
     if (!ids.length && !deleteFailed) {
       return NextResponse.json({ error: 'حدد عمليات للحذف أو استخدم deleteFailed.' }, { status: 400 });
