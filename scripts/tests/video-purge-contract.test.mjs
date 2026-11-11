@@ -43,7 +43,7 @@ assert.ok(!route.includes('deleteRows("videos", "id=not.is.null")'), "Purge must
 assert.ok(route.includes('metadata->>generator=eq.zikr_internal_video_factory'), "Purge must select only internally generated video catalog rows.");
 assert.ok(route.includes('mediaState: "purged"'), "Purge must mark removed generated media records.");
 assert.ok(route.includes("mediaPurgedFromPublished: wasPublishedBeforeMediaPurge(row)"), "Purge must preserve prior-publication evidence across repeated purges.");
-assert.ok(videoMediaContract.includes('"cloudinary_missing", "unavailable", "purged"'), "purged internal media must never fall through to stale Cloudinary source URLs.");
+assert.ok(videoMediaContract.includes('"cloudinary_missing", "unavailable", "youtube_only", "purged"'), "purged internal media must never fall through to stale Cloudinary source URLs.");
 assert.ok(videoMediaContract.includes("metadata.mediaFallbackAvailable !== true"), "YouTube fallback must require the explicit publisher-confirmed flag.");
 assert.ok(videosService.includes("resolveVideoYoutubeId"), "all public video adapters must expose only the validated YouTube fallback ID.");
 assert.ok(route.includes("published: keepPublishedFallback"), "Purge must preserve an already-published catalog row only when a verified YouTube fallback exists.");
