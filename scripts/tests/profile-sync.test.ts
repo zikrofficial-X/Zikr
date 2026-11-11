@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { buildAuthProfileSyncPayload } from "../../src/features/profile/services/profile-sync";
+import { normalizeIanaTimeZone } from "../../src/lib/timezone";
 
 test("auth sync preserves user-edited profile name and avatar", () => {
   const payload = buildAuthProfileSyncPayload(
@@ -70,4 +72,18 @@ test("auth sync uses a safe email-local-part fallback only for a new profile", (
   );
 
   assert.equal(payload.display_name, "mohamed");
+});
+
+test("profile timezone updates reject invalid IANA timezone values", () => {
+  assert.equal(normalizeIanaTimeZone("America/New_York"), "America/New_York");
+  assert.equal(normalizeIanaTimeZone("Africa/Cairo"), "Africa/Cairo");
+  assert.equal(normalizeIanaTimeZone("Invalid/Timezone"), null);
+  assert.equal(normalizeIanaTimeZone(""), null);
+
+  const profileService = readFileSync(
+    "src/features/profile/services/profile.ts",
+    "utf8",
+  );
+  assert.match(profileService, /normalizeIanaTimeZone\(candidate\)/);
+  assert.match(profileService, /timezone must be a valid IANA timezone/);
 });
