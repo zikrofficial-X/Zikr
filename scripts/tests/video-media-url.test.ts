@@ -73,6 +73,14 @@ test("protects generated Cloudinary MP4 references with transformation segments"
   assert.equal(isGeneratedCloudinaryVideoUrl("https://evil.example/video/upload/auto-episode.mp4", "zikr"), false);
 });
 
+test("scheduled media audit avoids checkedAt-only database writes and reports unavailable published videos", () => {
+  const auditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+  assert.match(auditScript, /function comparableMediaAudit\(value: unknown\)/);
+  assert.match(auditScript, /JSON\.stringify\(comparableMediaAudit\(nextMetadata\.mediaAudit\)\)/);
+  assert.match(auditScript, /const needsUpdate = mediaStateChanged \|\| mediaAuditChanged/);
+  assert.match(auditScript, /result\.state === "unavailable"/);
+});
+
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
   const purgedVideo = {
     youtube_id: null,
