@@ -22,6 +22,7 @@ import { getMinutesOfDayInTimeZone, getPrayerTimes } from "@/features/prayer/ser
 import {
   addCalendarDays,
   getPrayerAlertDateKey,
+  getPrayerNotificationIdsToCancel,
   formatDateInTimeZone,
   getZonedDateTime,
 } from "@/features/prayer/services/prayer-notification-schedule";
@@ -45,6 +46,7 @@ const SETTINGS_KEY = "zikr_azan_settings";
 const PRAYER_NATIVE_ID_BASE = 7000;
 const PRAYER_SCHEDULE_DAYS = 4;
 const SETTINGS_UPDATED_EVENT = "zikr:prayer-settings-updated";
+let nativePrayerScheduleGeneration = 0;
 
 const DEFAULT_SETTINGS: AzanSettings = {
   enabledPrayers: {
@@ -109,7 +111,7 @@ function markFired(prayer: PrayerKey, timeZone?: string): void {
 
 async function scheduleNativePrayerNotifications(
   settings: AzanSettings,
-  timings: Record<string, string>,
+  timings: Record<string, string> | null,
 ): Promise<void> {
   if (typeof window === "undefined") return;
   const native = (
@@ -129,33 +131,47 @@ async function scheduleNativePrayerNotifications(
   ).zikrNative;
   if (!native?.scheduleLocalNotification) return;
 
-  const location = loadLocalPrayerLocation();
-  if (!location) return;
-  const timeZone = location.timezone;
-  const now = new Date();
-  const today = formatDateInTimeZone(now, timeZone) ?? formatLocalDate(now);
-  const nativeAudio = getNativeAudio("prayer");
+  const generation = ++nativePrayerScheduleGeneration;
   const nativeIds = Array.from(
     { length: PRAYER_SCHEDULE_DAYS * PRAYERS.length },
     (_, index) => PRAYER_NATIVE_ID_BASE + index,
   );
-  await native.cancelLocalNotifications?.(nativeIds);
-  if (!PRAYERS.some(prayer => settings.enabledPrayers[prayer])) return;
+  const location = loadLocalPrayerLocation();
+  if (!location || !PRAYERS.some(prayer => settings.enabledPrayers[prayer])) {
+    if (generation === nativePrayerScheduleGeneration) {
+      await native.cancelLocalNotifications?.(nativeIds);
+    }
+    return;
+  }
 
+  const timeZone = location.timezone;
+  const now = new Date();
+  const today = formatDateInTimeZone(now, timeZone) ?? formatLocalDate(now);
+  const nativeAudio = getNativeAudio("prayer");
+  const refreshedPrayerIds = new Set<number>();
+  const scheduleEntries: Array<{ id: number; prayer: PrayerKey; scheduleAt: string }> = [];
+
+  // Resolve the complete refresh plan before cancelling existing alarms. A
+  // failed future-day lookup must not erase a valid alarm already on-device.
   for (let dayOffset = 0; dayOffset < PRAYER_SCHEDULE_DAYS; dayOffset += 1) {
+    if (generation !== nativePrayerScheduleGeneration) return;
     const dateKey = addCalendarDays(today, dayOffset);
     if (!dateKey) continue;
 
     let dayTimings: Record<string, string> | null =
-      dayOffset === 0 ? timings : null;
+      dayOffset === 0 && timings && Object.keys(timings).length > 0
+        ? timings
+        : null;
     if (!dayTimings) {
       const response = await getPrayerTimes(
         location.latitude,
         location.longitude,
         dateKey,
       ).catch(() => null);
-      dayTimings = response?.data?.timings
-        ? ({ ...response.data.timings } as Record<string, string>)
+      if (generation !== nativePrayerScheduleGeneration) return;
+      const providerTimings = response?.data?.timings;
+      dayTimings = providerTimings && Object.keys(providerTimings).length > 0
+        ? { ...providerTimings }
         : null;
     }
     if (!dayTimings) continue;
@@ -167,27 +183,47 @@ async function scheduleNativePrayerNotifications(
         timeZone,
         dayTimings[prayer] ?? "",
       );
-      if (!scheduled || scheduled <= now) continue;
+      if (!scheduled) continue;
 
       const id =
         PRAYER_NATIVE_ID_BASE +
         dayOffset * PRAYERS.length +
         PRAYERS.indexOf(prayer);
-      try {
-        await native.scheduleLocalNotification({
-          id,
-          title: `حان وقت صلاة ${PRAYER_NAMES_AR[prayer]}`,
-          body: "الصلاة خير من النوم — حافظ على صلاتك",
-          scheduleAt: scheduled.toISOString(),
-          sound: nativeAudio.sound,
-          channelId: nativeAudio.channelId,
-        });
-      } catch (error) {
-        console.warn(
-          "[prayer-alert] Native notification scheduling failed",
-          error,
-        );
-      }
+      refreshedPrayerIds.add(id);
+      if (scheduled <= now) continue;
+      scheduleEntries.push({ id, prayer, scheduleAt: scheduled.toISOString() });
+    }
+  }
+
+  if (generation !== nativePrayerScheduleGeneration) return;
+  const idsToCancel = getPrayerNotificationIdsToCancel({
+    scheduleDays: PRAYER_SCHEDULE_DAYS,
+    prayers: PRAYERS,
+    enabledPrayers: settings.enabledPrayers,
+    refreshedPrayerIds: [...refreshedPrayerIds],
+    idBase: PRAYER_NATIVE_ID_BASE,
+  });
+  if (idsToCancel.length > 0) {
+    await native.cancelLocalNotifications?.(idsToCancel);
+  }
+  if (generation !== nativePrayerScheduleGeneration) return;
+
+  for (const entry of scheduleEntries) {
+    if (generation !== nativePrayerScheduleGeneration) return;
+    try {
+      await native.scheduleLocalNotification({
+        id: entry.id,
+        title: `حان وقت صلاة ${PRAYER_NAMES_AR[entry.prayer]}`,
+        body: "الصلاة خير من النوم — حافظ على صلاتك",
+        scheduleAt: entry.scheduleAt,
+        sound: nativeAudio.sound,
+        channelId: nativeAudio.channelId,
+      });
+    } catch (error) {
+      console.warn(
+        "[prayer-alert] Native notification scheduling failed",
+        error,
+      );
     }
   }
 }
@@ -302,7 +338,7 @@ export function usePrayerAlert(
     if (passive) return;
     let disposed = false;
     const schedule = () => {
-      if (disposed || !currentTimings) return;
+      if (disposed) return;
       void scheduleNativePrayerNotifications(settings, currentTimings).catch(error => {
         console.warn("[prayer-alert] Native schedule refresh failed", error);
       });
