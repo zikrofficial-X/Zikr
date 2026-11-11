@@ -259,7 +259,14 @@ export function useSalawatReminder(
     ) => {
       setSettings(prev => {
         const patch = typeof partial === "function" ? partial(prev) : partial;
-        const next = { ...prev, ...patch };
+        const quietHoursPatch = patch.quietHours && typeof patch.quietHours === "object"
+          ? patch.quietHours
+          : {};
+        const next = normalizeSalawatSettings({
+          ...prev,
+          ...patch,
+          quietHours: { ...prev.quietHours, ...quietHoursPatch },
+        });
         saveSettings(next);
         window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
         void getAuthenticatedSession().then(session => {
