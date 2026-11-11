@@ -36,4 +36,5 @@ psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zi
 "${psql[@]}" -f /workspace/supabase/migrations/20261101170000_admin_atomic_role_update.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261101190000_admin_atomic_site_audio_primary.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql
+"${psql[@]}" -f /workspace/supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql
 "${psql[@]}" -f /workspace/scripts/tests/admin-role-update.integration.sql
