@@ -5,6 +5,7 @@ import {
   addCalendarDays,
   formatDateInTimeZone,
   getPrayerAlertDateKey,
+  getPrayerNotificationIdsToCancel,
   getZonedDateTime,
 } from "../../src/features/prayer/services/prayer-notification-schedule";
 
@@ -102,6 +103,52 @@ assert.equal(
 assert.equal(getZonedDateTime("invalid", "UTC", "12:00"), null);
 assert.equal(getZonedDateTime("2026-02-31", "UTC", "12:00"), null);
 assert.equal(addCalendarDays("2026-02-31", 1), null);
+
+assert.deepEqual(
+  getPrayerNotificationIdsToCancel({
+    scheduleDays: 2,
+    prayers: ["Fajr", "Dhuhr", "Isha"],
+    enabledPrayers: { Fajr: true, Dhuhr: false, Isha: true },
+    refreshedPrayerIds: [7000, 7002, 7003],
+    idBase: 7000,
+  }),
+  [7000, 7001, 7002, 7003, 7004],
+  "refresh must cancel disabled alarms and only enabled alarms whose replacement timing was resolved",
+);
+assert.deepEqual(
+  getPrayerNotificationIdsToCancel({
+    scheduleDays: 2,
+    prayers: ["Fajr", "Dhuhr", "Isha"],
+    enabledPrayers: { Fajr: true, Dhuhr: true, Isha: true },
+    refreshedPrayerIds: [7000],
+    idBase: 7000,
+  }),
+  [7000],
+  "enabled alarms for days whose timing lookup failed must remain scheduled",
+);
+assert.deepEqual(
+  getPrayerNotificationIdsToCancel({
+    scheduleDays: 2,
+    prayers: ["Fajr", "Dhuhr", "Isha"],
+    enabledPrayers: { Fajr: true, Dhuhr: true, Isha: true },
+    refreshedPrayerIds: [],
+    idBase: 7000,
+    hasLocation: false,
+  }),
+  [7000, 7001, 7002, 7003, 7004, 7005],
+  "removing the saved location must cancel every stale native prayer alarm",
+);
+assert.deepEqual(
+  getPrayerNotificationIdsToCancel({
+    scheduleDays: 2,
+    prayers: ["Fajr", "Dhuhr", "Isha"],
+    enabledPrayers: { Fajr: false, Dhuhr: false, Isha: false },
+    refreshedPrayerIds: [],
+    idBase: 7000,
+  }),
+  [7000, 7001, 7002, 7003, 7004, 7005],
+  "disabling every prayer must cancel all native prayer alarms",
+);
 
 const prayerAlertHook = readFileSync("src/features/prayer/hooks/use-prayer-alert.ts", "utf8");
 const pushSubscription = readFileSync("src/lib/push-subscription.ts", "utf8");
