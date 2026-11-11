@@ -85,7 +85,7 @@ export default async function KidsLevelsPage() {
               <tbody>
                 {levels.map((level) => (
                   <tr key={level.id} className="border-t border-brand-gold/8">
-                    <td className="px-4 py-3 text-brand-cream/70">{gameNames.get(level.game_id) ?? "لعبة غير معروفة"}</td>
+                    <td className="px-4 py-3 text-brand-cream/70">{gamesResult.status === "fulfilled" ? gameNames.get(level.game_id) ?? "لعبة غير معروفة" : "غير متاح"}</td>
                     <td className="px-4 py-3 text-brand-cream/70">{displayNumber(level.level_no)}</td>
                     <td className="px-4 py-3"><p className="text-brand-cream/85">{level.title_ar}</p><p className="text-[11px] text-brand-cream/35">{level.title_en}</p></td>
                     <td className="px-4 py-3 text-brand-cream/60" dir="ltr">{level.mechanic}</td>

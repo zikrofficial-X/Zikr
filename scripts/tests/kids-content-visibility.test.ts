@@ -119,6 +119,12 @@ const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsQuizValidation = readFileSync("src/features/kids/services/kids-content-validation.ts", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
+const kidsContentApi = readFileSync("src/app/api/kids/content/route.ts", "utf8");
+const kidsVideosApi = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
+const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
+const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
+const kidsLevelsAdminPage = readFileSync("src/app/admin/kids/levels/page.tsx", "utf8");
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
@@ -169,6 +175,17 @@ assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metada
 assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
 assert.match(kidsDetailApi, /private, no-store/, "Kids detail responses must not serve stale content after deactivation or age-review changes");
+for (const [name, route] of [["Kids list", kidsContentApi], ["Kids videos", kidsVideosApi], ["Kids social posts", kidsSocialPostsApi]]) {
+  assert.ok(route.includes("private, no-store"), `${name} responses must not keep deactivated or age-rejected content in a shared CDN cache`);
+  assert.equal(route.includes("stale-while-revalidate"), false, `${name} responses must not serve stale visibility decisions`);
+}
+assert.ok(kidsHomePage.includes("useState<KidsItem[]>([])"), "the public Kids home page must not render static fallback records before database visibility is checked");
+assert.equal(kidsHomePage.includes("useState(kidsContent)"), false, "static fallback data must come through the visibility-aware server resolver");
+assert.ok(kidsHomePage.includes('setContentStatus("error")'), "the Kids home page must fail closed when its visibility-aware list request fails");
+assert.ok(kidsHomePage.includes("contentStatus === \"ready\" && featuredContent.length > 0"), "the Kids home page must wait for the verified list before rendering content cards");
+assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingRuntime.length > 0'), "runtime mismatch warnings must not be inferred from a failed games query");
+assert.ok(kidsGamesAdminPage.includes('gamesResult.status === "fulfilled" && missingDatabase.length > 0'), "missing database game warnings must only appear after a successful read");
+assert.ok(kidsLevelsAdminPage.includes('gamesResult.status === "fulfilled" ? gameNames.get(level.game_id) ?? "لعبة غير معروفة" : "غير متاح"'), "level rows must distinguish unavailable game metadata from a real missing game");
 
 assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{false\}/, "Kids content must default to draft until an editor explicitly publishes it");
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");

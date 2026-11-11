@@ -7,7 +7,7 @@ export async function GET() {
   try {
     return NextResponse.json(await getKidsContent(), {
       headers: {
-        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=1800",
+        "Cache-Control": "private, no-store",
       },
     });
   } catch (error) {

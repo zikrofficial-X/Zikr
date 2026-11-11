@@ -16,7 +16,7 @@ export async function GET() {
   // This is an optional public feed: return an empty list instead of a 503 or noisy error.
   if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) {
     return NextResponse.json([], {
-      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   }
 
@@ -31,7 +31,7 @@ export async function GET() {
     )];
     if (candidateIds.length === 0) {
       return NextResponse.json([], {
-        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "private, no-store" },
       });
     }
 
@@ -50,7 +50,7 @@ export async function GET() {
     });
 
     return NextResponse.json(items.slice(0, 12), {
-      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
     console.error("[api/kids/social-posts] GET error:", error);

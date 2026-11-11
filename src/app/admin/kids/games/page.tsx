@@ -70,14 +70,14 @@ export default async function KidsGamesPage() {
         <Card><p className="text-xs text-brand-cream/40">ألعاب منشورة / مميزة</p><p className="mt-2 text-3xl font-bold text-brand-cream">{gamesResult.status === "fulfilled" ? `${number(publishedCount)} / ${number(featuredCount)}` : "غير متاح"}</p></Card>
       </section>
 
-      {missingRuntime.length > 0 && (
+      {gamesResult.status === "fulfilled" && missingRuntime.length > 0 && (
         <div role="alert" className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-sm leading-7 text-amber-100">
           <strong>تعارض يحتاج قرارًا:</strong> توجد ألعاب منشورة في قاعدة البيانات بلا Runtime مطابق في GAME_REGISTRY:
           {" "}{missingRuntime.map((game) => `${game.title_ar} (${game.slug})`).join("، ")}.
           لم يتم حذفها أو إخفاؤها.
         </div>
       )}
-      {missingDatabase.length > 0 && (
+      {gamesResult.status === "fulfilled" && missingDatabase.length > 0 && (
         <div role="alert" className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-sm leading-7 text-amber-100">
           توجد مسارات تشغيل في الكود بلا سجل مقابل في kids_games: {missingDatabase.join("، ")}.
         </div>

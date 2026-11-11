@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { kidsContent } from "@/features/kids/data/content";
+import type { KidsItem } from "@/features/kids/data/content";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
@@ -67,17 +67,29 @@ const contentTypeIcons: Record<string, string> = {
 
 export default function KidsPage() {
   const { isEnglish } = useLanguage();
-  const [contentItems, setContentItems] = useState(kidsContent);
+  const [contentItems, setContentItems] = useState<KidsItem[]>([]);
+  const [contentStatus, setContentStatus] = useState<"loading" | "ready" | "error">("loading");
   const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
   const [kidsWrittenPosts, setKidsWrittenPosts] = useState<KidsWrittenPost[]>([]);
   useEffect(() => {
     let active = true;
-    fetch("/api/kids/content", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setContentItems(data);
+    setContentStatus("loading");
+    fetch("/api/kids/content", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Kids content request failed.");
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Kids content response was not a list.");
+        if (active) {
+          setContentItems(data as KidsItem[]);
+          setContentStatus("ready");
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+      });
     fetch("/api/kids/videos", { credentials: "include", cache: "no-store" })
       .then((response) => response.ok ? response.json() : [])
       .then((data) => {
@@ -253,7 +265,12 @@ export default function KidsPage() {
 
         <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
           <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "All activities →" : "كل الأنشطة ←"}</Link></div>
+          {contentStatus === "loading" && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "Loading activities..." : "جاري تحميل الأنشطة..."}</p>}
+          {contentStatus === "error" && <p role="alert" className="text-sm text-amber-200">{isEnglish ? "Activities are temporarily unavailable." : "تعذر تحميل الأنشطة الآن."}</p>}
+          {contentStatus === "ready" && featuredContent.length === 0 && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "No published activities are available right now." : "لا توجد أنشطة منشورة حالياً."}</p>}
+          {contentStatus === "ready" && featuredContent.length > 0 && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{featuredContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full min-w-0 border-brand-cream/10 bg-black/20 p-4 transition hover:-translate-y-1 hover:border-brand-emerald/50 sm:p-5"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{typeLabels[item.type as keyof typeof typeLabels] ?? (isEnglish ? "Activity" : "نشاط")}</span></div><h3 className="mt-4 break-words text-lg font-bold text-brand-cream group-hover:text-brand-gold sm:mt-5 sm:text-xl">{isEnglish ? item.title_en : item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{isEnglish ? (item.content_en?.split("\n")[0] ?? "English content is not available for this activity yet.") : (item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع.")}</p><p className="mt-4 text-sm font-bold text-brand-emerald">{isEnglish ? "Age " : "مناسب لعمر "} {item.age_group} {isEnglish ? "years" : "سنوات"} ←</p></Card></Link>)}</div>
+          )}
         </section>
 
         <section aria-labelledby="games-heading" className="space-y-5">
