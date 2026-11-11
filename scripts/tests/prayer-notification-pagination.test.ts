@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
-import { canSchedulePrayerSubscription } from "../../supabase/functions/prayer-notification-worker/eligibility";
+import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
 
 const source = Array.from({ length: 205 }, (_, index) => ({
@@ -66,12 +66,20 @@ const worker = readFileSync("supabase/functions/prayer-notification-worker/index
 assert.match(worker, /forEachIdPage\(/);
 assert.match(worker, /canSchedulePrayerSubscription\(/);
 assert.match(worker, /preference\.notifications_enabled !== true/);
+assert.match(worker, /isDeliverySubscriptionOwnerValid\(delivery\.user_id, subscription\.user_id\)/);
+assert.match(worker, /Subscription owner does not match delivery owner/);
+const subscriptionOwnershipGuard = worker.indexOf("isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)");
+const pushDelivery = worker.indexOf(".pushTextMessage(");
+assert.ok(subscriptionOwnershipGuard >= 0 && pushDelivery > subscriptionOwnershipGuard, "subscription ownership must be validated before any push is sent");
 assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(false, { notifications_enabled: true }), false, "a subscription without a default location must not be scheduled");
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: false }), false, "disabled prayer notifications must be skipped");
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: null }), false, "a null opt-in flag must fail closed");
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "only an explicit opt-in may schedule notifications");
+assert.equal(isDeliverySubscriptionOwnerValid("user-1", "user-1"), true, "a delivery may target only its owner's active subscription");
+assert.equal(isDeliverySubscriptionOwnerValid("user-1", "user-2"), false, "a mismatched subscription owner must be rejected");
+assert.equal(isDeliverySubscriptionOwnerValid("", "user-1"), false, "an empty delivery owner must fail closed");
 
 assert.equal(
   nextLocalDate(new Date("2026-11-11T12:00:00.000Z"), "Pacific/Kiritimati"),

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
-import { canSchedulePrayerSubscription } from "./eligibility.ts";
+import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "./eligibility.ts";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "./time-zone.ts";
 import {
   ApplicationServer,
@@ -692,16 +692,19 @@ async function deliverDue(
     }
 
     const subscription = subscriptions.get(delivery.push_subscription_id);
-    if (!subscription) {
-      await supabase
+    if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
+      const { error: cancelError } = await supabase
         .from("prayer_notification_deliveries")
         .update({
           status: "cancelled",
           processed_at: now.toISOString(),
-          error_message: "Subscription is no longer active",
+          error_message: subscription
+            ? "Subscription owner does not match delivery owner"
+            : "Subscription is no longer active",
           updated_at: now.toISOString(),
         })
         .eq("id", delivery.id);
+      if (cancelError) throw cancelError;
       continue;
     }
 
