@@ -242,7 +242,6 @@ export default function AdminSocialPage() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedPublished, setSelectedPublished] = useState<string[]>([]);
-  const [deleteLocalMemory, setDeleteLocalMemory] = useState(false);
   const [readiness, setReadiness] = useState<QueueReadiness>({ approvalPending: 0, queuedEligible: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -598,7 +597,7 @@ export default function AdminSocialPage() {
     const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
     const confirmation = `تأكيد الحذف النهائي من ${targetText}؟
 
-سيتم حذف المنشور الفعلي من المنصة. ${deleteLocalMemory ? "سيتم حذف ملف الفيديو المولّد من ذاكرة ZIKR أيضًا." : "سيظل ملف الفيديو المولّد داخل ذاكرة ZIKR."} سيظل سجل النشر والتدقيق محفوظًا داخل ZIKR.`;
+سيتم حذف المنشور الفعلي من المنصة فقط. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.
     if (!window.confirm(confirmation)) return;
 
     setBusy(true);
@@ -608,7 +607,7 @@ export default function AdminSocialPage() {
       const response = await fetch("/api/admin/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete_published", ids, platforms, deleteLocalMemory }),
+        body: JSON.stringify({ action: "delete_published", ids, platforms }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -616,13 +615,11 @@ export default function AdminSocialPage() {
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
-        localMemoryDeleted?: number;
-        localMemoryFailed?: number;
         results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
-      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا. ملفات الذاكرة المحذوفة: ${payload.localMemoryDeleted ?? 0}، فشل حذفها: ${payload.localMemoryFailed ?? 0}. الفشل الخارجي: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. سجل التدقيق محفوظ.`);
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من المنصات. الفشل الخارجي: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
       const issues = (payload.results ?? []).filter(result =>
         result.status === "failed" || result.status === "missing_remote_id"
       );
@@ -630,14 +627,13 @@ export default function AdminSocialPage() {
         setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
       }
       setSelectedPublished([]);
-      setDeleteLocalMemory(false);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر حذف المنشور من المنصة.");
     } finally {
       setBusy(false);
     }
-  }, [deleteLocalMemory, load]);
+  }, [load]);
 
   function toggleVisibleRetryable() {
     const ids = visibleSelectable.map(item => item.id);
@@ -1218,10 +1214,7 @@ export default function AdminSocialPage() {
                   الحذف هنا يزيل المنشور من المنصة نفسها. سجل ZIKR ونتائج النشر يظلان محفوظين للمراجعة والتدقيق.
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-brand-cream/70">
-                <input type="checkbox" checked={deleteLocalMemory} onChange={event => setDeleteLocalMemory(event.target.checked)} disabled={busy} className="h-4 w-4" />
-                حذف ملف الفيديو من ذاكرة ZIKR أيضًا
-              </label>
+              <p className="text-xs text-brand-cream/55">نسخة الفيديو داخل ZIKR لا تُحذف من هذا الإجراء؛ حذف النسخ الاحتياطية يخضع لمراجعة الاحتفاظ المنفصلة بعد التحقق من النسخ البديلة.</p>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" disabled={!publishedVideos.length || busy} onClick={togglePublishedSelection}>
                   {allPublishedSelected ? "إلغاء تحديد الكل" : "تحديد كل المنشورات"}

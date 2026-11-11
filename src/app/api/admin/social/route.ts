@@ -381,6 +381,7 @@ export async function POST(request: NextRequest) {
       ids?: unknown;
       platforms?: unknown;
       confirmedNoRemotePublication?: unknown;
+      deleteLocalMemory?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
     if (action === "delete" || action === "delete_failed") {
@@ -698,6 +699,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "delete_published") {
+      if (body.deleteLocalMemory === true) {
+        return NextResponse.json(
+          { error: "Local media deletion is not supported by this action; use the separately reviewed storage-retention workflow." },
+          { status: 400 },
+        );
+      }
       const selectedFilter = ids.map(encodeURIComponent).join(",");
       const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
         "/rest/v1/social_publish_queue?id=in.(" + selectedFilter + ")&status=eq.published&select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata",
