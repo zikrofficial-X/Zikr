@@ -274,32 +274,6 @@ jobs:
           print("PASS: iOS Universal Links App ID is configured for the production build.")
           PY
 
-      - name: Verify Apple App Site Association configuration before production build
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import re
-          import sys
-          from pathlib import Path
-
-          env_file = Path(".vercel/.env.production.local")
-          if not env_file.is_file():
-              print("::error title=Missing pulled Vercel production environment::Expected .vercel/.env.production.local after vercel pull.", file=sys.stderr)
-              sys.exit(1)
-
-          app_id = ""
-          for line in env_file.read_text(encoding="utf-8").splitlines():
-              if line.startswith("IOS_ASSOCIATED_DOMAIN_APP_ID="):
-                  app_id = line.split("=", 1)[1].strip().strip('"').strip("'")
-                  break
-
-          if not re.fullmatch(r"[A-Z0-9]{10}\.com\.zikr\.app", app_id):
-              print("::error title=Missing iOS Universal Links App ID::Set IOS_ASSOCIATED_DOMAIN_APP_ID to the real Apple Team ID plus .com.zikr.app in the Vercel production environment. The AASA route would otherwise be built without an app association.", file=sys.stderr)
-              sys.exit(1)
-          print("PASS: iOS Universal Links App ID is configured for the production build.")
-          PY
-
       - name: Build production artifact
         env:
           VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}

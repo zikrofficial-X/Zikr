@@ -203,6 +203,8 @@ assert.ok(circle.includes("APK versionCode ($VERSION_CODE) does not match Gradle
 assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silently substitute an obsolete versionCode");
 
 const finalization = read(".github/workflows/release-finalization.yml");
+const appleAssociationChecks = finalization.match(/- name: Verify Apple App Site Association configuration before production build/g) ?? [];
+assert.equal(appleAssociationChecks.length, 1, "production release workflow must contain exactly one Apple App Site Association preflight");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");
 assert.ok(finalization.includes("environment:\n      name: production"), "web production release must use the protected production environment");
 assert.ok(finalization.includes("secrets.ZIKR_VERCEL_TOKEN"), "web production release must prefer the dedicated Vercel credential secret");
