@@ -112,7 +112,7 @@ await assert.rejects(
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
-const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(await request\.json\(\)\.catch\(\(\) => null\)\)/g) ?? [];
+const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(\s*await request\.json\(\)\.catch\(\(\) => null\)\s*\)/g) ?? [];
 assert.equal(normalizedRequestBodyCalls.length, 2, "POST and DELETE must normalize malformed and non-object JSON before reading fields");
 assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.latitude, -90, 90\)/);
 assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.longitude, -180, 180\)/);
