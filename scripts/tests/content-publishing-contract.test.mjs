@@ -11,6 +11,12 @@ assert.ok(job.includes("Prefer: \"return=representation\""), "the content update
 assert.ok(missingRowGuard > contentUpdate, "a missing content row must be detected after the update");
 assert.ok(queuePublishedUpdate > missingRowGuard, "the queue must not be marked published before the content row is confirmed");
 assert.ok(job.includes("CONTENT_TABLES.has(item.content_table)"), "dynamic content table names must remain allowlisted");
+assert.match(job, /inspectVideoQueueItemApproval/,
+  "internal video site publication must revalidate the canonical generation request approval snapshot");
+assert.match(job, /metadata\.kidsVideoQaStatus === "passed" && automatedQa\.status === "passed"/,
+  "Kids video site publication must require both the dedicated Kids QA gate and the automated QA pass");
+assert.match(job, /parsed\.pathname\.includes\("\/video\/upload\/"\)/,
+  "internal video publication must reject non-video Cloudinary URLs");
 
 console.log("Scheduled content publication row-integrity contracts passed.");
 

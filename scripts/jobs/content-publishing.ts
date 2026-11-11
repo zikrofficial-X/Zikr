@@ -1,4 +1,5 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import { inspectVideoQueueItemApproval } from "../../src/features/videos/services/video-publish-approval";
 
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
@@ -28,20 +29,52 @@ async function validateInternalVideoForPublication(videoId: string): Promise<voi
   const row = rows?.[0];
   const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
   const mediaUrl = typeof metadata.generatedVideoUrl === "string" ? metadata.generatedVideoUrl : "";
+  const requestId = typeof metadata.videoGenerationRequestId === "string" ? metadata.videoGenerationRequestId : "";
+  const audience = metadata.audience;
+  const automatedQa = metadata.automatedVideoQa && typeof metadata.automatedVideoQa === "object" && !Array.isArray(metadata.automatedVideoQa)
+    ? metadata.automatedVideoQa as Record<string, unknown>
+    : {};
   let approvedCloudinaryMedia = false;
   try {
     const parsed = new URL(mediaUrl);
     approvedCloudinaryMedia =
       parsed.protocol === "https:" &&
       parsed.hostname === "res.cloudinary.com" &&
+      parsed.pathname.includes("/video/upload/") &&
       metadata.generator === "zikr_internal_video_factory" &&
       metadata.mediaState !== "purged" &&
       metadata.mediaState !== "unlinked";
   } catch {
     approvedCloudinaryMedia = false;
   }
-  if (!row || !approvedCloudinaryMedia) {
-    throw new Error("Generated video is not a verified, available ZIKR-owned media asset.");
+
+  const requests = requestId
+    ? await supabaseServerAdminRequest<Array<{
+        id: string;
+        status: string;
+        category: string;
+        video_url: string | null;
+        source_hash: string | null;
+        content_hash: string | null;
+        template_version: string | null;
+        content: unknown;
+      }>>(
+        "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(requestId) +
+          "&select=id,status,category,video_url,source_hash,content_hash,template_version,content&limit=1",
+      )
+    : [];
+  const approval = inspectVideoQueueItemApproval({
+    contentType: "video",
+    contentId: requestId,
+    queuedVideoUrl: mediaUrl,
+    request: requests?.[0] ?? null,
+  });
+  const audienceEligible = audience === "general" || audience === "kids";
+  const kidsQaPassed = audience !== "kids" ||
+    (metadata.kidsVideoQaStatus === "passed" && automatedQa.status === "passed");
+
+  if (!row || !approvedCloudinaryMedia || !audienceEligible || !approval.approved || !kidsQaPassed) {
+    throw new Error("Generated video is not a verified, QA-approved, available ZIKR-owned media asset.");
   }
 }
 
