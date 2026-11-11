@@ -30,7 +30,7 @@ assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube-nocookie.com/embed/
 for (const unsafeUrl of [
   "javascript:alert(1)",
   "http://www.youtube.com/embed/dQw4w9WgXcQ",
-  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "https://www.youtube.com/shorts/dQw4w9WgXcQ",
   "https://www.youtube.com.evil.test/embed/dQw4w9WgXcQ",
   "https://evil.test/embed/dQw4w9WgXcQ",
   "https://user@www.youtube.com/embed/dQw4w9WgXcQ",
