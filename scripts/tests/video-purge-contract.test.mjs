@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/video-purge/route.ts");
 const videoMediaContract = read("src/features/videos/services/video-media-contract.ts");
+const cloudinaryMediaUrl = read("src/features/videos/services/video-media-url.ts");
 const videosService = read("src/features/videos/services/videos.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const videoWorker = read("scripts/jobs/template-video-automation.ts");
@@ -58,7 +59,11 @@ assert.ok(
   "file-only and memory cleanup must both stop while any unfinished social video row remains, including rows without video_url",
 );
 assert.ok(route.includes("isGeneratedCloudinaryVideoUrl") && route.includes("protectedSocialQueueMedia.size > 0"), "file purge must protect generated Cloudinary media referenced by unfinished social posts.");
-assert.ok(route.includes("/^v\\d+$/"), "Cloudinary delivery URL parsing must strip version segments before protecting generated media.");
+assert.ok(
+  cloudinaryMediaUrl.includes("const fileName = segments.at(-1) ?? \"\"") &&
+    cloudinaryMediaUrl.includes('fileStem.startsWith("auto-")'),
+  "pending generated-media protection must recognize terminal auto-*.mp4 IDs even when Cloudinary transformations precede the version segment.",
+);
 assert.ok(route.includes("deletionStarted: false") && route.includes("retryRequired: true"), "a protected queue reference must stop purge before destructive work.");
 assert.ok(
   !/social_publish_queue[^\n]*method:\s*["'](?:POST|PATCH|DELETE)/i.test(route),
@@ -71,57 +76,107 @@ assert.ok(
   "pending social media must be checked before the Cloudinary deletion inventory is processed.",
 );
 
-const generatedCatalogPreflightPosition = route.indexOf("const generatedCatalogRows");
-const generatedRequestsPreflightPosition = route.indexOf("const generatedRequests");
-const automationRunsPreflightPosition = route.indexOf("const automationRuns");
-const destructiveMediaInventoryPosition = route.indexOf("const assets = includeFiles");
-const cloudinaryDeletePosition = route.indexOf("await deleteCloudinaryVideo");
-const storageDeletePosition = route.indexOf("deleteAutomatedStorageObjects(storagePaths)");
-assert.ok(
-  generatedCatalogPreflightPosition >= 0 &&
-    generatedCatalogPreflightPosition < destructiveMediaInventoryPosition &&
-    generatedRequestsPreflightPosition < destructiveMediaInventoryPosition &&
-    automationRunsPreflightPosition < destructiveMediaInventoryPosition &&
-    destructiveMediaInventoryPosition < cloudinaryDeletePosition &&
-    cloudinaryDeletePosition < storageDeletePosition,
-  "all catalog and generation-memory inventory queries must finish before any Cloudinary or Supabase Storage deletion",
-);
-for (const [name, position] of [
-  ["catalog", generatedCatalogPreflightPosition],
-  ["generation requests", generatedRequestsPreflightPosition],
-  ["automation runs", automationRunsPreflightPosition],
+const firstDestructiveOperation = route.indexOf("const cloudinaryErrors = includeFiles");
+for (const marker of [
+  "const generatedCatalogRows = await",
+  "if ((generatedCatalogRows ?? []).length >= 1000)",
+  "const generatedRequests = includeMemory",
+  "if (includeMemory && (generatedRequests ?? []).length >= 1000)",
+  "const automationRuns = includeMemory",
+  "if (includeMemory && (automationRuns ?? []).length >= 1000)",
+  "const assets = includeFiles ? await listGeneratedVideos()",
+  "const storagePaths = includeFiles ? await listAutomatedStorageObjects()",
+  "const processingAfterPreflight = await getActiveVideoWork()",
+  "if (processingAfterPreflight.generation > 0)",
 ]) {
-  assert.ok(position >= 0, `missing ${name} preflight inventory`);
+  const position = route.indexOf(marker);
+  assert.ok(
+    position >= 0 && position < firstDestructiveOperation,
+    "every bounded purge inventory and limit guard must complete before the first destructive operation: " + marker,
+  );
 }
 assert.ok(
-  route.indexOf("generatedCatalogRows ?? []).length >= 1000") < destructiveMediaInventoryPosition &&
-    route.indexOf("generatedRequests ?? []).length >= 1000") < destructiveMediaInventoryPosition &&
-    route.indexOf("automationRuns ?? []).length >= 1000") < destructiveMediaInventoryPosition,
-  "every bounded inventory must reject a truncated 1,000-row result before destructive work",
+  route.includes("const MAX_AUTOMATED_STORAGE_OBJECTS = 5000") &&
+    route.includes("const paths = new Set<string>()") &&
+    route.includes("paths.size > MAX_AUTOMATED_STORAGE_OBJECTS") &&
+    route.includes("for (let offset = 0; offset <= MAX_AUTOMATED_STORAGE_OBJECTS; offset += 1000)") &&
+    route.includes("limit: offset === MAX_AUTOMATED_STORAGE_OBJECTS ? 1 : 1000") &&
+    route.includes("if (offset === MAX_AUTOMATED_STORAGE_OBJECTS)") &&
+    route.includes("Automated video Storage inventory exceeded the safe 5,000-object limit."),
+  "automated Storage pagination must detect and reject inventories larger than the safe 5,000-object limit before deletion.",
 );
+const storageInventoryStart = route.indexOf("async function listAutomatedStorageObjects");
+const storageInventoryEnd = route.indexOf("async function deleteAutomatedStorageObjects", storageInventoryStart);
+const storageInventory = route.slice(storageInventoryStart, storageInventoryEnd);
 assert.ok(
-  route.includes("||\n        !purgeLockCleared"),
-  "the response must report automation as still paused when the purge lock could not be cleared",
+  storageInventory.includes('await walk("automated")') && storageInventory.includes('path.startsWith("automated/")'),
+  "the purge may inventory only generated video objects under the dedicated automated/ prefix",
 );
+assert.doesNotMatch(storageInventory, /await walk\(["']{0,1}["']{0,1}\)/, "the purge must never recursively enumerate the entire videos bucket");
 
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
-assert.ok(route.includes("MAX_AUTOMATED_STORAGE_OBJECTS = 5000"), "Storage inventory must have an explicit safe cap.");
-assert.ok(route.includes("offset + STORAGE_INVENTORY_PAGE_SIZE >= MAX_AUTOMATED_STORAGE_OBJECTS"), "a full final inventory page must abort before any deletion rather than silently truncate.");
-assert.ok(route.includes("refusing to purge an incomplete listing"), "truncated Storage inventory must fail closed.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
-assert.ok(route.includes("purgeLockAttempted") && route.includes("await setPurgeLock(false)"), "purge failures must attempt to release the temporary worker lock");
+assert.ok(
+  route.includes("async function acquirePurgeLock(token: string)") &&
+    route.includes("async function releasePurgeLock(token: string)") &&
+    route.includes("value=eq.false") &&
+    route.includes("resolution=ignore-duplicates,return=representation") &&
+    route.includes("description=eq.${encodeURIComponent(description)}"),
+  "purge lock acquisition must be atomic and release must be limited to the owning request token.",
+);
+const lockAcquisitionPosition = route.indexOf("const lockToken = randomUUID()");
+const pausePosition = route.indexOf("await pauseVideoAutomation()");
+assert.ok(
+  lockAcquisitionPosition >= 0 && lockAcquisitionPosition < pausePosition && route.includes("if (!lockAcquired)"),
+  "the purge lock must be acquired before automation is paused, and concurrent purge requests must be rejected.",
+);
+assert.ok(route.includes("if (purgeLockToken)") && route.includes("await releasePurgeLock(purgeLockToken)"), "purge failures must attempt to release only the lock owned by this request.");
+const releaseLockStart = route.indexOf("async function releasePurgeLock");
+const releaseLockEnd = route.indexOf("async function getVideoAutomationEnabled", releaseLockStart);
+const releaseLockSource = route.slice(releaseLockStart, releaseLockEnd);
+assert.ok(
+  releaseLockSource.includes('Prefer: "return=representation"') &&
+    releaseLockSource.includes("if ((released ?? []).length === 0)"),
+  "the purge lock release must verify that the current request still owns and cleared the lock.",
+);
 assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFinished"), "partial destructive failure must be explicitly reported");
 assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
 assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
-assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
+assert.ok(route.includes('scope !== "files"') && route.includes('scope !== "memory"') && route.includes('scope !== "both"'), "the cleanup endpoint must validate distinct files, memory, and combined scopes before cleanup");
+const scopeValidationPosition = route.indexOf('if (scope !== "files" && scope !== "memory" && scope !== "both")');
+const purgeLockPosition = route.indexOf("const lockToken = randomUUID()");
+assert.ok(
+  scopeValidationPosition > 0 && scopeValidationPosition < purgeLockPosition,
+  "missing or unsupported purge scopes must be rejected before lock acquisition or any destructive work",
+);
+assert.match(route, /Invalid purge scope/);
+assert.doesNotMatch(route, /const scope = body\.scope ===[\s\S]*?:\s*"both"/, "an invalid scope must never silently widen to a combined destructive purge");
+
 assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
 assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
 assert.ok(socialWorker.includes("video_purge_in_progress"));
 assert.ok(videoWorker.includes("isVideoGenerationPaused"));
 assert.ok(videoWorker.includes("video_automation_enabled,video_purge_in_progress"));
+const videoQueueStart = videoWorker.indexOf("export async function processTemplateVideoQueue");
+const videoQueueSource = videoWorker.slice(videoQueueStart);
+const queueStartLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())");
+const staleRecoveryStart = videoQueueSource.indexOf("const staleBefore");
+const claimLoopStart = videoQueueSource.indexOf("for (const request of rows || [])");
+const claimStatement = videoQueueSource.indexOf("const claimed = await", claimLoopStart);
+const preClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimLoopStart);
+const postClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimStatement);
+const claimRestore = videoQueueSource.indexOf("status: request.status", postClaimLockCheck);
+const renderStart = videoQueueSource.indexOf("await renderVideo(request)", claimStatement);
+assert.ok(
+  queueStartLockCheck >= 0 && queueStartLockCheck < staleRecoveryStart &&
+    preClaimLockCheck >= claimLoopStart && preClaimLockCheck < claimStatement &&
+    postClaimLockCheck > claimStatement && postClaimLockCheck < renderStart &&
+    claimRestore > postClaimLockCheck && claimRestore < renderStart,
+  "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
+);
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(read("src/app/admin/media/media-client.tsx").includes("PurgeGeneratedVideosControl"));
@@ -136,3 +191,16 @@ assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts GET'));
 assert.ok(apiGuards.includes('src/app/api/admin/video-purge/route.ts POST'));
 
 console.log("Generated-video purge contracts passed.");
+
+
+assert.ok(
+  route.includes("automationWasEnabled === false") &&
+    route.includes("|| !purgeLockCleared"),
+  "failed lock release or a previously disabled worker must be reported as still paused.",
+);
+assert.ok(
+  control.includes('useState<PurgeScope | "">("")') &&
+    control.includes('<option value="" disabled>اختر نطاق الحذف صراحةً</option>') &&
+    control.includes("disabled={busy || !scope || confirmation !== CONFIRMATION_PHRASE}"),
+  "the destructive scope must be explicitly selected before the confirmation action can run.",
+);
