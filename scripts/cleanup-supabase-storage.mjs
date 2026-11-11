@@ -110,6 +110,19 @@ function getSupabaseBackupUrl(queue, request, supabaseUrl) {
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
+export function indexManagedBackupReferences(rows, supabaseUrl, getUrl, getId) {
+  const references = new Map();
+  for (const row of rows ?? []) {
+    const path = extractManagedVideoPath(asString(getUrl(row)), supabaseUrl);
+    if (!path) continue;
+    const id = String(getId(row) ?? "");
+    const ids = references.get(path) ?? new Set();
+    ids.add(id);
+    references.set(path, ids);
+  }
+  return references;
+}
+
 export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME)) {
   if (!item || item.status !== "published") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
@@ -610,7 +623,6 @@ async function main() {
     collectPaginatedRows(async (offset, end) => {
       const { data, error } = await client.from("social_publish_queue")
         .select("id,content_id,video_url,target_platforms,status,published_at,metadata")
-        .not("video_url", "is", null)
         .order("id", { ascending: true })
         .range(offset, end);
       if (error) throw new Error(`Cannot read social publish queue: ${error.message}`);
@@ -641,19 +653,24 @@ async function main() {
     queueByUrl.set(row.video_url, (queueByUrl.get(row.video_url) ?? 0) + 1);
   }
 
-  const sourcePathCounts = new Map();
-  for (const row of queueRows) {
-    const request = requestById.get(row.content_id);
-    const backupUrl = getSupabaseBackupUrl(row, request, supabaseUrl);
-    const path = extractManagedVideoPath(backupUrl, supabaseUrl);
-    if (path) sourcePathCounts.set(path, (sourcePathCounts.get(path) ?? 0) + 1);
-  }
+  const queueBackupReferences = indexManagedBackupReferences(
+    queueRows,
+    supabaseUrl,
+    (row) => getSupabaseBackupUrl(row, null, supabaseUrl),
+    (row) => row.id,
+  );
+  const requestBackupReferences = indexManagedBackupReferences(
+    requestRows,
+    supabaseUrl,
+    (row) => getSupabaseBackupUrl(null, row, supabaseUrl),
+    (row) => row.id,
+  );
 
   const cloudinaryCloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
   const candidates = [];
   const skipped = [];
   for (const row of queueRows) {
-    if (row.status !== "published" || !row.published_at ||
+    if (!row.video_url || row.status !== "published" || !row.published_at ||
         !(Date.parse(row.published_at) < Date.parse(cutoffIso)) ||
         !hasConfirmedPlatformResults(row.target_platforms, row.metadata)) continue;
 
@@ -685,8 +702,14 @@ async function main() {
         : "No verified Cloudinary playback master; refusing to purge the only known video asset." });
       continue;
     }
-    if (sourcePathCounts.get(path) !== 1) {
-      skipped.push({ id: row.id, reason: "Supabase backup path is shared by multiple queue rows." });
+    const queueReferences = queueBackupReferences.get(path);
+    const requestReferences = requestBackupReferences.get(path);
+    if (
+      (!queueReferences && !requestReferences) ||
+      (queueReferences && (queueReferences.size !== 1 || !queueReferences.has(row.id))) ||
+      (requestReferences && (requestReferences.size !== 1 || !requestReferences.has(request.id)))
+    ) {
+      skipped.push({ id: row.id, reason: "Supabase backup path is shared or its queue/request ownership cannot be proven." });
       continue;
     }
 

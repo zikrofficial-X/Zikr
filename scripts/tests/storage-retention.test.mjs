@@ -6,6 +6,7 @@ import {
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
   collectPaginatedRows,
+  indexManagedBackupReferences,
   isEligiblePublishedQueueItem,
   selectProtectedAndroidTags,
 } from "../cleanup-supabase-storage.mjs";
@@ -81,6 +82,18 @@ const pagedRows = await collectPaginatedRows(
   6,
 );
 assert.deepEqual(pagedRows, [10, 20, 30, 40, 50], "all pages must be read before retention decisions");
+const duplicateBackupReferences = indexManagedBackupReferences(
+  [{ id: "queue-a", backup: publicUrl }, { id: "queue-b", backup: publicUrl }],
+  supabaseUrl,
+  (row) => row.backup,
+  (row) => row.id,
+);
+assert.deepEqual(
+  [...duplicateBackupReferences.get("automated/story:20750:11.mp4")],
+  ["queue-a", "queue-b"],
+  "backup ownership must be indexed across every queue/request row before deletion",
+);
+
 await assert.rejects(
   () => collectPaginatedRows(async () => [1, 2], "truncated fixture", 2, 4),
   /safe scan limit; refusing cleanup/,
