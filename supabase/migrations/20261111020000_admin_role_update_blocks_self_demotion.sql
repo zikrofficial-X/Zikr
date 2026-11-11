@@ -30,6 +30,20 @@ BEGIN
     RAISE EXCEPTION 'invalid administrator role' USING ERRCODE = '22023';
   END IF;
 
+  -- Lock actor and target rows in a deterministic order. This prevents a concurrent
+  -- demotion from racing the authorization check and avoids cross-target lock cycles.
+  PERFORM profile.id
+  FROM public.profiles AS profile
+  WHERE profile.id IN (p_actor_user_id, p_user_id)
+  ORDER BY profile.id
+  FOR UPDATE;
+
+  PERFORM assignment.user_id
+  FROM public.admin_role_assignments AS assignment
+  WHERE assignment.user_id IN (p_actor_user_id, p_user_id)
+  ORDER BY assignment.user_id
+  FOR UPDATE;
+
   SELECT
     CASE
       WHEN profile.role::text IS DISTINCT FROM 'admin' THEN 'user'
@@ -49,8 +63,7 @@ BEGIN
   SELECT profile.role::text
   INTO v_target_profile_role
   FROM public.profiles AS profile
-  WHERE profile.id = p_user_id
-  FOR UPDATE;
+  WHERE profile.id = p_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'target user does not exist' USING ERRCODE = 'P0002';
@@ -59,8 +72,7 @@ BEGIN
   SELECT assignment.role
   INTO v_target_assigned_role
   FROM public.admin_role_assignments AS assignment
-  WHERE assignment.user_id = p_user_id
-  FOR UPDATE;
+  WHERE assignment.user_id = p_user_id;
 
   v_previous_role := COALESCE(
     v_target_assigned_role,

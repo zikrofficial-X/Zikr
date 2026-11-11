@@ -150,6 +150,17 @@ assert.match(
 );
 assert.match(
   selfRoleMigration,
+  /PERFORM profile\.id[\s\S]*?WHERE profile\.id IN \(p_actor_user_id, p_user_id\)[\s\S]*?ORDER BY profile\.id[\s\S]*?FOR UPDATE/i,
+  "actor and target profiles must be locked in a deterministic order before role authorization",
+);
+assert.match(
+  selfRoleMigration,
+  /PERFORM assignment\.user_id[\s\S]*?WHERE assignment\.user_id IN \(p_actor_user_id, p_user_id\)[\s\S]*?ORDER BY assignment\.user_id[\s\S]*?FOR UPDATE/i,
+  "actor and target role assignments must be locked in a deterministic order before role authorization",
+);
+
+assert.match(
+  selfRoleMigration,
   /IF v_actor_role <> 'super_admin' AND \([\s\S]*?v_previous_role IN \('admin', 'super_admin'\)[\s\S]*?p_role IN \('admin', 'super_admin'\)/i,
   "only super administrators may manage full-admin accounts",
 );
