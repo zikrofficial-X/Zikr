@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription } from "./eligibility.ts";
-import { nextLocalDate } from "./time-zone.ts";
+import { buildNotificationTopic, nextLocalDate } from "./time-zone.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -746,7 +746,11 @@ async function deliverDue(
     }
 
     try {
-      const topic = `zikr-${delivery.notification_kind}-${delivery.scheduled_at.slice(0, 10)}`.slice(0, 32);
+      const topic = buildNotificationTopic({
+        notificationKind: delivery.notification_kind,
+        prayerName: delivery.prayer_name,
+        scheduledAt: delivery.scheduled_at,
+      });
       const isPrayer = delivery.notification_kind === 'prayer';
       await applicationServer
         .subscribe({
