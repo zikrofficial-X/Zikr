@@ -95,6 +95,7 @@ const reminderService = readFileSync(
   "src/features/reminders/services/reminder-preferences.ts",
   "utf8",
 );
+const timezoneUtility = readFileSync("src/lib/timezone.ts", "utf8");
 const dhikrHook = readFileSync("src/features/reminders/hooks/use-dhikr-reminder.ts", "utf8");
 const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
 const supabaseTypes = readFileSync("src/lib/types/supabase.ts", "utf8");
@@ -107,7 +108,7 @@ assert.match(reminderMigration, /preferences\.quiet_hours_start = preferences\.q
 assert.match(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to service_role/i);
 assert.doesNotMatch(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to (?:public|anon|authenticated)/i);
 assert.match(reminderService, /normalizeIanaTimeZone\(body\.timezone\)/);
-assert.match(reminderService, /Intl\.DateTimeFormat\("en-US",\s*\{\s*timeZone:/);
+assert.match(timezoneUtility, /Intl\.DateTimeFormat\("en-US",\s*\{\s*timeZone:/);
 assert.match(reminderService, /updates\.timezone = timezone/);
 assert.match(reminderService, /quiet_hours_end,timezone,updated_at/);
 assert.match(dhikrHook, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/);
