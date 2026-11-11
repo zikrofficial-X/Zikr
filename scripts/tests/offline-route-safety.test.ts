@@ -43,6 +43,7 @@ assert.deepEqual(
 const offlinePackSource = readFileSync(resolve(process.cwd(), "src/lib/offline-pack.ts"), "utf8");
 const serviceWorkerSource = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
 assert.match(offlinePackSource, /getPublishedKidsOfflineRoutes\(refreshedKidsRows\)/, "route pruning must include current Kids dataset slugs, even when the static manifest is stale");
+assert.match(offlinePackSource, /filterOfflineSupplementalKidsRoutes\(manifest\.routes \?\? \[\], currentKidsRoutes\)/, "stale Kids story routes in the manifest must also be removed from the keep set");
 assert.match(offlinePackSource, /filterOfflineSupplementalKidsRoutes\(supplementalRouteInventory, refreshedKidsRoutes\)/, "static supplemental routes must not reintroduce revoked Kids stories");
 assert.match(offlinePackSource, /requestOfflineRoutePrune\(routeInventory\)/,
   "a successful offline refresh must reconcile cached routes against the current public inventory");

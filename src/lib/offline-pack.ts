@@ -151,8 +151,11 @@ function mergedRoutes(
   additionalRoutes: string[] = [],
   extraRoutes: string[] = [],
 ): string[] {
+  const currentKidsRoutes = extraRoutes;
+  const safeManifestRoutes = filterOfflineSupplementalKidsRoutes(manifest.routes ?? [], currentKidsRoutes);
+  const safeSupplementalRoutes = filterOfflineSupplementalKidsRoutes(supplementalRoutes, currentKidsRoutes);
   return Array.from(
-    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? []), ...supplementalRoutes, ...additionalRoutes, ...extraRoutes])
+    new Set([...ESSENTIAL_ROUTES, ...safeManifestRoutes, ...safeSupplementalRoutes, ...additionalRoutes, ...currentKidsRoutes])
   ).filter(isCacheableOfflinePageRoute);
 }
 
