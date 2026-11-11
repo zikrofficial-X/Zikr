@@ -1,7 +1,7 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { inspectVideoQueueItemApproval } from "../../src/features/videos/services/video-publish-approval";
 
-type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string };
+type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string; updated_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
 
 
@@ -17,9 +17,10 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
   }
 }
 
-async function deferVideoPublication(itemId: string): Promise<void> {
+async function deferVideoPublication(itemId: string, claimUpdatedAt: string): Promise<void> {
   await supabaseServerAdminRequest(
-    "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(itemId) + "&status=eq.processing",
+    "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(itemId) +
+      "&status=eq.processing&updated_at=eq." + encodeURIComponent(claimUpdatedAt),
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -121,29 +122,74 @@ async function validateInternalVideoForPublication(videoId: string): Promise<voi
   }
 }
 
+async function recoverStaleContentPublishingClaims(now: Date): Promise<number> {
+  const staleBefore = new Date(now.getTime() - 20 * 60_000).toISOString();
+  const staleRows = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
+    `/rest/v1/content_publish_queue?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&select=id,updated_at&order=updated_at.asc&limit=100`,
+  );
+  let recovered = 0;
+  for (const row of staleRows ?? []) {
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(row.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(row.updated_at)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({
+          status: "failed",
+          error_message: "Stale content publishing claim expired; manual review is required before retry.",
+          updated_at: now.toISOString(),
+        }),
+      },
+    );
+    if (updated?.some(item => item.id === row.id)) recovered += 1;
+  }
+  return recovered;
+}
+
 export async function processScheduledContent(limit = 20) {
-  const now = new Date().toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const recovered = await recoverStaleContentPublishingClaims(now);
+  if (recovered > 0) {
+    console.warn(`[content-publishing] Recovered ${recovered} stale processing claim(s) to failed for manual review.`);
+  }
   const rows = await supabaseServerAdminRequest<QueueItem[]>(
-    `/rest/v1/content_publish_queue?status=eq.queued&scheduled_at=lte.${encodeURIComponent(now)}&select=id,content_table,content_id,scheduled_at&order=scheduled_at.asc&limit=${limit}`,
+    `/rest/v1/content_publish_queue?status=eq.queued&scheduled_at=lte.${encodeURIComponent(nowIso)}&select=id,content_table,content_id,scheduled_at,updated_at&order=scheduled_at.asc&limit=${limit}`,
     { method: "GET" },
   );
+  let claimedCount = 0;
   let published = 0;
   for (const item of rows ?? []) {
     if (item.content_table === "videos" && await isVideoPurgeInProgress()) continue;
     if (!CONTENT_TABLES.has(item.content_table)) {
-      await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`, {
-        method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "failed", error_message: "Unsupported internal content table.", updated_at: now }),
-      });
+      await supabaseServerAdminRequest(
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued&updated_at=eq.${encodeURIComponent(item.updated_at)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "failed",
+            error_message: "Unsupported internal content table.",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
       continue;
     }
     const claimed = await supabaseServerAdminRequest<QueueItem[]>(
-      `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued&scheduled_at=lte.${encodeURIComponent(now)}`,
-      { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", updated_at: now }) },
+      `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued&scheduled_at=lte.${encodeURIComponent(nowIso)}&updated_at=eq.${encodeURIComponent(item.updated_at)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ status: "processing", updated_at: nowIso }),
+      },
     );
-    if (!claimed?.length) continue;
+    const claimUpdatedAt = claimed?.[0]?.updated_at;
+    if (!claimUpdatedAt) continue;
+    claimedCount += 1;
+
     if (item.content_table === "videos" && await isVideoPurgeInProgress()) {
-      await deferVideoPublication(item.id);
+      await deferVideoPublication(item.id, claimUpdatedAt);
       continue;
     }
     let contentPublished = false;
@@ -156,14 +202,14 @@ export async function processScheduledContent(limit = 20) {
         await validateScheduledStoryForPublication(item.content_id);
       }
 
-      // Recheck the claim immediately before touching content. An admin may
-      // cancel a processing schedule while validation is running.
+      // Recheck the exact claim version immediately before touching content.
+      // A cancellation or a newer queue edit must invalidate this worker.
       const stillProcessing = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&select=id&limit=1`,
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claimUpdatedAt)}&select=id&limit=1`,
       );
       if (!stillProcessing?.length) continue;
       if (item.content_table === "videos" && await isVideoPurgeInProgress()) {
-        await deferVideoPublication(item.id);
+        await deferVideoPublication(item.id, claimUpdatedAt);
         continue;
       }
 
@@ -180,18 +226,16 @@ export async function processScheduledContent(limit = 20) {
       if (!updatedRow || typeof updatedRow.updated_at !== "string" || !updatedRow.updated_at) {
         throw new Error("Scheduled content update did not return its committed version; the queue item was not marked published.");
       }
-      // Stories have a BEFORE UPDATE trigger that replaces updated_at with
-      // transaction time. Use the returned database value, not the request
-      // timestamp, so a later cancellation can compare the exact committed row.
       contentPublishedUpdatedAt = updatedRow.updated_at;
       contentPublished = true;
 
+      const completedAt = new Date().toISOString();
       const completed = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&select=id`,
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claimUpdatedAt)}&select=id`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ status: "published", published_at: now, updated_at: now }),
+          body: JSON.stringify({ status: "published", published_at: completedAt, updated_at: completedAt }),
         },
       );
       if (!completed?.some(row => row.id === item.id)) {
@@ -218,7 +262,7 @@ export async function processScheduledContent(limit = 20) {
         }
       }
       await supabaseServerAdminRequest(
-        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claimUpdatedAt)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -231,5 +275,5 @@ export async function processScheduledContent(limit = 20) {
       ).catch(() => {});
     }
   }
-  return { claimed: rows.length, published };
+  return { claimed: claimedCount, published };
 }
