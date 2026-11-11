@@ -22,6 +22,9 @@ const usersPage = readFileSync("src/app/admin/users/page.tsx", "utf8");
 const usersTable = readFileSync("src/features/admin/components/users-table.tsx", "utf8");
 const usersAction = readFileSync("src/features/admin/actions/users.ts", "utf8");
 assert.match(usersPage, /hasAdminPermission\(currentAdmin\.role, "audit\.read"\)/);
+assert.match(usersPage, /user_id=in\.\(/, "delegated role lookups must be scoped to the displayed user IDs");
+assert.match(usersPage, /userIds\.map\(\(id\) => encodeURIComponent\(id\)\)\.join\(","\)/, "role assignment filters must encode each displayed UUID");
+
 assert.match(usersPage, /canReadAudit \? getRecentAdminActions\(\)/, "audit rows must not be fetched for users without audit.read");
 assert.match(usersPage, /canManageRoles=\{canManageRoles\}/);
 assert.match(usersPage, /canAssignFullAdminAccounts=\{canAssignFullAdminAccounts\}/);
