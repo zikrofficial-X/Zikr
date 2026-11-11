@@ -30,6 +30,17 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/quran" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/hadith" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/articles" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/dua" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/stories" />
+        <data android:scheme="https" android:host="zikrmediaofficial.vercel.app" android:pathPrefix="/kids" />
+      </intent-filter>
       <intent-filter>
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
