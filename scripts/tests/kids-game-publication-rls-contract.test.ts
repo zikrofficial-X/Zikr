@@ -24,7 +24,7 @@ const integrationRunner = readFileSync(
 
 assert.match(
   levelsMigration,
-  /CREATE POLICY kids_game_levels_public_read[\s\S]*?TO anon[\s\S]*?level\.published IS TRUE[\s\S]*?game\.published IS TRUE/i,
+  /CREATE POLICY kids_game_levels_public_read[\s\S]*?TO anon[\s\S]*?published IS TRUE[\s\S]*?FROM public\.kids_games AS game[\s\S]*?game\.published IS TRUE/i,
   "published levels must be visible only when their parent game is published",
 );
 assert.match(
