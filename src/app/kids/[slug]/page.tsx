@@ -15,7 +15,7 @@ import { useLanguage } from "@/components/layout/language-provider";
 import {
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
-import { getKidsQuizQuestions } from "@/features/kids/services/kids-content-validation";
+import { getKidsQuizQuestions, normalizeKidsVideoEmbedUrl } from "@/features/kids/services/kids-content-validation";
 
 interface KidsContent {
   id: string;
@@ -97,6 +97,7 @@ export default function KidsDetailPage() {
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
   const isLegacyGameActivity = content?.type === "game" && !gameConfig;
   const registeredGameCount = Object.keys(GAME_REGISTRY).length;
+  const safeVideoUrl = normalizeKidsVideoEmbedUrl(content?.video_url);
 
   useEffect(() => {
     if (!slug) {
@@ -296,13 +297,16 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.type === "video" && content.video_url && (
+      {content.type === "video" && safeVideoUrl && (
         <div className="w-full aspect-video rounded-lg overflow-hidden">
           <iframe
             width="100%"
             height="100%"
-            src={content.video_url}
+            src={safeVideoUrl}
             title={isEnglish ? content.title_en : content.title_ar}
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
