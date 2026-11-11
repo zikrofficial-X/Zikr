@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolveAdminRole } from "../../src/features/admin/services/permissions";
+import { hasAdminPermission, resolveAdminRole } from "../../src/features/admin/services/permissions";
 
 assert.equal(resolveAdminRole("admin", null), "admin", "a full admin without a delegated assignment remains a full admin");
 assert.equal(resolveAdminRole("admin", "content_manager"), "content_manager", "a valid delegated assignment must be respected");
@@ -11,6 +11,25 @@ assert.equal(resolveAdminRole("admin", "not-a-role"), "user", "an invalid assign
 assert.equal(resolveAdminRole("admin", "__proto__"), "user", "inherited object keys are not valid roles");
 assert.equal(resolveAdminRole("user", "content_manager"), "user", "delegated assignments cannot override a non-admin profile flag");
 assert.equal(resolveAdminRole("user", null), "user");
+assert.equal(hasAdminPermission("support", "users.read"), true);
+assert.equal(hasAdminPermission("support", "audit.read"), false, "support must not inherit audit access from users.read");
+assert.equal(hasAdminPermission("support", "users.roles"), false, "read-only support must not receive role-management controls");
+assert.equal(hasAdminPermission("admin", "users.roles"), true);
+assert.equal(hasAdminPermission("admin", "audit.read"), true);
+assert.equal(hasAdminPermission("super_admin", "users.roles"), true);
+
+const usersPage = readFileSync("src/app/admin/users/page.tsx", "utf8");
+const usersTable = readFileSync("src/features/admin/components/users-table.tsx", "utf8");
+const usersAction = readFileSync("src/features/admin/actions/users.ts", "utf8");
+assert.match(usersPage, /hasAdminPermission\(currentAdmin\.role, "audit\.read"\)/);
+assert.match(usersPage, /canReadAudit \? getRecentAdminActions\(\)/, "audit rows must not be fetched for users without audit.read");
+assert.match(usersPage, /canManageRoles=\{canManageRoles\}/);
+assert.match(usersPage, /canAssignFullAdminAccounts=\{canAssignFullAdminAccounts\}/);
+assert.match(usersTable, /!canManageRoles/);
+assert.match(usersTable, /!canAssignFullAdminAccounts && \(effectiveRole === "admin" \|\| effectiveRole === "super_admin"\)/);
+assert.match(usersTable, /value !== "admin" && value !== "super_admin"/);
+assert.match(usersAction, /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/);
+
 
 const adminPredicateGrantMigration = readFileSync("supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql", "utf8");
 assert.match(
