@@ -280,7 +280,8 @@ assert.ok(offlineManifest.routes?.every((route: unknown) => {
 }), "offline route inventory must not include a path to an unapproved story still present in the corpus");
 assert.match(offlineExporter, /previousKidsRows[\s\S]*blockedKidsRoutes/, "offline refresh must remember previously exported unapproved story routes");
 assert.match(offlineExporter, /rows = rows\.filter\(\(row\) => row && \(row\.type !== 'story' \|\| row\.metadata\?\.age_appropriate === true\)\)/, "offline refresh must filter unapproved stories even when a service-role key bypasses RLS");
-assert.match(offlineExporter, /routes: Array\.isArray\(previous\.routes\)[\s\S]*blockedKidsRoutes\.has\(route\)/, "offline refresh must remove routes for unapproved stories");
+assert.match(offlineExporter, /const blockedRoutes = new Set\(\[\.\.\.blockedKidsRoutes, \.\.\.blockedPublishedContentRoutes\]\)/, "offline refresh must merge Kids and published-content route revocations");
+assert.match(offlineExporter, /previous\.routes\.filter\(\(route\) => !blockedRoutes\.has\(route\)\)/, "offline refresh must remove routes for unapproved stories");
 assert.match(spiritualRetriever, /published=eq\.true&is_active=eq\.true&type=neq\.story/, "AI retrieval must only use active, published non-story Kids content");
 assert.match(spiritualRetriever, /type=eq\.story&metadata->>age_appropriate=eq\.true/, "AI retrieval must only use age-approved Kids stories");
 
