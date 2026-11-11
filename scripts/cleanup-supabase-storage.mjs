@@ -106,6 +106,47 @@ export function extractManagedVideoPath(value, supabaseUrl) {
   }
 }
 
+export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
+  const candidates = candidatePaths instanceof Set ? candidatePaths : new Set(candidatePaths);
+  const references = new Set();
+
+  const visit = (entry) => {
+    if (entry === null || entry === undefined) return;
+    if (Array.isArray(entry)) {
+      for (const item of entry) visit(item);
+      return;
+    }
+    if (typeof entry === "object") {
+      for (const item of Object.values(entry)) visit(item);
+      return;
+    }
+
+    const clean = asString(entry);
+    if (!clean) return;
+    if (candidates.has(clean)) {
+      references.add(clean);
+      return;
+    }
+
+    const managedPath = extractManagedVideoPath(clean, supabaseUrl);
+    if (managedPath && candidates.has(managedPath)) {
+      references.add(managedPath);
+      return;
+    }
+
+    for (const path of candidates) {
+      const segmentEncodedPath = path.split("/").map(encodeURIComponent).join("/");
+      const fullyEncodedPath = encodeURIComponent(path);
+      if (clean.includes(path) || clean.includes(segmentEncodedPath) || clean.includes(fullyEncodedPath)) {
+        references.add(path);
+      }
+    }
+  };
+
+  visit(value);
+  return references;
+}
+
 export function extractCloudinaryVideoPublicId(value, cloudName) {
   try {
     if (!cloudName) return null;
@@ -643,32 +684,9 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
 
   const referenceSet = new Set();
   const candidateSet = new Set(candidatePaths);
-  const canonicalUrlPrefix = `${supabaseUrl}/storage/v1/object/public/videos/`;
-
   function recordReference(value) {
-    if (value && typeof value === "object") {
-      const serialized = JSON.stringify(value);
-      for (const path of candidateSet) {
-        if (serialized.includes(path)) referenceSet.add(path);
-      }
-      return;
-    }
-    const clean = asString(value);
-    if (!clean) return;
-    if (candidateSet.has(clean)) {
-      referenceSet.add(clean);
-      return;
-    }
-
-    if (clean.startsWith(canonicalUrlPrefix)) {
-      try {
-        const parsed = new URL(clean);
-        const prefix = "/storage/v1/object/public/videos/";
-        const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
-        if (candidateSet.has(path)) referenceSet.add(path);
-      } catch {
-        // Malformed references are ignored here; exact matching has already failed.
-      }
+    for (const path of findManagedVideoReferences(value, candidateSet, supabaseUrl)) {
+      referenceSet.add(path);
     }
   }
 

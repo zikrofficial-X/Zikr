@@ -8,6 +8,7 @@ import {
   assertRetentionApplyConfirmation,
   probeCloudinaryPlayback,
   extractManagedVideoPath,
+  findManagedVideoReferences,
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
   collectPaginatedRows,
@@ -34,6 +35,25 @@ assert.equal(
   extractManagedVideoPath(publicUrl, supabaseUrl),
   "automated/story:20750:11.mp4",
   "Only canonical videos bucket URLs are converted into Storage paths",
+);
+const encodedReferencePath = "automated/story:20750:11.mp4";
+const encodedReferenceCandidates = [encodedReferencePath];
+const encodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story%3A20750%3A11.mp4`;
+const fullyEncodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/${encodeURIComponent(encodedReferencePath)}`;
+assert.deepEqual(
+  [...findManagedVideoReferences({ nested: [{ sourceUrl: encodedReferenceUrl }] }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "nested JSON metadata must detect percent-encoded Storage object paths before cleanup",
+);
+assert.deepEqual(
+  [...findManagedVideoReferences({ nested: { sourceUrl: fullyEncodedReferenceUrl } }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "fully encoded Storage object paths must remain visible to the reference inventory",
+);
+assert.deepEqual(
+  [...findManagedVideoReferences({ note: `legacy source ${publicUrl}` }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "raw Storage paths embedded in JSON text must remain protected",
 );
 assert.equal(
   matchesSha256Digest(Buffer.from("ZIKR release metadata"), "sha256:" + createHash("sha256").update("ZIKR release metadata").digest("hex")),
