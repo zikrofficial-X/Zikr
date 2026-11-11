@@ -58,3 +58,40 @@ assert.equal(
 );
 
 console.log("Prayer-time next-prayer and timezone regression tests passed.");
+
+import { readFileSync } from "node:fs";
+import {
+  addCalendarDays,
+  formatDateInTimeZone,
+  getZonedDateTime,
+} from "../../src/features/prayer/services/prayer-notification-schedule";
+
+assert.equal(
+  formatDateInTimeZone(new Date("2026-06-15T02:00:00.000Z"), "America/Los_Angeles"),
+  "2026-06-14",
+  "the selected location's calendar date must be used instead of the device date",
+);
+assert.equal(addCalendarDays("2026-06-14", 1), "2026-06-15");
+assert.equal(
+  getZonedDateTime("2026-06-15", "America/New_York", "12:00")?.toISOString(),
+  "2026-06-15T16:00:00.000Z",
+  "native alarms must convert selected-city wall time to the correct UTC instant",
+);
+assert.equal(
+  getZonedDateTime("2026-06-15", "UTC", "00:00")?.toISOString(),
+  "2026-06-15T00:00:00.000Z",
+);
+assert.equal(getZonedDateTime("invalid", "UTC", "12:00"), null);
+
+const prayerAlertHook = readFileSync("src/features/prayer/hooks/use-prayer-alert.ts", "utf8");
+const pushSubscription = readFileSync("src/lib/push-subscription.ts", "utf8");
+assert.match(prayerAlertHook, /loadLocalPrayerLocation/);
+assert.match(prayerAlertHook, /getSavedPrayerLocation/);
+assert.match(prayerAlertHook, /getPrayerTimes\(location\.latitude,\s*location\.longitude/);
+assert.match(prayerAlertHook, /getZonedDateTime\(/);
+assert.doesNotMatch(prayerAlertHook, /LOCATION_KEY\s*=\s*["']zikr_prayer_location["']/);
+assert.match(pushSubscription, /getSavedPrayerLocation/);
+assert.match(pushSubscription, /timezone:\s*location\.timezone/);
+assert.doesNotMatch(pushSubscription, /PRAYER_LOCATION_KEY/);
+
+console.log("Prayer-time timezone, native scheduling, and push-location contracts passed.");

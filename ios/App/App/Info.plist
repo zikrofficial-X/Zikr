@@ -35,6 +35,8 @@
   </dict>
   <key>NSCameraUsageDescription</key>
   <string>ZIKR uses camera access for profile images and learning uploads.</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>ZIKR uses your location to calculate accurate prayer times for your selected city.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>ZIKR uses the microphone for memorization voice recording.</string>
   <key>NSPhotoLibraryAddUsageDescription</key>

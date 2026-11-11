@@ -110,6 +110,7 @@ if (biometricDependencies.length > 0) {
 for (const token of [
   "<string>com.zikr.app</string>",
   "<key>NSCameraUsageDescription</key>",
+  "<key>NSLocationWhenInUseUsageDescription</key>",
   "<key>NSPhotoLibraryUsageDescription</key>",
   "<key>NSPhotoLibraryAddUsageDescription</key>",
   "<key>NSMicrophoneUsageDescription</key>",
