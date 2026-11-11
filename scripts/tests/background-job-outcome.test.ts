@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
@@ -86,6 +86,25 @@ const originalRunNow = {
   requestedAt: "2026-11-11T19:00:00.000Z",
 };
 assert.equal(isSameRunNowRequest(originalRunNow, originalRunNow), true);
+const originalDeleteFilter = buildRunNowRequestDeleteFilter(originalRunNow.requestedAt, originalRunNow);
+assert.equal(
+  originalDeleteFilter,
+  `key=eq.video_automation_run_now&updated_at=eq.${encodeURIComponent(originalRunNow.requestedAt)}&value=eq.${encodeURIComponent(JSON.stringify(originalRunNow))}`,
+  "the DELETE must compare the complete JSONB request value as well as updated_at",
+);
+assert.notEqual(
+  originalDeleteFilter,
+  buildRunNowRequestDeleteFilter(originalRunNow.requestedAt, {
+    ...originalRunNow,
+    requestId: "run-request-b",
+  }),
+  "a concurrent request with the same millisecond timestamp must have a different atomic DELETE predicate",
+);
+assert.equal(
+  buildRunNowRequestDeleteFilter(null, originalRunNow),
+  null,
+  "a missing row version must never produce a destructive filter",
+);
 assert.equal(
   isSameRunNowRequest(
     { requestId: "run-request-b", requestedAt: originalRunNow.requestedAt },
@@ -102,7 +121,7 @@ assert.equal(
 
 const backgroundRunnerSource = readFileSync(resolve(process.cwd(), "scripts/run-background-jobs.ts"), "utf8");
 assert.match(backgroundRunnerSource, /select=key,value,updated_at/, "Run Now consumption must read the row version");
-assert.match(backgroundRunnerSource, /updated_at=eq\.\$\{encodeURIComponent\(row\.updated_at\)\}/, "Run Now deletion must compare-and-set the exact row version");
+assert.match(backgroundRunnerSource, /buildRunNowRequestDeleteFilter\(row\.updated_at, row\.value\)/, "Run Now deletion must atomically compare the exact row version and JSONB request value");
 assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "Run Now deletion must match the exact request identity");
 assert.match(backgroundRunnerSource, /import \{[^}]*isSameRunNowRequest[^}]*\} from "\.\.\/src\/features\/videos\/services\/background-job-outcome"/, "the Run Now identity guard must be imported from the shared policy");
 const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/admin/system-actions.ts"), "utf8");
