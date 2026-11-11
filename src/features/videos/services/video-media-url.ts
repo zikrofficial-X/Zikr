@@ -11,11 +11,11 @@ export function assertCloudinaryVideoUrl(videoUrl: string, target: string): stri
   try {
     parsed = new URL(videoUrl);
   } catch {
-    throw new Error(\`\${target} publishing requires an absolute Cloudinary video URL\`);
+    throw new Error(target + " publishing requires an absolute Cloudinary video URL");
   }
 
   if (parsed.protocol !== "https:") {
-    throw new Error(\`\${target} publishing requires HTTPS media URLs\`);
+    throw new Error(target + " publishing requires HTTPS media URLs");
   }
   if (
     parsed.hostname.toLowerCase() !== CLOUDINARY_VIDEO_HOST ||
@@ -23,7 +23,7 @@ export function assertCloudinaryVideoUrl(videoUrl: string, target: string): stri
     parsed.password ||
     (parsed.port && parsed.port !== "443")
   ) {
-    throw new Error(\`\${target} publishing only accepts trusted Cloudinary video assets\`);
+    throw new Error(target + " publishing only accepts trusted Cloudinary video assets");
   }
 
   const segments = parsed.pathname.split("/").filter(Boolean);
@@ -33,7 +33,7 @@ export function assertCloudinaryVideoUrl(videoUrl: string, target: string): stri
     segments[1] !== "video" ||
     segments[2] !== "upload"
   ) {
-    throw new Error(\`\${target} publishing requires a Cloudinary /video/upload asset path\`);
+    throw new Error(target + " publishing requires a Cloudinary /video/upload asset path");
   }
 
   return parsed.toString();
