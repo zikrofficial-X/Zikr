@@ -57,6 +57,10 @@ const socialRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
   "utf8",
 );
+const writtenSocialRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/written/route.ts"),
+  "utf8",
+);
 const videoRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/videos/[id]/route.ts"),
   "utf8",
@@ -234,6 +238,16 @@ assert.match(
   socialRoute,
   /dispatchGitHubWorkflow\("publish-social\.yml"/,
   "social API must dispatch the controlled GitHub publisher",
+);
+assert.match(
+  writtenSocialRoute,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminStepUpApi\("social\.publish"/,
+  "written-content generation must require separate management permission and publishing permission with MFA step-up",
+);
+assert.match(
+  writtenSocialRoute,
+  /dispatchGitHubWorkflow\("generate-written-content\.yml"/,
+  "written-content generation must dispatch only the controlled GitHub workflow",
 );
 assert.doesNotMatch(
   socialRoute,
