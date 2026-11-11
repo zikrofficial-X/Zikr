@@ -132,7 +132,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            تنظيف ذاكرة المشروع الداخلية فقط متاح حاليًا. حذف ملفات Cloudinary وSupabase Storage متوقف مؤقتًا حتى يكتمل فحص جميع مراجع الملفات في جداول المشروع.
+            حذف ملفات Cloudinary وSupabase Storage وذاكرة التوليد متوقف مؤقتًا حتى يكتمل فحص جميع مراجع الملفات والسجلات المرتبطة في جداول المشروع.
           </p>
         </div>
         <button
@@ -167,7 +167,7 @@ export function PurgeGeneratedVideosControl({
             >
               <option value="" disabled>اختر نطاق الحذف صراحةً</option>
               <option value="files" disabled>ملفات الفيديو — متوقفة مؤقتًا لحماية المراجع</option>
-              <option value="memory">ذاكرة المشروع فقط — إخفاء مكتبة ZIKR وسجلات التوليد، مع إبقاء الملفات</option>
+              <option value="memory" disabled>ذاكرة المشروع — متوقفة مؤقتًا لحماية مراجع السجلات</option>
               <option value="both" disabled>الملفات وذاكرة المشروع — متوقفة مؤقتًا لحماية المراجع</option>
             </select>
             <p className="text-xs leading-6 text-brand-cream/55">
@@ -181,7 +181,7 @@ export function PurgeGeneratedVideosControl({
             </p>
           </div>
           <p className="text-xs leading-6 text-amber-200/90">
-            حذف الملفات معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. خيار ذاكرة المشروع لا يحذف أي ملف أو عنصر Storage. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
+            حذف الملفات والذاكرة معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
