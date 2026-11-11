@@ -48,12 +48,12 @@ YouTube:
 - `YOUTUBE_CHANNEL_ID`
 - `YOUTUBE_CLIENT_ID`
 - `YOUTUBE_CLIENT_SECRET`
-- `YOUTUBE_REFRESH_TOKEN`
+- `YOUTUBE_REFRESH_TOKEN` — legacy/ignored by active workers; do not provision it.
  
-YouTube remote deletion additionally requires an explicit OAuth grant containing `https://www.googleapis.com/auth/youtube.force-ssl` (or `youtube` / `youtubepartner`). The upload-only scope and API key do not authorize deletion. Reconnect YouTube from Admin to store the new credential and its granted scopes in the server-only `youtube_oauth_credentials` table. The stored credential takes precedence over `YOUTUBE_REFRESH_TOKEN`; the environment value remains a rollback fallback. Never expose either token to the browser.
+YouTube remote deletion additionally requires an explicit OAuth grant containing `https://www.googleapis.com/auth/youtube.force-ssl` (or `youtube` / `youtubepartner`). The upload-only scope and API key do not authorize deletion. Reconnect YouTube from Admin to store the new credential and its granted scopes in the server-only `youtube_oauth_credentials` table. The active publisher reads refresh tokens only from the server-only `youtube_oauth_credentials` row and validates the granted scopes before use. `YOUTUBE_REFRESH_TOKEN` is a legacy variable intentionally ignored by the active publisher; it is not a rollback fallback. Reconnect from Admin to update the stored credential. Never expose refresh tokens to the browser or copy them into Vercel/GitHub Actions environment variables.
 
 
-The channel connection check prefers OAuth. If the refresh token lacks YouTube channel-read scope, it can still read public channel name/statistics using the server-only `YOUTUBE_API_KEY` and exact `YOUTUBE_CHANNEL_ID`. This public fallback does not grant private YouTube Analytics access; 28-day owner analytics requires reauthorizing OAuth with `youtube.readonly` and `yt-analytics.readonly` scopes, then replacing the refresh token in Vercel and the GitHub production secret.
+The channel connection check prefers OAuth. If the refresh token lacks YouTube channel-read scope, it can still read public channel name/statistics using the server-only `YOUTUBE_API_KEY` and exact `YOUTUBE_CHANNEL_ID`. This public fallback does not grant private YouTube Analytics access; 28-day owner analytics requires reauthorizing OAuth with `youtube.readonly` and `yt-analytics.readonly` scopes, then reconnecting from Admin so the server-only Supabase credential is updated.
 
 Facebook / Meta:
 
