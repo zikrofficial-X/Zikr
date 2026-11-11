@@ -346,6 +346,23 @@ export async function POST(request: NextRequest) {
     const includeFiles = scope === "files" || scope === "both";
     const includeMemory = scope === "memory" || scope === "both";
 
+    // File deletion is deliberately disabled until this endpoint has a complete,
+    // bounded cross-table reference inventory for both Cloudinary and Supabase
+    // Storage. The separate retention workflow has a stronger inventory contract;
+    // this admin endpoint must not infer that an asset is unreferenced from tags
+    // or the social queue alone.
+    if (includeFiles) {
+      return NextResponse.json(
+        {
+          error: "File purge is disabled until a complete cross-table reference inventory proves that every Cloudinary and Supabase Storage asset is unreferenced. No files or project data were changed.",
+          deletionStarted: false,
+          filesPurgeAvailable: false,
+          retryRequired: false,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     const cloudinary = includeFiles ? cloudinaryConfig() : null;
     const lockToken = randomUUID();
     const lockAcquired = await acquirePurgeLock(lockToken);
