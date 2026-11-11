@@ -109,13 +109,13 @@ assert.match(reminderMigration, /local_clock\.local_time >= preferences\.quiet_h
 assert.match(reminderMigration, /preferences\.quiet_hours_start = preferences\.quiet_hours_end/);
 assert.match(
   reminderMigration,
-  /else\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_start\s+or\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_end/i,
   /else\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_start\s+and\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_end/i,
+  "overnight quiet hours must schedule only outside the quiet window",
 );
 assert.doesNotMatch(
   reminderMigration,
-  /else\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_start\s+and\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_end/i,
   /else\s+local_clock\.local_time\s*>=\s*preferences\.quiet_hours_start\s+or\s+local_clock\.local_time\s*<\s*preferences\.quiet_hours_end/i,
+  "overnight quiet hours must not schedule during the quiet window",
 );
 const isOutsideQuietHours = (minute: number, start: number, end: number) =>
   start === end
