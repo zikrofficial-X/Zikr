@@ -430,6 +430,37 @@ export async function POST(request: NextRequest) {
 
 
 
+    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      metadata: Record<string, unknown> | null;
+      published: boolean | null;
+      youtube_id: string | null;
+    }>>(
+      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
+    );
+    if ((generatedCatalogRows ?? []).length >= 1000) {
+      throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
+    }
+    if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
+
+    const generatedRequests = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
+      throw new Error("Automated generation history exceeded the safe purge batch.");
+    }
+
+    const automationRuns = includeMemory
+      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/video_automation_runs?metadata->>generator=eq.multi-provider-free-ai&select=id&limit=1000",
+        )
+      : [];
+    if (includeMemory && (automationRuns ?? []).length >= 1000) {
+      throw new Error("Internal video automation history exceeded the safe purge batch.");
+    }
+
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
@@ -450,18 +481,6 @@ export async function POST(request: NextRequest) {
     // Remove Cloudinary masters without hiding videos that already have a
     // verified YouTube publication fallback. Unconfirmed IDs are never treated
     // as a playback fallback, and unpublished records remain unpublished.
-    const generatedCatalogRows = await supabaseServerAdminRequest<Array<{
-      id: string;
-      metadata: Record<string, unknown> | null;
-      published: boolean | null;
-      youtube_id: string | null;
-    }>>(
-      "/rest/v1/videos?metadata->>generator=eq.zikr_internal_video_factory&select=id,metadata,published,youtube_id&limit=1000",
-    );
-    if ((generatedCatalogRows ?? []).length >= 1000) {
-      throw new Error("Generated video catalog exceeded the safe purge batch; no catalog rows were changed.");
-    }
-    if ((generatedCatalogRows ?? []).length > 0) destructiveWorkStarted = true;
     let catalogRecordsHidden = 0;
     let catalogFallbackRowsKeptPublished = 0;
     const catalogUpdateErrors = await mapWithConcurrency(generatedCatalogRows ?? [], 6, async row => {
@@ -515,14 +534,6 @@ export async function POST(request: NextRequest) {
     }
         // Historical external platform queue records are never read or modified.
     const socialQueueRowsPreserved = true;
-    const generatedRequests = includeMemory
-      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/video_generation_requests?automation_key=not.is.null&select=id&limit=1000",
-        )
-      : [];
-    if (includeMemory && (generatedRequests ?? []).length >= 1000) {
-      throw new Error("Automated generation history exceeded the safe purge batch.");
-    }
     let generationRowsDeleted = 0;
     if ((generatedRequests ?? []).length > 0) destructiveWorkStarted = true;
     for (const generatedRequest of generatedRequests ?? []) {
@@ -530,14 +541,6 @@ export async function POST(request: NextRequest) {
         "video_generation_requests",
         "id=eq." + encodeURIComponent(generatedRequest.id),
       );
-    }
-    const automationRuns = includeMemory
-      ? await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/video_automation_runs?metadata->>generator=eq.multi-provider-free-ai&select=id&limit=1000",
-        )
-      : [];
-    if (includeMemory && (automationRuns ?? []).length >= 1000) {
-      throw new Error("Internal video automation history exceeded the safe purge batch.");
     }
     let automationRunsDeleted = 0;
     if ((automationRuns ?? []).length > 0) destructiveWorkStarted = true;
