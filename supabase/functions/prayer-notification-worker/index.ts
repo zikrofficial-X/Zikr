@@ -3,6 +3,7 @@ import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "./eligibility.ts";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "./time-zone.ts";
+import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -758,6 +759,26 @@ async function deliverDue(
         error_message: subscription
           ? "Subscription owner does not match delivery owner"
           : "Subscription is no longer active",
+      });
+      continue;
+    }
+
+    if (!isAllowedPushEndpoint(subscription.endpoint)) {
+      const { error: deactivateError } = await supabase
+        .from("push_subscriptions")
+        .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+        .eq("id", subscription.id)
+        .eq("user_id", delivery.user_id);
+      if (deactivateError) {
+        console.error("[prayer-notification-worker] invalid endpoint deactivation failed:", deactivateError.message);
+      } else {
+        deactivated += 1;
+      }
+      await updateDeliveryIfLease(delivery, {
+        status: "cancelled",
+        processed_at: deliveryNow.toISOString(),
+        retry_after: null,
+        error_message: "Unsupported push service endpoint host",
       });
       continue;
     }
