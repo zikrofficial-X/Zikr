@@ -8,6 +8,8 @@ const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
 const authActions = read("src/features/auth/actions.ts");
+const androidManifest = read("android/app/src/main/AndroidManifest.xml");
+const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const iosPlist = read("ios/App/App/Info.plist");
 const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
@@ -40,6 +42,16 @@ assert.equal((authActions.match(/import\s*\{\s*sanitizeInternalPath\s*\}\s*from\
 assert.ok(button.includes('new URL("/auth/callback", PRODUCTION_URL)'), "Native browser fallback must use the canonical HTTPS callback origin");
 assert.ok(button.includes('url.searchParams.set("native", "1")'), "Native callback must opt into the deep-link handoff");
 assert.ok(button.includes('url.searchParams.set("next", nextPath)'), "Native callback must preserve only the sanitized in-app destination");
+assert.doesNotMatch(
+  androidManifest,
+  /android:scheme="https"[\s\S]*?android:pathPrefix="\/auth\/callback"/,
+  "Android must not intercept the HTTPS OAuth callback before the server can exchange its code",
+);
+assert.match(
+  appleAssociationRoute,
+  /\{\s*'\/':\s*'\/auth\/callback\*',\s*exclude:\s*true\s*\}/,
+  "iOS universal links must leave OAuth callbacks in the browser for the server handoff",
+);
 assert.ok(button.includes("Android OAuth غير مطابق"), "Credential Manager configuration errors must be explained accurately");
 assert.ok(activity.includes("ModifiedMainActivityForSocialLoginPlugin"), "MainActivity must implement the required plugin marker interface");
 assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forward Google activity results");
