@@ -139,7 +139,7 @@ const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/ad
 assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");
 assert.match(adminSystemActionsSource, /buildRunNowRequestValueFilter\(request\)/, "Run Now dispatch must build a compare-and-set predicate from the request it created");
 assert.equal(
-  (adminSystemActionsSource.match(/"\\/rest\\/v1\\/admin_settings\\?" \\+ requestFilter/g) ?? []).length,
+  adminSystemActionsSource.split('"/rest/v1/admin_settings?" + requestFilter').length - 1,
   3,
   "success, scheduled-worker fallback, and failure updates must all compare-and-set the original request",
 );
