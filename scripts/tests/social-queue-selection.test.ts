@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
@@ -32,6 +32,34 @@ const missingMediaSelection = selectEligibleSocialPublishItems([missingSourceMed
   limit: 1,
 });
 assert.deepEqual(missingMediaSelection, [], "source-media-missing videos must stay out of the worker queue even when QA approval exists");
+
+const boundedHeldVideos = Array.from({ length: 125 }, (_, index) => ({
+  id: `held-video-${index}`,
+  content_type: "video",
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: null,
+}));
+const separatelyFetchedWrittenPost = {
+  id: "written-beyond-general-window",
+  content_type: "written_post",
+  target_platforms: ["facebook"] as const,
+  metadata: null,
+};
+const mergedBeyondWindow = mergeUniqueSocialPublishCandidates(
+  boundedHeldVideos,
+  [separatelyFetchedWrittenPost],
+);
+const reservedBeyondWindow = selectEligibleSocialPublishItems(mergedBeyondWindow, {
+  enabledPlatforms,
+  approvedVideoQueueItemIds: new Set(),
+  maxAttemptsFor: () => 5,
+  limit: 1,
+});
+assert.deepEqual(
+  reservedBeyondWindow.map((item) => item.id),
+  ["written-beyond-general-window"],
+  "a dedicated written-post query must prevent a held-video window from hiding later eligible posts",
+);
 
 const selectedPosts = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms,
@@ -87,6 +115,11 @@ assert.deepEqual(
   "disabled YouTube targets must be skipped without blocking Facebook posts",
 );
 
+
+const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
+assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
+assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
