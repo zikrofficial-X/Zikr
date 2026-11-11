@@ -128,7 +128,8 @@ assert.ok(
 );
 assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
 assert.ok(adminAction.includes("publicId: `${slug}-${randomUUID()}`"), "each Kids upload must use a unique Cloudinary asset id");
-assert.ok(adminAction.indexOf('requireAdminPermission("media.manage")') < imageUploadPosition, "image upload must retain the media.manage permission gate");
+const mediaPermissionPosition = adminAction.indexOf('requireAdminPermission("media.manage")');
+assert.ok(mediaPermissionPosition > 0 && mediaPermissionPosition < imageUploadPosition, "image upload must retain the media.manage permission gate");
 assert.ok(adminAction.includes("audit event unavailable after content save"), "audit failure must not report a committed Kids insert as failed or skip cache revalidation");
 assert.ok(cloudinaryUploadRoute.includes("randomUUID()"), "generic Cloudinary uploads must use collision-resistant default public ids");
 assert.ok(cloudinaryUploadRoute.includes("audit event unavailable after upload"), "audit failure must not report a completed media upload as failed");

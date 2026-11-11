@@ -17,7 +17,6 @@ export function KidsShare({
   description,
   slug,
   type,
-  imageUrl: _imageUrl,
 }: KidsShareProps) {
   const [statusMessage, setStatusMessage] = useState('');
   const getShareUrl = () => `${window.location.origin}/kids/${slug}`;
@@ -39,35 +38,35 @@ export function KidsShare({
       keepalive: true,
     }).catch(() => undefined);
   };
-  
+
   const handleFacebookShare = () => {
     if (typeof window === 'undefined') return;
-    
+
     const shareUrl = getShareUrl();
     const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(title)}`;
-    window.open(facebookShareUrl, 'facebook-share', 'width=600,height=400');
+    window.open(facebookShareUrl, 'facebook-share', 'width=600,height=400,noopener,noreferrer');
     trackShare('facebook');
     setStatusMessage('تم فتح نافذة المشاركة');
-    
+
   };
 
   const handleWhatsAppShare = () => {
     if (typeof window === 'undefined') return;
-    
+
     const shareUrl = getShareUrl();
     const message = `🌟 تعلم مع الأطفال: ${title}\n\n${description || 'محتوى تعليمي إسلامي مميز'}\n\n${shareUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
     trackShare('whatsapp');
     setStatusMessage('تم فتح نافذة المشاركة');
   };
 
   const handleTwitterShare = () => {
     if (typeof window === 'undefined') return;
-    
+
     const shareUrl = getShareUrl();
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`تعلم: ${title}`)}&url=${encodeURIComponent(shareUrl)}&hashtags=kids,islamic,learning`;
-    window.open(twitterUrl, '_blank');
+    window.open(twitterUrl, '_blank', 'noopener,noreferrer');
     trackShare('twitter');
     setStatusMessage('تم فتح نافذة المشاركة');
   };
@@ -87,7 +86,7 @@ export function KidsShare({
     <Card className="p-6 bg-gradient-to-r from-brand-gold/10 to-brand-emerald/10 border-brand-gold/20 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-brand-gold">شارك هذا المحتوى</h3>
-        {statusMessage && <span className="text-sm text-green-400">{statusMessage}</span>}
+        {statusMessage && <span className={`text-sm ${statusMessage === "تعذر نسخ الرابط" ? "text-red-400" : "text-green-400"}`}>{statusMessage}</span>}
       </div>
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">

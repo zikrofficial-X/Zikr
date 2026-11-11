@@ -33,7 +33,7 @@ export function CloudinaryImageUploadField({
         <label htmlFor={`cloudinary-${name}`} className="text-sm font-medium text-brand-cream/80">{label}</label>
         <span className="text-[11px] text-brand-cream/40">Cloudinary · {folder}</span>
       </div>
-      <input type="hidden" name={name} value={defaultValue} />
+      <input type="hidden" name={name} defaultValue={defaultValue} />
       <input
         id={`cloudinary-${name}`}
         name={fileName}
