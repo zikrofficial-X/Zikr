@@ -102,6 +102,21 @@ assert.equal(
   2,
   "both cancellation and error rollback paths must use the version-checked helper",
 );
+assert.match(
+  job,
+  /Could not verify queue state; skipping automatic rollback/,
+  "a queue-state lookup failure must not trigger an unverified content rollback",
+);
+assert.match(
+  job,
+  /if \\(queueStatus && queueStatus !== "published"\\)/,
+  "automatic rollback must require a positively verified non-published queue state",
+);
+assert.match(
+  job,
+  /else if \\(!queueStatus\\)/,
+  "missing queue state must leave content unchanged for manual reconciliation",
+);
 
 const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
 assert.match(adminActions, /table === "stories" \? "id,published,is_approved,user_id"/,
