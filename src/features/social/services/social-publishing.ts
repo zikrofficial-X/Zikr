@@ -11,6 +11,7 @@ import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPu
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import {
   buildDueSocialQueueClaimFilter,
+  buildSocialPublishLeaseFilter,
   mergeUniqueSocialPublishCandidates,
   selectEligibleSocialPublishItems,
 } from "@/features/social/services/social-queue-selection";
@@ -105,13 +106,17 @@ function socialRetryDelayMinutes(attempt: number, itemId: string) {
 async function markQueueItem(
   itemId: string,
   status: SocialQueueStatus,
-  patch: Record<string, unknown> = {}
-) {
-  await supabaseServerAdminRequest(
-    `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(itemId)}`,
+  patch: Record<string, unknown> = {},
+  expectedLease?: { status: SocialQueueStatus; updatedAt: string },
+): Promise<boolean> {
+  const filter = expectedLease
+    ? buildSocialPublishLeaseFilter(itemId, expectedLease.status, expectedLease.updatedAt)
+    : `id=eq.${encodeURIComponent(itemId)}`;
+  const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/social_publish_queue?${filter}`,
     {
       method: "PATCH",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: expectedLease ? "return=representation" : "return=minimal" },
       body: JSON.stringify({
         status,
         updated_at: new Date().toISOString(),
@@ -119,6 +124,7 @@ async function markQueueItem(
       }),
     }
   );
+  return !expectedLease || (Array.isArray(updated) && updated.length > 0);
 }
 
 async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promise<boolean> {
@@ -1003,18 +1009,43 @@ export async function processSocialPublishItem(
   item: SocialPublishQueueItem,
   options: { alreadyClaimed?: boolean; enabledPlatforms?: readonly SocialPlatform[] } = {},
 ): Promise<"published" | "auth_blocked" | "approval_blocked" | "deferred" | "failed"> {
+  let claimUpdatedAt = "";
+  if (options.alreadyClaimed) {
+    if (item.status !== "processing" || !Number.isFinite(Date.parse(item.updated_at))) {
+      return "deferred";
+    }
+    claimUpdatedAt = item.updated_at;
+  } else {
+    if (item.status === "processing" || !Number.isFinite(Date.parse(item.updated_at))) {
+      return "deferred";
+    }
+    const claimAt = new Date().toISOString();
+    const claimed = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+      `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, item.status, claimAt)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ status: "processing", updated_at: claimAt }),
+      },
+    );
+    if (!Array.isArray(claimed) || !claimed[0] || !Number.isFinite(Date.parse(claimed[0].updated_at))) {
+      return "deferred";
+    }
+    claimUpdatedAt = claimed[0].updated_at;
+  }
+  const claimLease = { status: "processing" as const, updatedAt: claimUpdatedAt };
   if (!(await hasVideoApprovalForQueueItem(item))) {
-    await markQueueItem(item.id, "queued", {
+    const updated = await markQueueItem(item.id, "queued", {
       error_message: "Video held for automated qa check before public publishing.",
       metadata: { ...(item.metadata ?? {}), approvalBlocked: true },
-    });
-    return "approval_blocked";
+    }, claimLease);
+    return updated ? "approval_blocked" : "deferred";
   }
 
   const sourceApproval = await checkWrittenPostSourceApproval(item);
   const kidsWrittenPost = isKidsWrittenQueueItem(item);
   if (sourceApproval === "blocked") {
-    await markQueueItem(item.id, "failed", {
+    const updated = await markQueueItem(item.id, "failed", {
       scheduled_at: null,
       error_message: kidsWrittenPost
         ? "Kids source is no longer published, active, and age-appropriate; publishing was held for review."
@@ -1025,12 +1056,12 @@ export async function processSocialPublishItem(
           ? { kidsSourceApprovalBlocked: true, kidsSourceApprovalPending: false }
           : { writtenArticlePublicationBlocked: true, writtenArticlePublicationPending: false }),
       },
-    });
-    return "approval_blocked";
+    }, claimLease);
+    return updated ? "approval_blocked" : "deferred";
   }
   if (sourceApproval === "unavailable") {
     const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
-    await markQueueItem(item.id, "queued", {
+    const updated = await markQueueItem(item.id, "queued", {
       scheduled_at: nextRetryAt,
       error_message: kidsWrittenPost
         ? "Kids source approval could not be verified; publishing remains on hold."
@@ -1042,18 +1073,16 @@ export async function processSocialPublishItem(
           : { writtenArticlePublicationPending: true }),
         nextRetryAt,
       },
-    });
-    return "approval_blocked";
+    }, claimLease);
+    return updated ? "approval_blocked" : "deferred";
   }
-
-  if (!options.alreadyClaimed) await markQueueItem(item.id, "processing");
 
   const platforms = item.target_platforms.filter(
     (platform): platform is SocialPlatform => platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
   );
   if (platforms.length === 0) {
-    await markQueueItem(item.id, "failed", { error_message: "No supported target platforms selected" });
-    return "failed";
+    const updated = await markQueueItem(item.id, "failed", { error_message: "No supported target platforms selected" }, claimLease);
+    return updated ? "failed" : "deferred";
   }
 
   const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
@@ -1072,7 +1101,8 @@ export async function processSocialPublishItem(
         typeof (result as PlatformResult).remoteId === "string" && (result as PlatformResult).remoteId?.trim());
     });
     if (allTargetsSucceeded) {
-      await markQueueItem(item.id, "published", { error_message: null, scheduled_at: null });
+      const updated = await markQueueItem(item.id, "published", { error_message: null, scheduled_at: null }, claimLease);
+      if (!updated) return "deferred";
       await syncKidsSocialPublicationToCatalog(item, previousMetadata);
       if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
       return "published";
@@ -1086,35 +1116,35 @@ export async function processSocialPublishItem(
           : "",
         "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
       ].filter(Boolean);
-      await markQueueItem(item.id, "queued", {
+      const updated = await markQueueItem(item.id, "queued", {
         scheduled_at: nextRetryAt,
         error_message: messages.join("; "),
         metadata: { ...previousMetadata, unavailablePlatforms, nextRetryAt },
-      });
-      return "deferred";
+      }, claimLease);
+      return updated ? "deferred" : "deferred";
     }
     if (manualReconciliationPlatforms.length > 0) {
       const hasPriorSuccess = platforms.some(platform => {
         const result = previous[platform] as PlatformResult | undefined;
         return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
       });
-      await markQueueItem(item.id, hasPriorSuccess ? "partial" : "failed", {
+      const updated = await markQueueItem(item.id, hasPriorSuccess ? "partial" : "failed", {
         scheduled_at: null,
         error_message: "Manual reconciliation required before retry: provider outcome is unknown for " + manualReconciliationPlatforms.join(", ") + ". Check the destination channel for an existing post first.",
         metadata: { ...previousMetadata, unavailablePlatforms: [] },
-      });
-      return "failed";
+      }, claimLease);
+      return updated ? "failed" : "deferred";
     }
     const blockedFacebook = platforms.some(platform => {
       const result = previous[platform] as PlatformResult | undefined;
       return result?.ok === false && isFacebookAuthFailure(result.error);
     });
-    await markQueueItem(item.id, platforms.some(platform => previous[platform] && (previous[platform] as PlatformResult).ok === true) ? "partial" : "failed", {
+    const updated = await markQueueItem(item.id, platforms.some(platform => previous[platform] && (previous[platform] as PlatformResult).ok === true) ? "partial" : "failed", {
       error_message: "No eligible target remains; repair the platform connection or review the channel-specific failure.",
       scheduled_at: null,
       metadata: { ...previousMetadata, unavailablePlatforms: [] },
-    });
-    return blockedFacebook ? "auth_blocked" : "failed";
+    }, claimLease);
+    return updated ? (blockedFacebook ? "auth_blocked" : "failed") : "deferred";
   }
 
   const inFlightStartedAt = new Date().toISOString();
@@ -1124,16 +1154,20 @@ export async function processSocialPublishItem(
     inFlightStartedAt,
   );
   const inFlightClaim = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-    `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+    `/rest/v1/social_publish_queue?${buildSocialPublishLeaseFilter(item.id, claimLease.status, claimLease.updatedAt)}`,
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({ metadata: inFlightMetadata, updated_at: inFlightStartedAt }),
     },
   );
-  if (!Array.isArray(inFlightClaim) || !inFlightClaim[0]) {
-    throw new Error("Social publish claim was lost before the provider request; no external publish call was made.");
+  if (!Array.isArray(inFlightClaim) || !inFlightClaim[0] || !Number.isFinite(Date.parse(inFlightClaim[0].updated_at))) {
+    return "deferred";
   }
+  const inFlightLease = {
+    status: "processing" as const,
+    updatedAt: inFlightClaim[0].updated_at,
+  };
 
   const results = await Promise.all(runnablePlatforms.map(platform => publishPlatform(item, platform)));
   const mergedResults: Record<string, PlatformResult> = {};
@@ -1252,12 +1286,16 @@ export async function processSocialPublishItem(
   );
   if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
   if (approvalDeferredPlatforms.length) errorMessages.push("Approval revalidation held publishing for: " + approvalDeferredPlatforms.join(", "));
-  await markQueueItem(item.id, persistedStatus, {
+  const finalized = await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,
     error_message: errorMessages.join("; ") || null,
     metadata: publishMetadata,
-  });
+  }, inFlightLease);
+  if (!finalized) {
+    console.warn("[social-publishing] Provider result arrived after the worker lease was recovered; preserving the newer queue state:", item.id);
+    return "deferred";
+  }
 
   // Persist the confirmed YouTube video ID to the public catalog even when
   // another requested target is deferred; this provides a resilient playback fallback.
