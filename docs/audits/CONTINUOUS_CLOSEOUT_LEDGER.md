@@ -931,3 +931,48 @@ No content generation, Gemini request, social publication, audit-triggered produ
 
 
 - Documentation checkpoint `78d6520ee8388abdb58bed7fbabf94a74ca68a2a` was superseded before its queued CI completed: it had copied the stale ledger SHA from the checked-in main manifest. Recursive Git tree validation proved the actual main ledger blob is `31c64dc29e01e9d92a2a2ae82ae103e8d6521076`; the corrected manifest now uses that exact SHA and size. The superseded Quality Gate run #2509 is not treated as final verification.
+
+
+## 2026-11-11T22:58:20.121Z — exact-head continuation, workflow contract repair, and inventory reconciliation
+
+### Repository and branch evidence
+
+- PR #320: `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Exact verified source head: `93335970cb572177386459fd4a6fb2a6aa053dfe`; PR compare at that head: 727 commits ahead, 0 behind; 230 changed files (75 added, 155 modified, 0 removed).
+- Recursive trees: main 2154 entries (1662 files, 492 directories, 139748929 bytes); branch 2233 entries (1737 files, 496 directories, 140369358 bytes). Both GitHub recursive tree responses were complete and not truncated.
+- The 2,153-record manifest was rechecked against the exact main tree. It has no path/blob/mode/size mismatches after excluding its own entry and retaining the two intentional null ancestor-directory hashes. The main ledger blob is `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes.
+- The new `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-12.md` records every changed source-head path, exact blob SHA, byte size, and conservative `REVIEW_REQUIRED` status. It is a branch overlay, not a replacement for the main-baseline manifest or matrix.
+
+### Code repair and exact-head verification
+
+- Removed the duplicate Apple App Site Association preflight step in `.github/workflows/release-finalization.yml`.
+- Added an exact-count regression assertion to `scripts/verify-release-contract.mjs`, requiring exactly one pre-build AASA preflight.
+- Repair commit: `93335970cb572177386459fd4a6fb2a6aa053dfe`.
+- GitHub Quality Gate #2628 / run `43115074968` / canonical job `130840845415`: SUCCESS on that exact SHA. The log explicitly records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, and `QUALITY_GATE=PASSED_FULL`.
+- PostgreSQL 17 integration checks passed for Kids result triggers, atomic admin role updates, background reminder scheduling, Prophet section public-read policy, and Kids game/question publication policy. The local migration replay passed all 428 SQL files.
+- CircleCI PR contexts `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS. Config-validation run #1024 / `43115074990`: SUCCESS.
+
+### Supabase and read-only production evidence
+
+- Live Supabase migration ledger: 418 versions; latest applied `20261110170000`. Ten branch-only migrations remain pending: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`. No migration was applied.
+- Read-only content preflight: Kids content types are 35 game, 3 quiz, 26 story, 1 wudu; no unsupported existing type found. Prophet sections: 0 orphaned rows and 0 unpublished-parent rows. Prayer locations: 0 duplicate defaults and 0 missing timezones; reminder preference table currently has 0 rows.
+- Read-only media-reference preflight scanned all current public JSON/JSONB columns for managed `videos/automated` Storage URLs and found zero matches; `content_library.media` also had zero managed-video references. This does not authorize cleanup.
+- The admin video-purge API fails closed with HTTP 409 for every valid file/memory scope before lock acquisition or destructive calls; its contract test verifies the guard. The separate Storage retention workflow is dry-run by default and requires explicit manual dispatch plus typed `DELETE_STAGING_COPIES` confirmation. Its reference inventory scans direct media fields, nested JSON references, queue/request ownership, and the special `content_library.media` field. No cleanup run or Storage deletion was executed.
+- Vercel production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` from `main@c4560d9`; the audit branch was not deployed. The Vercel project environment inventory still lacks `IOS_ASSOCIATED_DOMAIN_APP_ID`.
+- Main's separate scheduled CircleCI `english-content-sync` context remains FAILURE; the job log is inaccessible in the connected interface, so failure cause and partial-write state are unverified. It was not rerun.
+
+### Additional code-path review
+
+- Targeted source reads covered release-finalization/AASA, release-contract verification, video-purge route and regression test, storage-retention inventory and tests, Kids public written/video visibility, YouTube OAuth credential/callback/connect paths, Facebook OAuth policy/callback, admin role resolution and RLS contracts, branch-only Kids/admin/reminder/Prophet migrations and PostgreSQL integration tests, and native Android/iOS association/OAuth configuration.
+- These are targeted reads, not a full review of all changed files or all 1,662 main-baseline files. The branch overlay conservatively keeps every source-head changed file `REVIEW_REQUIRED`; the main matrix still has 1,525 `REVIEW_REQUIRED` rows and zero closed modules.
+
+### Open owner/manual gates
+
+1. CODEOWNERS owner review and approval for protected auth/admin/Supabase/native/release paths.
+2. Owner-approved production application of the ten pending migrations.
+3. Owner-provided `IOS_ASSOCIATED_DOMAIN_APP_ID` and physical Android/iOS deep-link, OAuth, notification, and signing acceptance.
+4. Owner investigation of the independent main-only `english-content-sync` failure.
+5. Continue the repository-wide file/import/consumer/runtime audit; no repository-wide closure is claimed.
+6. Only after required review and migration approval: safe merge, Vercel deployment, READY verification, and production smoke tests on the deployed SHA.
+
+No content generation, Gemini request, social publication, production database mutation, Storage/media deletion, Android release, merge, or deployment was triggered. The audit remains open.

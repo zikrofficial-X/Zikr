@@ -1,19 +1,21 @@
 # ZIKR — Project Status
 
-## Latest verified audit checkpoint — 2026-11-11T17:48:22Z
+## Latest verified audit checkpoint — 2026-11-11T22:58:20.121Z
 
 **State: IN PROGRESS.** PR #320 remains open. No merge or deployment has occurred.
 
 - **Repository:** `zikrofficial-X/Zikr`
 - **Audit branch:** `audit/zikr-kids-daily-priority-20261110`
 - **Base:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
-- **Verified code head:** `7bf1ec5db8c9363983d336acf8714e3070a661b4` (the documentation-only reconciliation below is a separate follow-up commit).
-- **PR delta:** 590 commits ahead, 0 behind; 204 changed files (62 added, 142 modified, 0 removed).
-- **Recursive Git tree:** main = 2,154 entries (1,662 files, 492 directories); audit branch = 2,220 entries (1,724 files, 496 directories). Both recursive tree responses were complete and not truncated.
-- **Exact-head verification:** GitHub Quality Gate run #2508 (`43071170876`) succeeded on `7bf1ec5db8c9363983d336acf8714e3070a661b4`; canonical job `130699107357` logged `QUALITY_GATE_FULL_SCOPE=true`, executed `pnpm verify`, and ended with `QUALITY_GATE=PASSED_FULL`. The full suite included the test command, local PostgreSQL 17 integration checks, migration replay/reconciliation, lint, TypeScript checks, production build, and performance-index contract.
-- **CircleCI PR contexts:** `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS on this code head. CircleCI config-validation run #904 (`43071171270`) also succeeded. No Android rebuild/release job was triggered.
-- **Production baseline:** Vercel production is READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. The audit branch is not deployed; Git-based Vercel deployments are disabled for this project. No post-deploy smoke test was run because no deployment occurred.
-- **Supabase:** 418 remote migration versions are recorded; latest is `20261110170000`. The following nine branch-only migrations remain unapplied and require owner-approved production migration procedure after review:
+- **Verified source head:** `93335970cb572177386459fd4a6fb2a6aa053dfe`. This exact source head passed the canonical full gate before the documentation-only inventory reconciliation in this checkpoint.
+- **PR delta at the source head:** 727 commits ahead, 0 behind; 230 changed files (75 added, 155 modified, 0 removed).
+- **Recursive Git tree:** main = 2154 entries (1662 files, 492 directories, 139,748,929 file bytes); audit branch = 2233 entries (1737 files, 496 directories, 140,369,358 file bytes). Both recursive responses were complete and not truncated.
+- **Exact-head verification:** GitHub Quality Gate #2628 / run `43115074968` / job `130840845415` succeeded on `93335970cb572177386459fd4a6fb2a6aa053dfe`. The log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, and `QUALITY_GATE=PASSED_FULL`. PostgreSQL 17 integration checks passed for Kids result triggers, atomic admin role updates, background reminders, Prophet section visibility, and Kids game/question publication policies. Migration replay passed all 428 local SQL files.
+- **CircleCI PR contexts:** `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS on the exact source head. CircleCI config-validation run #1024 / `43115074990` also succeeded.
+- **Latest code repair:** commit `93335970cb572177386459fd4a6fb2a6aa053dfe` removes the duplicate Apple App Site Association preflight step from `.github/workflows/release-finalization.yml` and adds a release-contract assertion that exactly one preflight remains. No release workflow was dispatched.
+- **Previous verified repair batches:** `f17d4517028dfb5e60c28b172483cef267d4fa34` fixes the atomic social queue scheduled-time claim race; `2ef02c8106d12c61f285dfaec641ba29907cdedf` contains the preceding social deletion/type regression repair. These are historical repair commits, not substitutes for the exact-head gate above.
+- **Production baseline:** Vercel production is READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. The audit branch is not deployed. No post-deploy smoke test was run because no deployment occurred; Git-based Vercel deployments are disabled and release is manual.
+- **Supabase:** 418 remote migration versions are recorded; latest applied version is `20261110170000`. The following ten branch-only migrations remain unapplied and require owner-approved production migration procedure after review:
   - `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql`
   - `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql`
   - `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql`
@@ -23,30 +25,32 @@
   - `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql`
   - `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql`
   - `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql`
+  - `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql`
   No production migration was applied by this audit.
-- **Separate main-branch CI exception:** the combined status for `main@c4560d9` reports CircleCI `english-content-sync` FAILURE. The workflow is scheduled for 04:17 UTC on `main` only; it is not a PR #320 check and was not triggered by this audit. The connected interface could not open the job log, so the failure cause and whether the Hadith sync step wrote before the failure are unverified. Owner investigation is required; this audit did not rerun the job.
-- **PR review:** zero submitted reviews and zero review threads are recorded. Required CODEOWNERS owner review remains outstanding.
-- **Inventory/manifest reconciliation:** the repository manifest remains a snapshot of the exact main baseline, excludes its own file entry, and keeps the `docs` and `docs/audits` directory hashes null to avoid self-reference. Its ledger entry matches the actual main-tree ledger blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` (99,259 bytes). The checked-in main manifest still contains the stale ledger record `057c5b9ffb16691abfc6e245e583c908a0dbe73d` (93,248 bytes); this branch snapshot corrects it using recursive main-tree evidence. Manifest validation found no other path/blob/size mismatches after excluding the manifest itself and allowing the two intentional null directory hashes.
-- **Review coverage:** the matrix still records 1,525 current-main `REVIEW_REQUIRED` rows and zero closed modules. The previous 68-path PR table is a historical subset, not proof that all 204 changed files have been re-reviewed at this head. This run added targeted source/test review; the repository-wide audit remains open.
-- **Open safety finding:** `src/app/api/admin/video-purge/route.ts` performs destructive Cloudinary/Supabase Storage cleanup after admin step-up, typed confirmation, purge locking, and active-work/pending-social checks, but a complete cross-table reference inventory is not evident before deletion. Treat this as a high-priority safety review item; do not execute the purge until the reference contract is proven or the endpoint fails closed.
-- **Native acceptance:** the last recorded environment review found `IOS_ASSOCIATED_DOMAIN_APP_ID` absent. The real Apple Team ID/bundle identifier and physical iOS/Android deep-link, OAuth, notification, and signing acceptance remain owner/device gates; this environment value was not revalidated in this run.
+- **Separate main-branch CI exception:** `main@c4560d9` still reports CircleCI `english-content-sync` FAILURE. It is the separately scheduled 04:17 UTC main-only workflow, not a PR #320 check. The connected interface could not open its job log; failure cause and possible partial Hadith-sync side effects remain unverified. No rerun was initiated.
+- **PR review:** zero submitted reviews are recorded. Required CODEOWNERS owner review remains outstanding.
+- **Inventory/manifest reconciliation:** the manifest remains a snapshot of the exact main baseline, excludes its own file entry, and keeps `docs` and `docs/audits` directory hashes null to avoid self-reference. The manifest contains 2,153 records and matched the recursive main tree with no path/blob/mode/size mismatches after those intentional exclusions. Its `CONTINUOUS_CLOSEOUT_LEDGER.md` entry matches main blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes.
+- **Review coverage:** the main-baseline matrix still records 1,525 `REVIEW_REQUIRED` rows and zero closed modules. The new branch overlay records all 230 source-head changed files individually and conservatively leaves them `REVIEW_REQUIRED`; a passing CI gate is not manual file-by-file review. The overlay snapshot excludes its own documentation artifact.
+- **Storage and media safety:** `src/app/api/admin/video-purge/route.ts` currently fails closed with HTTP 409 for every valid file/memory purge scope before lock acquisition or destructive calls; `scripts/tests/video-purge-contract.test.mjs` asserts the guard. The separate `storage-retention` workflow is dry-run by default and requires a manual `workflow_dispatch` with `apply=true` plus typed `DELETE_STAGING_COPIES` confirmation. The reviewed inventory scans direct media URL/path fields, nested JSON references, and `content_library.media`; a read-only production scan found zero managed `videos/automated` references across JSON/JSONB columns and zero such references in `content_library.media`. No retention run or deletion was executed.
+- **Read-only database preflight:** current Kids content types are 35 `game`, 3 `quiz`, 26 `story`, and 1 `wudu`; no unsupported existing type was found. Prophet sections have 0 orphaned rows and 0 unpublished-parent rows. Prayer locations have 0 duplicate defaults and 0 missing timezones; background reminder preferences currently have 0 rows. These reads do not apply or validate pending migrations against production.
+- **Native acceptance:** Vercel project environment inventory does not contain `IOS_ASSOCIATED_DOMAIN_APP_ID`. The owner must provide the real Apple Team ID + `com.zikr.app` bundle ID value before iOS AASA/Universal Links can work. Android/iOS physical deep-link, OAuth, notification, and release-signing acceptance remain device/owner gates.
 
 ### Repairs and code-path findings in this run
 
-- Fixed a stale social-publish recovery race: a candidate was selected using `updated_at < staleBefore`, but the subsequent UPDATE filtered only by ID and `status=processing`. A concurrent live publisher could refresh the row after the SELECT and still be overwritten by the stale recovery snapshot. The UPDATE now rechecks the same cutoff through `buildStaleSocialPublishRecoveryFilter`.
-- Added regression assertions for the exact PostgREST compare-and-set filter, invalid cutoff rejection, and use of the helper in the recovery UPDATE. Repair commit: `7bf1ec5db8c9363983d336acf8714e3070a661b4`; the full verification above passed on that exact code head.
-- Inspected targeted contents and contracts for social queue selection/deletion, Kids public visibility and validation, Kids API/detail routes, Kids admin permissions, written-content workflow serialization, prayer notification timezone/pagination, the branch-only migration set, and storage-retention/purge safeguards. These targeted reads do not close the remaining consumer/import/runtime trace for those files.
+- Removed a duplicate Apple App Site Association preflight in the manual production release workflow and added a focused exact-count assertion in `scripts/verify-release-contract.mjs`. Exact source commit: `93335970cb572177386459fd4a6fb2a6aa053dfe`; exact-head full verification: Quality Gate #2628 / `43115074968`.
+- Re-read the active storage-retention inventory and its tests, including paginated reference scans, `content_library.media`, encoded/raw URL detection, queue/request ownership, Cloudinary playback probing, 48-hour grace period, platform confirmation, Android release checksum backups, and manual apply gates. The current code is fail-closed on incomplete inventories and does not delete GitHub releases or Cloudinary masters.
+- Re-read the Kids public written-post/video visibility paths, YouTube OAuth credential and callback path, Facebook OAuth policy/callback path, admin role-resolution/RLS contracts, relevant pending migrations and PostgreSQL integration tests, iOS/Android association configuration, and native OAuth/mobile verification paths. This is targeted review evidence only; it does not close the remaining repository-wide source/import/consumer trace.
 
 ### Outstanding gates
 
-1. Obtain the required CODEOWNERS owner review; do not merge without it.
-2. Review and apply the nine pending Supabase migrations only through the approved production procedure.
-3. Resolve the video-purge cross-table reference-safety finding before any destructive use.
-4. Investigate the independent scheduled `english-content-sync` failure without manually rerunning content generation or Hadith sync as an audit test.
-5. Supply and verify the iOS AASA app ID, then complete authenticated admin/browser and physical-device acceptance.
-6. After approval and migration acceptance, merge safely, deploy to Vercel, verify READY, and run production smoke checks.
+1. Obtain required CODEOWNERS owner review; do not merge without it.
+2. Review and apply the ten pending Supabase migrations only through the owner-approved production migration procedure.
+3. Complete the remaining file-by-file/import/consumer/runtime review; all 1,525 main-baseline rows and all 230 branch-overlay rows remain open in the conservative matrix.
+4. Owner must supply `IOS_ASSOCIATED_DOMAIN_APP_ID` and complete physical Android/iOS deep-link, OAuth, notification, and signing acceptance.
+5. Owner must investigate the independent main-only `english-content-sync` failure; do not rerun it without understanding possible partial writes.
+6. After owner review and migration approval, merge safely, deploy to Vercel, verify READY, and run production smoke checks on the deployed SHA.
 
-No content generation, Gemini request, social publication, audit-triggered production database mutation, storage/media deletion, Android release, merge, or deployment was performed by this audit. The separate scheduled main-branch content-sync status is not attributable to this audit run.
+No content generation, Gemini request, social publication, production database mutation, storage/media deletion, Android release, merge, or deployment was triggered. The repository-wide audit remains open.
 
 ## Current verified checkpoint — 2026-11-10T16:01:46.706Z
 

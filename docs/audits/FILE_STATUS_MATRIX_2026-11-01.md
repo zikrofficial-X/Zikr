@@ -1,13 +1,17 @@
-# ZIKR file status matrix — refreshed 2026-11-11T17:48:22Z
+# ZIKR file status matrix — refreshed 2026-11-11T22:58:20.121Z
 
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive snapshot of this exact main baseline; self-entry excluded; `docs` and `docs/audits` directory hashes are null because they contain the manifest)  
 **Inventory:** 2,154 tracked entries — 1,662 files and 492 directories; 139,748,929 file bytes; recursive GitHub tree response not truncated.  
-**Coverage:** automated inventory 1,662/1,662 main files (100%); minimum previously documented full source-content reads 129/1,662; 1,525 current-main rows remain `REVIEW_REQUIRED` (effective status applies the current-main delta over historical rows); modules closed 0. Inventory coverage is not manual review coverage.  
-**Current main CI:** On `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, CircleCI `config-guard`, `source-verify`, `application-build-docs`, `android-release-draft`, and Vercel are SUCCESS; the separately scheduled `english-content-sync` context is FAILURE. That scheduled workflow runs on `main` at 04:17 UTC, is not a PR #320 check, and was not triggered by this audit. Its job log was not accessible through the connected interface, so its exact failure and any partial sync side effects are unverified.  
-**Production:** Vercel production is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`; main and production are aligned. The existing manual `RELEASE` gate was not dispatched or changed.  
-**Supabase:** 418/418 migration versions match; 92/92 public tables have RLS; 211 public policies; 45 public triggers; 40 public functions; 9 buckets / 0 objects. Security warning: leaked-password protection disabled; Performance Advisor: 86 unused-index candidates; no schema/index/data change performed.  
-**Historical detail:** the original file-by-file table below records the earlier `035ea456` snapshot. The current-main delta at the end revalidates every changed blob and adds all five new files; prior statuses are not carried forward for changed blobs.
+**Coverage:** automated inventory 1662/1662 main files (100%); minimum previously documented full source-content reads 129/1662; 1,525 current-main rows remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage.  
+**Current main CI:** CircleCI `english-content-sync` remains FAILURE on main; it is a separate scheduled 04:17 UTC workflow, not a PR check. Its log and any partial sync side effects are unverified.  
+**Production:** Vercel production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Audit branch not deployed; no post-deploy smoke test applies.  
+**Supabase:** 418 remote migrations, latest `20261110170000`; 10 audit-branch migrations remain unapplied. No production migration/data mutation was performed.  
+**Latest exact-head CI:** source head `93335970cb572177386459fd4a6fb2a6aa053dfe`; GitHub Quality Gate #2628 / run `43115074968` / job `130840845415` SUCCESS with `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, and `QUALITY_GATE=PASSED_FULL`; CircleCI `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS.  
+**PR #320 branch overlay:** `audit/zikr-kids-daily-priority-20261110` at source head `93335970cb572177386459fd4a6fb2a6aa053dfe`; 727 commits ahead, 0 behind; 230 changed files (75 added, 155 modified, 0 removed). Recursive branch tree: 2,233 entries — 1,737 files and 496 directories; 140,369,358 file bytes; response not truncated. The branch-specific path/blob inventory is in `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-12.md`; all overlay rows remain `REVIEW_REQUIRED`. The overlay file itself is a documentation artifact added after the source-head snapshot and is excluded from its own rows.  
+**Manifest reconciliation:** 2,153 records; no baseline path/blob/mode/size mismatches after excluding the manifest itself and retaining the two intentional null directory hashes. The main ledger blob is `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes.  
+**Historical detail:** the original file-by-file table below records the earlier `035ea456` snapshot; the current-main delta below revalidates the `c4560d9` baseline. The PR #320 overlay is separate and must not be conflated with main-baseline review rows.  
+
 ## Historical inventory delta — baseline 035ea456
 
 Previous matrix: 1,631 files. Historical `main@035ea4568572eea36c82b79b1e9cd212113e8e32`: 1,657 files and 491 directories. Net delta: +26 files (27 added paths, 1 removed path).
