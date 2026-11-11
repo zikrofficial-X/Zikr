@@ -195,7 +195,7 @@ console.log("Generated-video purge contracts passed.");
 
 assert.ok(
   route.includes("automationWasEnabled === false") &&
-    route.includes("|| !purgeLockCleared"),
+    route.includes("!purgeLockCleared"),
   "failed lock release or a previously disabled worker must be reported as still paused.",
 );
 assert.ok(
