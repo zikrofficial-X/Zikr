@@ -6,7 +6,7 @@ SELECT public.admin_update_user_role(
 );
 RESET ROLE;
 
-DO $$
+DO $
 DECLARE
   v_profile_role text;
   v_assignment_role text;
@@ -28,7 +28,34 @@ BEGIN
     RAISE EXCEPTION 'role update did not append exactly one audit event';
   END IF;
 END;
-$$;
+$;
+
+-- Reassign a different user's delegated role from a second super administrator.
+-- The assignment's created_by value must continue to identify its original creator.
+SET ROLE service_role;
+SELECT public.admin_update_user_role(
+  '44444444-4444-4444-8444-444444444444',
+  'editor',
+  '55555555-5555-4555-8555-555555555555'
+);
+RESET ROLE;
+
+DO $created_by_preserved$
+DECLARE
+  v_role text;
+  v_created_by uuid;
+BEGIN
+  SELECT role, created_by
+  INTO v_role, v_created_by
+  FROM public.admin_role_assignments
+  WHERE user_id = '44444444-4444-4444-8444-444444444444';
+
+  IF v_role <> 'editor'
+     OR v_created_by <> '11111111-1111-4111-8111-111111111111' THEN
+    RAISE EXCEPTION 'role reassignment overwrote the original created_by attribution';
+  END IF;
+END;
+$created_by_preserved$;
 
 -- A primary site-audio switch and its audit event commit atomically.
 SET ROLE service_role;
