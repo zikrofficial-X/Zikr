@@ -18,6 +18,28 @@ assert.match(job, /metadata\.kidsVideoQaStatus === "passed" && automatedQa\.stat
 assert.match(job, /parsed\.pathname\.includes\("\/video\/upload\/"\)/,
   "internal video publication must reject non-video Cloudinary URLs");
 
+assert.ok(
+  job.includes("status=eq.queued&scheduled_at=lte.") && job.includes("encodeURIComponent(now)"),
+  "the atomic claim must recheck the due time so a concurrent reschedule cannot publish early",
+);
+assert.match(job, /async function isVideoPurgeInProgress/);
+assert.match(
+  job,
+  /if \(item\.content_table === "videos" && await isVideoPurgeInProgress\(\)\)/,
+  "scheduled video publication must recheck the purge lock before claiming and before touching the catalog",
+);
+assert.match(job, /async function deferVideoPublication/);
+assert.match(
+  job,
+  /status: "queued",[\s\S]*?Video purge is in progress; publication was safely deferred/,
+  "video queue claims must be released safely when a purge lock is active",
+);
+assert.match(
+  job,
+  /Could not verify the video purge lock; holding video publication/,
+  "a lock lookup failure must fail closed instead of publishing a video during cleanup",
+);
+
 console.log("Scheduled content publication row-integrity contracts passed.");
 
 const contentService = readFileSync("src/features/admin/services/content.ts", "utf8");
