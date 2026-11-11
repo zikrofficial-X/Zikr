@@ -70,6 +70,22 @@ export function isSameRunNowRequest(
 }
 
 /**
+ * Build an atomic JSONB compare-and-set filter for mutating a Run Now row.
+ * A worker/action may update the row only while it still contains the exact
+ * request object it originally wrote; this prevents a slower dispatch from
+ * overwriting a newer administrator request.
+ */
+export function buildRunNowRequestValueFilter(value: unknown): string | null {
+  const serializedValue = JSON.stringify(value);
+  if (typeof serializedValue !== "string") return null;
+
+  return [
+    "key=eq.video_automation_run_now",
+    `value=eq.${encodeURIComponent(serializedValue)}`,
+  ].join("&");
+}
+
+/**
  * Build a compare-and-set filter for consuming a Run Now row.
  *
  * updated_at alone is not sufficient: callers write millisecond timestamps, so
