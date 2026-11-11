@@ -75,12 +75,21 @@ for (const token of [
   "android.permission.RECORD_AUDIO",
   'android:autoVerify="true"',
   'android:host="zikrmediaofficial.vercel.app"',
-  'android:pathPrefix="/auth/callback"',
+  'android:pathPrefix="/kids"',
   'android:scheme="com.zikr.app"',
   'android:supportsRtl="true"',
 ]) {
   if (!androidManifest.includes(token)) failures.push(`Android manifest missing ${token}`);
 }
+if (/android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel.app"[\s\S]*?android:pathPrefix="\/auth\/callback"/.test(androidManifest)) {
+  failures.push("Android must leave the HTTPS OAuth callback in the browser for the server-side code exchange.");
+}
+for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {
+  if (!androidManifest.includes(\`android:pathPrefix="\${routePrefix}"\`)) {
+    failures.push(\`Android App Links missing public route prefix \${routePrefix}\`);
+  }
+}
+
 for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"]) {
   if (androidManifest.includes(permission)) failures.push(`Android manifest must not request unused broad storage permission ${permission}`);
 }
