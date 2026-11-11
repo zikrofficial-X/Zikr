@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { getKidsGeneratedVideoBySlug } from "@/features/videos/services/videos";
 import { pageMetadata } from "@/lib/site";
+import { resolveVideoMediaUrl } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
 const loadVideo = cache((slug: string) => getKidsGeneratedVideoBySlug(slug));
@@ -46,19 +47,10 @@ export default async function KidsVideoDetailPage({ params }: Props) {
   const publishedPlatforms = Array.isArray(socialPublication?.platforms)
     ? socialPublication.platforms.filter((platform): platform is string => typeof platform === "string")
     : [];
-  const candidate = [metadata.generatedVideoUrl, metadata.videoUrl, metadata.video_url, metadata.sourceVideoUrl]
-    .find((value): value is string => typeof value === "string" && value.trim().length > 0);
-  let mediaUrl: string | null = null;
-  if (candidate) {
-    try {
-      const parsed = new URL(candidate);
-      if (parsed.protocol === "https:" && parsed.hostname === "res.cloudinary.com" && parsed.pathname.includes("/video/upload/")) {
-        mediaUrl = parsed.toString();
-      }
-    } catch {
-      mediaUrl = null;
-    }
-  }
+  const mediaUrl = resolveVideoMediaUrl({
+    youtube_id: video.youtubeId,
+    metadata,
+  });
 
   return (
     <main>
