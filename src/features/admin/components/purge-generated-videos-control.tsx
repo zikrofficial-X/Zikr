@@ -181,7 +181,7 @@ export function PurgeGeneratedVideosControl({
             </p>
           </div>
           <p className="text-xs leading-6 text-amber-200/90">
-            حذف الملفات معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. خيار ذاكرة المشروع لا يحذف أي ملف أو عنصر Storage أو منشور خارجي.
+            حذف الملفات معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. خيار ذاكرة المشروع لا يحذف أي ملف أو عنصر Storage. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
