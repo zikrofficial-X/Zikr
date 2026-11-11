@@ -79,6 +79,12 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /JSON\.stringify\(comparableMediaAudit\(nextMetadata\.mediaAudit\)\)/);
   assert.match(auditScript, /const needsUpdate = mediaStateChanged \|\| mediaAuditChanged/);
   assert.match(auditScript, /result\.state === "unavailable"/);
+  assert.match(auditScript, /published_at: string \| null/);
+  assert.match(auditScript, /youtubePublishedVideoId: queueYouTubeId/);
+  assert.match(auditScript, /youtubePublishedUrl: "https:\/\/www\.youtube\.com\/watch\?v="/);
+  assert.match(auditScript, /mediaFallbackAvailable: true/);
+  assert.match(auditScript, /youtubePublicationsByRequest/);
+
 });
 
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
