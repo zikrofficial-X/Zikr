@@ -5,10 +5,7 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
-
-function getSafeNextPath(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/profile";
-}
+import { getSafeInternalPath } from "@/lib/safe-relative-path";
 
 function isNativeGoogleCallback(rawUrl: string): boolean {
   try {
@@ -20,7 +17,8 @@ function isNativeGoogleCallback(rawUrl: string): boolean {
     const isHttpsBridge =
       url.protocol === "https:" &&
       url.hostname === "zikrmediaofficial.vercel.app" &&
-      url.pathname === "/auth/callback";
+      url.pathname === "/auth/callback" &&
+      url.searchParams.get("native") === "1";
     return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;
@@ -65,7 +63,7 @@ export function NativeGoogleOAuthHandler() {
         return;
       }
 
-      const nextPath = getSafeNextPath(parsed.searchParams.get("next"));
+      const nextPath = getSafeInternalPath(parsed.searchParams.get("next"), window.location.origin);
       const flowId = parsed.searchParams.get("sb_flow_id")?.trim() || null;
       const oauthError = parsed.searchParams.get("error");
       const code = parsed.searchParams.get("code");
