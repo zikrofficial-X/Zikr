@@ -51,7 +51,7 @@ if (!generationDelete.includes("requireAdminStepUpApi('video.delete'")) failures
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
 const retryPublishStart = generation.search(/if\s*\(\s*action\s*===\s*["']retry_publish["']\s*\)/);
-const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
+const retryPublishEnd = generation.indexOf("DIRECT_VIDEO_STATUS_MUTATION_RETIRED", retryPublishStart);
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
   : "";
