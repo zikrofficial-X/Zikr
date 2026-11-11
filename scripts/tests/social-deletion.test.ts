@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { deleteSocialPlatformPost } from "../../src/features/social/services/social-deletion";
-import { canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
 
 const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
@@ -151,6 +151,8 @@ await assert.rejects(
 
 console.log("Social remote deletion tests passed.");
 
+assert.equal(LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, 50, "local queue cleanup must remain bounded to a small, auditable batch");
+
 const safeFailedQueueItem = {
   status: "failed",
   target_platforms: ["facebook", "youtube"],
@@ -249,7 +251,7 @@ assert.doesNotMatch(
   "the API must not expose an unbounded failed/partial queue delete",
 );
 const socialAdminClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
-assert.match(socialAdminClient, /localDeletable\.map\(item => item\.id\)/);
+assert.match(socialAdminClient, /localDeletable\.slice\(0, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT\)\.map\(item => item\.id\)/);
 assert.match(socialAdminClient, /retryable\.map\(item => item\.id\)/);
 assert.match(socialAdminClient, /حذف الفاشلة الآمنة/);
 assert.match(socialAdminClient, /confirmedNoRemotePublication = true/);
