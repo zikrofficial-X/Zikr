@@ -820,3 +820,56 @@ Read-only joins across videos, video_generation_requests, social_publish_queue, 
 - Code checkpoint: `cfc1f9c6b0b5881384dbe1441c414ba3643b0107`; PR #320: 89 commits, 26 changed files, 2,159 tree entries. CircleCI `config-guard` SUCCESS; `source-verify` and `application-build-docs` PENDING. No GitHub Quality Gate run is attached to this exact checkpoint. Earlier superseded-head failures were corrected, but current-head verification is still open.
 - CODEOWNERS owner `@Zikrmediaofficial` remains unavailable to request under the connected GitHub identity; no owner review is submitted. PR remains open and unmerged. No checks, approvals, or protection rules were bypassed.
 - Main-baseline repository audit remains open: 1,525 files are `REVIEW_REQUIRED`, modules closed remain 0. Manual owner review, Supabase migration apply, Apple Team ID configuration, YouTube reconnection attribution, and physical Android/iOS acceptance remain outstanding.
+
+
+## 10. Continuous closeout checkpoint — 2026-11-11
+
+**State: IN PROGRESS. PR #320's code checkpoint is green; no module is closed and no final repository certification is made.**
+
+### Exact source and CI evidence
+
+- Repository: `zikrofficial-X/Zikr`; active branch: `audit/zikr-kids-daily-priority-20261110`.
+- PR #320 base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; verified code head: `2216e178348441c83745d19ac7489bedcc9a5b8e`; 163 commits ahead, 0 behind, 68 changed paths.
+- GitHub Quality Gate run #2151 succeeded at that exact code head. The canonical `pnpm verify` path completed, including the full test suite, migration replay, Kids/video priority checks, information architecture, mobile readiness, mobile ads-free, security, lint, TypeScript, production build, and performance-index contract.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs` all succeeded at the same code head.
+- The later documentation reconciliation commit `d0c5694c8e4a7a10132c62f96cf77dd5d122148b` changes only `PROJECT_STATUS.md`; final CI must be checked again after all audit-document updates.
+- PR #320 is not merged. The branch has no Vercel preview deployment. Production remains READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+
+### Code-path repairs reviewed
+
+- Kids written-content generation now reserves one approved Kids source per UTC day, deduplicates reservations across article/social-only records, and fails closed when the Kids source or reservation query cannot be read.
+- The social publisher revalidates the live Kids source and age-appropriateness immediately before publication; public Kids written posts are built only from published, active, approved stories.
+- Terminal duplicate/cancelled video slots no longer consume the daily generation quota; the worker can allocate a new slot without overwriting an existing request.
+- Kids personal-data screening now rejects Egyptian colloquial private-message requests and English direct-message requests, with a non-contact educational false-positive test.
+- Kids video embeds accept only HTTPS YouTube embed URLs from the two approved hosts, reject watch/shorts/arbitrary URLs, and render in a sandboxed iframe.
+- Kids sitemap generation uses an explicit Arabic locale so a visitor's language cookie cannot change the public URL inventory.
+- OAuth profile synchronization preserves existing user-edited display/avatar fields; future YouTube OAuth connections record the authenticated admin actor.
+- Kids admin/API/RLS/share-counter, route inventory, mobile OAuth, ad-free native runtime, and CI architecture contracts were reviewed with their regression tests.
+
+### Read-only production evidence (no mutation)
+
+- Supabase project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY. Remote migrations end at `20261110170000`; the three Kids migrations in PR #320 are pending.
+- Production `kids_content` contains 65 published active rows: six age-approved stories, 20 published stories without the automation flag, 35 games, three quizzes, and one wudu record. All rows were active and published at query time.
+- The live public Kids policy still checks `published=true` without `is_active`; anonymous execution of `public.is_admin_user()` remains granted. No inactive/unpublished Kids rows were present, so no current row exposure was observed. The pending migrations remain required.
+- The existing YouTube OAuth row has `connected_by=NULL`; future connections will record the authenticated actor. No backfill or reconnection was performed.
+- Read-only automation settings show video automation enabled, batch size 10, daily target 20, and auto-publish enabled. The last-24-hour snapshot showed 17 completed video requests and three duplicate-cancelled requests. The social queue had 16 published items and eight future-scheduled items, with no due queued rows at query time.
+- Three Kids written posts were already published on 2026-11-10 before this repair. The new daily reservation logic prevents another automatic Kids slot on a day already reserved.
+- Active Supabase cron inventory showed prayer push, source-verified content, and cron-history cleanup jobs enabled; the legacy YouTube/Facebook sync job is disabled. Recent job-run history returned successful runs only. No cron job was triggered by this audit.
+- Vercel Production is READY on main. No preview deployment exists for this branch. Android App Links have a configured fingerprint; the iOS AASA app association is empty because Vercel has no `IOS_ASSOCIATED_DOMAIN_APP_ID`.
+
+### Inventory and manifest reconciliation
+
+- The recursive main-baseline manifest remains pinned to `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`: 2,154 entries, 1,662 files, 492 directories. It is intentionally not rewritten from an unmerged PR branch.
+- The branch delta contains 68 changed paths. This checkpoint reviewed their changed code paths, consumers, tests, and operational contracts; it does not convert the remaining main-baseline `REVIEW_REQUIRED` rows to complete.
+- The file-status matrix continues to record 1,525 `REVIEW_REQUIRED` rows and zero closed modules. Automated inventory coverage is not equivalent to manual source review.
+- The manifest must be regenerated against the post-merge main tree only after owner approval and merge.
+
+### Open owner/manual gates
+
+1. CODEOWNERS requires `@Zikrmediaofficial` review for CI, Supabase, auth/API/admin, environment, Android, and iOS changes. No owner review is recorded; the connected GitHub identity has no collaborator permission for that owner account. No review gate was bypassed.
+2. Apply the three pending Supabase migrations only through the approved production migration procedure after owner review.
+3. Supply the actual Apple Team ID + bundle App ID in `IOS_ASSOCIATED_DOMAIN_APP_ID`, redeploy, and verify iOS Universal Links/native OAuth on a physical device.
+4. Complete authenticated Admin role/permission/browser acceptance, native OAuth return-to-app, Android/iOS device acceptance, and release-signing checks.
+5. After owner approval and the migration step, merge safely, deploy to Vercel, verify deployment READY, and run public/admin production smoke checks.
+
+No content generation, Gemini request, social publication, production migration, storage/media deletion, Android release, merge, or deployment was triggered. The repository-wide audit remains open.
