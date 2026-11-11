@@ -97,9 +97,18 @@ for (const token of [
   "storyText:",
   "socialCaption:",
   "socialPublication:",
-  "SOCIAL_PLATFORMS",
+  "getConfirmedPublicKidsVideoSocialPlatforms",
+  "isPublicKidsVideoSocialQueueRow",
 ]) {
   if (!kidsFeedRoute.includes(token)) failures.push("Kids feed API must expose safe QA-approved video/story/social metadata: " + token);
+}
+const kidsSocialVisibility = read("src/features/social/services/kids-video-social-visibility.ts");
+for (const token of [
+  'const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"])',
+  "getConfirmedPublicKidsVideoSocialPlatforms",
+  "isPublicKidsVideoSocialQueueRow",
+]) {
+  if (!kidsSocialVisibility.includes(token)) failures.push("Kids feed social visibility must enforce the confirmed platform allowlist: " + token);
 }
 
 const kidsWorker = read("scripts/jobs/template-video-automation.ts");
