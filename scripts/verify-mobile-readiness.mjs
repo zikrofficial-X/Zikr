@@ -194,7 +194,6 @@ for (const token of [
   'new URL("/auth/callback", PRODUCTION_URL)',
   'url.searchParams.set("native", "1")',
   'url.searchParams.set("next", nextPath)',
-  'url.searchParams.set("native", "1")',
   "Browser.open({ url: data.url })",
 ]) {
   if (!googleButton.includes(token)) failures.push(`Google OAuth button missing HTTPS native callback bridge behavior: ${token}`);
