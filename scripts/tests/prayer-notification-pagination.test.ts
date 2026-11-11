@@ -64,7 +64,7 @@ await assert.rejects(
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 const staleRecoveryStart = worker.indexOf("async function recoverStaleClaims");
-const staleRecoveryEnd = worker.indexOf("async function claimDueDeliveries", staleRecoveryStart);
+const staleRecoveryEnd = worker.indexOf("async function getDueDeliveryCandidates", staleRecoveryStart);
 const staleRecovery = worker.slice(staleRecoveryStart, staleRecoveryEnd);
 assert.ok(staleRecoveryStart >= 0 && staleRecoveryEnd > staleRecoveryStart);
 assert.match(staleRecovery, /\.lt\("attempt_count", 3\)/,
