@@ -3,6 +3,20 @@ import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
 
+async function validateScheduledStoryForPublication(storyId: string): Promise<void> {
+  const rows = await supabaseServerAdminRequest<Array<{
+    id: string;
+    is_approved: boolean | null;
+    user_id: string | null;
+  }>>(
+    "/rest/v1/stories?id=eq." + encodeURIComponent(storyId) + "&select=id,is_approved,user_id&limit=1",
+  );
+  const story = rows?.[0];
+  if (!story || story.is_approved !== true || story.user_id !== null) {
+    throw new Error("Scheduled story is no longer an approved public story; publication was blocked.");
+  }
+}
+
 async function validateInternalVideoForPublication(videoId: string): Promise<void> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
@@ -51,10 +65,22 @@ export async function processScheduledContent(limit = 20) {
       { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", updated_at: now }) },
     );
     if (!claimed?.length) continue;
+    let contentPublished = false;
     try {
       if (item.content_table === "videos") {
         await validateInternalVideoForPublication(item.content_id);
       }
+      if (item.content_table === "stories") {
+        await validateScheduledStoryForPublication(item.content_id);
+      }
+
+      // Recheck the claim immediately before touching content. An admin may
+      // cancel a processing schedule while validation is running.
+      const stillProcessing = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&select=id&limit=1`,
+      );
+      if (!stillProcessing?.length) continue;
+
       const updatedContent = await supabaseServerAdminRequest<Array<{ id: string }>>(
         `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id`,
         {
@@ -66,17 +92,65 @@ export async function processScheduledContent(limit = 20) {
       if (!updatedContent?.some(row => row.id === item.content_id)) {
         throw new Error("Scheduled content record was not found; the queue item was not marked published.");
       }
-      await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "published", published_at: now, updated_at: now }),
-      });
+      contentPublished = true;
+
+      const completed = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&select=id`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ status: "published", published_at: now, updated_at: now }),
+        },
+      );
+      if (!completed?.some(row => row.id === item.id)) {
+        const currentQueue = await supabaseServerAdminRequest<Array<{ status: string }>>(
+          `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
+        ).catch(() => []);
+        if (currentQueue?.[0]?.status === "cancelled") {
+          await supabaseServerAdminRequest(
+            `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.true`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+              body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
+            },
+          );
+          contentPublished = false;
+          continue;
+        }
+        throw new Error("Scheduled content lost its processing claim before publication was committed.");
+      }
+
+      contentPublished = false;
       published += 1;
     } catch (error) {
-      await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ status: "failed", error_message: error instanceof Error ? error.message.slice(0, 500) : "unknown", updated_at: now }),
-      }).catch(() => {});
+      if (contentPublished) {
+        const currentQueue = await supabaseServerAdminRequest<Array<{ status: string }>>(
+          `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
+        ).catch(() => []);
+        if (currentQueue?.[0]?.status !== "published") {
+          await supabaseServerAdminRequest(
+            `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.true`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+              body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
+            },
+          ).catch(() => {});
+        }
+      }
+      await supabaseServerAdminRequest(
+        `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: "failed",
+            error_message: error instanceof Error ? error.message.slice(0, 500) : "unknown",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      ).catch(() => {});
     }
   }
   return { claimed: rows.length, published };

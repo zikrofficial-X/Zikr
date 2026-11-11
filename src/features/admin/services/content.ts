@@ -238,7 +238,43 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const filter = `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
+  const encodedId = encodeURIComponent(id);
+
+  // An explicit unpublish must also revoke any pending or in-flight schedule.
+  // Cancel first so a queue-service failure cannot leave a worker free to republish.
+  if (!published) {
+    const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
+      `/rest/v1/${table}?select=id,updated_at&id=eq.${encodedId}&limit=1`,
+      { method: "GET" },
+    );
+    if (!current?.[0]) throw new Error("العنصر غير موجود.");
+    if (optimisticUpdatedAt && String(current[0].updated_at) !== optimisticUpdatedAt) {
+      throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+    }
+
+    try {
+      await supabaseServerAdminRequest(
+        `/rest/v1/content_publish_queue?content_table=eq.${table}&content_id=eq.${encodedId}&status=in.(queued,processing)`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            status: "cancelled",
+            error_message: "Cancelled because the content was explicitly unpublished.",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+    } catch (error) {
+      console.error("[admin/content] failed to cancel scheduled publication:", error);
+      throw new Error("تعذر إلغاء موعد النشر المجدول؛ لم يتم تغيير حالة المحتوى. أعد المحاولة.");
+    }
+  }
+
+  const filter = `/rest/v1/${table}?id=eq.${encodedId}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
     filter,
     {
