@@ -191,4 +191,7 @@ assert.ok(reminderTypesStart >= 0 && reminderTypesEnd > reminderTypesStart);
 assert.match(supabaseTypes.slice(reminderTypesStart, reminderTypesEnd), /timezone: string/);
 assert.match(supabaseTypes.slice(reminderTypesStart, reminderTypesEnd), /timezone\?: string/);
 
+assert.match(reminderMigration, /security invoker\s+set search_path = ''/i, "the scheduler RPC must run with service-role invoker privileges and an empty search path");
+assert.doesNotMatch(reminderMigration, /security definer/i, "the service-only reminder scheduler must not use definer privileges");
+
 console.log("Prayer notification subscription pagination contracts passed.");
