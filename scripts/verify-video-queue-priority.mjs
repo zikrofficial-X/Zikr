@@ -89,7 +89,7 @@ assert(
 );
 assert(
   postClaimWorker.includes("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });") &&
-    postClaimWorker.includes("await patchProcessingRequestWithLease({ status: \"completed\"") &&
+    postClaimWorker.includes("await patchProcessingRequestWithLease({\n        status: \"completed\",") &&
     postClaimWorker.includes("await patchProcessingRequestWithLease({\n          status: terminalStatus,"),
   "hash claim, completion and failure updates are fenced by the processing lease",
 );
