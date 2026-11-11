@@ -20,6 +20,27 @@ export function buildDueSocialQueueClaimFilter(
   return `id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(status)}&or=(scheduled_at.is.null,scheduled_at.lte.${encodeURIComponent(now)})`;
 }
 
+/**
+ * Build an atomic lease filter for a queue worker. A worker may advance a row
+ * only while both its status and the exact updated_at version still match the
+ * claim it received; stale recovery or a newer worker therefore wins safely.
+ */
+export function buildSocialPublishLeaseFilter(
+  id: string,
+  expectedStatus: string,
+  expectedUpdatedAt: string,
+): string {
+  if (!id.trim()) throw new Error("Social publish lease filter requires a queue item ID.");
+  if (!Number.isFinite(Date.parse(expectedUpdatedAt))) {
+    throw new Error("Social publish lease filter requires a valid updated_at timestamp.");
+  }
+  return [
+    `id=eq.${encodeURIComponent(id)}`,
+    `status=eq.${encodeURIComponent(expectedStatus)}`,
+    `updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
+  ].join("&");
+}
+
 /** Merge bounded query pages while preserving priority and removing duplicate queue IDs. */
 export function mergeUniqueSocialPublishCandidates<
   const Batches extends readonly (readonly { id: string }[])[]
