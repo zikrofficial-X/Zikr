@@ -295,11 +295,19 @@ export async function processScheduledContent(limit = 20) {
       published += 1;
     } catch (error) {
       if (contentPublished) {
-        const currentQueue = await supabaseServerAdminRequest<Array<{ status: string }>>(
-          `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
-        ).catch(() => []);
-        if (currentQueue?.[0]?.status !== "published") {
+        let currentQueue: Array<{ status: string }> | null = null;
+        try {
+          currentQueue = await supabaseServerAdminRequest<Array<{ status: string }>>(
+            `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
+          );
+        } catch (queueStateError) {
+          console.error("[content-publishing] Could not verify queue state; skipping automatic rollback to avoid undoing a committed publication.", queueStateError);
+        }
+        const queueStatus = currentQueue?.[0]?.status;
+        if (queueStatus && queueStatus !== "published") {
           await rollbackScheduledContentPublication(item, contentPublishedUpdatedAt).catch(() => {});
+        } else if (!queueStatus) {
+          console.error("[content-publishing] Queue state is unavailable; leaving content unchanged for manual reconciliation.");
         }
       }
       await supabaseServerAdminRequest(
