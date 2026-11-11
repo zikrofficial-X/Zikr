@@ -54,7 +54,7 @@ assert.match(
 );
 assert.match(integrationSetup, /CREATE TABLE public\.kids_game_questions/);
 assert.match(integrationSetup, /CREATE POLICY kids_game_questions_admin_all/);
-assert.match(integrationTest, /kids_game_questions\) <> 1/);
+assert.ok(integrationTest.includes("has_table_privilege('anon', 'public.kids_game_questions', 'SELECT')"));
 assert.match(integrationTest, /kids_game_questions\) <> 0/);
 assert.match(integrationTest, /kids_game_questions\) <> 4/);
 assert.match(integrationRunner, /20261111170000_kids_game_questions_require_published_parent\.sql/);
