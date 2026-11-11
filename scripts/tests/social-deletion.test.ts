@@ -236,7 +236,7 @@ assert.equal(
 const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
-assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(item\.updated_at\?\.trim\(\) \?\? ""\)\}/);
+assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
 assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
 assert.match(
   socialAdminRoute,
