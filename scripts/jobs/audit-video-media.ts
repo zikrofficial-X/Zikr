@@ -37,7 +37,7 @@ function validYouTubeId(value: unknown): string | null {
 }
 
 function youtubeIdFromQueue(row: SocialQueueRow): string | null {
-  if (row.status !== "published" || !row.content_id || !isVideoContentType(row.content_type)) return null;
+  if (!["published", "partial"].includes(row.status) || !row.content_id || !isVideoContentType(row.content_type)) return null;
   const metadata = asRecord(row.metadata);
   const platformResults = asRecord(metadata.platformResults);
   const youtube = asRecord(platformResults.youtube);
@@ -213,7 +213,7 @@ async function main() {
       "/rest/v1/videos?published=eq.true&metadata->>generator=eq.zikr_internal_video_factory&select=id,slug,title,published,youtube_id,thumbnail_url,metadata,updated_at&order=created_at.asc&limit=1000",
     ),
     supabaseServerAdminRequest<SocialQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=2000",
+      "/rest/v1/social_publish_queue?status=in.(published,partial)&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=2000",
     ),
   ]);
   const youtubePublicationsByRequest = new Map<string, { id: string; publishedAt: string | null }>();
