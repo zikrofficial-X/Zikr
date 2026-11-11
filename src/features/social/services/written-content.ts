@@ -34,7 +34,7 @@ export function parseWrittenGenerationRequest(value: unknown):
 export type WrittenCategory = "auto" | "quran" | "hadith" | "dua" | "adhkar" | "story" | "prophets" | "companions" | "knowledge" | "kids";
 export type WrittenSourceKind = Exclude<WrittenCategory, "auto" | "kids"> | "kids_story";
 export type WrittenContentSource = { kind: WrittenSourceKind; id:string; title:string; sourceText:string; reference:string; publicPath:string; categoryLabel:string; sourceVerified:boolean; quoteRequired:boolean; ageGroup?: string };
-export type WrittenPostDraft = { eligible?:boolean; title:string; hook:string; reflection:string; question?:string };
+export type WrittenPostDraft = { eligible:boolean; title:string; hook:string; reflection:string; question?:string | null };
 export function normalizeWrittenCategory(value:string):WrittenCategory { const v=value.trim().toLowerCase(); return (["auto","quran","hadith","dua","adhkar","story","prophets","companions","knowledge","kids"] as string[]).includes(v)?v as WrittenCategory:"auto"; }
 export function createWrittenAutomationKey(kind:string,id:string){return `written-v1:${kind}:${id}`;}
 export function chooseWrittenSourceKind(
@@ -92,8 +92,10 @@ export function containsKidsPersonalDataSolicitation(value: string): boolean {
   asksInEnglish.test(normalized) || privateEnglishContact.test(normalized);
 }
 
-export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?:string}{
- if(d.eligible===false)return {ok:false,reason:"source_insufficient"};
+export function validateWrittenPostDraft(value:unknown):{ok:boolean;reason?:string}{
+ if(!value||typeof value!=="object"||Array.isArray(value))return {ok:false,reason:"invalid_body"};
+ const d=value as Record<string,unknown>;
+ if(d.eligible!==true)return {ok:false,reason:d.eligible===false?"source_insufficient":"eligibility_required"};
  const title=typeof d.title==="string"?d.title.trim():"",hook=typeof d.hook==="string"?d.hook.trim():"",reflection=typeof d.reflection==="string"?d.reflection.trim():"";
  if(title.length<8||title.length>90)return {ok:false,reason:"title_length"};
  if(hook.length<12||hook.length>260)return {ok:false,reason:"hook_length"};
@@ -114,6 +116,7 @@ export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?
  if(/(?:قال\s+(?:رسول\s+الله|النبي|تعالى)|رواه|روى\s+\S+|حديث\s+قدسي|فتوى\s+قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
  return {ok:true};
 }
+
 export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDraft){
  const quote=source.quoteRequired?`«${source.sourceText.trim()}»`:draft.reflection.trim();
  const reflection=source.quoteRequired?draft.reflection.trim():"";
