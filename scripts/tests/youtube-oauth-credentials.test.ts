@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
 import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
 
@@ -56,6 +57,43 @@ const requiredUploadScopes = [
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
 assert.equal(hasYouTubeUploadScopes(requiredUploadScopes), true, "publishing requires upload plus read and analytics scopes");
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
+    content: { audience: "kids", aiProvider: "template" },
+    provider: "template",
+    queueMetadata: { audience: "general" },
+  }),
+  { selfDeclaredMadeForKids: true, containsSyntheticMedia: false },
+  "the canonical Kids marker must win over a conflicting queue marker",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
+    content: {},
+    provider: "hf_wan",
+    queueMetadata: { audience: "kids" },
+  }),
+  { selfDeclaredMadeForKids: true, containsSyntheticMedia: true },
+  "legacy Kids content must retain its queue audience and AI-provider disclosure",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
+    content: { audience: "general", aiProvider: "template" },
+    provider: "template",
+    queueMetadata: { audience: "general" },
+  }),
+  { selfDeclaredMadeForKids: false, containsSyntheticMedia: false },
+  "verified general template content must not be mislabeled as synthetic",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
+    content: { audience: "general" },
+    provider: null,
+    queueMetadata: {},
+  }),
+  { selfDeclaredMadeForKids: false, containsSyntheticMedia: true },
+  "unknown provider provenance must be disclosed conservatively",
+);
+
 assert.equal(hasYouTubeUploadScopes(requiredUploadScopes.filter((scope) => scope !== "https://www.googleapis.com/auth/youtube.upload")), false, "read-only credentials must not be accepted for publishing");
 assert.equal(hasYouTubeUploadScopes(requiredUploadScopes.filter((scope) => scope !== "https://www.googleapis.com/auth/yt-analytics.readonly")), false, "publishing credential must retain the full verified scope contract");
 
@@ -108,6 +146,9 @@ const socialPublisherSource = readFileSync(
   "utf8",
 );
 assert.match(socialPublisherSource, /getYouTubeUploadRefreshToken/);
+assert.match(socialPublisherSource, /select=content,provider/);
+assert.match(socialPublisherSource, /queueMetadata: item\.metadata/);
+
 assert.doesNotMatch(socialPublisherSource, /getYouTubeRefreshToken/, "publishing must not use the read-only analytics credential getter");
 
 const environmentExample = readFileSync(
