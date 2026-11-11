@@ -10,7 +10,9 @@ import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
 import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
+import { mergeUniqueSocialPublishCandidates } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
@@ -250,8 +252,7 @@ export async function getPendingSocialPublishItems(
   const publishAfterValue = process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z";
   const publishAfterDate = new Date(publishAfterValue);
   if (!Number.isFinite(publishAfterDate.getTime())) {
-    console.error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows.");
-    return [];
+    throw new Error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows.");
   }
   const createdSince = encodeURIComponent(publishAfterDate.toISOString());
   const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
@@ -261,12 +262,24 @@ export async function getPendingSocialPublishItems(
   const maxAttemptsFor = (metadata: Record<string, unknown> | null) => socialMaxAttempts(metadata);
   const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"];
   try {
-    const batches = await Promise.all(statusPriority.map((status) =>
+    const select = "id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at";
+    const dueAndRecent = `or=(scheduled_at.is.null,scheduled_at.lte.${now})&created_at=gte.${createdSince}&select=${select}&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`;
+    const [batches, writtenCandidates] = await Promise.all([
+      Promise.all(statusPriority.map((status) =>
+        supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+          `/rest/v1/social_publish_queue?status=eq.${status}&${dueAndRecent}`,
+        ),
+      )),
+      // A dedicated written-post window prevents a large held-video backlog
+      // from hiding every written post beyond the general candidate limit.
       supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?status=eq.${status}&or=(scheduled_at.is.null,scheduled_at.lte.${now})&created_at=gte.${createdSince}&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`,
+        `/rest/v1/social_publish_queue?status=in.(${statusPriority.join(",")})&content_type=eq.written_post&${dueAndRecent}`,
       ),
-    ));
-    const candidates = batches.flatMap((batch) => Array.isArray(batch) ? batch : []);
+    ]);
+    const candidates = mergeUniqueSocialPublishCandidates(
+      ...batches.map((batch) => Array.isArray(batch) ? batch : []),
+      Array.isArray(writtenCandidates) ? writtenCandidates : [],
+    );
     const runnableCandidates = candidates.filter((item) =>
       item.target_platforms.some((platform) =>
         canAttemptSocialPlatform({
@@ -286,43 +299,57 @@ export async function getPendingSocialPublishItems(
     });
   } catch (error) {
     console.error("[social-publishing] Failed to fetch queue:", error);
-    return [];
+    throw new Error("Failed to fetch social publish queue candidates; refusing to report an empty successful batch.");
   }
 }
+
 async function recoverStaleSocialPublishItems() {
   const staleBefore = encodeURIComponent(new Date(Date.now() - 20 * 60_000).toISOString());
   const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
   if (!Number.isFinite(cutoff.getTime())) {
-    console.error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; stale recovery is disabled.");
-    return;
+    throw new Error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; stale recovery is disabled.");
   }
   const createdSince = encodeURIComponent(cutoff.toISOString());
   try {
     const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&created_at=gte.${createdSince}&select=id,metadata&limit=50`,
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&created_at=gte.${createdSince}&select=id,metadata,target_platforms&order=updated_at.asc,id.asc&limit=50`,
     );
+    let recovered = 0;
     for (const item of stale ?? []) {
       const metadata = item.metadata ?? {};
+      const recoveredAt = new Date().toISOString();
+      const recovery = buildStaleSocialPublishRecoveryMetadata(metadata, item.target_platforms ?? [], recoveredAt);
+      const manualReconciliationPlatforms = getManualReconciliationPlatforms(recovery.metadata);
       const attempts = Number(metadata.attempts ?? 0) + 1;
       const maxAttempts = socialMaxAttempts(metadata);
-      const terminal = attempts >= maxAttempts;
-      await supabaseServerAdminRequest(
+      const manualReconciliationRequired = manualReconciliationPlatforms.length > 0;
+      const terminal = manualReconciliationRequired || attempts >= maxAttempts;
+      const nextStatus: SocialQueueStatus = manualReconciliationRequired
+        ? recovery.hasPriorSuccess ? "partial" : "failed"
+        : terminal ? "failed" : "partial";
+      const errorMessage = manualReconciliationRequired
+        ? "Manual reconciliation required for uncertain provider outcome(s): " + manualReconciliationPlatforms.join(", ")
+        : "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.";
+      const updated = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
         `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
           body: JSON.stringify({
-            status: terminal ? "failed" : "partial",
+            status: nextStatus,
             scheduled_at: terminal ? null : new Date(Date.now() + socialRetryDelayMinutes(attempts, item.id) * 60_000).toISOString(),
-            error_message: "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.",
-            metadata: { ...metadata, attempts, maxAttempts, staleRecovery: true },
-            updated_at: new Date().toISOString(),
+            error_message: errorMessage,
+            metadata: { ...recovery.metadata, attempts, maxAttempts },
+            updated_at: recoveredAt,
           }),
         },
       );
+      if (Array.isArray(updated) && updated[0]) recovered += 1;
     }
+    if (recovered > 0) console.warn("[social-publishing] Recovered stale processing rows:", recovered);
   } catch (error) {
     console.error("[social-publishing] Failed to recover stale items:", error);
+    throw new Error("Failed to recover stale social publish items; refusing to continue with an incomplete queue state.");
   }
 }
 
@@ -1086,6 +1113,24 @@ export async function processSocialPublishItem(
     return blockedFacebook ? "auth_blocked" : "failed";
   }
 
+  const inFlightStartedAt = new Date().toISOString();
+  const inFlightMetadata = buildSocialPublishInFlightMetadata(
+    previousMetadata,
+    runnablePlatforms,
+    inFlightStartedAt,
+  );
+  const inFlightClaim = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+    `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ metadata: inFlightMetadata, updated_at: inFlightStartedAt }),
+    },
+  );
+  if (!Array.isArray(inFlightClaim) || !inFlightClaim[0]) {
+    throw new Error("Social publish claim was lost before the provider request; no external publish call was made.");
+  }
+
   const results = await Promise.all(runnablePlatforms.map(platform => publishPlatform(item, platform)));
   const mergedResults: Record<string, PlatformResult> = {};
   for (const platform of platforms) {
@@ -1173,8 +1218,15 @@ export async function processSocialPublishItem(
   const permanentFailurePlatforms = operationalFailures
     .filter(failure => isPermanentSocialFailure(failure.error))
     .map(failure => failure.platform);
+  const attemptCompletedAt = new Date().toISOString();
+  const completedMetadata = clearSocialPublishInFlightMetadata(
+    previousMetadata,
+    runnablePlatforms,
+    inFlightStartedAt,
+    attemptCompletedAt,
+  );
   const publishMetadata = {
-    ...previousMetadata,
+    ...completedMetadata,
     attempts,
     maxAttempts,
     platformAttempts: maxAttemptsByPlatform,
