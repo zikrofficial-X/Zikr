@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { sanitizeInternalPath } from "../../src/lib/safe-redirect";
-import { isV0PreviewHost } from "../../src/lib/site";
+import { getCanonicalAuthBaseUrl } from "../../src/lib/auth-enhanced";
+import { PRODUCTION_URL, isV0PreviewHost } from "../../src/lib/site";
 
 assert.equal(sanitizeInternalPath("/profile"), "/profile");
 assert.equal(sanitizeInternalPath("/admin?tab=content"), "/admin?tab=content");
@@ -26,6 +27,8 @@ assert.equal(sanitizeInternalPath({}), "/profile");
 const originalRedirect = process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
 const originalVercelEnv = process.env.VERCEL_ENV;
 const originalPublicVercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV;
+const originalVercelUrl = process.env.VERCEL_URL;
+const originalVercelBranchUrl = process.env.VERCEL_BRANCH_URL;
 try {
   process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = "https://preview.zikr.v0.app/auth/callback";
   process.env.VERCEL_ENV = "preview";
@@ -36,6 +39,14 @@ try {
 
   process.env.VERCEL_ENV = "production";
   assert.equal(isV0PreviewHost("preview.zikr.v0.app"), false);
+  process.env.VERCEL_ENV = "preview";
+  process.env.VERCEL_URL = "zikr-pr-320-preview.vercel.app";
+  process.env.VERCEL_BRANCH_URL = "zikr-git-audit-branch-zikr3.vercel.app";
+  assert.equal(getCanonicalAuthBaseUrl("https://zikr-pr-320-preview.vercel.app"), "https://zikr-pr-320-preview.vercel.app", "trusted deployment preview must keep its own PKCE origin");
+  assert.equal(getCanonicalAuthBaseUrl("https://zikr-git-audit-branch-zikr3.vercel.app"), "https://zikr-git-audit-branch-zikr3.vercel.app", "trusted branch preview must keep its own PKCE origin");
+  assert.equal(getCanonicalAuthBaseUrl("https://attacker.vercel.app"), PRODUCTION_URL, "untrusted Vercel hosts must still canonicalize to production");
+  process.env.VERCEL_ENV = "production";
+  assert.equal(getCanonicalAuthBaseUrl("https://zikr-pr-320-preview.vercel.app"), PRODUCTION_URL, "production must never preserve a preview origin");
 } finally {
   if (originalRedirect === undefined) delete process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
   else process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = originalRedirect;
@@ -43,6 +54,10 @@ try {
   else process.env.VERCEL_ENV = originalVercelEnv;
   if (originalPublicVercelEnv === undefined) delete process.env.NEXT_PUBLIC_VERCEL_ENV;
   else process.env.NEXT_PUBLIC_VERCEL_ENV = originalPublicVercelEnv;
+  if (originalVercelUrl === undefined) delete process.env.VERCEL_URL;
+  else process.env.VERCEL_URL = originalVercelUrl;
+  if (originalVercelBranchUrl === undefined) delete process.env.VERCEL_BRANCH_URL;
+  else process.env.VERCEL_BRANCH_URL = originalVercelBranchUrl;
 }
 
 console.log("Safe auth redirect and preview-origin tests passed.");
