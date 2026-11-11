@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getBlockedKidsRoutes } from './lib/offline-kids-route-safety.mjs';
+import { getPublishedParentScope, isParentScopedOfflineDataset } from './lib/offline-export-parent-scope.mjs';
 
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
@@ -117,12 +118,21 @@ try {
 let blockedKidsRoutes = new Set();
 const exported = [];
 for (const [dataset, table, ...filters] of datasets) {
-  let rows = await fetchAll(table, filters);
+  const parentScope = getPublishedParentScope(dataset, exported);
+  let rows = parentScope?.hasParents === false
+    ? []
+    : await fetchAll(table, parentScope?.filter ? [...filters, parentScope.filter] : filters);
   if (dataset === 'kids') {
     blockedKidsRoutes = getBlockedKidsRoutes(previousKidsRows, rows, previous.routes);
     rows = rows.filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true));
   }
-  const minimum = minimumRecords[dataset] ?? 0;
+  const configuredMinimum = minimumRecords[dataset] ?? 0;
+  const minimum = isParentScopedOfflineDataset(dataset) ? 0 : configuredMinimum;
+  if (isParentScopedOfflineDataset(dataset) && rows.length < configuredMinimum) {
+    console.warn(
+      `[offline-export] ${dataset} has ${rows.length} rows after filtering to published parents; exporting the complete public subset instead of retaining hidden child records.`,
+    );
+  }
   let stale = false;
   let source = 'supabase';
 
