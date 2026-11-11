@@ -9,6 +9,7 @@ const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
 const authActions = read("src/features/auth/actions.ts");
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
+const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const iosPlist = read("ios/App/App/Info.plist");
@@ -59,4 +60,9 @@ assert.ok(proxy.includes('request.headers.get("host")'), "Canonical-host logic m
 assert.ok(proxy.includes('process.env.VERCEL_ENV === "production"'), "Preview deployments must not be redirected to production");
 assert.ok(proxy.includes("PRODUCTION_URL"), "Production canonical host must come from the single source of truth");
 
+assert.match(nativeBridge, /addListener\?\.\("appUrlOpen"/);
+assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
+assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/);
+assert.match(nativeBridge, /window\.location\.assign\(path\)/);
+assert.match(androidManifest, /android:scheme="com\.zikr\.app"/);
 console.log("Native Google OAuth and canonical-host contracts passed.");
