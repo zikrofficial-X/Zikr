@@ -752,6 +752,13 @@ async function deliverDue(
         scheduledAt: delivery.scheduled_at,
       });
       const isPrayer = delivery.notification_kind === 'prayer';
+      // Foreground/local reminders use stable tags. Reuse those tags for server
+      // push notifications so an open app replaces rather than duplicates them.
+      const notificationTag = isPrayer
+        ? topic
+        : delivery.notification_kind === "dhikr"
+          ? "dhikr-reminder"
+          : "salawat-reminder";
       await applicationServer
         .subscribe({
           endpoint: subscription.endpoint,
@@ -762,7 +769,7 @@ async function deliverDue(
             title: isPrayer ? `حان وقت صلاة ${PRAYER_NAMES_AR[delivery.prayer_name] ?? delivery.prayer_name}` : delivery.notification_kind === 'dhikr' ? 'تذكير بالذكر' : 'تذكير بالصلاة على النبي',
             body: isPrayer ? 'حافظ على صلاتك' : delivery.notification_text ?? (delivery.notification_kind === 'dhikr' ? 'سبحان الله وبحمده' : 'اللهم صل وسلم على نبينا محمد'),
             url: isPrayer ? '/prayer-times' : '/adhkar',
-            tag: topic,
+            tag: notificationTag,
           }),
           { urgency: Urgency.High, ttl: 300, topic }
         );
