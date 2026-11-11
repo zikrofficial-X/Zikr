@@ -67,8 +67,14 @@ const YOUTUBE_UPLOAD_SCOPES = [
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ] as const;
 
+const YOUTUBE_DELETE_CAPABLE_SCOPES = new Set([
+  "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+]);
+
 export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
-  return YOUTUBE_UPLOAD_SCOPES.every((scope) => scopes.includes(scope));
+  return YOUTUBE_UPLOAD_SCOPES.every((scope) => scopes.includes(scope)) &&
+    !scopes.some((scope) => YOUTUBE_DELETE_CAPABLE_SCOPES.has(scope));
 }
 
 async function readStoredYouTubeUploadRefreshToken(): Promise<string | null> {
@@ -99,6 +105,9 @@ export async function saveYouTubeOAuthCredential(
 ): Promise<void> {
   if (!connectedBy.trim()) {
     throw new Error("YouTube OAuth credentials require the authenticated admin ID.");
+  }
+  if (!hasYouTubeUploadScopes(credential.grantedScopes)) {
+    throw new Error("YouTube OAuth credential must include upload/read scopes and exclude delete-capable scopes.");
   }
   const now = new Date().toISOString();
   await supabaseServerAdminRequest(

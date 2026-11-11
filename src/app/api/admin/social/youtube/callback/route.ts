@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { getServerEnv } from "@/lib/env";
-import { saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
+import { hasYouTubeUploadScopes, saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -71,7 +71,7 @@ function matchesState(expected: string, actual: string) {
 function scopeFlags(scopes: string[]) {
   const set = new Set(scopes);
   return {
-    canUpload: set.has(YOUTUBE_UPLOAD_SCOPE),
+    canUpload: hasYouTubeUploadScopes(scopes),
     canReadChannel: set.has(YOUTUBE_READ_SCOPE),
     canReadAnalytics: set.has(ANALYTICS_SCOPE),
   };

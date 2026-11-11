@@ -243,6 +243,7 @@ if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
   failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and leave dispatch to the scheduled publisher");
 }
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
+    !youtubeCallback.includes("hasYouTubeUploadScopes(scopes)") ||
     !youtubeCallback.includes("canUpload") ||
     !youtubeCallback.includes("flags.canUpload") ||
     !youtubeCallback.includes('permission: "social.manage"') ||

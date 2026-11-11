@@ -57,6 +57,16 @@ const requiredUploadScopes = [
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
 assert.equal(hasYouTubeUploadScopes(requiredUploadScopes), true, "publishing requires upload plus read and analytics scopes");
+assert.equal(
+  hasYouTubeUploadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtube"]),
+  false,
+  "a full YouTube management scope must not be accepted for upload-only publishing",
+);
+assert.equal(
+  hasYouTubeUploadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtube.force-ssl"]),
+  false,
+  "the delete-capable YouTube force-SSL scope must never be accepted for publishing",
+);
 assert.deepEqual(
   resolveYouTubeVideoDisclosure({
     content: { audience: "kids", aiProvider: "template" },
@@ -127,12 +137,15 @@ assert.equal(
   2,
   "analytics and publishing credential reads must load the provider channel ID",
 );
+assert.match(credentialSource, /YOUTUBE_DELETE_CAPABLE_SCOPES/, "upload credentials must explicitly reject delete-capable YouTube scopes");
+assert.match(credentialSource, /if \(!hasYouTubeUploadScopes\(credential\.grantedScopes\)\)/, "the credential store must reject over-privileged scopes before persistence");
 assert.match(credentialSource, /connectedBy: string/, "saving a YouTube OAuth credential must require an authenticated actor");
 assert.ok(credentialSource.includes("connected_by: connectedBy"), "the credential row must retain the authenticated actor ID");
 const youtubeCallbackSource = readFileSync(
   new URL("../../src/app/api/admin/social/youtube/callback/route.ts", import.meta.url),
   "utf8",
 );
+assert.match(youtubeCallbackSource, /hasYouTubeUploadScopes\(scopes\)/, "OAuth callback must reject a grant that includes delete-capable scopes");
 const credentialSaveStart = youtubeCallbackSource.indexOf("await saveYouTubeOAuthCredential(");
 const credentialSaveEnd = youtubeCallbackSource.indexOf(");", credentialSaveStart);
 assert.ok(credentialSaveStart >= 0 && credentialSaveEnd > credentialSaveStart, "YouTube OAuth callback must persist its verified credential");
