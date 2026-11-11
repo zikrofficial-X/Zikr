@@ -6,7 +6,7 @@ SELECT public.admin_update_user_role(
 );
 RESET ROLE;
 
-DO $
+DO $role_update_result$
 DECLARE
   v_profile_role text;
   v_assignment_role text;
@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'role update did not append exactly one audit event';
   END IF;
 END;
-$;
+$role_update_result$;
 
 -- Reassign a different user's delegated role from a second super administrator.
 -- The assignment's created_by value must continue to identify its original creator.
