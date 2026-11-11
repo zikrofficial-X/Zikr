@@ -169,6 +169,15 @@ assert.equal(
   "The newest two published local release versions stay available after an upgrade",
 );
 
+const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage.mjs", import.meta.url), "utf8");
+const inventoryStart = storageRetentionSource.indexOf("const [queueRows, requestRows, videoFiles, androidRoot]");
+const inventoryEnd = storageRetentionSource.indexOf("const requestById =", inventoryStart);
+const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
+  ? storageRetentionSource.slice(inventoryStart, inventoryEnd)
+  : "";
+assert.ok(inventoryBlock.includes("collectPaginatedRows"), "queue and request inventories must use complete paginated scans");
+assert.equal(inventoryBlock.includes('.not("video_url", "is", null)'), false, "all queue/request backup references must be inventoried, including rows without a current playback URL");
+
 const retentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");
 assert.ok(retentionWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'"), "destructive cleanup must require typed owner confirmation");
 assert.ok(retentionWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true"), "destructive cleanup must require manual dispatch");

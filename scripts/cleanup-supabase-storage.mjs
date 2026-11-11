@@ -631,7 +631,6 @@ async function main() {
     collectPaginatedRows(async (offset, end) => {
       const { data, error } = await client.from("video_generation_requests")
         .select("id,status,video_url,content")
-        .not("video_url", "is", null)
         .order("id", { ascending: true })
         .range(offset, end);
       if (error) throw new Error(`Cannot read video generation requests: ${error.message}`);
