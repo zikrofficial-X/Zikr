@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 
 const RuntimeEffects = dynamic(
   () => import('./runtime-effects').then((module) => module.RuntimeEffects),
@@ -21,10 +22,7 @@ export function DeferredRuntime() {
   useEffect(() => {
     if (ready) return;
 
-    const capacitor = (window as Window & {
-      Capacitor?: { isNativePlatform?: () => boolean };
-    }).Capacitor;
-    if (capacitor?.isNativePlatform?.()) {
+    if (Capacitor.isNativePlatform()) {
       // Native LocalNotifications must be initialized immediately. Delaying
       // this runtime leaves Android without scheduled alarms until the first
       // tap or the web-only deferred timeout expires.

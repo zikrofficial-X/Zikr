@@ -21,6 +21,7 @@ const offlineAudio = read("src/features/quran/services/offline-audio.ts");
 const offlinePack = read("src/lib/offline-pack.ts");
 const adsenseSlot = read("src/components/layout/adsense-slot.tsx");
 const runtimeEffects = read("src/components/layout/runtime-effects.tsx");
+const deferredRuntime = read("src/components/layout/deferred-runtime.tsx");
 
 requireCondition(
   layout.includes("<WebAdvertisingRuntime />"),
@@ -117,6 +118,11 @@ requireCondition(
   runtimeEffects.includes("Capacitor.isNativePlatform()") &&
     runtimeEffects.includes("isWebRuntime && ADSENSE_CONFIGURED"),
   "The AdSense script loader itself must be gated to web runtime, not only the empty ad slot.",
+);
+requireCondition(
+  deferredRuntime.includes('import { Capacitor } from "@capacitor/core"') &&
+    deferredRuntime.includes("if (Capacitor.isNativePlatform())"),
+  "Native reminder runtime must initialize immediately without depending on a late window.Capacitor injection.",
 );
 
 if (failures.length) {
