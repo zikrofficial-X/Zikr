@@ -6,7 +6,11 @@ const CLOUDINARY_VIDEO_HOST = "res.cloudinary.com";
  * host here prevents a bad or compromised row from turning YouTube uploads into
  * arbitrary server-side HTTP fetches (including localhost and cloud metadata IPs).
  */
-export function assertCloudinaryVideoUrl(videoUrl: string, target: string): string {
+export function assertCloudinaryVideoUrl(
+  videoUrl: string,
+  target: string,
+  cloudName: string | undefined = process.env.CLOUDINARY_CLOUD_NAME,
+): string {
   let parsed: URL;
   try {
     parsed = new URL(videoUrl);
@@ -28,12 +32,13 @@ export function assertCloudinaryVideoUrl(videoUrl: string, target: string): stri
 
   const segments = parsed.pathname.split("/").filter(Boolean);
   if (
+    !cloudName?.trim() ||
     segments.length < 4 ||
-    !/^[A-Za-z0-9_-]{1,128}$/.test(segments[0] ?? "") ||
+    segments[0] !== cloudName.trim() ||
     segments[1] !== "video" ||
     segments[2] !== "upload"
   ) {
-    throw new Error(target + " publishing requires a Cloudinary /video/upload asset path");
+    throw new Error(target + " publishing requires a /video/upload asset from the configured Cloudinary cloud");
   }
 
   return parsed.toString();
