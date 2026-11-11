@@ -262,6 +262,14 @@ assert.match(writtenStudio, /value: "kids", label: "قصص الأطفال الم
 assert.match(writtenFactory, /content_type:\s*"written_post"/);
 assert.match(writtenFactory, /target_platforms:\s*\["facebook"\]/);
 assert.match(socialPublishing, /checkKidsWrittenPostApproval\(item\)/, "social publishing must revalidate the live Kids source before provider delivery");
+
+const publishPlatformStart = socialPublishing.indexOf("async function publishPlatform(");
+const publishPlatformEnd = socialPublishing.indexOf("\n}\n\n", publishPlatformStart);
+const publishPlatformSource = socialPublishing.slice(publishPlatformStart, publishPlatformEnd > -1 ? publishPlatformEnd : undefined);
+const providerApprovalCheck = publishPlatformSource.indexOf("checkKidsWrittenPostApproval(item)");
+assert.ok(providerApprovalCheck >= 0, "each social provider call must revalidate the live Kids source after the initial queue check");
+assert.ok(providerApprovalCheck < publishPlatformSource.indexOf("publishFacebookPost(item)"), "Kids source revalidation must happen before Facebook provider delivery");
+assert.match(socialPublishing, /Approval revalidation held publishing for:/, "deferred Kids and video approvals must use a provider-neutral status message");
 assert.match(socialPublishing, /isKidsWrittenPostCandidate\(item\)/, "malformed Kids metadata must not bypass live source approval");
 assert.match(socialPublishing, /isEligibleKidsWrittenPostForPublishing\(item, rows\[0\]\)/);
 assert.ok(

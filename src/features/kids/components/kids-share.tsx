@@ -19,51 +19,67 @@ export function KidsShare({
   type,
   imageUrl: _imageUrl,
 }: KidsShareProps) {
-  const [shared, setShared] = useState(false);
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/kids/${slug}`;
-  
-  const handleFacebookShare = () => {
-    if (typeof window === 'undefined') return;
-    
-    const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(title)}`;
-    window.open(facebookShareUrl, 'facebook-share', 'width=600,height=400');
-    setShared(true);
-    
-    // Track the share if available
+  const [statusMessage, setStatusMessage] = useState('');
+  const getShareUrl = () => `${window.location.origin}/kids/${slug}`;
+
+  const trackShare = (platform: 'facebook' | 'whatsapp' | 'twitter' | 'copy-link') => {
     const gtag = (window as Window & { gtag?: (...args: unknown[]) => void }).gtag;
     if (gtag) {
       gtag('event', 'kids_content_shared', {
         content_title: title,
         content_type: type,
-        share_platform: 'facebook',
+        share_platform: platform,
       });
     }
+    void fetch('/api/kids/track-share', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, platform }),
+      cache: 'no-store',
+      keepalive: true,
+    }).catch(() => undefined);
+  };
+  
+  const handleFacebookShare = () => {
+    if (typeof window === 'undefined') return;
+    
+    const shareUrl = getShareUrl();
+    const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(title)}`;
+    window.open(facebookShareUrl, 'facebook-share', 'width=600,height=400');
+    trackShare('facebook');
+    setStatusMessage('تم فتح نافذة المشاركة');
+    
   };
 
   const handleWhatsAppShare = () => {
     if (typeof window === 'undefined') return;
     
+    const shareUrl = getShareUrl();
     const message = `🌟 تعلم مع الأطفال: ${title}\n\n${description || 'محتوى تعليمي إسلامي مميز'}\n\n${shareUrl}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
-    setShared(true);
+    trackShare('whatsapp');
+    setStatusMessage('تم فتح نافذة المشاركة');
   };
 
   const handleTwitterShare = () => {
     if (typeof window === 'undefined') return;
     
+    const shareUrl = getShareUrl();
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`تعلم: ${title}`)}&url=${encodeURIComponent(shareUrl)}&hashtags=kids,islamic,learning`;
     window.open(twitterUrl, '_blank');
-    setShared(true);
+    trackShare('twitter');
+    setStatusMessage('تم فتح نافذة المشاركة');
   };
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
+      await navigator.clipboard.writeText(getShareUrl());
+      trackShare('copy-link');
+      setStatusMessage('تم نسخ الرابط');
     } catch (error) {
       console.error('Failed to copy link:', error);
+      setStatusMessage('تعذر نسخ الرابط');
     }
   };
 
@@ -71,7 +87,7 @@ export function KidsShare({
     <Card className="p-6 bg-gradient-to-r from-brand-gold/10 to-brand-emerald/10 border-brand-gold/20 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-bold text-brand-gold">شارك هذا المحتوى</h3>
-        {shared && <span className="text-sm text-green-400">تم النسخ! ✓</span>}
+        {statusMessage && <span className="text-sm text-green-400">{statusMessage}</span>}
       </div>
 
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">

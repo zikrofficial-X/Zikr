@@ -3,12 +3,20 @@ import { readFileSync } from "node:fs";
 
 const route = readFileSync("src/app/api/kids/track-share/route.ts", "utf8");
 const limiter = readFileSync("src/features/kids/services/share-rate-limit.ts", "utf8");
+const shareComponent = readFileSync("src/features/kids/components/kids-share.tsx", "utf8");
 const migration = readFileSync(
   "supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql",
   "utf8",
 );
 
 assert.match(route, /consumeKidsShareRateLimit\(getClientAddress\(request\)\)/);
+
+assert.ok(shareComponent.includes("fetch('/api/kids/track-share'"), "the Kids share UI must call the rate-limited tracking endpoint");
+for (const platform of ["facebook", "whatsapp", "twitter", "copy-link"]) {
+  assert.ok(shareComponent.includes(`trackShare('${platform}')`), `the ${platform} share action must update the server-side share counter`);
+}
+assert.ok(shareComponent.includes("keepalive: true"), "share tracking should survive the browser opening an external share window");
+assert.ok(shareComponent.includes("const getShareUrl = () =>"), "the share URL must be resolved only in the click handler to avoid server/client origin hydration mismatch");
 assert.ok(
   route.indexOf("consumeKidsShareRateLimit") < route.indexOf("request.json()"),
   "the shared limiter must run before parsing untrusted request bodies",

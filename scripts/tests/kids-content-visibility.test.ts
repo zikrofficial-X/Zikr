@@ -99,7 +99,19 @@ assert.deepEqual(getKidsQuizQuestions({ questions: [{ text: "  ", options: ["A",
 
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+const imageField = readFileSync("src/features/admin/components/cloudinary-image-upload-field.tsx", "utf8");
+const cloudinaryUploadRoute = readFileSync("src/app/api/admin/cloudinary/image/route.ts", "utf8");
+
 assert.ok(adminAction.includes("isKidsContentType(type)"), "the Kids admin action must use the shared supported-type contract");
+const typeLabelsStart = adminManager.indexOf("const typeLabels: Record<KidsContentType, string> = {");
+const typeLabelsEnd = adminManager.indexOf("\n};", typeLabelsStart);
+const typeLabelsSource = adminManager.slice(typeLabelsStart, typeLabelsEnd);
+const managerTypes = typeLabelsSource.split("\n").map((line) => line.trim().match(/^([a-z_]+):/)?.[1]).filter(Boolean);
+assert.deepEqual(managerTypes, [...KIDS_CONTENT_TYPES], "the Kids admin selector must expose exactly the shared supported content types");
+assert.ok(adminManager.includes('fileName="featured_image_file"'), "the Kids form must submit the selected file to its validated server action");
+assert.ok(imageField.includes("name={fileName}"), "the image field must include the server-action file input name");
+assert.equal(imageField.includes("fetch("), false, "Kids media must not upload before the server validates the slug");
+
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsQuizValidation = readFileSync("src/features/kids/services/kids-content-validation.ts", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
@@ -115,6 +127,14 @@ assert.ok(
   "duplicate Kids slugs must be rejected before uploading media",
 );
 assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
+assert.ok(adminAction.includes("publicId: `${slug}-${randomUUID()}`"), "each Kids upload must use a unique Cloudinary asset id");
+assert.ok(adminAction.indexOf('requireAdminPermission("media.manage")') < imageUploadPosition, "image upload must retain the media.manage permission gate");
+assert.ok(adminAction.includes("audit event unavailable after content save"), "audit failure must not report a committed Kids insert as failed or skip cache revalidation");
+assert.ok(cloudinaryUploadRoute.includes("randomUUID()"), "generic Cloudinary uploads must use collision-resistant default public ids");
+assert.ok(cloudinaryUploadRoute.includes("audit event unavailable after upload"), "audit failure must not report a completed media upload as failed");
+assert.ok(cloudinaryUploadRoute.includes("4 * 1024 * 1024"), "the generic upload route must stay within the Vercel request-body ceiling");
+assert.ok(imageField.includes("3 * 1024 * 1024"), "the Kids server-action upload must stay below the 4 MB action body limit");
+
 assert.ok(
   adminAction.indexOf("const quizData = type === \"quiz\" ? parseKidsQuizData(value(formData, \"quiz_data\")) : null;") < imageUploadPosition,
   "invalid quiz JSON must be rejected before uploading an image",

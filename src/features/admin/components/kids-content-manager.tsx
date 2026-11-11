@@ -6,8 +6,9 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { saveKidsContentAction } from "@/app/admin/kids/actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
+import type { KidsContentType } from "@/features/kids/services/kids-content-validation";
 
-const typeLabels: Record<string, string> = {
+const typeLabels: Record<KidsContentType, string> = {
   story: "قصة",
   prayer: "دعاء",
   wudu: "الوضوء والصلاة",
@@ -143,7 +144,7 @@ export async function AdminKidsContentManager() {
               {Object.entries(ageGroupLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
-          <CloudinaryImageUploadField name="featured_image_url" label="الصورة المميزة" folder="kids" hint="حتى 8MB — JPG/PNG/WEBP/GIF" />
+          <CloudinaryImageUploadField name="featured_image_url" fileName="featured_image_file" label="الصورة المميزة" folder="kids" hint="حتى 3MB — JPG/PNG/WEBP/GIF" />
           <Field name="video_url" label="رابط فيديو تعليمي" placeholder="https://www.youtube.com/embed/..." />
           <label className="space-y-1 text-sm text-brand-cream/80">
             <span>معرف اللعبة</span>

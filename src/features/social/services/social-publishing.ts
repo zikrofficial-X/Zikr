@@ -483,6 +483,17 @@ async function publishPlatform(
   try {
     // The automated QA snapshot is re-read immediately before every channel call.
     // Any source, content, template or media change holds the not-yet-sent target.
+    const kidsSourceApproval = await checkKidsWrittenPostApproval(item);
+    if (kidsSourceApproval === "blocked" || kidsSourceApproval === "unavailable") {
+      return {
+        platform,
+        ok: false,
+        approvalBlocked: true,
+        error: kidsSourceApproval === "blocked"
+          ? "Kids source is no longer approved for public publishing."
+          : "Kids source approval could not be revalidated.",
+      };
+    }
     if (!(await hasVideoApprovalForQueueItem(item))) {
       return { platform, ok: false, approvalBlocked: true, error: "Video held because automated QA is missing, incomplete or stale." };
     }
@@ -1155,7 +1166,7 @@ export async function processSocialPublishItem(
       (failure.requiresReconciliation ? " (remote outcome unknown; manual reconciliation required before retry)" : ""),
   );
   if (unavailablePlatforms.length) errorMessages.push("Waiting for channel configuration: " + unavailablePlatforms.join(", "));
-  if (approvalDeferredPlatforms.length) errorMessages.push("Video held for a fresh automated QA check: " + approvalDeferredPlatforms.join(", "));
+  if (approvalDeferredPlatforms.length) errorMessages.push("Approval revalidation held publishing for: " + approvalDeferredPlatforms.join(", "));
   await markQueueItem(item.id, persistedStatus, {
     scheduled_at: nextRetryAt,
     published_at: successes.length > 0 ? new Date().toISOString() : null,

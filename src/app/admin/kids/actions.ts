@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
@@ -58,17 +60,18 @@ export async function saveKidsContentAction(formData: FormData) {
   }
 
   const featuredImageFile = formData.get("featured_image_file");
-  const featuredImageUrl =
-    featuredImageFile instanceof File && featuredImageFile.size > 0
-      ? (
-          await uploadCloudinaryImage({
-            file: featuredImageFile,
-            folder: "zikr/kids",
-            publicId: slug,
-            tags: ["zikr", "kids-content"],
-          })
-        ).secureUrl
-      : value(formData, "featured_image_url");
+  let featuredImageUrl = value(formData, "featured_image_url");
+  if (featuredImageFile instanceof File && featuredImageFile.size > 0) {
+    await requireAdminPermission("media.manage");
+    const upload = await uploadCloudinaryImage({
+      file: featuredImageFile,
+      folder: "zikr/kids",
+      publicId: `${slug}-${randomUUID()}`,
+      tags: ["zikr", "kids-content"],
+      maxBytes: 3 * 1024 * 1024,
+    });
+    featuredImageUrl = upload.secureUrl;
+  }
 
   const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?select=id,slug", {
     method: "POST",
@@ -97,13 +100,17 @@ export async function saveKidsContentAction(formData: FormData) {
     }),
   });
   if (!saved[0]?.id) throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
-  await recordAdminAuditEvent({
-    action: "kids.content.save",
-    permission: "kids.manage",
-    resourceType: "kids_content",
-    resourceId: saved[0].id,
-    metadata: { slug, type, published, ageGroup, ageAppropriate: type === "story" ? ageAppropriate : null, gameId },
-  });
+  try {
+    await recordAdminAuditEvent({
+      action: "kids.content.save",
+      permission: "kids.manage",
+      resourceType: "kids_content",
+      resourceId: saved[0].id,
+      metadata: { slug, type, published, ageGroup, ageAppropriate: type === "story" ? ageAppropriate : null, gameId },
+    });
+  } catch (auditError) {
+    console.warn("[admin/kids] audit event unavailable after content save:", auditError);
+  }
 
   revalidatePath("/kids");
   revalidatePath(`/kids/${slug}`);
