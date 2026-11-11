@@ -24,6 +24,10 @@ for (const token of [
   "youtube_only",
   "youtube_id",
   "updated_at",
+  "getConfirmedYoutubeFallbackId",
+  "hasConfirmedYoutubeFallback",
+  "catalog_row_missing_updated_at_for_compare_and_set",
+  "catalog_row_changed_during_media_audit",
 ]) {
   if (!audit.includes(token)) failures.push("Video media audit is missing required evidence/reconciliation behavior: " + token);
 }
