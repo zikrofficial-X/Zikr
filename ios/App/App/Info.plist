@@ -35,8 +35,6 @@
   </dict>
   <key>NSCameraUsageDescription</key>
   <string>ZIKR uses camera access for profile images and learning uploads.</string>
-  <key>NSPhotoLibraryUsageDescription</key>
-  <string>ZIKR uses photo library access to select images for profiles and learning uploads.</string>
   <key>NSFaceIDUsageDescription</key>
   <string>ZIKR can use Face ID to protect your profile, favorites, and memorization progress.</string>
   <key>NSMicrophoneUsageDescription</key>

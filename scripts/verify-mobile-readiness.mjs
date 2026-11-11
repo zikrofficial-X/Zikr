@@ -99,6 +99,10 @@ for (const token of [
 ]) {
   if (!plist.includes(token)) failures.push(`iOS Info.plist missing ${token}`);
 }
+for (const token of ["<key>NSPhotoLibraryUsageDescription</key>", "<key>NSPhotoLibraryAddUsageDescription</key>"]) {
+  const occurrences = plist.split(token).length - 1;
+  if (occurrences !== 1) failures.push(`Info.plist must declare ${token} exactly once`);
+}
 
 const entitlements = read("ios/App/App/App.entitlements");
 if (!entitlements.includes("applinks:zikrmediaofficial.vercel.app")) failures.push("iOS entitlements missing production associated domain");
