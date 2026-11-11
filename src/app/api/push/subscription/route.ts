@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAllowedPushEndpoint } from "@/features/notifications/services/push-endpoint";
+import { normalizePushSubscriptionRequestBody, parsePushCoordinate } from "@/features/notifications/services/push-subscription-request";
 import { mergePrayerReminderPreferences } from "@/features/prayer/services/prayer-reminder-preferences";
 import {
   createAdminClient,
@@ -66,18 +67,14 @@ function parsePrayerContext(body: SubscriptionBody) {
   const location = body.prayerContext?.location;
   const city = asBoundedString(location?.city, 256);
   const timezone = asBoundedString(location?.timezone, 128);
-  const latitude = Number(location?.latitude);
-  const longitude = Number(location?.longitude);
+  const latitude = parsePushCoordinate(location?.latitude, -90, 90);
+  const longitude = parsePushCoordinate(location?.longitude, -180, 180);
   if (
     !city ||
     !timezone ||
     !validTimezone(timezone) ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
+    latitude === null ||
+    longitude === null
   ) {
     return null;
   }
@@ -178,7 +175,7 @@ export async function POST(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = (await request.json().catch(() => ({}))) as SubscriptionBody;
+  const body = normalizePushSubscriptionRequestBody(await request.json().catch(() => null)) as SubscriptionBody;
   const parsed = parseSubscription(body);
   const prayerContext = parsePrayerContext(body);
   if (!parsed || !prayerContext) {
@@ -236,11 +233,8 @@ export async function DELETE(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const endpoint = asBoundedString(
-    ((await request.json().catch(() => ({}))) as { endpoint?: unknown })
-      .endpoint,
-    4096
-  );
+  const body = normalizePushSubscriptionRequestBody(await request.json().catch(() => null));
+  const endpoint = asBoundedString(body.endpoint, 4096);
   if (!endpoint)
     return NextResponse.json(
       { error: "Invalid subscription." },

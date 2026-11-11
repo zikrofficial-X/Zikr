@@ -4,6 +4,7 @@ import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
 import { isAllowedPushEndpoint } from "../../src/features/notifications/services/push-endpoint";
+import { normalizePushSubscriptionRequestBody, parsePushCoordinate } from "../../src/features/notifications/services/push-subscription-request";
 
 assert.equal(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/subscription-token"), true);
 assert.equal(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/subscription-token"), true);
@@ -20,6 +21,32 @@ for (const endpoint of [
   "https://fcm.googleapis.com/",
 ]) {
   assert.equal(isAllowedPushEndpoint(endpoint), false, `untrusted push endpoint must be rejected: ${endpoint}`);
+}
+
+assert.deepEqual(normalizePushSubscriptionRequestBody(null), {}, "JSON null must normalize to an empty request object");
+assert.deepEqual(normalizePushSubscriptionRequestBody(["endpoint"]), {}, "JSON arrays must not be treated as request objects");
+assert.deepEqual(normalizePushSubscriptionRequestBody("invalid"), {}, "JSON primitives must not be treated as request objects");
+assert.deepEqual(
+  normalizePushSubscriptionRequestBody({ endpoint: "https://fcm.googleapis.com/token" }),
+  { endpoint: "https://fcm.googleapis.com/token" },
+  "valid JSON objects must retain their request fields",
+);
+assert.equal(parsePushCoordinate(0, -90, 90), 0, "the equator is a valid latitude");
+assert.equal(parsePushCoordinate(-180, -180, 180), -180, "the longitude boundary is valid");
+assert.equal(parsePushCoordinate(90, -90, 90), 90, "the latitude boundary is valid");
+for (const invalidCoordinate of [null, undefined, "", "0", NaN, Infinity, -90.01, 90.01]) {
+  assert.equal(
+    parsePushCoordinate(invalidCoordinate, -90, 90),
+    null,
+    \`invalid latitude must be rejected: \${String(invalidCoordinate)}\`,
+  );
+}
+for (const invalidLongitude of [null, "", "0", -180.01, 180.01]) {
+  assert.equal(
+    parsePushCoordinate(invalidLongitude, -180, 180),
+    null,
+    \`invalid longitude must be rejected: \${String(invalidLongitude)}\`,
+  );
 }
 
 const source = Array.from({ length: 205 }, (_, index) => ({
@@ -82,6 +109,10 @@ await assert.rejects(
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
+const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(await request\.json\(\)\.catch\(\(\) => null\)\)/g) ?? [];
+assert.equal(normalizedRequestBodyCalls.length, 2, "POST and DELETE must normalize malformed and non-object JSON before reading fields");
+assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.latitude, -90, 90\)/);
+assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.longitude, -180, 180\)/);
 assert.match(subscriptionRoute, /isAllowedPushEndpoint\(endpoint\)/, "subscription intake must reject arbitrary HTTPS endpoints");
 assert.match(worker, /isAllowedPushEndpoint\(subscription\.endpoint\)/, "the delivery worker must revalidate legacy endpoints before outbound requests");
 const staleRecoveryStart = worker.indexOf("async function recoverStaleClaims");

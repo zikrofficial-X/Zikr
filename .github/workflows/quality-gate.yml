@@ -84,7 +84,7 @@ jobs:
         run: bash scripts/tests/prophet-sections-rls.integration.sh
         timeout-minutes: 5
 
-      - name: Verify Kids game-level publication policy against PostgreSQL 17
+      - name: Verify Kids game and question publication policies against PostgreSQL 17
         shell: bash
         run: bash scripts/tests/kids-game-levels-rls.integration.sh
         timeout-minutes: 5

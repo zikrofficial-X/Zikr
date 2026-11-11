@@ -34,6 +34,7 @@ fi
 psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zikr_kids_game_levels_test)
 "${psql[@]}" -f /workspace/scripts/tests/kids-game-levels-rls.integration-setup.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql
+"${psql[@]}" -f /workspace/supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql
 "${psql[@]}" -f /workspace/scripts/tests/kids-game-levels-rls.integration.sql
 
-echo "Kids game-level publication RLS integration passed."
+echo "Kids game and question publication RLS integration passed."
