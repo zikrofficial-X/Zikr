@@ -443,8 +443,46 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
   quran_reciters: "id",
   scholars: "id",
   social_platform_profiles: "platform",
+  admin_audit_events: "id",
+  admin_queue_alert_deliveries: "alert_key",
+  battle_events: "id",
+  companion_stories: "id",
+  competitions: "id",
+  conquest_events: "id",
+  content_agent_sources: "id",
+  content_translation_queue: "id",
+  duas: "id",
+  hadith_books: "id",
+  kids_game_results: "id",
+  notifications: "id",
+  prophet_sections: "id",
+  quran_tafsir: "id",
+  stories: "id",
+  user_behavior: "id",
+  video_automation_runs: "id",
   tawasheeh: "id",
 });
+
+const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
+  "%/storage/v1/object/public/videos/automated/%",
+  "%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fvideos%2Fautomated%2F%",
+]);
+
+function textReferencePatterns(table, column) {
+  return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
+    table,
+    column,
+    filter: (query) => query.ilike(column, pattern),
+  }));
+}
+
+function jsonReferencePattern(table, column) {
+  return {
+    table,
+    column,
+    filter: (query) => query.not(column, "is", null),
+  };
+}
 
 export function getReferenceOrderColumn(table) {
   if (!Object.hasOwn(REFERENCE_ORDER_COLUMNS, table)) {
@@ -680,6 +718,50 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       column: "thumbnail_url",
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
     },
+    ...textReferencePatterns("admin_audit_events", "metadata"),
+    ...jsonReferencePattern("admin_queue_alert_deliveries", "payload"),
+    ...textReferencePatterns("articles", "content"),
+    ...textReferencePatterns("articles", "content_ar"),
+    ...textReferencePatterns("articles", "content_en"),
+    ...jsonReferencePattern("articles", "metadata"),
+    ...textReferencePatterns("battle_events", "content_ar"),
+    ...textReferencePatterns("battle_events", "content_en"),
+    ...jsonReferencePattern("battles", "metadata"),
+    ...textReferencePatterns("companion_stories", "content_ar"),
+    ...textReferencePatterns("companion_stories", "content_en"),
+    ...jsonReferencePattern("companions", "metadata"),
+    ...jsonReferencePattern("competitions", "metadata"),
+    ...textReferencePatterns("conquest_events", "content_ar"),
+    ...textReferencePatterns("conquest_events", "content_en"),
+    ...jsonReferencePattern("conquests", "metadata"),
+    ...jsonReferencePattern("content_agent_queue", "metadata"),
+    ...textReferencePatterns("content_agent_sources", "base_url"),
+    ...textReferencePatterns("content_agent_sources", "fetch_url"),
+    ...jsonReferencePattern("content_library", "metadata"),
+    ...jsonReferencePattern("content_translation_queue", "source_payload"),
+    ...jsonReferencePattern("content_translation_queue", "draft_payload"),
+    ...jsonReferencePattern("duas", "metadata"),
+    ...textReferencePatterns("hadith_books", "source"),
+    ...textReferencePatterns("kids_content", "content_ar"),
+    ...textReferencePatterns("kids_content", "content_en"),
+    ...jsonReferencePattern("kids_content", "metadata"),
+    ...jsonReferencePattern("kids_games", "metadata"),
+    ...jsonReferencePattern("kids_game_results", "metadata"),
+    ...jsonReferencePattern("media_assets", "metadata"),
+    ...jsonReferencePattern("notifications", "metadata"),
+    ...textReferencePatterns("prophet_sections", "content_ar"),
+    ...textReferencePatterns("prophet_sections", "content_en"),
+    ...jsonReferencePattern("prophets", "metadata"),
+    ...textReferencePatterns("quran_audio", "source_url"),
+    ...jsonReferencePattern("quran_reciters", "metadata"),
+    ...textReferencePatterns("quran_tafsir", "source_url"),
+    ...jsonReferencePattern("scholars", "metadata"),
+    ...textReferencePatterns("social_sync_jobs", "source_url"),
+    ...textReferencePatterns("stories", "content"),
+    ...jsonReferencePattern("stories", "metadata"),
+    ...jsonReferencePattern("tawasheeh", "metadata"),
+    ...jsonReferencePattern("user_behavior", "metadata"),
+    ...jsonReferencePattern("video_automation_runs", "metadata"),
   ];
 
   const referenceSet = new Set();
