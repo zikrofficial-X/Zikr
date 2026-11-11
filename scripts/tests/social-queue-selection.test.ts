@@ -120,6 +120,7 @@ const socialPublisher = readFileSync("src/features/social/services/social-publis
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
+assert.match(socialPublisher, /Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows/, "invalid queue cutoffs must fail visibly instead of returning an empty batch");
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
