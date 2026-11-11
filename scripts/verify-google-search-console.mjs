@@ -7,6 +7,7 @@ const deferredAnalytics = readFileSync('src/components/layout/deferred-analytics
 const nextConfig = readFileSync('next.config.ts', 'utf8');
 const approvedGaId = 'G-W30Z9JW0VF';
 const approvedGtmId = 'GTM-PVQCFKCB';
+const analytics = webAdvertisingRuntime.indexOf('id="google-analytics-src"');
 const verificationFiles = [
   'public/google3526c15e10fa1913.html',
   'public/google6f7827292f8e19bc.html',
