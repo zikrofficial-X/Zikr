@@ -273,7 +273,7 @@ assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.vide
 assert.ok(worker.includes("&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}"), "canonical recovery must retain the completed-state guard while matching the exact media pointer");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
-const duplicateCancelIndex = worker.indexOf("const cancelledDuplicateRows");
+const duplicateCancelIndex = worker.indexOf('await patchProcessingRequestWithLease({\n              status: "cancelled",\n              video_url: null');
 const socialQueueReleaseIndex = worker.indexOf("socialQueueRecovery = await restoreMissingMediaSocialQueueItems");
 assert.ok(
   duplicateCancelIndex >= 0 && socialQueueReleaseIndex > duplicateCancelIndex,
