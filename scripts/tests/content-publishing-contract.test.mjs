@@ -65,6 +65,9 @@ const cancelSchedule = contentService.indexOf("status=in.(queued,processing)", u
 const updateContent = contentService.indexOf("const updated = await supabaseServerAdminRequest", unpublishStart);
 assert.ok(unpublishStart >= 0 && cancelSchedule > unpublishStart && cancelSchedule < updateContent,
   "unpublishing must cancel queued and in-flight scheduled publications before changing content");
+assert.match(adminContent, /automationPublicationHold = true/, "an explicit article unpublish must persist a hold that automation cannot silently reverse");
+assert.match(adminContent, /delete articleMetadata\.automationPublicationHold/, "an explicit admin republish must clear the automation publication hold");
+assert.match(adminContent, /table === "articles"[\s\S]*?id,updated_at,metadata/, "article publication updates must read metadata before preserving and updating the hold marker");
 
 const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
 assert.match(adminActions, /table === "stories" \? "id,published,is_approved,user_id"/,

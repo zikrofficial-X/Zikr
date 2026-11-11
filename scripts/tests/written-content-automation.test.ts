@@ -265,12 +265,12 @@ assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids source lookup must fail closed instead of silently bypassing daily prioritization");
 assert.match(worker, /select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published,metadata&published=eq\.true/, "the source loader must read article metadata so it can exclude its own generated output");
 assert.match(worker, /metadata\.automation==="written-content-v2"/, "generated written articles must not recursively become new source material");
-assert.ok(worker.includes("&status=in.(queued,processing)&select=id,status&limit=1"), "a failed or cancelled site-publication row must not block a safe new queued attempt");
+assert.ok(worker.includes("&status=in.(queued,processing)&select=id,status,scheduled_at&order=scheduled_at.asc,id.asc&limit=1"), "a failed or cancelled site-publication row must not block a safe new queued attempt");
 assert.match(worker, /while\(created < maxNewRows\)/, "Facebook backfill must continue scanning past already-queued historical pages");
 assert.match(worker, /metadata->>automation=eq\.written-content-v2&published=eq\.true&created_at=/, "social backfill must only consider articles that remain publicly published");
 assert.match(worker, /select=id,title,content,slug,metadata,created_at,published&order=created_at\.asc,id\.asc/, "backfill must read the published flag for a defensive row-level check");
 assert.match(worker, /article\.published!==true/, "backfill must fail closed if an unpublished article is returned unexpectedly");
-assert.match(worker, /if\(existing\[0\]\)\{[\s\S]*status:"held"/, "an existing unpublished article without an active site-publication job must remain held instead of being silently republished");
+assert.match(worker, /metadata\.automationPublicationHold===true/, "an explicit admin unpublish must block the written-content automation from silently re-publishing the article");
 assert.match(worker, /else if\(result\.status==="duplicate"\)duplicates\+\+;\s*else skipped\+\+;/, "held drafts must be counted as skipped rather than successful duplicates");
 
 assert.match(worker, /socialScheduledAt/);

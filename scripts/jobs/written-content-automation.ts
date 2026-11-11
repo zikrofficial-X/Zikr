@@ -171,6 +171,11 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
   "/rest/v1/articles?slug=eq."+encodeURIComponent(slug)+"&select=id,published,metadata&limit=1",
  );
  let articleId=isKidsStory?source.id:(existing[0]?str(existing[0].id):"");
+ const existingMetadata=record(existing[0]?.metadata);
+ if(existing[0]&&existing[0].published!==true&&existingMetadata.automationPublicationHold===true){
+  console.warn("[written-content] explicit admin publication hold prevents automation requeue",articleId);
+  return {status:"held",id:articleId};
+ }
  const now=new Date();
  const nowIso=now.toISOString();
  let socialScheduledAt=nowIso;
@@ -193,10 +198,6 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
   );
   let siteScheduledAt: string;
   if(!contentQueue[0]){
-   if(existing[0]){
-    console.warn("[written-content] preserving an unpublished article without an active site-publication job",articleId);
-    return {status:"held",id:articleId};
-   }
    siteScheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
    await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
     method:"POST",

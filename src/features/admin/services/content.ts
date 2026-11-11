@@ -241,12 +241,15 @@ export async function toggleManagedContent(
   const encodedId = encodeURIComponent(id);
   const select = table === "stories"
     ? "id,updated_at,is_approved,user_id"
-    : "id,updated_at";
+    : table === "articles"
+      ? "id,updated_at,metadata"
+      : "id,updated_at";
   const current = await supabaseServerAdminRequest<Array<{
     id: string;
     updated_at: string;
     is_approved?: boolean | null;
     user_id?: string | null;
+    metadata?: unknown;
   }>>(
     `/rest/v1/${table}?select=${select}&id=eq.${encodedId}&limit=1`,
     { method: "GET" },
@@ -285,6 +288,25 @@ export async function toggleManagedContent(
     }
   }
 
+  const updatedAt = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    published,
+    updated_at: updatedAt,
+  };
+  if (table === "articles") {
+    const articleMetadata = target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)
+      ? { ...(target.metadata as Record<string, unknown>) }
+      : {};
+    if (published) {
+      delete articleMetadata.automationPublicationHold;
+      delete articleMetadata.automationPublicationHoldAt;
+    } else {
+      articleMetadata.automationPublicationHold = true;
+      articleMetadata.automationPublicationHoldAt = updatedAt;
+    }
+    updatePayload.metadata = articleMetadata;
+  }
+
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/${table}?id=eq.${encodedId}&updated_at=eq.${encodeURIComponent(String(target.updated_at))}`,
     {
@@ -293,10 +315,7 @@ export async function toggleManagedContent(
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
-      body: JSON.stringify({
-        published,
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(updatePayload),
     },
   );
   if (!updated?.length) {
