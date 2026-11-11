@@ -23,12 +23,8 @@ export async function updateUserRoleAuditedAction(formData: FormData) {
   ) {
     throw new Error("الدور غير صالح أو غير مسموح لك تعيينه.");
   }
-  if (
-    userId === admin.id &&
-    roleValue !== "admin" &&
-    roleValue !== "super_admin"
-  ) {
-    throw new Error("لا يمكنك إزالة صلاحيات الإدارة عن نفسك.");
+  if (userId === admin.id && roleValue !== admin.role) {
+    throw new Error("لا يمكنك تغيير دور حسابك الإداري.");
   }
 
   // The database function applies profile.role, admin_role_assignments and the
