@@ -188,6 +188,11 @@ const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
   ? storageRetentionSource.slice(inventoryStart, inventoryEnd)
   : "";
 assert.ok(inventoryBlock.includes("collectPaginatedRows"), "queue and request inventories must use complete paginated scans");
+assert.match(
+  storageRetentionSource,
+  /table: "videos",[\s\S]*?column: "metadata"[\s\S]*?query\.not\("metadata", "is", null\)/,
+  "the public video catalog metadata must be scanned for hidden references before a staging object is deleted",
+);
 assert.equal(inventoryBlock.includes('.not("video_url", "is", null)'), false, "all queue/request backup references must be inventoried, including rows without a current playback URL");
 
 const retentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");

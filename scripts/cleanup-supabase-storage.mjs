@@ -349,6 +349,11 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
     },
     {
+      table: "videos",
+      column: "metadata",
+      filter: (query) => query.not("metadata", "is", null),
+    },
+    {
       table: "social_sync_jobs",
       column: "thumbnail_url",
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
@@ -515,6 +520,13 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
   const canonicalUrlPrefix = `${supabaseUrl}/storage/v1/object/public/videos/`;
 
   function recordReference(value) {
+    if (value && typeof value === "object") {
+      const serialized = JSON.stringify(value);
+      for (const path of candidateSet) {
+        if (serialized.includes(path)) referenceSet.add(path);
+      }
+      return;
+    }
     const clean = asString(value);
     if (!clean) return;
     if (candidateSet.has(clean)) {
