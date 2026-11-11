@@ -204,6 +204,11 @@ Android release additionally requires:
 - `ANDROID_KEY_PASSWORD`
 - `GH_TOKEN`
 
+## iOS Universal Links
+
+- `IOS_ASSOCIATED_DOMAIN_APP_ID` — server-only App ID in the exact `<APPLE_TEAM_ID>.<BUNDLE_ID>` format used by the iOS Associated Domains entitlement. It populates `/.well-known/apple-app-site-association`; without it the endpoint intentionally returns no app association. This is not a web-runtime requirement, but it is required before iOS Universal Link/OAuth return-to-app acceptance. Configure the real Apple Team ID and bundle identifier in Vercel Production, then redeploy so the statically generated association file is refreshed.
+- `ANDROID_APP_LINKS_SHA256` — public SHA-256 signing-certificate fingerprint used by `/.well-known/assetlinks.json`; it must match the certificate used for the distributed Android build.
+
 ## 7. System-managed Vercel variables
 
 These are not application secrets and should not be manually provisioned just to make the application work:
