@@ -113,8 +113,8 @@ export function useDhikrReminder(): DhikrReminderReturn {
   const [settings, setSettings] = useState<DhikrReminderSettings>(DEFAULT_SETTINGS);
   const rotationRef = useRef(0);
 
-  // Load persisted settings only for authenticated users. The API intentionally
-  // returns 401 for anonymous visitors, so avoid issuing the request at all.
+  // Load local settings for every visitor, then reconcile with server preferences
+  // only for authenticated users. Anonymous visitors never call the protected API.
   useEffect(() => {
     setSettings(loadSettings());
     let cancelled = false;
