@@ -14,6 +14,13 @@ BEGIN
     RAISE EXCEPTION 'Expected two first-run reminder slots, received %', inserted_count;
   END IF;
 
+  SELECT public.plan_background_reminder_deliveries('2026-11-11 07:37:35+00'::timestamptz)
+  INTO inserted_count;
+
+  IF inserted_count <> 0 THEN
+    RAISE EXCEPTION 'Expected the same interval window to be idempotent, received % duplicate slot(s)', inserted_count;
+  END IF;
+
   SELECT timezone
   INTO cairo_timezone
   FROM public.background_reminder_preferences
