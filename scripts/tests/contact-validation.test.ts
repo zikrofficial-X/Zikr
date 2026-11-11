@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { isValidContactEmail } from "../../src/features/contact/validation";
 import { getContactRateLimitActorId } from "../../src/features/contact/rate-limit-identity";
+import { readFileSync } from "node:fs";
+import { getTrustedClientAddress } from "../../src/lib/request/client-address";
 
 const validAddresses = [
   "test@example.com",
@@ -44,3 +46,28 @@ assert.notEqual(actorA, actorB, "different client identifiers must use different
 
 assert.throws(() => getContactRateLimitActorId("203.0.113.10", ""), /secret is not configured/);
 console.log("Contact validation and shared rate-limit identity checks passed.");
+
+const contactRoute = readFileSync("src/app/api/contact/route.ts", "utf8");
+assert.equal(
+  getTrustedClientAddress("198.51.100.2", "spoofed,203.0.113.9"),
+  "198.51.100.2",
+  "the hosting proxy's real IP must take precedence",
+);
+assert.equal(
+  getTrustedClientAddress(null, "spoofed, 203.0.113.9"),
+  "203.0.113.9",
+  "the right-most forwarded hop must be used when the trusted real-IP header is absent",
+);
+assert.equal(
+  getTrustedClientAddress(null, "  "),
+  "unknown",
+  "missing address headers must use one stable fallback bucket",
+);
+assert.ok(
+  contactRoute.includes("getTrustedClientAddress("),
+  "contact rate limiting must use the shared trusted proxy address resolver",
+);
+assert.ok(
+  !contactRoute.includes('split(",")[0]'),
+  "contact rate limiting must not trust the client-controlled left-most forwarded value",
+);

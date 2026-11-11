@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
+import { fetchAllIdPages } from "./pagination.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -302,13 +303,24 @@ async function ensureSchedules(now: Date): Promise<number> {
   // The database function plans opt-in dhikr/salawat rows for every active device.
   const { error: backgroundError } = await supabase.rpc('plan_background_reminder_deliveries', { now_at: now.toISOString() });
   if (backgroundError) throw backgroundError;
-  const { data: subscriptions, error: subscriptionsError } = await supabase
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth")
-    .eq("is_active", true)
-    .limit(BATCH_SIZE);
-  if (subscriptionsError) throw subscriptionsError;
-  if (!subscriptions?.length) return 0;
+  // Read every active device in stable UUID order. A fixed first-page limit
+  // silently starved subscriptions after the first 100 forever.
+  const subscriptions = await fetchAllIdPages<PushSubscriptionRow>(
+    async (afterId, pageSize) => {
+      let query = supabase
+        .from("push_subscriptions")
+        .select("id, user_id, endpoint, p256dh, auth")
+        .eq("is_active", true)
+        .order("id", { ascending: true })
+        .limit(pageSize);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as PushSubscriptionRow[];
+    },
+    BATCH_SIZE,
+  );
+  if (!subscriptions.length) return 0;
 
   const userIds = [
     ...new Set(subscriptions.map(subscription => subscription.user_id)),
@@ -464,13 +476,15 @@ async function ensureSchedules(now: Date): Promise<number> {
   }
 
   if (!inserts.length) return 0;
-  const { error: deliveryError } = await supabase
-    .from("prayer_notification_deliveries")
-    .upsert(inserts, {
-      onConflict: "push_subscription_id,prayer_name,scheduled_at",
-      ignoreDuplicates: true,
-    });
-  if (deliveryError) throw deliveryError;
+  for (let offset = 0; offset < inserts.length; offset += BATCH_SIZE) {
+    const { error: deliveryError } = await supabase
+      .from("prayer_notification_deliveries")
+      .upsert(inserts.slice(offset, offset + BATCH_SIZE), {
+        onConflict: "push_subscription_id,prayer_name,scheduled_at",
+        ignoreDuplicates: true,
+      });
+    if (deliveryError) throw deliveryError;
+  }
   return inserts.length;
 }
 

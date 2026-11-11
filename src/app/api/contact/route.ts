@@ -1,18 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitContactMessage } from "@/features/contact/services/contact";
 import { consumePublicContactRateLimit } from "@/features/contact/services/rate-limit";
-
-function getClientIdentifier(request: NextRequest) {
-  return (
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-}
+import { getTrustedClientAddress } from "@/lib/request/client-address";
 
 export async function POST(req: NextRequest) {
   try {
-    const allowed = await consumePublicContactRateLimit(getClientIdentifier(req));
+    const allowed = await consumePublicContactRateLimit(
+      getTrustedClientAddress(
+        req.headers.get("x-real-ip"),
+        req.headers.get("x-forwarded-for"),
+      ),
+    );
     if (!allowed) {
       return NextResponse.json(
         { error: "تم تجاوز الحد المسموح. حاول مرة أخرى لاحقاً." },
