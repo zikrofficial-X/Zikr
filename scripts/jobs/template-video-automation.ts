@@ -554,6 +554,11 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   const todaysRows = await supabaseServerAdminRequest<Array<{ id: string; status: string; automation_key: string | null }>>(
     `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id,status,automation_key&limit=1000`,
   );
+  if ((todaysRows ?? []).length >= 1000) {
+    throw new Error(
+      "Daily video quota inventory reached 1,000 rows; refusing to seed requests from a truncated slot history.",
+    );
+  }
   const dailyQuota = calculateDailyVideoQuotaState(todaysRows ?? []);
   const alreadySeededToday = dailyQuota.reservedCount;
   const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
