@@ -77,7 +77,8 @@ assert.ok(
 );
 assert.match(offlineContentHandler, /cache\.put\(request, copy\)/);
 assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows, previous\.routes\)/);
-assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
+assert.match(exporter, /const blockedRoutes = new Set\(\[\.\.\.blockedKidsRoutes, \.\.\.blockedPublishedContentRoutes\]\)/);
+assert.match(exporter, /previous\.routes\.filter\(\(route\) => !blockedRoutes\.has\(route\)\)/);
 assert.match(exporter, /const stamp = generatedAt\.replace/);
 assert.match(exporter, /version: `\$\{stamp\.slice\(0, 8\)\}-\$\{stamp\}`/);
 
