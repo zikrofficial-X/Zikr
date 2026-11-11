@@ -12,6 +12,31 @@ const video = read(".github/workflows/generate-ai-video.yml");
 const social = read(".github/workflows/publish-social.yml");
 const english = read(".github/workflows/english-content-sync.yml");
 const release = read(".github/workflows/release-finalization.yml");
+const supabaseTokenPreflight = release.indexOf("Verify Supabase Edge Function deployment credential before production changes");
+const migrationPush = release.indexOf("supabase db push --db-url");
+const edgeFunctionDeploy = release.indexOf("supabase functions deploy prayer-notification-worker --project-ref");
+const schemaReconcile = release.indexOf("Verify production schema after migration");
+const webDeploy = release.indexOf("Deploy prebuilt artifact to production");
+assert.ok(
+  release.includes("SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}") &&
+    release.includes("supabase projects list") &&
+    supabaseTokenPreflight >= 0 &&
+    supabaseTokenPreflight < migrationPush,
+  "Controlled production release must verify the Supabase CLI token and canonical project access before any production database mutation",
+);
+assert.ok(
+  schemaReconcile >= 0 &&
+    edgeFunctionDeploy > schemaReconcile &&
+    webDeploy > edgeFunctionDeploy,
+  "Controlled release must deploy the source-controlled prayer Edge Function only after the database migrations/schema reconciliation and before Vercel production deployment",
+);
+const prayerWorkerSource = read("supabase/functions/prayer-notification-worker/index.ts");
+assert.ok(
+  prayerWorkerSource.includes("./pagination.ts") &&
+    prayerWorkerSource.includes("./eligibility.ts") &&
+    prayerWorkerSource.includes("./time-zone.ts"),
+  "Prayer Edge Function release must package its audited pagination, eligibility, and timezone modules",
+);
 const smoke = read(".github/workflows/release-vercel.yml");
 const androidPublish = read(".github/workflows/publish-android-release-assets.yml");
 const insightsWorkflow = read(".github/workflows/sync-social-insights.yml");
