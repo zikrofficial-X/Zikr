@@ -99,7 +99,7 @@ async function validateSimpleScheduledContentForPublication(table: string, conte
   return content.updated_at;
 }
 
-async function validateInternalVideoForPublication(videoId: string): Promise<void> {
+async function validateInternalVideoForPublication(videoId: string): Promise<string> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
     updated_at: string;
