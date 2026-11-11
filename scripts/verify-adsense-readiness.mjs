@@ -93,6 +93,13 @@ if (!adsenseSlot.includes('Capacitor.isNativePlatform()') || !articlePage.includ
   fail('AdSense must be limited to web editorial articles and excluded from native app builds.');
 }
 if (
+  !adsenseSlot.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !adsenseSlot.includes("isCanonicalProductionHost") ||
+  !adsenseSlot.includes("setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionHost())")
+) {
+  fail('The AdSense slot markup and queue must be excluded from Preview aliases and non-canonical hosts.');
+}
+if (
   !webAdvertisingRuntime.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
   !webAdvertisingRuntime.includes("isCanonicalProductionHost") ||
   !webAdvertisingRuntime.includes("if (!isCanonicalProductionHost())") ||

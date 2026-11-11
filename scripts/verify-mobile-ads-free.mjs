@@ -109,8 +109,9 @@ requireCondition(
   "The native runtime must clear the SSR AdSense queue and account metadata.",
 );
 requireCondition(
-  adsenseSlot.includes("Capacitor.isNativePlatform()"),
-  "The existing AdSense slot must continue to reject native Capacitor runtimes.",
+  adsenseSlot.includes("Capacitor.isNativePlatform()") &&
+    adsenseSlot.includes("isCanonicalProductionHost"),
+  "The existing AdSense slot must reject native Capacitor runtimes and non-canonical deployment hosts.",
 );
 
 if (failures.length) {
