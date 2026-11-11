@@ -14,7 +14,17 @@ const currentRows = [
   { type: "game", slug: "current-game", metadata: {} },
 ];
 
-const blocked = getBlockedKidsRoutes(previousRows, currentRows);
+const blocked = getBlockedKidsRoutes(previousRows, currentRows, [
+  "/kids/removed-approved-story",
+  "/kids/approval-withdrawn",
+  "/kids/removed-game",
+  "/kids/removed-quiz",
+  "/kids/kids-truth",
+  "/kids/kids-amanah",
+  "/kids/kids-prayer",
+  "/kids/current-approved-story",
+  "/kids/current-game",
+]);
 assert.deepEqual(
   [...blocked].sort(),
   [
@@ -22,12 +32,15 @@ assert.deepEqual(
     "/kids/removed-approved-story",
     "/kids/removed-game",
     "/kids/removed-quiz",
+    "/kids/kids-truth",
+    "/kids/kids-amanah",
+    "/kids/kids-prayer",
   ],
 );
 assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
-assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows\)/);
+assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows, previous\.routes\)/);
 assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
 const exportOrders = [...exporter.matchAll(/'order=([^']+)'/g)].map(match => match[1]);
 assert.ok(exportOrders.length >= 20, "offline exporter must retain the complete dataset inventory");
