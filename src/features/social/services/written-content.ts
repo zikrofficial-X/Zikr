@@ -85,10 +85,11 @@ export function containsKidsPersonalDataSolicitation(value: string): boolean {
  const asksDirectly = new RegExp("(?:^|\\s)(?:ما|ما هو|ما هي|اين|اين هو|اين هي)(?:\\s+[^.!؟?]{0,24})?\\s+" + personalData, "u");
  const asksForContact = new RegExp("(?:^|\\s)(?:راسلني|تواصل معي|اتصل بي|قابلني|كلمني)(?:\\s+[^.!؟?]{1,30})?(?:" + channels + ")?", "u");
  const asksInEnglish = /\b(?:send|share|tell me|give me|write|enter|leave|dm|message|contact|call|meet|text me)\b[\s\S]{0,45}\b(?:your (?:full )?name|phone(?: number)?|home address|address|school|email|password|location|photo|picture|selfie|account|username|whatsapp|telegram|instagram|snapchat|facebook|where you live)\b/i;
- const privateEnglishContact = /\b(?:dm me|message me privately|contact me|call me|meet me)\b/i;
+ const asksForPrivateChannel = /(?:^|\s)(?:ابعت(?:لي)?|ابعث(?:لي)?|ابعتي(?:لي)?|ارسل(?:لي)?|ابعث لي|ابعت لي|ابعتي لي|ارسل لي)(?:\s+[^.!؟?]{0,16})?(?:على\s+)?(?:الخاص|رسالة خاصة|واتساب|واتس اب|تيليجرام|تلجرام|انستجرام|سناب(?: شات)?|ماسنجر)(?:\s|$)/u;
+ const privateEnglishContact = /\b(?:dm me|message me privately|contact me|call me|meet me|send (?:me )?(?:a )?(?:private )?dm|leave (?:me )?(?:a )?dm|(?:whatsapp|telegram|instagram|snapchat) me)\b/i;
  return asksForData.test(normalized) || asksDirectly.test(normalized) ||
-  asksForContact.test(normalized) || asksInEnglish.test(normalized) ||
-  privateEnglishContact.test(normalized);
+  asksForContact.test(normalized) || asksForPrivateChannel.test(normalized) ||
+  asksInEnglish.test(normalized) || privateEnglishContact.test(normalized);
 }
 
 export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?:string}{
