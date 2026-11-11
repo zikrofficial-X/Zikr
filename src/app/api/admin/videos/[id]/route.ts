@@ -4,8 +4,7 @@ import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import type { VideoGenerationRequest } from '@/lib/types/video';
-
-const allowedStatuses = new Set(['pending', 'processing', 'completed', 'failed']);
+import { updateVideoRequestStatus } from '@/features/videos/services/video-automation';
 
 export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
@@ -30,45 +29,36 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
     const { id } = await context.params;
     const body = await request.json() as Record<string, unknown>;
-    const status = typeof body.status === 'string' ? body.status : '';
-    if (!allowedStatuses.has(status)) return NextResponse.json({ error: 'حالة غير صالحة.' }, { status: 400 });
-
-    const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-    if (typeof body.youtubeId === 'string') patch.youtube_id = body.youtubeId;
-    if (typeof body.facebookId === 'string') patch.facebook_id = body.facebookId;
-    if (typeof body.errorMessage === 'string') patch.error_message = body.errorMessage.slice(0, 1000);
-    if (typeof body.errorDetails === 'string') patch.error_details = body.errorDetails.slice(0, 4000);
-    if (status === 'pending') {
-      Object.assign(patch, {
-        error_message: null,
-        error_details: null,
-        heygen_video_id: null,
-        heygen_status: null,
-        heygen_submitted_at: null,
-        heygen_last_polled_at: null,
-        youtube_id: null,
-        facebook_id: null,
-        video_url: null,
-      });
+    if (body.status !== 'pending') {
+      return NextResponse.json(
+        { error: 'تغيير حالة العملية يتم بواسطة عامل الطابور؛ إعادة المحاولة متاحة للعمليات الفاشلة فقط.' },
+        { status: 410, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
 
-    const updated = await supabaseServerAdminRequest<VideoGenerationRequest[]>(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-        body: JSON.stringify(patch),
-      },
+    const currentRows = await supabaseServerAdminRequest<Array<{ status: string }>>(
+      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}&select=status&limit=1`,
     );
-    if (!updated?.length) return NextResponse.json({ error: 'Video request not found' }, { status: 404 });
+    if (!currentRows?.[0]) return NextResponse.json({ error: 'Video request not found' }, { status: 404 });
+    if (currentRows[0].status !== 'failed') {
+      return NextResponse.json({ error: 'يمكن إعادة تعيين عمليات التوليد الفاشلة فقط.' }, { status: 409 });
+    }
+
+    const updated = await updateVideoRequestStatus(id, 'pending', undefined, 'failed');
+    if (!updated) {
+      return NextResponse.json(
+        { error: 'تم تغيير حالة العملية أثناء إعادة المحاولة؛ حدّث الصفحة ثم أعد المحاولة.' },
+        { status: 409 },
+      );
+    }
     await recordAdminAuditEvent({
       action: 'video_generation.update',
       permission: 'video.manage',
       resourceType: 'video_generation_requests',
       resourceId: id,
-      metadata: { status, changedFields: Object.keys(patch) },
+      metadata: { status: 'pending', changedFields: ['status', 'approvalStatus', 'error_message', 'error_details', 'heygen_video_id', 'heygen_status', 'heygen_submitted_at', 'heygen_last_polled_at', 'youtube_id', 'facebook_id', 'video_url'] },
     });
-    return NextResponse.json({ ok: true, item: updated[0] });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('[api/admin/videos/[id]] PATCH:', error);
     return NextResponse.json({ error: 'تعذر تحديث العملية.' }, { status: 500 });
