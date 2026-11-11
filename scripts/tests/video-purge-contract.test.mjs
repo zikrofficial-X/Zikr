@@ -87,7 +87,7 @@ for (const marker of [
   "const assets = includeFiles ? await listGeneratedVideos()",
   "const storagePaths = includeFiles ? await listAutomatedStorageObjects()",
   "const processingAfterPreflight = await getActiveVideoWork()",
-  "if (processingAfterPreflight.generation > 0)",
+  "if (processingAfterPreflight.generation > 0 || processingAfterPreflight.publications > 0)",
 ]) {
   const position = route.indexOf(marker);
   assert.ok(
@@ -117,6 +117,11 @@ assert.doesNotMatch(storageInventory, /await walk\(["']{0,1}["']{0,1}\)/, "the p
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
+assert.ok(route.includes("processing.publications > 0"), "active scheduled video publication must also block destructive media cleanup.");
+assert.ok(
+  route.includes("/rest/v1/content_publish_queue?content_table=eq.videos&status=eq.processing&select=id&limit=100"),
+  "purge preflight must inventory in-flight scheduled video publications before deleting media",
+);
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
 assert.ok(
   route.includes("async function acquirePurgeLock(token: string)") &&
