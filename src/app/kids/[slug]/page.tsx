@@ -15,18 +15,7 @@ import { useLanguage } from "@/components/layout/language-provider";
 import {
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
-
-type QuizQuestion = {
-  text: string;
-  options: string[];
-  correctAnswer: number;
-  textEn?: string;
-  optionsEn?: string[];
-};
-
-type QuizData = {
-  questions: QuizQuestion[];
-};
+import { getKidsQuizQuestions } from "@/features/kids/services/kids-content-validation";
 
 interface KidsContent {
   id: string;
@@ -72,32 +61,6 @@ const typeLabels: Record<string, string> = {
   matching: "توصيل",
 };
 
-function isQuizQuestion(value: unknown): value is QuizQuestion {
-  if (!value || typeof value !== "object") return false;
-  const q = value as Partial<QuizQuestion>;
-  return (
-    typeof q.text === "string" &&
-    Array.isArray(q.options) &&
-    q.options.length >= 2 &&
-    q.options.every(o => typeof o === "string") &&
-    typeof q.correctAnswer === "number" &&
-    Number.isInteger(q.correctAnswer) &&
-    q.correctAnswer >= 0 &&
-    q.correctAnswer < q.options.length
-  );
-}
-
-function getQuizQuestions(quizData: unknown, isEnglish: boolean): QuizQuestion[] {
-  if (!quizData || typeof quizData !== "object") return [];
-  const d = quizData as Partial<QuizData>;
-  if (!Array.isArray(d.questions)) return [];
-  if (!isEnglish) return d.questions.filter(isQuizQuestion);
-  return d.questions
-    .filter(isQuizQuestion)
-    .filter((q) => typeof q.textEn === "string" && Array.isArray(q.optionsEn) && q.optionsEn.every((option) => typeof option === "string"))
-    .map((q) => ({ ...q, text: q.textEn as string, options: q.optionsEn as string[] }));
-}
-
 function toDetailContent(row: unknown): KidsContent | null {
   const item = normalizeKidsContentRow(row as Parameters<typeof normalizeKidsContentRow>[0]);
   return item
@@ -128,7 +91,7 @@ export default function KidsDetailPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const quizQuestions = useMemo(
-    () => getQuizQuestions(content?.quiz_data, isEnglish),
+    () => getKidsQuizQuestions(content?.quiz_data, isEnglish),
     [content?.quiz_data, isEnglish]
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;

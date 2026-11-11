@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
+import { getKidsQuizQuestions, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
@@ -57,6 +57,26 @@ assert.throws(
   "quiz answers must point to an existing option",
 );
 
+const localizedQuiz = {
+  questions: [{
+    text: "من ربك؟",
+    options: ["الله", "غير ذلك"],
+    correctAnswer: 0,
+    textEn: "Who is your Lord?",
+    optionsEn: ["Allah", "Something else"],
+  }],
+};
+assert.deepEqual(
+  getKidsQuizQuestions(localizedQuiz, true),
+  [{ text: "Who is your Lord?", options: ["Allah", "Something else"], correctAnswer: 0 }],
+  "the English player must receive a complete translation with the same option indexes as the Arabic question",
+);
+assert.deepEqual(getKidsQuizQuestions({ questions: [{ ...localizedQuiz.questions[0], textEn: "   " }] }, true), [], "blank English question text must not render as an empty prompt");
+assert.deepEqual(getKidsQuizQuestions({ questions: [{ ...localizedQuiz.questions[0], optionsEn: [] }] }, true), [], "an empty English option list must not pass Array.every vacuously");
+assert.deepEqual(getKidsQuizQuestions({ questions: [{ ...localizedQuiz.questions[0], optionsEn: ["Allah"] }] }, true), [], "English options must preserve the Arabic option count and answer index");
+assert.deepEqual(getKidsQuizQuestions({ questions: [{ ...localizedQuiz.questions[0], optionsEn: ["Allah", "   "] }] }, true), [], "blank translated answer choices must be rejected");
+assert.deepEqual(getKidsQuizQuestions({ questions: [{ text: "  ", options: ["A", "B"], correctAnswer: 0 }] }, false), [], "blank legacy Arabic questions must not render");
+
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
@@ -90,6 +110,7 @@ assert.match(adminManager, /اعتماد التوليد الآلي/);
 assert.match(adminManager, /"text":"من ربك؟","options":\["الله","غير ذلك"\],"correctAnswer":0/, "the admin quiz example must match the Kids detail player contract");
 assert.doesNotMatch(adminManager, /"q":|"answers":/, "the admin quiz example must not use unsupported question keys");
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
+assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
 assert.match(kidsDetailPage, /Number\.isInteger\(q\.correctAnswer\)[\s\S]*?q\.correctAnswer < q\.options\.length/, "the Kids player must reject out-of-range quiz answers");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
