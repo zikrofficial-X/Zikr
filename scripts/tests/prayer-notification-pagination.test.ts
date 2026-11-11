@@ -214,7 +214,7 @@ assert.match(worker, /from\("prayer_locations"\)/);
 assert.match(worker, /from\("background_reminder_preferences"\)/);
 assert.match(worker, /enabled !== true/);
 assert.match(worker, /!Number\.isInteger\(preference\.prayer_reminders\?\.\[delivery\.prayer_name\]\)/);
-assert.match(worker, /inQuietHours\(\s*now,/);
+assert.match(worker, /inQuietHours\(\s*deliveryNow,/);
 assert.match(worker, /const scheduledAt = new Date\(delivery\.scheduled_at\)/);
 assert.match(worker, /inQuietHours\(\s*scheduledAt,/);
 assert.match(worker, /status: "cancelled"/);
