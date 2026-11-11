@@ -545,21 +545,22 @@ export async function POST(request: NextRequest) {
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
         }
+        const platformSelection = new Set<string>(platforms);
         const previousResults = normalizeSocialPlatformResults(item.metadata?.platformResults);
         const nextPlatformResults = Object.fromEntries(
-          Object.entries(previousResults).filter(([platform]) => !platforms.includes(platform)),
+          Object.entries(previousResults).filter(([platform]) => !platformSelection.has(platform)),
         );
         const remainingAuthBlockedPlatforms = [...authBlockedPlatforms(item.metadata, item.target_platforms)]
-          .filter(platform => !platforms.includes(platform));
+          .filter(platform => !platformSelection.has(platform));
         const declaredPermanentFailures = Array.isArray(item.metadata?.permanentFailurePlatforms)
           ? item.metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
           : [];
         const remainingPermanentFailurePlatforms = declaredPermanentFailures.filter(
-          platform => !platforms.includes(platform),
+          platform => !platformSelection.has(platform),
         );
         const remainingUnavailablePlatforms = Array.isArray(item.metadata?.unavailablePlatforms)
           ? item.metadata.unavailablePlatforms.filter(
-              (platform): platform is string => typeof platform === "string" && !platforms.includes(platform),
+              (platform): platform is string => typeof platform === "string" && !platformSelection.has(platform),
             )
           : [];
         const preservedApprovalDeferredPlatforms = Array.isArray(item.metadata?.approvalDeferredPlatforms)
