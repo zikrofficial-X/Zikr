@@ -243,7 +243,7 @@ assert.ok(
   "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
 );
 const socialQueueEnqueuePosition = videoQueueSource.indexOf("await queueSocialItems(request, rendered.videoUrl);");
-const completedRequestPatchPosition = videoQueueSource.lastIndexOf('status: "completed",\n          video_url: rendered.videoUrl');
+const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        video_url: rendered.videoUrl');
 assert.ok(
   socialQueueEnqueuePosition >= 0 &&
     completedRequestPatchPosition > socialQueueEnqueuePosition,
