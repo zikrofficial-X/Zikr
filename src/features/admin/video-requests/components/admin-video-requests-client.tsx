@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 import type { VideoGenerationRequest } from "@/features/videos/services/video-automation";
 
 type Status = "pending" | "processing" | "retry_wait" | "completed" | "failed";
@@ -128,6 +129,7 @@ export default function AdminVideoRequestsClient() {
         body: JSON.stringify({ id: details.id, action: "approve_publish", qaChecklist: approvalChecks }),
       });
       const responseData = await response.json().catch(() => ({}));
+      if (!response.ok && responseData.error === "step_up_required" && redirectToAdminStepUp(responseData.nextPath)) return;
       if (!response.ok) throw new Error(responseData.error || "تعذر اعتماد الفيديو للنشر.");
       setMessage("تم تسجيل مراجعة الجودة. سينتقل الفيديو إلى طابور النشر عند المزامنة المجدولة.");
       setDetails(null); await load();

@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
@@ -433,6 +434,7 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
         adopted?: boolean;
         pageName?: string;
         released?: number;
@@ -440,6 +442,7 @@ export default function AdminSocialPage() {
         workerDispatched?: boolean;
         health?: Health;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) {
         throw new Error(payload.error || "تعذر اعتماد توكن Facebook المحفوظ على الخادم.");
       }
@@ -473,7 +476,9 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok)
         throw new Error(payload.error || "تعذر تشغيل عامل النشر.");
       setMessage(
@@ -551,10 +556,12 @@ export default function AdminSocialPage() {
         });
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
+          nextPath?: string;
           affected?: number;
           manualReconciliationSkipped?: number;
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
+        if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
         if (action === "publish_now") {
           setMessage(
@@ -605,6 +612,7 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
@@ -612,6 +620,7 @@ export default function AdminSocialPage() {
         localMemoryFailed?: number;
         results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
       setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا. ملفات الذاكرة المحذوفة: ${payload.localMemoryDeleted ?? 0}، فشل حذفها: ${payload.localMemoryFailed ?? 0}. الفشل الخارجي: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. سجل التدقيق محفوظ.`);
       const issues = (payload.results ?? []).filter(result =>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
 type PurgeScope = "files" | "memory" | "both";
@@ -62,6 +63,7 @@ export function PurgeGeneratedVideosControl({
       });
       const payload = await response.json().catch(() => ({})) as {
         error?: string;
+        nextPath?: string;
         paused?: boolean;
         ok?: boolean;
         scope?: PurgeScope;
@@ -78,6 +80,7 @@ export function PurgeGeneratedVideosControl({
         automationRunsDeleted?: number;
         externalSocialPostsDeleted?: false;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok || payload.ok !== true) {
         throw new Error(
           payload.error ||

@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { CURATED_AUDIO_LIBRARY } from "@/lib/audio/curated-library";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 type Kind = "adhan" | "salawat" | "dhikr";
 type Asset = {
@@ -135,6 +136,7 @@ export function SiteAudioManager() {
     try {
       const response = await fetch("/api/admin/site-audio?id=" + encodeURIComponent(asset.id), { method: "DELETE" });
       const payload = await response.json();
+      if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error ?? "تعذر حذف المقطع.");
       setAssets(current => current.filter(item => item.id !== asset.id));
       setStatus("تم حذف المقطع.");

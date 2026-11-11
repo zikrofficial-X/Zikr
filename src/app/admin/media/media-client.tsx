@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 type Asset = {
   id: string;
@@ -92,6 +93,7 @@ export default function AdminMediaPage() {
         body: JSON.stringify({ id, action }),
       });
       const payload = await response.json().catch(() => ({}));
+      if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
       setMessage("تم تنفيذ الإجراء.");
       await load();
