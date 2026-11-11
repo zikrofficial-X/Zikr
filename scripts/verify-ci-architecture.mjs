@@ -379,7 +379,6 @@ for (const file of [
 
 assert.ok(!quality.includes("paths-ignore:"), "Markdown/content-only changes must not bypass the canonical quality gate");
 
-const productionSmoke = read("scripts/verify-production-smoke.mjs");
 for (const route of [
   "/",
   "/about",
