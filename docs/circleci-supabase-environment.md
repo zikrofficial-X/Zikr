@@ -63,7 +63,9 @@ Production video/social credentials and schedules live in protected GitHub envir
 
 - `generate-ai-video.yml` — recurring video generation.
 - `publish-social.yml` — recurring social publishing.
-- `release-finalization.yml` — controlled production web release.
+- `release-finalization.yml` — controlled production web release and the source-controlled `prayer-notification-worker` Edge Function deployment after database migrations.
+
+The controlled release requires the GitHub Actions **production environment** secret `SUPABASE_ACCESS_TOKEN` in addition to the administrative database URL. The workflow verifies that the token can list the canonical project before any production database mutation, applies and reconciles migrations, rechecks the exact approved `main` SHA, deploys only the changed `prayer-notification-worker` from `supabase/functions/prayer-notification-worker/`, then rechecks `main` before the Vercel deployment. The worker's `verify_jwt = false` setting remains defined in `supabase/config.toml`; the worker performs its own database-backed scheduler-secret validation. Do not trigger this workflow until CODEOWNERS approval and owner release authorization are complete.
 
 ## Supabase Edge Functions
 
