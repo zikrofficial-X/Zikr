@@ -50,8 +50,11 @@ if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
 
 requireText(".env.example", env, "AUTH_CALLBACK_URL=" + production + "/auth/callback");
 requireText("auth-enhanced", enhanced, 'new URL("/auth/callback"');
-const trustedOriginMatch = enhanced.match(/export function getTrustedAuthOrigin\\(request: Request\\): string \\{([\\s\\S]*?)\\n\\}/);
-const trustedOriginBody = trustedOriginMatch?.[1] ?? "";
+const trustedOriginStart = enhanced.indexOf("export function getTrustedAuthOrigin(request: Request): string {");
+const trustedOriginEnd = enhanced.indexOf("\n}", trustedOriginStart);
+const trustedOriginBody = trustedOriginStart >= 0 && trustedOriginEnd > trustedOriginStart
+  ? enhanced.slice(trustedOriginStart, trustedOriginEnd)
+  : "";
 if (!trustedOriginBody.includes("new URL(request.url).origin") || /x-forwarded-(?:host|proto)/.test(trustedOriginBody)) {
   failures.push("auth-enhanced: OAuth error redirects must derive their origin from the trusted request URL, not forwarded headers");
 }
