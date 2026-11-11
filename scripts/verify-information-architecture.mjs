@@ -49,6 +49,9 @@ if (!site.includes('path: "/library"') || !site.includes('path: "/audio"')) {
 if (!sitemap.includes('siteConfigRoutes().map')) {
   failures.push('Sitemap must derive public static routes from the canonical site route catalog.');
 }
+if (!sitemap.includes('getKidsContent("ar")')) {
+  failures.push('Sitemap Kids entries must use a stable Arabic locale, not the requesting visitor locale.');
+}
 if (!audioPage.includes("path: '/audio'")) {
   failures.push('Audio hub must expose page-level canonical metadata.');
 }
