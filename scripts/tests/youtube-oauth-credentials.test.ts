@@ -117,4 +117,34 @@ const socialPublisherSource = readFileSync(
 assert.match(socialPublisherSource, /getYouTubeUploadRefreshToken/);
 assert.doesNotMatch(socialPublisherSource, /getYouTubeRefreshToken/, "publishing must not use the read-only analytics credential getter");
 
+
+const deploymentEnvValidator = readFileSync(
+  new URL("../../scripts/validate-deployment-env.mjs", import.meta.url),
+  "utf8",
+);
+assert.doesNotMatch(
+  deploymentEnvValidator,
+  /"YOUTUBE_REFRESH_TOKEN",/,
+  "deployment validation must not require or warn about a refresh-token environment fallback that runtime code never reads",
+);
+assert.match(
+  deploymentEnvValidator,
+  /Legacy YouTube refresh token/,
+  "a configured legacy token must be identified as ignored rather than treated as an active credential",
+);
+
+const environmentDocs = readFileSync(
+  new URL("../../docs/environment-variables.md", import.meta.url),
+  "utf8",
+);
+assert.match(environmentDocs, /does \*\*not\*\* read it/);
+assert.doesNotMatch(environmentDocs, /environment value remains a rollback fallback/);
+assert.doesNotMatch(environmentDocs, /replacing the refresh token in Vercel and the GitHub production secret/);
+
+const trafficPanelSource = readFileSync(
+  new URL("../../src/features/admin/components/traffic-revenue-panel.tsx", import.meta.url),
+  "utf8",
+);
+assert.doesNotMatch(trafficPanelSource, /YOUTUBE_REFRESH_TOKEN/);
+
 console.log("YouTube OAuth read-only and upload-scope credential tests passed.");
