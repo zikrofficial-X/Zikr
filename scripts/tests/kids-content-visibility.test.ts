@@ -173,6 +173,8 @@ assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable data
 assert.match(kidsQuizValidation, /Number\.isInteger\(correctAnswer\)[\s\S]*?correctAnswer >= options\.length/, "the shared Kids quiz validator must reject out-of-range answers");
 assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
+assert.match(kidsDetailLayout, /title:\s*item\.title_ar\s*\|\|\s*item\.title_en/, "Kids SEO metadata must use the localized KidsItem title fields");
+assert.doesNotMatch(kidsDetailLayout, /item\.title(?!_)/, "Kids SEO metadata must not reference a non-existent generic title field");
 assert.ok(kidsDetailLayout.includes("robots: { index: false, follow: false }"), "hidden or unavailable Kids slugs must not be indexed as generic 200 pages");
 assert.ok(kidsDetailLayout.includes("if (!item) notFound()"), "hidden or unavailable Kids slugs must resolve as 404s before rendering the client page");
 assert.ok(kidsSitemap.includes("getKidsContent()"), "the sitemap must source Kids URLs through the visibility-aware content resolver");
