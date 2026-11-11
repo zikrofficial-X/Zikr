@@ -5,6 +5,7 @@ import {
   extractManagedVideoPath,
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
+  collectPaginatedRows,
   isEligiblePublishedQueueItem,
   selectProtectedAndroidTags,
 } from "../cleanup-supabase-storage.mjs";
@@ -66,6 +67,24 @@ assert.equal(
   extractManagedVideoPath(`${supabaseUrl}/storage/v1/object/public/videos/automated/%2E%2E%2Fprivate.mp4`, supabaseUrl),
   null,
   "Path traversal is rejected",
+);
+assert.equal(
+  extractManagedVideoPath(`${supabaseUrl}/storage/v1/object/public/videos/automated/%00private.mp4`, supabaseUrl),
+  null,
+  "NUL bytes are rejected from Storage object paths",
+);
+
+const pagedRows = await collectPaginatedRows(
+  async (offset, end) => [10, 20, 30, 40, 50].slice(offset, end + 1),
+  "fixture rows",
+  2,
+  6,
+);
+assert.deepEqual(pagedRows, [10, 20, 30, 40, 50], "all pages must be read before retention decisions");
+await assert.rejects(
+  () => collectPaginatedRows(async () => [1, 2], "truncated fixture", 2, 4),
+  /safe scan limit; refusing cleanup/,
+  "a scan that reaches its hard cap must fail closed rather than silently truncate",
 );
 
 const targets = ["youtube", "facebook_reels"];

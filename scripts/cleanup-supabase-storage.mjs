@@ -24,6 +24,35 @@ function asString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export async function collectPaginatedRows(
+  fetchPage,
+  label,
+  pageSize = 1000,
+  maxRows = 5000,
+) {
+  if (!Number.isInteger(pageSize) || pageSize < 1 ||
+      !Number.isInteger(maxRows) || maxRows < pageSize) {
+    throw new Error("Invalid pagination safety limits.");
+  }
+
+  const rows = [];
+  const maxPages = Math.ceil(maxRows / pageSize);
+  for (let page = 0; page <= maxPages; page += 1) {
+    const offset = page * pageSize;
+    const pageRows = await fetchPage(offset, offset + pageSize - 1);
+    if (!Array.isArray(pageRows)) {
+      throw new Error(`Pagination returned invalid data for ${label}; refusing cleanup.`);
+    }
+    if (rows.length + pageRows.length > maxRows) {
+      throw new Error(`${label} exceeded the safe scan limit; refusing cleanup.`);
+    }
+    rows.push(...pageRows);
+    if (pageRows.length < pageSize) return rows;
+  }
+
+  throw new Error(`${label} exceeded the safe scan limit; refusing cleanup.`);
+}
+
 export function hasConfirmedPlatformResults(targetPlatforms, metadata) {
   if (!Array.isArray(targetPlatforms) || targetPlatforms.length === 0) return false;
   const results = asObject(asObject(metadata).platformResults);
@@ -42,7 +71,7 @@ export function extractManagedVideoPath(value, supabaseUrl) {
     const prefix = "/storage/v1/object/public/videos/";
     if (!parsed.pathname.startsWith(prefix)) return null;
     const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
-    if (!path.startsWith("automated/") || path.includes("\\0")) return null;
+    if (!path.startsWith("automated/") || path.includes("\0")) return null;
     if (path.split("/").some((part) => part === "." || part === "..")) return null;
     return path;
   } catch {
@@ -133,18 +162,15 @@ function assertEnv() {
 }
 
 async function listDirectory(client, bucket, prefix) {
-  const rows = [];
-  for (let offset = 0; offset < 5000; offset += 1000) {
+  return collectPaginatedRows(async (offset, end) => {
     const { data, error } = await client.storage.from(bucket).list(prefix, {
-      limit: 1000,
+      limit: end - offset + 1,
       offset,
       sortBy: { column: "name", order: "asc" },
     });
     if (error) throw new Error(`Storage list failed for ${bucket}/${prefix}: ${error.message}`);
-    rows.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
-  }
-  return rows;
+    return data ?? [];
+  }, `Storage inventory ${bucket}/${prefix}`);
 }
 
 async function readSmallStorageText(client, bucket, path, maxBytes = 128 * 1024) {
@@ -580,23 +606,28 @@ async function main() {
   console.log(`ZIKR Storage retention: ${apply ? "APPLY" : "DRY RUN"}`);
   console.log(`Video retention cutoff: ${cutoffIso}`);
 
-  const [queueResult, requestResult, videoFiles, androidRoot] = await Promise.all([
-    client.from("social_publish_queue")
-      .select("id,content_id,video_url,target_platforms,status,published_at,metadata")
-      .not("video_url", "is", null)
-      .range(0, 999),
-    client.from("video_generation_requests")
-      .select("id,status,video_url,content")
-      .not("video_url", "is", null)
-      .range(0, 999),
+  const [queueRows, requestRows, videoFiles, androidRoot] = await Promise.all([
+    collectPaginatedRows(async (offset, end) => {
+      const { data, error } = await client.from("social_publish_queue")
+        .select("id,content_id,video_url,target_platforms,status,published_at,metadata")
+        .not("video_url", "is", null)
+        .order("id", { ascending: true })
+        .range(offset, end);
+      if (error) throw new Error(`Cannot read social publish queue: ${error.message}`);
+      return data ?? [];
+    }, "social_publish_queue.video_url"),
+    collectPaginatedRows(async (offset, end) => {
+      const { data, error } = await client.from("video_generation_requests")
+        .select("id,status,video_url,content")
+        .not("video_url", "is", null)
+        .order("id", { ascending: true })
+        .range(offset, end);
+      if (error) throw new Error(`Cannot read video generation requests: ${error.message}`);
+      return data ?? [];
+    }, "video_generation_requests.video_url"),
     listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX),
     listDirectory(client, ANDROID_BUCKET, "android"),
   ]);
-  if (queueResult.error) throw new Error(`Cannot read social publish queue: ${queueResult.error.message}`);
-  if (requestResult.error) throw new Error(`Cannot read video generation requests: ${requestResult.error.message}`);
-
-  const queueRows = queueResult.data ?? [];
-  const requestRows = requestResult.data ?? [];
   const requestById = new Map(requestRows.map((row) => [row.id, row]));
   const filesByPath = new Map(
     videoFiles
