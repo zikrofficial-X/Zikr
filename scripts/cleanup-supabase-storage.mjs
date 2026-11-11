@@ -117,15 +117,18 @@ function getSupabaseBackupUrl(queue, request, supabaseUrl) {
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
-export function indexManagedBackupReferences(rows, supabaseUrl, getUrl, getId) {
+export function indexManagedBackupReferences(rows, candidatePaths, getValue, getId) {
   const references = new Map();
+  const candidates = [...candidatePaths];
   for (const row of rows ?? []) {
-    const path = extractManagedVideoPath(asString(getUrl(row)), supabaseUrl);
-    if (!path) continue;
+    const serialized = JSON.stringify(getValue(row) ?? {});
     const id = String(getId(row) ?? "");
-    const ids = references.get(path) ?? new Set();
-    ids.add(id);
-    references.set(path, ids);
+    for (const path of candidates) {
+      if (!serialized.includes(path)) continue;
+      const ids = references.get(path) ?? new Set();
+      ids.add(id);
+      references.set(path, ids);
+    }
   }
   return references;
 }
@@ -679,16 +682,17 @@ async function main() {
     queueByUrl.set(row.video_url, (queueByUrl.get(row.video_url) ?? 0) + 1);
   }
 
+  const candidateBackupPaths = [...filesByPath.keys()];
   const queueBackupReferences = indexManagedBackupReferences(
     queueRows,
-    supabaseUrl,
-    (row) => getSupabaseBackupUrl(row, null, supabaseUrl),
+    candidateBackupPaths,
+    (row) => row.metadata,
     (row) => row.id,
   );
   const requestBackupReferences = indexManagedBackupReferences(
     requestRows,
-    supabaseUrl,
-    (row) => getSupabaseBackupUrl(null, row, supabaseUrl),
+    candidateBackupPaths,
+    (row) => row.content,
     (row) => row.id,
   );
 

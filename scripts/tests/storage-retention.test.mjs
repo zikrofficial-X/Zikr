@@ -95,9 +95,12 @@ const pagedRows = await collectPaginatedRows(
 );
 assert.deepEqual(pagedRows, [10, 20, 30, 40, 50], "all pages must be read before retention decisions");
 const duplicateBackupReferences = indexManagedBackupReferences(
-  [{ id: "queue-a", backup: publicUrl }, { id: "queue-b", backup: publicUrl }],
-  supabaseUrl,
-  (row) => row.backup,
+  [
+    { id: "queue-a", metadata: { supabaseOriginalVideoUrl: publicUrl } },
+    { id: "queue-b", metadata: { nested: { sourceVideoUrl: publicUrl } } },
+  ],
+  ["automated/story:20750:11.mp4"],
+  (row) => row.metadata,
   (row) => row.id,
 );
 assert.deepEqual(
