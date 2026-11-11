@@ -7,6 +7,7 @@ import { SocialLogin } from "@capgo/capacitor-social-login";
 import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 type GoogleOAuthButtonProps = {
   next?: string;
@@ -16,15 +17,20 @@ type GoogleOAuthButtonProps = {
 let nativeGoogleInitialization: Promise<void> | null = null;
 
 function getSafeNextPath(next?: string): string {
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-    ? next
-    : "/profile";
+  return sanitizeInternalPath(next);
 }
 
 function getCanonicalBrowserOrigin(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname.toLowerCase();
     if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
+      return window.location.origin;
+    }
+
+    const canonicalHost = new URL(PRODUCTION_URL).hostname.toLowerCase();
+    // Production aliases are redirected by the server proxy. Preview builds
+    // must keep PKCE on their own origin instead of borrowing production cookies.
+    if (host.endsWith(".vercel.app") && host !== canonicalHost) {
       return window.location.origin;
     }
   }
@@ -34,7 +40,7 @@ function getCanonicalBrowserOrigin(): string {
 function buildNativeOAuthRedirect(nextPath: string): string {
   // Browser fallback returns the PKCE callback to the installed app through
   // NativeGoogleOAuthHandler. This also supports older APKs without SocialLogin.
-  const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
+  const url = new URL("/auth/callback", PRODUCTION_URL);
   url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();
