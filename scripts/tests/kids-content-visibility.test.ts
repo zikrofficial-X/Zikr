@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
-import { isPublicKidsVideoSocialQueueRow } from "../../src/features/social/services/kids-video-social-visibility";
+import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow } from "../../src/features/social/services/kids-video-social-visibility";
 import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
 import {
   getFallbackKidsContentBySlug,
@@ -171,6 +171,7 @@ assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detai
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
 assert.ok(kidsVideosApi.includes("isPublicKidsVideoSocialQueueRow(row)"), "the Kids video feed must only use confirmed public social queue rows");
+assert.ok(kidsVideosApi.includes("const platforms = row ? confirmedSocialPlatforms(row) : storedPlatforms"), "live queue deletion state must override stale catalog social badges");
 assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
 assert.ok(kidsVideosApi.includes("published_at=not.is.null"), "the public Kids video feed must require a confirmed publication timestamp");
 
@@ -198,6 +199,58 @@ for (const status of ["queued", "processing", "failed"]) {
 }
 assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "written_post", status: "published", metadata: { audience: "kids" } }), false);
 assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", metadata: { audience: "general" } }), false);
+
+const deletedYoutubeRow = {
+  status: "published",
+  target_platforms: ["youtube", "facebook"],
+  metadata: {
+    audience: "kids",
+    platformResults: {
+      youtube: { ok: true, remoteId: "yt-video-123" },
+      facebook: { ok: true, remoteId: "fb-video-123" },
+    },
+    platformDeletions: {
+      youtube: { status: "deleted", remoteId: "yt-video-123" },
+    },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(deletedYoutubeRow),
+  ["facebook"],
+  "a confirmed remote deletion must remove only that platform from the public Kids publication badge",
+);
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    ...deletedYoutubeRow,
+    metadata: {
+      ...deletedYoutubeRow.metadata,
+      platformDeletions: {
+        youtube: { status: "deleted" },
+        facebook: { status: "deleted" },
+      },
+    },
+  }),
+  [],
+  "when every remote post is deleted, the Kids feed must not report any platform as published",
+);
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    status: "published",
+    target_platforms: ["youtube", "facebook"],
+    metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted" } } },
+  }),
+  ["facebook"],
+  "legacy published rows without a result ledger must still exclude platforms with confirmed deletion records",
+);
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    status: "published",
+    target_platforms: ["youtube"],
+    metadata: { audience: "kids", platformResults: { youtube: { ok: false, remoteId: null } } },
+  }),
+  [],
+  "an explicit failed result ledger must not fall back to optimistic target_platforms",
+);
 
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
