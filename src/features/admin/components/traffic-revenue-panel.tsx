@@ -214,9 +214,9 @@ export async function TrafficRevenuePanel() {
           <Card className="p-5">
             <p className="text-sm leading-7 text-brand-cream/65">
               {snapshot.youtubeAnalytics.status === "authorization_required"
-                ? "بيانات YouTube العامة تعمل، لكن رمز OAuth الحالي لا يملك صلاحية تقارير Analytics. يلزم إعادة تفويض القناة بصلاحية yt-analytics.readonly ثم تحديث YOUTUBE_REFRESH_TOKEN في إعدادات Vercel."
+                ? "بيانات YouTube العامة تعمل، لكن الاتصال المحفوظ لا يملك صلاحيات القراءة والتحليلات المطلوبة. اضغط «إعادة ربط القراءة» بالأعلى وامنح youtube.readonly وyt-analytics.readonly؛ سيتم حفظ الرمز في Supabase الآمن."
                 : snapshot.youtubeAnalytics.status === "not_configured"
-                  ? "يلزم ضبط YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET وYOUTUBE_REFRESH_TOKEN على بيئة الإنتاج."
+                  ? "اتصال تقارير YouTube غير مُعد. تأكد من ضبط YOUTUBE_CLIENT_ID وYOUTUBE_CLIENT_SECRET في بيئة الإنتاج، ثم اضغط «ربط YouTube — قراءة فقط» بالأعلى لإكمال التفويض."
                   : "تعذر الوصول إلى تقارير YouTube Analytics حاليًا. لم يتم استبدال البيانات المفقودة بأصفار."}
             </p>
           </Card>

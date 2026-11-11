@@ -1,6 +1,6 @@
 # ZIKR Environment Variables
 
-Last reconciled: **2026-11-07**
+Last reconciled: **2026-11-11**
 
 This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
@@ -48,6 +48,7 @@ YouTube:
 - `YOUTUBE_CHANNEL_ID`
 - `YOUTUBE_CLIENT_ID`
 - `YOUTUBE_CLIENT_SECRET`
+- `YOUTUBE_UPLOAD_PRIVACY` — visibility for automatic video uploads (`public`, `unlisted`, or `private`; defaults to `public`).
 - `YOUTUBE_REFRESH_TOKEN` — legacy/ignored by active workers; do not provision it.
  
 YouTube remote deletion additionally requires an explicit OAuth grant containing `https://www.googleapis.com/auth/youtube.force-ssl` (or `youtube` / `youtubepartner`). The upload-only scope and API key do not authorize deletion. Reconnect YouTube from Admin to store the new credential and its granted scopes in the server-only `youtube_oauth_credentials` table. The active publisher reads refresh tokens only from the server-only `youtube_oauth_credentials` row and validates the granted scopes before use. `YOUTUBE_REFRESH_TOKEN` is a legacy variable intentionally ignored by the active publisher; it is not a rollback fallback. Reconnect from Admin to update the stored credential. Never expose refresh tokens to the browser or copy them into Vercel/GitHub Actions environment variables.

@@ -110,4 +110,41 @@ const socialPublisherSource = readFileSync(
 assert.match(socialPublisherSource, /getYouTubeUploadRefreshToken/);
 assert.doesNotMatch(socialPublisherSource, /getYouTubeRefreshToken/, "publishing must not use the read-only analytics credential getter");
 
+const environmentExample = readFileSync(
+  new URL("../../.env.example", import.meta.url),
+  "utf8",
+);
+assert.match(
+  environmentExample,
+  /# Visibility for automatic YouTube uploads: public, unlisted, or private/,
+  ".env.example must describe the active YOUTUBE_UPLOAD_PRIVACY setting accurately",
+);
+assert.doesNotMatch(
+  environmentExample,
+  /YOUTUBE_UPLOAD_PRIVACY[\s\S]{0,100}ignored/i,
+  "the active upload privacy setting must not be labelled as ignored",
+);
+
+const trafficRevenuePanel = readFileSync(
+  new URL("../../src/features/admin/components/traffic-revenue-panel.tsx", import.meta.url),
+  "utf8",
+);
+assert.doesNotMatch(
+  trafficRevenuePanel,
+  /YOUTUBE_REFRESH_TOKEN/,
+  "the Analytics UI must not tell owners to configure an ignored environment refresh token",
+);
+assert.match(trafficRevenuePanel, /youtube\.readonly/);
+assert.match(trafficRevenuePanel, /yt-analytics\.readonly/);
+
+const deploymentValidator = readFileSync(
+  new URL("../../scripts/validate-deployment-env.mjs", import.meta.url),
+  "utf8",
+);
+assert.doesNotMatch(
+  deploymentValidator,
+  /^\s*"YOUTUBE_REFRESH_TOKEN",?$/m,
+  "the deployment validator must not warn that an intentionally ignored token is an optional integration",
+);
+
 console.log("YouTube OAuth read-only and upload-scope credential tests passed.");
