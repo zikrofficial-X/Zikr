@@ -173,6 +173,7 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  let articleId=isKidsStory?source.id:(existing[0]?str(existing[0].id):"");
  const now=new Date();
  const nowIso=now.toISOString();
+ let socialScheduledAt=nowIso;
  if(!isKidsStory&&!articleId){
   const payload=buildWrittenArticlePayload(source,draft,automationKey,slug,nowIso);
   const saved=await supabaseServerAdminRequest<Array<{id:string}>>("/rest/v1/articles",{
@@ -188,23 +189,37 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  // the independent Facebook written-post delivery record.
  if(!isKidsStory&&existing[0]?.published!==true){
   const contentQueue=await readRequired<Row>(
-   "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&status=in.(queued,processing)&select=id,status&limit=1",
+   "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&status=in.(queued,processing)&select=id,status,scheduled_at&order=scheduled_at.asc,id.asc&limit=1",
   );
+  let siteScheduledAt: string;
   if(!contentQueue[0]){
-   const scheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
+   siteScheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
    await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
     method:"POST",
     headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
     body:JSON.stringify({
      content_table:"articles",
      content_id:articleId,
-     scheduled_at:scheduledAt,
+     scheduled_at:siteScheduledAt,
      status:"queued",
      created_at:nowIso,
      updated_at:nowIso,
     }),
    });
+  } else {
+   const existingSchedule=str(contentQueue[0].scheduled_at);
+   if(existingSchedule){
+    const timestamp=Date.parse(existingSchedule);
+    if(!Number.isFinite(timestamp))throw new Error("Existing site publication schedule is invalid; refusing to enqueue social delivery early.");
+    siteScheduledAt=new Date(timestamp).toISOString();
+   } else if(contentQueue[0].status==="processing"){
+    siteScheduledAt=nowIso;
+   } else {
+    throw new Error("Existing site publication schedule is missing; refusing to enqueue social delivery early.");
+   }
   }
+  socialScheduledAt=new Date(Math.max(now.getTime(),Date.parse(siteScheduledAt))+5*60*1000).toISOString();
+ }
  }
 
  const socialAutomationKey=createWrittenSocialAutomationKey(source.kind,source.id);
@@ -213,7 +228,7 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  );
  if(!socialRows[0]){
   const socialPayload=buildWrittenSocialQueuePayload(
-   source,draft,articleId,socialAutomationKey,nowIso,
+   source,draft,articleId,socialAutomationKey,nowIso,socialScheduledAt,
   );
   await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
    method:"POST",
@@ -252,8 +267,8 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
  let created=0,slot=0,offset=0;
  while(created < maxNewRows){
   const rows=await readRequired<Row>(
-   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(cutoff.toISOString())}`+
-   `&select=id,title,content,slug,metadata,created_at&order=created_at.asc,id.asc&limit=${pageSize}&offset=${offset}`,
+   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=${encodeURIComponent(cutoff.toISOString())}`+
+   `&select=id,title,content,slug,metadata,created_at,published&order=created_at.asc,id.asc&limit=${pageSize}&offset=${offset}`,
   );
   if(rows.length===0)break;
   const candidates=rows.flatMap(article=>{
@@ -263,7 +278,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
    const articleId=str(article.id),title=str(article.title),body=str(article.content);
    const publicPath=str(metadata.publicPath);
    const sourceType=str(source.type),sourceId=str(source.id);
-   if(!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
+   if(article.published!==true||!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
       !sourceType||!sourceId||!publicPath.startsWith("/")||publicPath.startsWith("//"))return [];
    return [{
     articleId,title,body,publicPath,sourceType,sourceId,

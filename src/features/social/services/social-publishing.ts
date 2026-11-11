@@ -136,30 +136,67 @@ async function hasVideoApprovalForQueueItem(item: SocialPublishQueueItem): Promi
   }
 }
 
-type KidsWrittenApproval = "not_applicable" | "approved" | "blocked" | "unavailable";
+type WrittenPostSourceApproval = "not_applicable" | "approved" | "blocked" | "unavailable";
 
-async function checkKidsWrittenPostApproval(
-  item: SocialPublishQueueItem,
-): Promise<KidsWrittenApproval> {
+function isKidsWrittenQueueItem(item: SocialPublishQueueItem): boolean {
   const metadata = item.metadata ?? {};
-  if (item.content_type !== "written_post" || !isKidsWrittenPostCandidate(item)) {
-    return "not_applicable";
-  }
-  if (metadata.audience !== "kids") return "blocked";
+  const publicPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
+  return metadata.audience === "kids" ||
+    isKidsWrittenPostCandidate(item) ||
+    publicPath === "/kids" ||
+    publicPath.startsWith("/kids/");
+}
 
+async function checkWrittenPostSourceApproval(
+  item: SocialPublishQueueItem,
+): Promise<WrittenPostSourceApproval> {
+  if (item.content_type !== "written_post") return "not_applicable";
+
+  const metadata = item.metadata ?? {};
   const sourceId = item.content_id;
-  if (!sourceId || metadata.kidsContentId !== sourceId) return "blocked";
+  const kidsPost = isKidsWrittenQueueItem(item);
+  if (kidsPost) {
+    if (!isKidsWrittenPostCandidate(item) || metadata.audience !== "kids") return "blocked";
+    if (!sourceId || metadata.kidsContentId !== sourceId) return "blocked";
 
+    try {
+      const rows = await supabaseServerAdminRequest<CurrentKidsStory[]>(
+        "/rest/v1/kids_content?id=eq." + encodeURIComponent(sourceId) +
+          "&select=id,slug,title_ar,age_group,type,published,is_active,metadata&limit=2",
+      );
+      if (!Array.isArray(rows)) throw new Error("Kids source lookup returned invalid data.");
+      if (rows.length !== 1) return "blocked";
+      return isEligibleKidsWrittenPostForPublishing(item, rows[0]) ? "approved" : "blocked";
+    } catch (error) {
+      console.error("[social-publishing] Kids written-post approval lookup failed; holding item:", item.id, error);
+      return "unavailable";
+    }
+  }
+
+  if (!sourceId) return "blocked";
   try {
-    const rows = await supabaseServerAdminRequest<CurrentKidsStory[]>(
-      "/rest/v1/kids_content?id=eq." + encodeURIComponent(sourceId) +
-        "&select=id,slug,title_ar,age_group,type,published,is_active,metadata&limit=2",
+    const articles = await supabaseServerAdminRequest<Array<{ id: string; published: unknown }>>(
+      "/rest/v1/articles?id=eq." + encodeURIComponent(sourceId) +
+        "&select=id,published&limit=2",
     );
-    if (!Array.isArray(rows)) throw new Error("Kids source lookup returned invalid data.");
-    if (rows.length !== 1) return "blocked";
-    return isEligibleKidsWrittenPostForPublishing(item, rows[0]) ? "approved" : "blocked";
+    if (!Array.isArray(articles)) throw new Error("Written article publication lookup returned invalid data.");
+    if (articles.length !== 1) return "blocked";
+    if (articles[0].published === true) return "approved";
+    if (typeof articles[0].published !== "boolean") {
+      throw new Error("Written article publication flag is invalid.");
+    }
+
+    const scheduledRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq." +
+        encodeURIComponent(sourceId) +
+        "&status=in.(queued,processing)&select=id&limit=2",
+    );
+    if (!Array.isArray(scheduledRows)) {
+      throw new Error("Written article publication schedule lookup returned invalid data.");
+    }
+    return scheduledRows.length > 0 ? "unavailable" : "blocked";
   } catch (error) {
-    console.error("[social-publishing] Kids written-post approval lookup failed; holding item:", item.id, error);
+    console.error("[social-publishing] Written article publication lookup failed; holding item:", item.id, error);
     return "unavailable";
   }
 }
@@ -454,15 +491,20 @@ async function publishPlatform(
   try {
     // The automated QA snapshot is re-read immediately before every channel call.
     // Any source, content, template or media change holds the not-yet-sent target.
-    const kidsSourceApproval = await checkKidsWrittenPostApproval(item);
-    if (kidsSourceApproval === "blocked" || kidsSourceApproval === "unavailable") {
+    const sourceApproval = await checkWrittenPostSourceApproval(item);
+    if (sourceApproval === "blocked" || sourceApproval === "unavailable") {
+      const kidsWrittenPost = isKidsWrittenQueueItem(item);
       return {
         platform,
         ok: false,
         approvalBlocked: true,
-        error: kidsSourceApproval === "blocked"
-          ? "Kids source is no longer approved for public publishing."
-          : "Kids source approval could not be revalidated.",
+        error: sourceApproval === "blocked"
+          ? kidsWrittenPost
+            ? "Kids source is no longer approved for public publishing."
+            : "Written article is no longer published."
+          : kidsWrittenPost
+            ? "Kids source approval could not be revalidated."
+            : "Written article publication could not be revalidated.",
       };
     }
     if (!(await hasVideoApprovalForQueueItem(item))) {
@@ -938,21 +980,37 @@ export async function processSocialPublishItem(
     return "approval_blocked";
   }
 
-  const kidsWrittenApproval = await checkKidsWrittenPostApproval(item);
-  if (kidsWrittenApproval === "blocked") {
+  const sourceApproval = await checkWrittenPostSourceApproval(item);
+  const kidsWrittenPost = isKidsWrittenQueueItem(item);
+  if (sourceApproval === "blocked") {
     await markQueueItem(item.id, "failed", {
       scheduled_at: null,
-      error_message: "Kids source is no longer published, active, and age-appropriate; publishing was held for review.",
-      metadata: { ...(item.metadata ?? {}), kidsSourceApprovalBlocked: true, kidsSourceApprovalPending: false },
+      error_message: kidsWrittenPost
+        ? "Kids source is no longer published, active, and age-appropriate; publishing was held for review."
+        : "Written article is no longer published; social publishing was held for review.",
+      metadata: {
+        ...(item.metadata ?? {}),
+        ...(kidsWrittenPost
+          ? { kidsSourceApprovalBlocked: true, kidsSourceApprovalPending: false }
+          : { writtenArticlePublicationBlocked: true, writtenArticlePublicationPending: false }),
+      },
     });
     return "approval_blocked";
   }
-  if (kidsWrittenApproval === "unavailable") {
+  if (sourceApproval === "unavailable") {
     const nextRetryAt = new Date(Date.now() + 15 * 60_000).toISOString();
     await markQueueItem(item.id, "queued", {
       scheduled_at: nextRetryAt,
-      error_message: "Kids source approval could not be verified; publishing remains on hold.",
-      metadata: { ...(item.metadata ?? {}), kidsSourceApprovalPending: true, nextRetryAt },
+      error_message: kidsWrittenPost
+        ? "Kids source approval could not be verified; publishing remains on hold."
+        : "Written article is not yet public or its publication state could not be verified; social publishing remains on hold.",
+      metadata: {
+        ...(item.metadata ?? {}),
+        ...(kidsWrittenPost
+          ? { kidsSourceApprovalPending: true }
+          : { writtenArticlePublicationPending: true }),
+        nextRetryAt,
+      },
     });
     return "approval_blocked";
   }

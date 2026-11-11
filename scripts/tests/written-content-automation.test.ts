@@ -54,12 +54,13 @@ assert.equal(validateWrittenPostDraft([]).ok,false,"an array response must not b
 const post=buildWrittenPost(source,draft);assert.ok(post.body.includes(source.sourceText));assert.ok(post.body.includes(source.reference));assert.equal(post.publicPath,source.publicPath);
 assert.ok(buildWrittenPost({...source,kind:"story",quoteRequired:false},draft).body.includes(draft.reflection));
 const socialKey=createWrittenSocialAutomationKey(source.kind,source.id);
-const socialPayload=buildWrittenSocialQueuePayload(source,draft,"article-1",socialKey,"2026-11-10T08:00:00.000Z");
+const socialPayload=buildWrittenSocialQueuePayload(source,draft,"article-1",socialKey,"2026-11-10T08:00:00.000Z","2026-11-10T08:10:00.000Z");
 assert.equal(socialPayload.content_type,"written_post");
 assert.equal(socialPayload.content_id,"article-1");
 assert.deepEqual(socialPayload.target_platforms,["facebook"]);
 assert.equal(socialPayload.video_url,null);
 assert.equal(socialPayload.status,"queued");
+assert.equal(socialPayload.scheduled_at,"2026-11-10T08:10:00.000Z","general social delivery must wait until the separately scheduled site publication window");
 assert.equal(socialPayload.automation_key,socialKey);
 assert.equal(socialPayload.metadata.publicPath,source.publicPath);
 const kidsSource: WrittenContentSource = { ...source, kind: "kids_story", id: "kids-story-1", title: "الكلمة الطيبة", sourceText: "قصة منشورة للأطفال عن الكلمة الطيبة.", reference: "قصة أطفال معتمدة في ZIKR", publicPath: "/kids/story-kind-word", categoryLabel: "قصص الأطفال", sourceVerified: true, quoteRequired: false, ageGroup: "6-8" };
@@ -266,6 +267,12 @@ assert.match(worker, /select=id,title,title_ar,summary,summary_ar,content,conten
 assert.match(worker, /metadata\.automation==="written-content-v2"/, "generated written articles must not recursively become new source material");
 assert.ok(worker.includes("&status=in.(queued,processing)&select=id,status&limit=1"), "a failed or cancelled site-publication row must not block a safe new queued attempt");
 assert.match(worker, /while\(created < maxNewRows\)/, "Facebook backfill must continue scanning past already-queued historical pages");
+assert.match(worker, /metadata->>automation=eq\.written-content-v2&published=eq\.true&created_at=/, "social backfill must only consider articles that remain publicly published");
+assert.match(worker, /select=id,title,content,slug,metadata,created_at,published&order=created_at\.asc,id\.asc/, "backfill must read the published flag for a defensive row-level check");
+assert.match(worker, /article\.published!==true/, "backfill must fail closed if an unpublished article is returned unexpectedly");
+assert.match(worker, /socialScheduledAt/);
+assert.match(worker, /buildWrittenSocialQueuePayload\(\s*source,draft,articleId,socialAutomationKey,nowIso,socialScheduledAt/);
+assert.match(writtenFactory, /scheduled_at: scheduledAt/);
 assert.match(worker, /order=created_at\.asc,id\.asc&limit=\$\{pageSize\}&offset=\$\{offset\}/, "Facebook backfill must use stable paged reads instead of revisiting only the first 100 articles");
 assert.match(worker, /automation_key=in\.\(\$\{automationKeyFilter\}\)/, "backfill must batch-check existing automation keys for each page");
 assert.match(worker, /existingKeys\.add\(automationKey\)/, "newly queued keys must be excluded from later duplicate candidates in the same page");
@@ -314,19 +321,24 @@ assert.match(writtenWorkflow, /knowledge, kids/);
 assert.match(writtenStudio, /value: "kids", label: "قصص الأطفال المعتمدة"/);
 assert.match(writtenFactory, /content_type:\s*"written_post"/);
 assert.match(writtenFactory, /target_platforms:\s*\["facebook"\]/);
-assert.match(socialPublishing, /checkKidsWrittenPostApproval\(item\)/, "social publishing must revalidate the live Kids source before provider delivery");
+assert.match(socialPublishing, /checkWrittenPostSourceApproval\(item\)/, "social publishing must revalidate both Kids sources and general written articles before provider delivery");
+assert.match(socialPublishing, /\/rest\/v1\/articles\?id=eq\./, "general written-post delivery must verify that its source article still exists");
+assert.match(socialPublishing, /select=id,published&limit=2/, "general written-post delivery must require the live article publication flag");
+assert.match(socialPublishing, /content_publish_queue\?content_table=eq\.articles/, "unpublished generated articles may only wait when a site-publication job remains active");
+assert.match(socialPublishing, /writtenArticlePublicationBlocked/, "withdrawn general articles must be held from social publication");
+assert.match(socialPublishing, /writtenArticlePublicationPending/, "not-yet-published articles must be deferred instead of being sent early");
 
 const publishPlatformStart = socialPublishing.indexOf("async function publishPlatform(");
 const publishPlatformEnd = socialPublishing.indexOf("\n}\n\n", publishPlatformStart);
 const publishPlatformSource = socialPublishing.slice(publishPlatformStart, publishPlatformEnd > -1 ? publishPlatformEnd : undefined);
-const providerApprovalCheck = publishPlatformSource.indexOf("checkKidsWrittenPostApproval(item)");
+const providerApprovalCheck = publishPlatformSource.indexOf("checkWrittenPostSourceApproval(item)");
 assert.ok(providerApprovalCheck >= 0, "each social provider call must revalidate the live Kids source after the initial queue check");
 assert.ok(providerApprovalCheck < publishPlatformSource.indexOf("publishFacebookPost(item)"), "Kids source revalidation must happen before Facebook provider delivery");
 assert.match(socialPublishing, /Approval revalidation held publishing for:/, "deferred Kids and video approvals must use a provider-neutral status message");
 assert.match(socialPublishing, /isKidsWrittenPostCandidate\(item\)/, "malformed Kids metadata must not bypass live source approval");
 assert.match(socialPublishing, /isEligibleKidsWrittenPostForPublishing\(item, rows\[0\]\)/);
 assert.ok(
-  socialPublishing.indexOf("checkKidsWrittenPostApproval(item)") < socialPublishing.indexOf("publishPlatform(item, platform)"),
+  socialPublishing.indexOf("checkWrittenPostSourceApproval(item)") < socialPublishing.indexOf("publishPlatform(item, platform)"),
   "Kids source validation must run before any external social provider call",
 );
 assert.match(socialPublishing, /kidsSourceApprovalBlocked/);

@@ -161,6 +161,7 @@ export function buildWrittenSocialQueuePayload(
  articleId: string,
  automationKey: string,
  now: string,
+ scheduledAt: string = now,
 ) {
  const post = buildWrittenPost(source, draft);
  return {
@@ -172,7 +173,7 @@ export function buildWrittenSocialQueuePayload(
   video_url: null,
   target_platforms: ["facebook"],
   status: "queued",
-  scheduled_at: now,
+  scheduled_at: scheduledAt,
   published_at: null,
   error_message: null,
   metadata: {
