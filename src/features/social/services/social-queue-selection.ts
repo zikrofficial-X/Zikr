@@ -11,6 +11,15 @@ export type SocialQueueSelectionCandidate = {
   metadata: Record<string, unknown> | null;
 };
 
+/** Build an atomic queue claim filter that rechecks the due time at update time. */
+export function buildDueSocialQueueClaimFilter(
+  id: string,
+  status: string,
+  now: string,
+): string {
+  return `id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(status)}&or=(scheduled_at.is.null,scheduled_at.lte.${encodeURIComponent(now)})`;
+}
+
 /** Merge bounded query pages while preserving priority and removing duplicate queue IDs. */
 export function mergeUniqueSocialPublishCandidates<
   const Batches extends readonly (readonly { id: string }[])[]

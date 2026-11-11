@@ -9,8 +9,11 @@ import { getFacebookPageCredentials } from "@/features/social/services/facebook-
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
-import { selectEligibleSocialPublishItems } from "@/features/social/services/social-queue-selection";
-import { mergeUniqueSocialPublishCandidates } from "@/features/social/services/social-queue-selection";
+import {
+  buildDueSocialQueueClaimFilter,
+  mergeUniqueSocialPublishCandidates,
+  selectEligibleSocialPublishItems,
+} from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
@@ -364,6 +367,7 @@ export async function claimPendingSocialPublishItems(
   // requests. Admin can manually requeue them after credentials are repaired.
   const items = normalItems;
   const claimed: SocialPublishQueueItem[] = [];
+  const claimAt = new Date().toISOString();
 
   for (const item of items) {
     try {
@@ -372,7 +376,7 @@ export async function claimPendingSocialPublishItems(
       // equality is intentionally avoided because PostgREST/JSON timestamp normalization
       // can make a still-eligible row match zero rows and silently strand the queue.
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${claimStatus}`,
+        `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, claimStatus, claimAt)}`,
         {
           method: "PATCH",
           headers: {

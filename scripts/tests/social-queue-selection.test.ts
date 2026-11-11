@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
@@ -116,11 +116,18 @@ assert.deepEqual(
 );
 
 
+assert.equal(
+  buildDueSocialQueueClaimFilter("queue id/1", "queued", "2026-11-11T17:30:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.queued&or=(scheduled_at.is.null,scheduled_at.lte.2026-11-11T17%3A30%3A00.000Z)",
+  "the atomic claim must recheck scheduled_at so a stale queued snapshot cannot publish a row rescheduled into the future",
+);
+
 const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
 assert.match(socialPublisher, /Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows/, "invalid queue cutoffs must fail visibly instead of returning an empty batch");
+assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimStatus, claimAt\)/, "the worker claim must use the atomic due-time filter");
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
