@@ -285,3 +285,85 @@ export function buildMissingMediaQueueRecoveryPatch(input: {
     metadata: nextMetadata,
   };
 }
+
+export type LocalSocialQueueDeletionCandidate = {
+  status: string;
+  target_platforms: readonly string[] | null | undefined;
+  metadata: SocialPlatformMetadata;
+  error_message?: unknown;
+};
+
+/**
+ * A local queue row may be removed only when every target has an explicit,
+ * non-ambiguous failure (or was explicitly unavailable) and the row is wholly
+ * failed. Partial, successful, legacy-without-ledger, and ambiguous outcomes
+ * retain their audit IDs so remote posts cannot become orphaned.
+ */
+export function getLocalSocialQueueDeletionBlockers(
+  item: LocalSocialQueueDeletionCandidate,
+): string[] {
+  const blockers = new Set<string>();
+  if (item.status !== "failed") blockers.add("status_not_fully_failed");
+
+  const targets = Array.isArray(item.target_platforms) ? item.target_platforms : [];
+  if (targets.length === 0) blockers.add("missing_targets");
+
+  const results = normalizeSocialPlatformResults(item.metadata?.platformResults);
+  const unavailable = new Set(metadataPlatforms(item.metadata?.unavailablePlatforms));
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+
+  for (const target of targets) {
+    if (!supported.includes(target as SocialPlatform)) {
+      blockers.add(target || "unsupported_target");
+      continue;
+    }
+
+    const result = asRecord(results[target]);
+    if (!result) {
+      if (!unavailable.has(target as SocialPlatform)) blockers.add(target);
+      continue;
+    }
+
+    const remoteId = result.remoteId;
+    const hasRemoteId =
+      typeof remoteId === "string" ? remoteId.trim().length > 0 : remoteId !== null && remoteId !== undefined;
+    if (
+      result.ok !== false ||
+      typeof result.error !== "string" ||
+      !result.error.trim() ||
+      hasRemoteId ||
+      result.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result.error)
+    ) {
+      blockers.add(target);
+    }
+  }
+
+  // Protect unexpected/legacy result entries too, not only declared targets.
+  for (const [platform, raw] of Object.entries(results)) {
+    const result = asRecord(raw);
+    if (
+      !result ||
+      result.ok === true ||
+      hasSuccessfulDelivery(result) ||
+      result.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result.error)
+    ) {
+      blockers.add(platform);
+    }
+  }
+
+  for (const platform of getManualReconciliationPlatforms(item.metadata)) {
+    blockers.add(platform);
+  }
+  if (item.metadata?.sourceMediaMissing === true) blockers.add("source_media_missing");
+  if (isAmbiguousProviderOutcome(item.error_message)) blockers.add("unknown_provider_outcome");
+
+  return [...blockers];
+}
+
+export function canDeleteLocalSocialQueueItem(
+  item: LocalSocialQueueDeletionCandidate,
+): boolean {
+  return getLocalSocialQueueDeletionBlockers(item).length === 0;
+}
