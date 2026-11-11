@@ -35,8 +35,6 @@
   </dict>
   <key>NSCameraUsageDescription</key>
   <string>ZIKR uses camera access for profile images and learning uploads.</string>
-  <key>NSFaceIDUsageDescription</key>
-  <string>ZIKR can use Face ID to protect your profile, favorites, and memorization progress.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>ZIKR uses the microphone for memorization voice recording.</string>
   <key>NSPhotoLibraryAddUsageDescription</key>
@@ -60,6 +58,8 @@
   <array>
     <string>zikrmediaofficial.vercel.app</string>
     <string>zqtssvlvmkzeeyqghqfk.supabase.co</string>
+    <string>www.youtube.com</string>
+    <string>www.youtube-nocookie.com</string>
   </array>
   <key>ITSAppUsesNonExemptEncryption</key>
   <false/>
