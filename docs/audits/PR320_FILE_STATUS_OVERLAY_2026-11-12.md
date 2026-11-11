@@ -3,32 +3,32 @@
 ## Snapshot identity
 
 - Repository: `zikrofficial-X/Zikr`
-- PR: #320
+- PR: [#320](https://github.com/zikrofficial-X/Zikr/pull/320)
 - Branch: `audit/zikr-kids-daily-priority-20261110`
 - Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
-- Source head: `93335970cb572177386459fd4a6fb2a6aa053dfe`
-- Compare: 727 commits ahead, 0 behind; 230 changed files (75 added, 155 modified, 0 removed).
-- Recursive source-head tree: 2233 entries (1737 files, 496 directories); complete, not truncated.
-- Exact-head CI: GitHub Quality Gate #2628 / run `43115074968` passed full; CircleCI `config-guard`, `source-verify`, and `application-build-docs` passed.
-- Status semantics: every row below remains `REVIEW_REQUIRED` until the full file content, imports, consumers, permissions, runtime behavior, tests, and deployment dependencies have been reviewed and recorded. A passing CI gate is not manual source-review closure.
-- This snapshot is intentionally keyed to source head `93335970cb572177386459fd4a6fb2a6aa053dfe`. This overlay file is added in a later documentation-only commit and is therefore not included in its own source-head delta.
+- Source snapshot head: `8af9476d57bb1b6c355026948f7169c0c67e09ee` (documentation reconciliation commit; the last code-bearing head is `481c37384f118fd60dddc8243bd73c97f54375a5`).
+- PR comparison at this snapshot: 730 commits ahead, 0 behind; 233 changed files (77 added, 155 modified, 0 removed).
+- Recursive source-snapshot tree: 2236 entries (1740 files, 496 directories, 140,432,019 file bytes); complete, not truncated.
+- Last code-bearing exact-head verification: GitHub Quality Gate #2630 / run `43117114041` / job `130847826438` passed full on `481c37384f118fd60dddc8243bd73c97f54375a5`; CircleCI `config-guard`, `source-verify`, and `application-build-docs` also passed on that code head. The documentation-only snapshot commits are not a substitute for the required final exact-head rerun.
+- This overlay contains 232 changed-file rows. It excludes its own file because that artifact is created in a subsequent documentation-only commit.
+- Status semantics: `REVIEW_REQUIRED` means full source/import/consumer/runtime trace is still open. `CONTENT_READ_TESTED_PASS` means the listed file was read and its focused test ran in the full gate. `FIXED_TESTED_PENDING_LIVE_APPLY` means migration SQL and its test contract passed locally/CI but production application remains owner-gated. `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` means code/test checks passed but a production or device acceptance gate remains. `CONTENT_READ_PENDING_TRACE` means the file was read in this pass but its complete consumer trace remains open.
 
 ## Changed-file inventory
 
 | Path | Change | Source-head blob SHA-1 | Bytes | Status |
 |---|---|---|---:|---|
 | `.circleci/config.yml` | MODIFIED | `e05272c698aec33f64e436b86d1478820f8e7e56` | 37564 | REVIEW_REQUIRED |
-| `.env.example` | MODIFIED | `376208c11f8af5efa500fb6e9820d13884f768d3` | 8241 | REVIEW_REQUIRED |
+| `.env.example` | MODIFIED | `376208c11f8af5efa500fb6e9820d13884f768d3` | 8241 | CONTENT_READ_PENDING_TRACE |
 | `.github/workflows/audit-video-media.yml` | MODIFIED | `d5411d7ff24233724d8212a4543993a0125c5d20` | 1964 | REVIEW_REQUIRED |
 | `.github/workflows/quality-gate.yml` | MODIFIED | `36c9ec9a12db3ed1cb16c1491fd2a4a04e9eaef5` | 4315 | REVIEW_REQUIRED |
 | `.github/workflows/release-finalization.yml` | MODIFIED | `b8d63ae66d8ab9441d1ee351a2708f98835bca21` | 16998 | REVIEW_REQUIRED |
-| `.github/workflows/storage-retention.yml` | MODIFIED | `bd8c8ff212e5dde1fcd894e46fa60dd296b45c44` | 4057 | REVIEW_REQUIRED |
+| `.github/workflows/storage-retention.yml` | MODIFIED | `bd8c8ff212e5dde1fcd894e46fa60dd296b45c44` | 4057 | CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE |
 | `.gitignore` | MODIFIED | `12594eba3cb52a5de9723fee782804cba9a023d9` | 1632 | REVIEW_REQUIRED |
 | `android/app/src/main/AndroidManifest.xml` | MODIFIED | `4090657e7b7de1b16c0d653a0663e50d6846bcbb` | 3457 | REVIEW_REQUIRED |
 | `capacitor.config.json` | MODIFIED | `a7e77c6caf9a31a90a590c78b0a4ad99a846db0f` | 2029 | REVIEW_REQUIRED |
-| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `aa534d92955872a39c6512d68ce48645de27ab16` | 147134 | REVIEW_REQUIRED |
-| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `e4e4c7e0a349aecd4b044f6a31dfdf41e5d46d34` | 665592 | REVIEW_REQUIRED |
-| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | MODIFIED | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | REVIEW_REQUIRED |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `36e8b8d7bdb0fd988ec634ffe72cde2ef3f3307e` | 160707 | REVIEW_REQUIRED |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `ec18d8ac8d38e77e49af1a2add71e4b1f55e57f7` | 666724 | REVIEW_REQUIRED |
+| `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | MODIFIED | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | CONTENT_READ_TESTED_PASS |
 | `docs/background-jobs.md` | MODIFIED | `a03f31cd2498a8adf3eeef89574b72a1bca97a52` | 11119 | REVIEW_REQUIRED |
 | `docs/circleci-supabase-environment.md` | MODIFIED | `1dabaf72209c8faf7bdd8d1d0c245e9eeb2901a3` | 7248 | REVIEW_REQUIRED |
 | `docs/environment-variables.md` | MODIFIED | `8526850575566393d068e0609b3cb7f25424916f` | 18200 | REVIEW_REQUIRED |
@@ -39,8 +39,8 @@
 | `ios/App/Podfile` | MODIFIED | `ddf8bb9a4f87fe6e6c05aa1ab1c5e734cf2c224b` | 1852 | REVIEW_REQUIRED |
 | `mobile-shell/index.html` | ADDED | `2ebf7ae7b16b2d971cc009878b44be9d4b1b91ae` | 1199 | REVIEW_REQUIRED |
 | `mobile/README.md` | MODIFIED | `fc3584fbb947a09a8c5ae9ef0e34363a1a2e8fa2` | 3561 | REVIEW_REQUIRED |
-| `package.json` | MODIFIED | `962f72128979119796c9d299a4150d87191e4237` | 16761 | REVIEW_REQUIRED |
-| `PROJECT_STATUS.md` | MODIFIED | `5ea572c1755ba6a4d2f7a815dd26668242ef0e83` | 106478 | REVIEW_REQUIRED |
+| `package.json` | MODIFIED | `9a6a95e9b5bb0479df3636845c516f7da4e8c54f` | 16808 | REVIEW_REQUIRED |
+| `PROJECT_STATUS.md` | MODIFIED | `06f8a1a718478a447a265e4344f81a89ae133e62` | 115789 | REVIEW_REQUIRED |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | `ef1cad9d7db75ee6677edc9dba3387debb95695a` | 30421 | REVIEW_REQUIRED |
 | `public/offline-content/v1/kids.json` | MODIFIED | `dc32c0bdbd722f0f920d7db2a690074de0194fcc` | 52752 | REVIEW_REQUIRED |
 | `public/offline-content/v1/manifest.json` | MODIFIED | `9d95f4df6b9e85227aed64e171a207a89da787ad` | 8419 | REVIEW_REQUIRED |
@@ -49,7 +49,7 @@
 | `scripts/export-offline-content.mjs` | MODIFIED | `bae5e6a4e1892cc7490e4425953a839c8f9e9998` | 10456 | REVIEW_REQUIRED |
 | `scripts/jobs/audit-video-media.ts` | MODIFIED | `11c14d7b63897b7bba3c24c7e5823213f92c32f6` | 13283 | REVIEW_REQUIRED |
 | `scripts/jobs/content-publishing.ts` | MODIFIED | `2cee0bd0a8546a17eb2ec23eae55f6a634941888` | 15497 | REVIEW_REQUIRED |
-| `scripts/jobs/template-video-automation.ts` | MODIFIED | `30bf34af26aa2b4d39bd400030dfbdb118db2352` | 117490 | REVIEW_REQUIRED |
+| `scripts/jobs/template-video-automation.ts` | MODIFIED | `074337b360d30a329503436d4851c7a10a5cf5ae` | 118476 | REVIEW_REQUIRED |
 | `scripts/jobs/written-content-automation.ts` | MODIFIED | `df0b05867cf9fce75179147042087606e8b243e5` | 27339 | REVIEW_REQUIRED |
 | `scripts/lib/offline-export-parent-scope.mjs` | ADDED | `84f310f8de5db9c06d9385228c1579bc2e2105f1` | 1576 | REVIEW_REQUIRED |
 | `scripts/lib/offline-export-route-pruning.mjs` | ADDED | `785921269a2dee1544151279cba1f4666b4f0191` | 2039 | REVIEW_REQUIRED |
@@ -58,13 +58,13 @@
 | `scripts/run-background-jobs.ts` | MODIFIED | `32bccd50fc34f104ea23428d5bd598f311f17478` | 18762 | REVIEW_REQUIRED |
 | `scripts/tests/admin-rbac-rls.test.mjs` | MODIFIED | `07716f6ac15937a1581745d4f7c6f81904d9bcf6` | 16873 | REVIEW_REQUIRED |
 | `scripts/tests/admin-role-resolution.test.ts` | ADDED | `c0c27698026bcec8ab30fb6125f6ebedf158af10` | 6958 | REVIEW_REQUIRED |
-| `scripts/tests/admin-role-update.integration-setup.sql` | MODIFIED | `f85b0aa510e576e68d2c1c37d79e9352740fbf89` | 2851 | REVIEW_REQUIRED |
-| `scripts/tests/admin-role-update.integration.sh` | MODIFIED | `ab76eba83975025631fd72c3187b7e2f70803fa3` | 1485 | REVIEW_REQUIRED |
+| `scripts/tests/admin-role-update.integration-setup.sql` | MODIFIED | `f85b0aa510e576e68d2c1c37d79e9352740fbf89` | 2851 | CONTENT_READ_TESTED_PASS |
+| `scripts/tests/admin-role-update.integration.sh` | MODIFIED | `ab76eba83975025631fd72c3187b7e2f70803fa3` | 1485 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/admin-role-update.integration.sql` | MODIFIED | `05b84137862b14cad3e3d0ffe47ae6054470c013` | 9529 | REVIEW_REQUIRED |
 | `scripts/tests/app-association-route-contract.test.mjs` | ADDED | `c2b26101eaeb0e01663e0778e331e444b3dd8935` | 1790 | REVIEW_REQUIRED |
 | `scripts/tests/background-job-outcome.test.ts` | MODIFIED | `fc5a85f3c67c97088fdf54851296462fc198a9bf` | 7142 | REVIEW_REQUIRED |
 | `scripts/tests/background-reminder-schedule.integration-setup.sql` | ADDED | `71185280925b76afd847b22d1e7ea9c2e93c3204` | 4163 | REVIEW_REQUIRED |
-| `scripts/tests/background-reminder-schedule.integration.sh` | ADDED | `485d480252f4ac196c906404bb31af9122d51749` | 1366 | REVIEW_REQUIRED |
+| `scripts/tests/background-reminder-schedule.integration.sh` | ADDED | `485d480252f4ac196c906404bb31af9122d51749` | 1366 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/background-reminder-schedule.integration.sql` | ADDED | `03f9a1d4f3a6f908dbcc18a8a56d69a583d591b9` | 2338 | REVIEW_REQUIRED |
 | `scripts/tests/ci-architecture-source-syntax.test.mjs` | ADDED | `687c75434abbb8829e6024b5ee0558a8b22dd3f4` | 612 | REVIEW_REQUIRED |
 | `scripts/tests/cloudinary-image-validation.test.ts` | ADDED | `96735e3648cbd1c0ee46d27a3860d28414407e9d` | 1657 | REVIEW_REQUIRED |
@@ -73,10 +73,10 @@
 | `scripts/tests/content-publishing-contract.test.mjs` | ADDED | `dbb6f00324ec6bcdf817b40c1a84dfa8b67e9a30` | 10384 | REVIEW_REQUIRED |
 | `scripts/tests/gitignore-secrets.test.mjs` | ADDED | `3c169f33da340a006b3bbd958da1d541aa2d8275` | 867 | REVIEW_REQUIRED |
 | `scripts/tests/kids-content-visibility.test.ts` | ADDED | `963753d43a2a38b1381108a4e85ec14395981640` | 35053 | REVIEW_REQUIRED |
-| `scripts/tests/kids-game-levels-rls.integration-setup.sql` | ADDED | `b97b7383cdbfa93fafbaf5dc326edf00432c63d3` | 2714 | REVIEW_REQUIRED |
-| `scripts/tests/kids-game-levels-rls.integration.sh` | ADDED | `672c1649fa4b39bd731c8b214b7d3985686a31c3` | 1426 | REVIEW_REQUIRED |
-| `scripts/tests/kids-game-levels-rls.integration.sql` | ADDED | `9b9612abb94a4aa096082860b270751bdb893581` | 2849 | REVIEW_REQUIRED |
-| `scripts/tests/kids-game-publication-rls-contract.test.ts` | ADDED | `1802f5e650bbb16555366c555fd58441b138c93e` | 2524 | REVIEW_REQUIRED |
+| `scripts/tests/kids-game-levels-rls.integration-setup.sql` | ADDED | `b97b7383cdbfa93fafbaf5dc326edf00432c63d3` | 2714 | CONTENT_READ_TESTED_PASS |
+| `scripts/tests/kids-game-levels-rls.integration.sh` | ADDED | `672c1649fa4b39bd731c8b214b7d3985686a31c3` | 1426 | CONTENT_READ_TESTED_PASS |
+| `scripts/tests/kids-game-levels-rls.integration.sql` | ADDED | `9b9612abb94a4aa096082860b270751bdb893581` | 2849 | CONTENT_READ_TESTED_PASS |
+| `scripts/tests/kids-game-publication-rls-contract.test.ts` | ADDED | `1802f5e650bbb16555366c555fd58441b138c93e` | 2524 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/kids-share-rate-limit.test.ts` | ADDED | `8254ea283bd7d540713317433f2223a17bd12717` | 3066 | REVIEW_REQUIRED |
 | `scripts/tests/native-google-oauth-contract.test.mjs` | MODIFIED | `3bbbe8d71e04ee86d63970f21431e2c0472585b6` | 9183 | REVIEW_REQUIRED |
 | `scripts/tests/native-reminder-safety.test.ts` | ADDED | `ab6458c97fd12a14a0be29d7124899ecd99fc278` | 6723 | REVIEW_REQUIRED |
@@ -90,7 +90,7 @@
 | `scripts/tests/prayer-times.test.ts` | MODIFIED | `45ee3da30e714d3c7bcf548bf8f66c7e21cf39cd` | 6494 | REVIEW_REQUIRED |
 | `scripts/tests/profile-sync.test.ts` | ADDED | `ed2404b4435e63412ddceb8a6f5006202218e7cc` | 2814 | REVIEW_REQUIRED |
 | `scripts/tests/prophet-sections-rls.integration-setup.sql` | ADDED | `871c7f3fc3e79b458dbedb65f555739a1de9b3e1` | 1545 | REVIEW_REQUIRED |
-| `scripts/tests/prophet-sections-rls.integration.sh` | ADDED | `f00aeabb64dd30128efa74c49d7c0b19e7a93dd6` | 1323 | REVIEW_REQUIRED |
+| `scripts/tests/prophet-sections-rls.integration.sh` | ADDED | `f00aeabb64dd30128efa74c49d7c0b19e7a93dd6` | 1323 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/prophet-sections-rls.integration.sql` | ADDED | `41729cbbf33526905c4f95e90b53743ed1b0f4bb` | 1119 | REVIEW_REQUIRED |
 | `scripts/tests/safe-redirect.test.ts` | ADDED | `4c35d8d5ce880dc4bd75f1c45622e7beb5304df0` | 5117 | REVIEW_REQUIRED |
 | `scripts/tests/social-deletion.test.ts` | MODIFIED | `023a4556f1b85249f117efe3bf34415c938e97ea` | 11015 | REVIEW_REQUIRED |
@@ -104,6 +104,7 @@
 | `scripts/tests/video-media-url.test.ts` | ADDED | `cc444b50105a778920efb85ee1ec91678a99285d` | 9610 | REVIEW_REQUIRED |
 | `scripts/tests/video-publish-approval.test.ts` | MODIFIED | `c26501619e4ac2944ad5c2d9bcb8f6dc1f105d8d` | 8168 | REVIEW_REQUIRED |
 | `scripts/tests/video-purge-contract.test.mjs` | MODIFIED | `f4bd5d10959725526dc381223f337b5eeb9f8fee` | 21103 | REVIEW_REQUIRED |
+| `scripts/tests/video-queue-claim.test.ts` | ADDED | `53b2b0fb521e6d29f8fde82eeba1a12da1357c04` | 2967 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/written-content-automation.test.ts` | MODIFIED | `266928a1fa9f2d02252208b7ca8397d4fc32e5df` | 34250 | REVIEW_REQUIRED |
 | `scripts/tests/youtube-oauth-credentials.test.ts` | MODIFIED | `5af421c6068ac7898c6a266e560c749057975846` | 10871 | REVIEW_REQUIRED |
 | `scripts/validate-deployment-env.mjs` | MODIFIED | `baac74d74cf16083acdd75a4cb08baa309738da4` | 6270 | REVIEW_REQUIRED |
@@ -121,8 +122,8 @@
 | `scripts/verify-release-contract.mjs` | MODIFIED | `b22a73dcb1ad972b0e9aae929e0bd38edaf14405` | 29169 | REVIEW_REQUIRED |
 | `scripts/verify-social-publishing.mjs` | MODIFIED | `15b5013cfec19eff4cb6ebeae245babd73eefdc9` | 19086 | REVIEW_REQUIRED |
 | `scripts/verify-video-media-audit.mjs` | MODIFIED | `ce336b3be010d8780261c5604fc3a0fe1afda8fd` | 6484 | REVIEW_REQUIRED |
-| `scripts/verify-video-queue-priority.mjs` | MODIFIED | `31425818219a30d2e4de6b20f802dc8237de4d6f` | 3175 | REVIEW_REQUIRED |
-| `src/app/.well-known/apple-app-site-association/route.ts` | MODIFIED | `6c242d988c3370615b75f99b509a2649c9a271fb` | 716 | REVIEW_REQUIRED |
+| `scripts/verify-video-queue-priority.mjs` | MODIFIED | `ddb1f5b53b10853374826216dd0c31ef846cf3eb` | 4125 | CONTENT_READ_TESTED_PASS |
+| `src/app/.well-known/apple-app-site-association/route.ts` | MODIFIED | `6c242d988c3370615b75f99b509a2649c9a271fb` | 716 | CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE |
 | `src/app/admin/content-actions.ts` | MODIFIED | `012e5705136b230665d98df7b5458461a54b5e59` | 5817 | REVIEW_REQUIRED |
 | `src/app/admin/kids/actions.ts` | MODIFIED | `737ef306253bf0b96d6edf11a95d7b24c123c4a0` | 5707 | REVIEW_REQUIRED |
 | `src/app/admin/kids/games/page.tsx` | MODIFIED | `e4ff6905531002c0a9940993715bc99a23d9e6ce` | 8182 | REVIEW_REQUIRED |
@@ -221,6 +222,7 @@
 | `src/features/videos/services/video-media-contract.ts` | MODIFIED | `6a7ac75c0676f1fac1c5a0e99796b195bed89b98` | 7051 | REVIEW_REQUIRED |
 | `src/features/videos/services/video-media-url.ts` | ADDED | `1bee3a9b2ff103905c433696649982255d072873` | 2768 | REVIEW_REQUIRED |
 | `src/features/videos/services/video-publish-approval.ts` | MODIFIED | `075972030389d03b4d324532efb3908db9bf7a8c` | 9598 | REVIEW_REQUIRED |
+| `src/features/videos/services/video-queue-claim.ts` | ADDED | `5a14974239a18d3dad67d85d097ca9687ddf934d` | 2542 | CONTENT_READ_TESTED_PASS |
 | `src/lib/async-serial-queue.ts` | ADDED | `edbf8e7ccfc685996f3901617f36b0f1eeed7f75` | 303 | REVIEW_REQUIRED |
 | `src/lib/auth-enhanced.ts` | MODIFIED | `a64b46b73b1c3e6b50195311b225ad7fc8500d93` | 4859 | REVIEW_REQUIRED |
 | `src/lib/offline-pack.ts` | MODIFIED | `2d3feee223b2d8457f7462b326a326f1f7523b64` | 22058 | REVIEW_REQUIRED |
@@ -237,13 +239,56 @@
 | `supabase/functions/prayer-notification-worker/index.ts` | MODIFIED | `712e32f3140e2fadd0a4e12f196ece83f162cf3f` | 30534 | REVIEW_REQUIRED |
 | `supabase/functions/prayer-notification-worker/pagination.ts` | ADDED | `cb29782035ddac43ecd89ae6be38ea205eeb79d2` | 1539 | REVIEW_REQUIRED |
 | `supabase/functions/prayer-notification-worker/time-zone.ts` | ADDED | `49751430c98f1afb1b1edbca273289a0f7dde2cf` | 4390 | REVIEW_REQUIRED |
-| `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | ADDED | `a78613f40f726d4f6a651537358dcbfd320b4ccd` | 1126 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql` | ADDED | `dda93dde9da350241acaaff8716757de34cab971` | 292 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql` | ADDED | `fc8f78f1952cda2b8e7d73ff19bdbcc3297681c7` | 529 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql` | ADDED | `bdaa9347e4ed82341e41cb530be2bdfaf6664a88` | 3689 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql` | ADDED | `fc7b5a5f20ba00cc7f58999fd90f4f0d7fa8d574` | 4567 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql` | ADDED | `cd4ded8e43abf387d8a43570efbb1419bca0b1c7` | 892 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql` | ADDED | `46cbf32440aa218c4a8ee1c00db4f189408ff7e7` | 953 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql` | ADDED | `ed8db98ead1ee9d4ca3e3bc0687f1d9fe57a9615` | 1040 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql` | ADDED | `b8b101e25d794d10f363ae85b94a1f10b35fe5b7` | 3656 | REVIEW_REQUIRED |
-| `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql` | ADDED | `4e73857ccc905d8c1cd16eb251de72b277402a26` | 756 | REVIEW_REQUIRED |
+| `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | ADDED | `a78613f40f726d4f6a651537358dcbfd320b4ccd` | 1126 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql` | ADDED | `dda93dde9da350241acaaff8716757de34cab971` | 292 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql` | ADDED | `fc8f78f1952cda2b8e7d73ff19bdbcc3297681c7` | 529 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql` | ADDED | `bdaa9347e4ed82341e41cb530be2bdfaf6664a88` | 3689 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql` | ADDED | `fc7b5a5f20ba00cc7f58999fd90f4f0d7fa8d574` | 4567 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql` | ADDED | `cd4ded8e43abf387d8a43570efbb1419bca0b1c7` | 892 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql` | ADDED | `46cbf32440aa218c4a8ee1c00db4f189408ff7e7` | 953 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql` | ADDED | `ed8db98ead1ee9d4ca3e3bc0687f1d9fe57a9615` | 1040 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql` | ADDED | `b8b101e25d794d10f363ae85b94a1f10b35fe5b7` | 3656 | FIXED_TESTED_PENDING_LIVE_APPLY |
+| `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql` | ADDED | `4e73857ccc905d8c1cd16eb251de72b277402a26` | 756 | FIXED_TESTED_PENDING_LIVE_APPLY |
+
+## Review evidence recorded in this checkpoint
+
+### Code and tests read and passed
+- `src/features/videos/services/video-queue-claim.ts` and `scripts/tests/video-queue-claim.test.ts`: exact row-version and retry-due filters; regression test included in `pnpm test`.
+- `scripts/verify-video-queue-priority.mjs`: queue priority, stale-row version fencing, atomic claim and pause-release checks; `pnpm video:queue:priority:check` passed.
+- `scripts/tests/kids-game-publication-rls-contract.test.ts`, plus the Kids game-level integration runner, setup and SQL test: public anonymous reads are limited to published levels of published games; authenticated non-admin access is denied; answer-bearing question rows are not directly readable by anon; admin RLS remains.
+- Admin role-update integration runner and setup: the runner applies both the self-demotion guard and service-role-only assignment migration; the PostgreSQL 17 integration completed successfully.
+- Background-reminder and Prophet-section PostgreSQL 17 integration runners completed successfully.
+- `docs/audits/REPO_MANIFEST_2026-11-10.jsonl`: all 2,153 records compared against the exact main baseline tree; no path/type/mode/blob/size mismatch except the two intentionally null directory hashes.
+
+### Migrations read and tested; production apply still pending
+- `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql`
+- `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql`
+- `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql`
+- `supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql`
+- `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql`
+- `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql`
+- `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql`
+
+The full verification gate ran the Kids content visibility/type, admin RBAC, storage-retention, Kids game publication and queue regression contracts, plus the PostgreSQL 17 integration runners for admin role updates, background reminders, Prophet sections, and Kids game/question RLS. Supabase still reports 418 remote migration versions with latest applied version `20261110170000`; the ten branch-only migrations above have not been applied to production.
+
+### Production and environment findings
+- Existing production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; it is not this branch.
+- Read-only production GET checks for health, Kids pages/APIs, site settings, sitemap and Android assetlinks returned 200. The Android association response contains package `com.zikr.app` and the configured production fingerprint.
+- Production Apple App Site Association returns 200 with empty `applinks.details` and `webcredentials.apps` because `IOS_ASSOCIATED_DOMAIN_APP_ID` is absent. The owner must supply the actual Apple Team ID plus bundle ID `com.zikr.app`.
+- Vercel metadata reports `ANDROID_KEYSTORE_BASE64` as encrypted with `visibility=config`, unlike the password variables which are sensitive/secret. The Vercel edit API rejected a type-only restriction because `visibility=secret` is also required and the connected schema does not expose that field. No secret value was read, rotated, deleted or changed. Owner action: change visibility to Secret in Vercel and verify the variable's continued need before any removal.
+- Storage-retention workflow is main-only, dry-run by default, and requires manual apply plus typed confirmation. No production storage or media deletion was run.
+- `prayer-notification-worker` and `source-verified-content-agent` disable platform JWT verification but enforce a custom Bearer secret check against the server-only scheduler secret. This is targeted review only.
+
+## Open review findings and acceptance gates
+
+1. `scripts/jobs/template-video-automation.ts` remains `REVIEW_REQUIRED`. The initial queue claim is atomic, but later content-hash, duplicate, completion and failure updates still use ID-only filters after rendering. Stale recovery can requeue long-running processing rows. The current Vercel configuration leaves optional HF/ComfyUI providers disabled by default and uses a 30-minute stale threshold; no production race was reproduced. Add an end-to-end concurrent-worker regression and fence every post-claim write before marking this path closed.
+2. The iOS AASA environment value is missing; physical Universal Link and OAuth return-to-app acceptance remains pending.
+3. The Android signing keystore value is readable to project-config viewers; owner must restrict its visibility to Secret. Physical Android App Links, signing and notification acceptance remain pending.
+4. Ten Supabase migrations require owner-approved production application and post-apply verification.
+5. CODEOWNERS review from `@Zikrmediaofficial` is absent. The connected GitHub identity has no collaborator permission for that account; no owner review can be obtained autonomously.
+6. The full repository-wide file-by-file review remains open. Main-baseline matrix still reports 1,525 `REVIEW_REQUIRED` rows and zero closed modules; this overlay is not a project-wide completion certificate.
+
+No content generation, Gemini requests, social publishing, production database mutations, migration application, storage/media deletion, release creation, merge or audit-branch deployment was triggered.
