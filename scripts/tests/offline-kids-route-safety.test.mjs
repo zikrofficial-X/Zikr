@@ -26,6 +26,7 @@ const blocked = getBlockedKidsRoutes(previousRows, currentRows, [
   "/kids/kids-prayer",
   "/kids/current-approved-story",
   "/kids/current-game",
+  "/kids/unsafe/slug",
 ]);
 assert.deepEqual(
   [...blocked].sort(),
@@ -37,10 +38,12 @@ assert.deepEqual(
     "/kids/removed-approved-story",
     "/kids/removed-game",
     "/kids/removed-quiz",
+    "/kids/unsafe/slug",
   ],
 );
 assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
+assert.equal(blocked.has("/kids/unsafe/slug"), true, "an unsafe current slug must not keep a stale nested route alive in the offline manifest");
 assert.deepEqual(
   getPublishedKidsRoutes(currentRows),
   ["/kids/current-approved-story", "/kids/current-double--hyphen", "/kids/current-game"],
