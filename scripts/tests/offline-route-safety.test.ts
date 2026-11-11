@@ -19,12 +19,14 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const publishedKidsRoutes = getPublishedKidsOfflineRoutes([
-  { slug: "approved-story", type: "story", metadata: { age_appropriate: true } },
-  { slug: "unapproved-story", type: "story", metadata: { age_appropriate: false } },
-  { slug: "legacy-story", content_type: "story", metadata: {} },
-  { slug: "public-game", type: "game", metadata: {} },
-  { slug: "../unsafe", type: "game", metadata: {} },
-  { slug: "unsupported", type: "unknown", metadata: {} },
+  { slug: "approved-story", type: "story", published: true, is_active: true, metadata: { age_appropriate: true } },
+  { slug: "unapproved-story", type: "story", published: true, is_active: true, metadata: { age_appropriate: false } },
+  { slug: "legacy-story", content_type: "story", published: true, is_active: true, metadata: {} },
+  { slug: "public-game", type: "game", published: true, is_active: true, metadata: {} },
+  { slug: "unpublished-game", type: "game", published: false, is_active: true, metadata: {} },
+  { slug: "inactive-game", type: "game", published: true, is_active: false, metadata: {} },
+  { slug: "../unsafe", type: "game", published: true, is_active: true, metadata: {} },
+  { slug: "unsupported", type: "unknown", published: true, is_active: true, metadata: {} },
 ]);
 assert.deepEqual(publishedKidsRoutes, ["/kids/approved-story", "/kids/public-game"],
   "offline route inventory must include all current safe Kids rows and only explicitly approved stories");

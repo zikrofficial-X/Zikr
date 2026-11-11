@@ -41,6 +41,7 @@ export function getPublishedKidsOfflineRoutes(rows: unknown[]): string[] {
     const metadata = row.metadata && typeof row.metadata === "object"
       ? row.metadata as Record<string, unknown>
       : {};
+    if (row.published !== true || row.is_active !== true) continue;
     if (!SAFE_KIDS_CONTENT_TYPES.has(type)) continue;
     if (type === "story" && metadata.age_appropriate !== true) continue;
     if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) continue;
