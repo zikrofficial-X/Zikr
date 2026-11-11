@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
+import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
 import {
   getFallbackKidsContentBySlug,
   isKidsContentPubliclyVisible,
@@ -327,3 +328,29 @@ assert.match(migration, /security invoker\s+set search_path = ''/i, "the service
 assert.doesNotMatch(migration, /security definer/i, "public share-count code must not introduce a definer entry point");
 
 console.log("Kids content visibility and fallback contracts passed.");
+
+const offlineKidsRows = normalizeOfflineKidsRows([
+  { id: "approved-story", slug: "approved-story", title_ar: "قصة معتمدة", title_en: "Approved story", type: "story", age_group: "6-8", content_ar: "نص", content_en: "Text", published: true, is_active: true, metadata: { age_appropriate: true } },
+  { id: "unapproved-story", slug: "unapproved-story", title_ar: "قصة غير معتمدة", type: "story", age_group: "6-8", content_ar: "نص", published: true, is_active: true, metadata: { age_appropriate: false } },
+  { id: "legacy-story", slug: "legacy-story", title_ar: "قصة قديمة", type: "story", age_group: "6-8", content_ar: "نص", published: true, is_active: true, metadata: {} },
+  { id: "inactive-game", slug: "inactive-game", title_ar: "لعبة غير نشطة", type: "game", age_group: "6-8", content_ar: "نص", published: true, is_active: false, metadata: {} },
+  { id: "public-game", slug: "public-game", title_ar: "لعبة", title_en: "Game", type: "game", age_group: "6-8", content_ar: "نص", content_en: "Text", published: true, is_active: true, metadata: {} },
+], "ar");
+assert.deepEqual(
+  offlineKidsRows.map((item) => item.slug),
+  ["approved-story", "public-game"],
+  "offline Kids fallback must expose only published active supported content and explicitly age-approved stories",
+);
+assert.deepEqual(
+  normalizeOfflineKidsRows([
+    { id: "arabic-only", slug: "arabic-only", title_ar: "عربي فقط", type: "story", age_group: "6-8", content_ar: "نص", published: true, is_active: true, metadata: { age_appropriate: true } },
+  ], "en"),
+  [],
+  "English offline Kids content must require both an English title and body",
+);
+const kidsHomeOfflineSource = readFileSync("src/app/kids/page.tsx", "utf8");
+const kidsDetailOfflineSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+assert.match(kidsHomeOfflineSource, /getOfflineKidsContent\(isEnglish \? "en" : "ar"\)/,
+  "the Kids home page must use the validated offline snapshot after a network failure");
+assert.match(kidsDetailOfflineSource, /getOfflineKidsContentBySlug\(contentSlug, isEnglish \? "en" : "ar"\)/,
+  "the Kids detail page must resolve its slug from the validated offline snapshot after a network failure");
