@@ -146,6 +146,15 @@ if (configuredIosScheme !== "App") {
 if (!pbxproj.includes("name = App;") || !iosPodfile.includes("target 'App' do")) {
   failures.push("The iOS Xcode target and CocoaPods target must remain aligned on App.");
 }
+const iosDeploymentTargets = [...pbxproj.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);/g)]
+  .map(match => match[1]);
+if (
+  !iosPodfile.includes("platform :ios, '15.0'") ||
+  iosDeploymentTargets.length === 0 ||
+  iosDeploymentTargets.some(target => target !== "15.0")
+) {
+  failures.push("Capacitor 7 iOS deployment must be consistently set to iOS 15.0 in CocoaPods and every Xcode build configuration.");
+}
 for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;"]) {
   if (!pbxproj.includes(token)) failures.push(`iOS Xcode project missing ${token}`);
 }

@@ -22,6 +22,13 @@ assert.equal(
 );
 assert.match(iosProject, /name = App;/, "The Xcode project must contain the App target");
 assert.match(iosPodfile, /target 'App' do/, "CocoaPods must target the same App scheme");
+const iosDeploymentTargets = [...iosProject.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);/g)]
+  .map(match => match[1]);
+assert.ok(
+  iosDeploymentTargets.length > 0 && iosDeploymentTargets.every(target => target === "15.0"),
+  "Every Xcode configuration must target iOS 15.0, the supported minimum for Capacitor 7",
+);
+assert.match(iosPodfile, /platform :ios, '15\.0'/, "CocoaPods must use the same iOS 15.0 deployment minimum");
 const iosPlist = read("ios/App/App/Info.plist");
 const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
 const appBoundDomains = new Set(

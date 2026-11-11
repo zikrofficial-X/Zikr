@@ -14,6 +14,7 @@ and other native capabilities.
 
 - Android package: `com.zikr.app`
 - iOS bundle id: `com.zikr.app`
+- Minimum iOS version: `15.0` (aligned with Capacitor 7 support)
 - App name: `ZIKR | ذِكرٌ`
 - Custom scheme redirect: `com.zikr.app://auth/callback`
 - HTTPS redirect: `https://zikrmediaofficial.vercel.app/auth/callback`
