@@ -239,19 +239,30 @@ export async function toggleManagedContent(
 ): Promise<void> {
   assertManagedContentTarget(table, id);
   const encodedId = encodeURIComponent(id);
+  const select = table === "stories"
+    ? "id,updated_at,is_approved,user_id"
+    : "id,updated_at";
+  const current = await supabaseServerAdminRequest<Array<{
+    id: string;
+    updated_at: string;
+    is_approved?: boolean | null;
+    user_id?: string | null;
+  }>>(
+    `/rest/v1/${table}?select=${select}&id=eq.${encodedId}&limit=1`,
+    { method: "GET" },
+  );
+  const target = current?.[0];
+  if (!target) throw new Error("العنصر غير موجود.");
+  if (optimisticUpdatedAt && String(target.updated_at) !== optimisticUpdatedAt) {
+    throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+  }
+  if (published && table === "stories" && (target.is_approved !== true || target.user_id !== null)) {
+    throw new Error("لا يمكن نشر قصة غير معتمدة أو مرتبطة بحساب مستخدم؛ اعتمد قصة عامة أولاً.");
+  }
 
   // An explicit unpublish must also revoke any pending or in-flight schedule.
   // Cancel first so a queue-service failure cannot leave a worker free to republish.
   if (!published) {
-    const current = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
-      `/rest/v1/${table}?select=id,updated_at&id=eq.${encodedId}&limit=1`,
-      { method: "GET" },
-    );
-    if (!current?.[0]) throw new Error("العنصر غير موجود.");
-    if (optimisticUpdatedAt && String(current[0].updated_at) !== optimisticUpdatedAt) {
-      throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
-    }
-
     try {
       await supabaseServerAdminRequest(
         `/rest/v1/content_publish_queue?content_table=eq.${table}&content_id=eq.${encodedId}&status=in.(queued,processing)`,
@@ -274,9 +285,8 @@ export async function toggleManagedContent(
     }
   }
 
-  const filter = `/rest/v1/${table}?id=eq.${encodedId}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    filter,
+    `/rest/v1/${table}?id=eq.${encodedId}&updated_at=eq.${encodeURIComponent(String(target.updated_at))}`,
     {
       method: "PATCH",
       headers: {
@@ -289,7 +299,7 @@ export async function toggleManagedContent(
       }),
     },
   );
-  if (!updated.length) {
+  if (!updated?.length) {
     throw new Error(
       "تم تعديل هذا العنصر أو حذفه بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
     );
