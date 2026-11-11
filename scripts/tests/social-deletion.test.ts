@@ -255,4 +255,12 @@ assert.match(socialAdminClient, /localDeletable\.slice\(0, LOCAL_SOCIAL_QUEUE_DE
 assert.match(socialAdminClient, /retryable\.map\(item => item\.id\)/);
 assert.match(socialAdminClient, /حذف الفاشلة الآمنة/);
 assert.match(socialAdminClient, /confirmedNoRemotePublication = true/);
-
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+  }),
+  false,
+  "a failed queue row without metadata must be preserved because per-platform outcomes cannot be verified",
+);
