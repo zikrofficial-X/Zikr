@@ -615,7 +615,6 @@ export async function POST(request: NextRequest) {
               }
             );
             if (Array.isArray(updated) && updated[0]) affected += 1;
-        else staleSkipped += 1;
             else staleSkipped += 1;
           }
           // Leave partial/failed records unchanged if any target is still blocked.
@@ -647,7 +646,7 @@ export async function POST(request: NextRequest) {
           item.metadata?.permanentFailure === true &&
           platforms.length < item.target_platforms.length;
         const updated = await supabaseServerAdminRequest<QueueItem[]>(
-          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
+          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
           {
             method: "PATCH",
             headers: {
@@ -686,6 +685,7 @@ export async function POST(request: NextRequest) {
           }
         );
         if (Array.isArray(updated) && updated[0]) affected += 1;
+        else staleSkipped += 1;
       }
       return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped, staleSkipped };
     };
