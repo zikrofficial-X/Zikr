@@ -13,3 +13,29 @@ assert.ok(queuePublishedUpdate > missingRowGuard, "the queue must not be marked 
 assert.ok(job.includes("CONTENT_TABLES.has(item.content_table)"), "dynamic content table names must remain allowlisted");
 
 console.log("Scheduled content publication row-integrity contracts passed.");
+
+const contentService = readFileSync("src/features/admin/services/content.ts", "utf8");
+const unpublishStart = contentService.indexOf("if (!published)");
+const cancelSchedule = contentService.indexOf("status=in.(queued,processing)", unpublishStart);
+const updateContent = contentService.indexOf("const updated = await supabaseServerAdminRequest", unpublishStart);
+assert.ok(unpublishStart >= 0 && cancelSchedule > unpublishStart && cancelSchedule < updateContent,
+  "unpublishing must cancel queued and in-flight scheduled publications before changing content");
+
+const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
+assert.match(adminActions, /table === "stories" \? "id,published,is_approved,user_id"/,
+  "story scheduling must load its public-approval fields");
+assert.match(adminActions, /target\.is_approved !== true \|\| target\.user_id !== null/,
+  "only approved, non-user-owned stories may be scheduled for public publication");
+assert.match(adminActions, /target\.published !== false/,
+  "already-published content must not receive a duplicate schedule");
+
+assert.match(job, /validateScheduledStoryForPublication/,
+  "the worker must revalidate story approval at execution time");
+assert.match(job, /status=eq\.processing&select=id&limit=1/,
+  "the worker must recheck its queue claim immediately before publishing");
+assert.match(job, /status=eq\.processing&select=id/,
+  "the worker must commit publication only while it still owns the processing claim");
+assert.match(job, /currentQueue\?\.\[0\]\?\.status === "cancelled"/,
+  "a concurrent unpublish must win over an in-flight scheduled publication");
+assert.match(job, /status=eq\.processing`/,
+  "worker failures must not overwrite an administrator's cancelled queue state");
