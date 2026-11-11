@@ -155,6 +155,7 @@ const videoRetryRoute = readFileSync("src/app/api/admin/videos/[id]/retry/route.
 assert.match(videoRetryRoute, /currentRows\[0\]\.status !== 'failed'/, "only failed video requests may be retried");
 assert.match(videoRetryRoute, /updateVideoRequestStatus\(id, 'pending', undefined, 'failed'\)/, "retry must use a failed-state compare-and-set");
 assert.match(videoAutomationService, /status=eq\.\$\{encodeURIComponent\(expectedStatus\)\}/);
+assert.match(videoAutomationService, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/, "retry compare-and-set must include the exact updated_at revision");
 assert.match(videoAutomationService, /return Array\.isArray\(updated\) && updated\.length > 0/);
 
 

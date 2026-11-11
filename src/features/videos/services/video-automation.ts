@@ -295,7 +295,7 @@ export async function updateVideoRequestStatus(
       body.heygen_last_polled_at = null;
     }
     if (expectedStatus && !expectedUpdatedAt) return false;
-    const filter = expectedStatus
+    const filter = expectedStatus && expectedUpdatedAt
       ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`
       : `id=eq.${encodeURIComponent(videoId)}`;
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
