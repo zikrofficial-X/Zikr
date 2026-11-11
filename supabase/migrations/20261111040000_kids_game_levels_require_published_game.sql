@@ -1,0 +1,31 @@
+BEGIN;
+
+ALTER TABLE public.kids_game_levels ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS kids_game_levels_public_read ON public.kids_game_levels;
+DROP POLICY IF EXISTS admin_all_kids_game_levels_select ON public.kids_game_levels;
+
+CREATE POLICY kids_game_levels_public_read
+  ON public.kids_game_levels
+  FOR SELECT
+  TO anon
+  USING (
+    published IS TRUE
+    AND EXISTS (
+      SELECT 1
+      FROM public.kids_games AS game
+      WHERE game.id = kids_game_levels.game_id
+        AND game.published IS TRUE
+    )
+  );
+
+CREATE POLICY admin_all_kids_game_levels_select
+  ON public.kids_game_levels
+  FOR SELECT
+  TO authenticated
+  USING (private.is_admin_user());
+
+COMMENT ON POLICY kids_game_levels_public_read ON public.kids_game_levels
+  IS 'Anonymous clients can read only published levels belonging to a published Kids game.';
+
+COMMIT;
