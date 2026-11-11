@@ -35,6 +35,7 @@ const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.s
 const appBoundDomains = new Set(
   appBoundDomainBlock.split("<string>").slice(1).map(value => value.split("</string>")[0]).filter(Boolean),
 );
+assert.ok(appBoundDomains.has("localhost"), "Capacitor local bridge hostname must be app-bound when navigation limits are enabled");
 for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
   assert.ok(capacitor.server?.allowNavigation?.includes(host), `${host} must remain an allowed Capacitor destination`);
   assert.ok(appBoundDomains.has(host), `${host} must be app-bound when WKWebView navigation limits are enabled`);

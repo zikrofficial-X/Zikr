@@ -59,6 +59,7 @@
   <key>WKAppBoundDomains</key>
   <array>
     <string>zikrmediaofficial.vercel.app</string>
+    <string>localhost</string>
     <string>zqtssvlvmkzeeyqghqfk.supabase.co</string>
     <string>www.youtube.com</string>
     <string>www.youtube-nocookie.com</string>
