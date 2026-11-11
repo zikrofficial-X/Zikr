@@ -85,7 +85,7 @@ export function resolveVideoMediaUrl(row: Record<string, unknown>): string | nul
   // a safe playback fallback.
   if (
     metadata.generator === "zikr_internal_video_factory" &&
-    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState)
+    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState)
   ) {
     return youtubeUrl;
   }
@@ -128,7 +128,7 @@ export function resolveVideoThumbnail(
   const metadata = metadataFor(row);
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
   const internalFallbackState = metadata.generator === "zikr_internal_video_factory" &&
-    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState);
+    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState);
   const youtubeId = resolveVideoYoutubeId(row);
   if (internalFallbackState) {
     return youtubeId
