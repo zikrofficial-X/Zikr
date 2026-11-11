@@ -64,6 +64,15 @@ type VapidBundle = {
   publicKey: string;
   keys: ExportedVapidKeys;
 };
+type BackgroundReminderPreference = {
+  user_id: string;
+  dhikr_enabled: boolean;
+  salawat_enabled: boolean;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  timezone: string | null;
+};
+
 
 const PROJECT_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -188,6 +197,16 @@ function localMinute(date: Date, timeZone: string): number {
   const value = (type: string) =>
     Number(parts.find(part => part.type === type)?.value ?? 0);
   return value("hour") * 60 + value("minute");
+}
+
+function safeTimeZone(value: string | null | undefined): string {
+  const candidate = value?.trim() || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format(new Date(0));
+    return candidate;
+  } catch {
+    return "UTC";
+  }
 }
 
 function inQuietHours(
@@ -577,6 +596,63 @@ async function deliverDue(
     (rows ?? []).map(row => [row.id, row as PushSubscriptionRow])
   );
 
+  const prayerUserIds = [
+    ...new Set(
+      deliveries
+        .filter(delivery => delivery.notification_kind === "prayer")
+        .map(delivery => delivery.user_id),
+    ),
+  ];
+  const backgroundUserIds = [
+    ...new Set(
+      deliveries
+        .filter(delivery => delivery.notification_kind !== "prayer")
+        .map(delivery => delivery.user_id),
+    ),
+  ];
+
+  let prayerPreferences: PrayerPreference[] = [];
+  let prayerLocations: PrayerLocation[] = [];
+  let backgroundPreferences: BackgroundReminderPreference[] = [];
+
+  if (prayerUserIds.length) {
+    const [{ data: preferenceRows, error: preferenceError }, { data: locationRows, error: locationError }] =
+      await Promise.all([
+        supabase
+          .from("prayer_preferences")
+          .select("user_id, calculation_method, madhab, notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
+          .in("user_id", prayerUserIds),
+        supabase
+          .from("prayer_locations")
+          .select("id, user_id, latitude, longitude, timezone, is_default")
+          .in("user_id", prayerUserIds)
+          .eq("is_default", true),
+      ]);
+    if (preferenceError) throw preferenceError;
+    if (locationError) throw locationError;
+    prayerPreferences = (preferenceRows ?? []) as PrayerPreference[];
+    prayerLocations = (locationRows ?? []) as PrayerLocation[];
+  }
+
+  if (backgroundUserIds.length) {
+    const { data, error: preferenceError } = await supabase
+      .from("background_reminder_preferences")
+      .select("user_id, dhikr_enabled, salawat_enabled, quiet_hours_start, quiet_hours_end, timezone")
+      .in("user_id", backgroundUserIds);
+    if (preferenceError) throw preferenceError;
+    backgroundPreferences = (data ?? []) as BackgroundReminderPreference[];
+  }
+
+  const prayerPreferenceByUser = new Map(
+    prayerPreferences.map(preference => [preference.user_id, preference]),
+  );
+  const prayerLocationByUser = new Map(
+    prayerLocations.map(location => [location.user_id, location]),
+  );
+  const backgroundPreferenceByUser = new Map(
+    backgroundPreferences.map(preference => [preference.user_id, preference]),
+  );
+
   const vapidKeys = await importVapidKeys(bundle.keys);
   const applicationServer = await ApplicationServer.new({
     contactInformation: CONTACT,
@@ -587,6 +663,63 @@ async function deliverDue(
   let failed = 0;
   let deactivated = 0;
   for (const delivery of deliveries) {
+    let skipReason: string | null = null;
+
+    if (delivery.notification_kind === "prayer") {
+      const preference = prayerPreferenceByUser.get(delivery.user_id);
+      const location = prayerLocationByUser.get(delivery.user_id);
+      if (
+        !preference ||
+        preference.notifications_enabled === false ||
+        !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
+        !location?.timezone
+      ) {
+        skipReason = "Prayer reminder is no longer enabled or configured";
+      } else if (
+        inQuietHours(
+          now,
+          safeTimeZone(location.timezone),
+          preference.quiet_hours_start,
+          preference.quiet_hours_end,
+        )
+      ) {
+        skipReason = "Skipped during quiet hours";
+      }
+    } else {
+      const preference = backgroundPreferenceByUser.get(delivery.user_id);
+      const enabled =
+        delivery.notification_kind === "dhikr"
+          ? preference?.dhikr_enabled
+          : preference?.salawat_enabled;
+      if (!preference || enabled !== true) {
+        skipReason = "Background reminder is no longer enabled";
+      } else if (
+        inQuietHours(
+          now,
+          safeTimeZone(preference.timezone),
+          preference.quiet_hours_start,
+          preference.quiet_hours_end,
+        )
+      ) {
+        skipReason = "Skipped during quiet hours";
+      }
+    }
+
+    if (skipReason) {
+      const { error: skipError } = await supabase
+        .from("prayer_notification_deliveries")
+        .update({
+          status: "cancelled",
+          processed_at: now.toISOString(),
+          retry_after: null,
+          error_message: skipReason,
+          updated_at: now.toISOString(),
+        })
+        .eq("id", delivery.id);
+      if (skipError) throw skipError;
+      continue;
+    }
+
     const subscription = subscriptions.get(delivery.push_subscription_id);
     if (!subscription) {
       await supabase
