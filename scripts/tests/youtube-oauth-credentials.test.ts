@@ -89,6 +89,19 @@ assert.equal(
   2,
   "analytics and publishing credential reads must load the provider channel ID",
 );
+assert.match(credentialSource, /connectedBy: string/, "saving a YouTube OAuth credential must require an authenticated actor");
+assert.match(credentialSource, /connected_by:\\s*connectedBy/, "the credential row must retain the authenticated actor ID");
+const youtubeCallbackSource = readFileSync(
+  new URL("../../src/app/api/admin/social/youtube/callback/route.ts", import.meta.url),
+  "utf8",
+);
+const credentialSaveStart = youtubeCallbackSource.indexOf("await saveYouTubeOAuthCredential(");
+const credentialSaveEnd = youtubeCallbackSource.indexOf(");", credentialSaveStart);
+assert.ok(credentialSaveStart >= 0 && credentialSaveEnd > credentialSaveStart, "YouTube OAuth callback must persist its verified credential");
+assert.ok(
+  youtubeCallbackSource.slice(credentialSaveStart, credentialSaveEnd).includes("auth.profile.id"),
+  "YouTube OAuth callback must persist the admin who completed the connection",
+);
 
 const socialPublisherSource = readFileSync(
   new URL("../../src/features/social/services/social-publishing.ts", import.meta.url),

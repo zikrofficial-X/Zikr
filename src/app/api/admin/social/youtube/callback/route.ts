@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       grantedScopes,
       channelId: channel.id,
       channelName: channel.snippet?.title ?? null,
-    });
+    }, auth.profile.id);
 
     try {
       await recordAdminAuditEvent({

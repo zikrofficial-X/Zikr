@@ -95,8 +95,11 @@ export async function getYouTubeUploadRefreshToken(
 
 export async function saveYouTubeOAuthCredential(
   credential: YouTubeOAuthCredentialInput,
-  connectedBy?: string | null,
+  connectedBy: string,
 ): Promise<void> {
+  if (!connectedBy.trim()) {
+    throw new Error("YouTube OAuth credentials require the authenticated admin ID.");
+  }
   const now = new Date().toISOString();
   await supabaseServerAdminRequest(
     "/rest/v1/youtube_oauth_credentials?on_conflict=provider",
@@ -112,7 +115,7 @@ export async function saveYouTubeOAuthCredential(
         granted_scopes: credential.grantedScopes,
         channel_id: credential.channelId,
         channel_name: credential.channelName,
-        connected_by: connectedBy ?? null,
+        connected_by: connectedBy,
         connected_at: now,
         updated_at: now,
       }),
