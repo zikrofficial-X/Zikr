@@ -7,8 +7,6 @@ import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, REQU
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_STATUSES = new Set(['pending', 'processing', 'completed', 'failed']);
-
 function idsFromBody(body: unknown): string[] {
   if (!body || typeof body !== 'object') return [];
   const ids = (body as { ids?: unknown }).ids;
@@ -96,13 +94,11 @@ export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json() as {
       id?: unknown;
-      status?: unknown;
       errorMessage?: unknown;
       action?: unknown;
       qaChecklist?: unknown;
     };
     const id = typeof body.id === 'string' ? body.id : '';
-    const status = typeof body.status === 'string' ? body.status : '';
     const action = typeof body.action === 'string' ? body.action : '';
     if (!id) return NextResponse.json({ error: 'معرّف العملية مطلوب.' }, { status: 400 });
 
@@ -180,38 +176,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (!ALLOWED_STATUSES.has(status)) {
-      return NextResponse.json({ error: 'معرّف أو حالة غير صالحة.' }, { status: 400 });
-    }
-
-    const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-    if (status === 'pending') {
-      patch.error_message = null;
-      patch.error_details = null;
-      patch.heygen_status = null;
-      patch.heygen_video_id = null;
-      patch.heygen_submitted_at = null;
-      patch.heygen_last_polled_at = null;
-      patch.youtube_id = null;
-      patch.facebook_id = null;
-      patch.video_url = null;
-    }
-    if (typeof body.errorMessage === 'string') patch.error_message = body.errorMessage.slice(0, 1000);
-
-    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(patch),
-    });
-    if (!updated.length) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
-    await recordAdminAuditEvent({
-      action: "video_generation.status.update",
-      permission: "video.manage",
-      resourceType: "video_generation_requests",
-      resourceId: id,
-      metadata: { status, changedFields: Object.keys(patch) },
-    });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      {
+        error: 'تغيير حالة الفيديو يدويًا متوقف؛ يستخدم العامل انتقالات الطابور، وتتم إعادة المحاولة عبر المسار المخصص للعمليات الفاشلة.',
+        code: 'DIRECT_VIDEO_STATUS_MUTATION_RETIRED',
+      },
+      { status: 410, headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (error) {
     console.error('[api/admin/video-generation] PATCH:', error);
     return NextResponse.json({ error: 'تعذر تحديث العملية.' }, { status: 500 });
