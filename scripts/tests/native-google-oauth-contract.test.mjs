@@ -65,4 +65,13 @@ assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
 assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/);
 assert.match(nativeBridge, /window\.location\.assign\(path\)/);
 assert.match(androidManifest, /android:scheme="com\.zikr\.app"/);
+assert.match(androidManifest, /<intent-filter android:autoVerify="true">[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"/);
+for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {
+  assert.ok(androidManifest.includes(\`android:pathPrefix="\${routePrefix}"\`), \`Android App Links must include \${routePrefix}\`);
+}
+assert.doesNotMatch(
+  androidManifest,
+  /android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"[\s\S]*?android:pathPrefix="\/auth\/callback"/,
+  "Android App Links must not intercept the HTTPS OAuth callback",
+);
 console.log("Native Google OAuth and canonical-host contracts passed.");
