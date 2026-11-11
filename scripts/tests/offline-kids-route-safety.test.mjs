@@ -29,12 +29,12 @@ assert.deepEqual(
   [...blocked].sort(),
   [
     "/kids/approval-withdrawn",
+    "/kids/kids-amanah",
+    "/kids/kids-prayer",
+    "/kids/kids-truth",
     "/kids/removed-approved-story",
     "/kids/removed-game",
     "/kids/removed-quiz",
-    "/kids/kids-truth",
-    "/kids/kids-amanah",
-    "/kids/kids-prayer",
   ],
 );
 assert.equal(blocked.has("/kids/current-approved-story"), false);
