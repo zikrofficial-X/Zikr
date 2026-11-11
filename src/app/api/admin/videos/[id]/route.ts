@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import type { VideoGenerationRequest } from '@/lib/types/video';
@@ -25,8 +26,8 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminApi('video.manage');
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const auth = await requireAdminStepUpApi('video.manage', '/admin/video/requests');
+    if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
     const { id } = await context.params;
     const body = await request.json() as Record<string, unknown>;
     const status = typeof body.status === 'string' ? body.status : '';
@@ -73,8 +74,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
 export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireAdminApi('video.delete');
-    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+    const auth = await requireAdminStepUpApi('video.delete', '/admin/video/requests');
+    if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
     const { id } = await context.params;
 
     const rows = await supabaseServerAdminRequest<Array<{ status: string }>>(

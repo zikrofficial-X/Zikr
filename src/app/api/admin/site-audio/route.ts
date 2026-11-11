@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
 
@@ -97,8 +98,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const guard = await requireAdminApi("audio.manage");
-  if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
+  const guard = await requireAdminStepUpApi("audio.manage", "/admin/site-audio");
+  if (!guard.ok) return NextResponse.json({ error: guard.error, nextPath: "nextPath" in guard ? guard.nextPath : undefined }, { status: guard.status, headers: { "Cache-Control": "no-store" } });
   const id = request.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "معرّف المقطع مطلوب." }, { status: 400 });
 
@@ -110,6 +111,18 @@ export async function DELETE(request: NextRequest) {
     .single();
   if (findError) return NextResponse.json({ error: findError.message }, { status: 404 });
 
+  if (asset.storage_path.startsWith("curated:")) {
+    return NextResponse.json({ error: "المقاطع المنتمية إلى المكتبة الموثوقة للقراءة فقط ولا يمكن حذفها من هذه الواجهة." }, { status: 409 });
+  }
+
+  if (!/^https?:\/\//i.test(asset.storage_path)) {
+    const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
+    if (storageError) {
+      console.error("[site-audio] storage removal failed; database row retained for retry:", storageError.message);
+      return NextResponse.json({ error: "تعذر حذف الملف من التخزين؛ لم يُحذف سجل المقطع حتى يمكن إعادة المحاولة.", storageCleanupPending: true }, { status: 502 });
+    }
+  }
+
   const { data: deleted, error } = await db
     .from("site_audio_assets")
     .delete()
@@ -117,17 +130,9 @@ export async function DELETE(request: NextRequest) {
     .select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!deleted?.length) {
-    return NextResponse.json({ error: "تم حذف المقطع أو تغييره بواسطة مستخدم آخر." }, { status: 409 });
+    return NextResponse.json({ error: "تم حذف المقطع أو تغييره بواسطة مستخدم آخر. تحقّق من التخزين قبل إعادة المحاولة." }, { status: 409 });
   }
-
-  let storageCleanupPending = false;
-  if (!asset.storage_path.startsWith("curated:") && !/^https?:\/\//i.test(asset.storage_path)) {
-    const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
-    if (storageError) {
-      storageCleanupPending = true;
-      console.error("[site-audio] orphaned storage object:", storageError.message);
-    }
-  }
+  const storageCleanupPending = false;
 
   await recordAdminAuditEvent({
     action: "site_audio.asset.delete",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import {
   createAdminMediaAsset,
@@ -90,8 +91,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminApi('media.manage');
-  if (!auth.ok) return responseError(auth.error, auth.status);
+  const auth = await requireAdminStepUpApi('media.manage', '/admin/media');
+  if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
 
   try {
     const body = (await request.json().catch(() => ({}))) as {

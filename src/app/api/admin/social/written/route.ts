@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -52,8 +53,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const manageAuth = await requireAdminApi("social.manage");
   if (!manageAuth.ok) return NextResponse.json({ error: manageAuth.error }, { status: manageAuth.status });
-  const publishAuth = await requireAdminApi("social.publish");
-  if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error }, { status: publishAuth.status });
+  const publishAuth = await requireAdminStepUpApi("social.publish", "/admin/social/written-studio");
+  if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error, nextPath: "nextPath" in publishAuth ? publishAuth.nextPath : undefined }, { status: publishAuth.status, headers: { "Cache-Control": "no-store" } });
 
   try {
     let requestBody: unknown;

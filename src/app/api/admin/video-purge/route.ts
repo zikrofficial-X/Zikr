@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge, wasPublishedBeforeMediaPurge } from "@/features/videos/services/video-media-contract";
@@ -320,8 +321,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("video.delete");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const auth = await requireAdminStepUpApi("video.delete", "/admin/media");
+  if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: "nextPath" in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { "Cache-Control": "no-store" } });
 
   let automationWasEnabled: boolean | undefined;
   let purgeLockToken: string | null = null;

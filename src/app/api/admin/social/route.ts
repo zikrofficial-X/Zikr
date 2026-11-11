@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
@@ -382,13 +383,22 @@ export async function POST(request: NextRequest) {
       confirmedNoRemotePublication?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
+    if (action === "delete" || action === "delete_failed") {
+      const stepUp = await requireAdminStepUpApi("social.manage", "/admin/social");
+      if (!stepUp.ok) {
+        return NextResponse.json(
+          { error: stepUp.error, nextPath: "nextPath" in stepUp ? stepUp.nextPath : undefined },
+          { status: stepUp.status, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+    }
     const confirmedNoRemotePublication = body.confirmedNoRemotePublication === true;
     if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token"].includes(action)) {
-      const executionAuth = await requireAdminApi("social.publish");
+      const executionAuth = await requireAdminStepUpApi("social.publish", "/admin/social");
       if (!executionAuth.ok) {
         return NextResponse.json(
-          { error: executionAuth.error },
-          { status: executionAuth.status },
+          { error: executionAuth.error, nextPath: "nextPath" in executionAuth ? executionAuth.nextPath : undefined },
+          { status: executionAuth.status, headers: { "Cache-Control": "no-store" } },
         );
       }
     }
