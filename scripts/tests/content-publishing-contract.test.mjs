@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const job = readFileSync("scripts/jobs/content-publishing.ts", "utf8");
+const adminContent = readFileSync("src/features/admin/services/content.ts", "utf8");
 const contentUpdate = job.indexOf("const updatedContent = await supabaseServerAdminRequest");
 const missingRowGuard = job.indexOf("if (!updatedContent?.some(row => row.id === item.content_id))");
 const queuePublishedUpdate = job.indexOf('status: "published"', contentUpdate);
@@ -38,6 +39,22 @@ assert.match(
   job,
   /Could not verify the video purge lock; holding video publication/,
   "a lock lookup failure must fail closed instead of publishing a video during cleanup",
+);
+
+assert.match(
+  adminContent,
+  /table === "stories"[\s\S]*?"id,updated_at,is_approved,user_id"/,
+  "direct story publication must load approval and ownership state from the database",
+);
+assert.match(
+  adminContent,
+  /published && table === "stories" && \(target\.is_approved !== true \|\| target\.user_id !== null\)/,
+  "direct publishing must reject unapproved or user-owned stories even if a server action is invoked directly",
+);
+assert.match(
+  adminContent,
+  /updated_at=eq\.\$\{encodeURIComponent\(String\(target\.updated_at\)\)\}/,
+  "content publication must use the version read before the approval check to prevent stale concurrent updates",
 );
 
 console.log("Scheduled content publication row-integrity contracts passed.");
