@@ -117,8 +117,7 @@ async function clearRunNowRequest(request: VideoAutomationRunNow) {
   // The request identity protects same-millisecond writes; updated_at is the
   // database compare-and-set so a newer Run Now request cannot be deleted.
   await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now&updated_at=eq." +
-      encodeURIComponent(row.updated_at),
+    `/rest/v1/admin_settings?key=eq.video_automation_run_now&updated_at=eq.${encodeURIComponent(row.updated_at)}`,
     {
       method: "DELETE",
       headers: { Prefer: "return=representation" },
