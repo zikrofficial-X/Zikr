@@ -56,8 +56,13 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
     const url = new URL(baseUrl);
     const host = url.hostname.toLowerCase();
 
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
-      return url.origin;
+    const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (isLocalHost) {
+      const isProductionRuntime =
+        process.env.NODE_ENV === "production" ||
+        process.env.VERCEL_ENV === "production" ||
+        process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
+      return isProductionRuntime ? PRODUCTION_URL : url.origin;
     }
 
     if (isV0PreviewHost(host) || isTrustedVercelPreviewHost(host)) {
