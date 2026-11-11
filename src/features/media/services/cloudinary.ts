@@ -66,7 +66,7 @@ export async function uploadCloudinaryImage(params: {
   );
   form.append('folder', safeSegment(params.folder, 'zikr'));
   form.append('public_id', safeSegment(params.publicId, 'image'));
-  form.append('overwrite', 'true');
+  form.append('overwrite', 'false');
   form.append('resource_type', 'image');
   form.append('invalidate', 'true');
   if (params.tags?.length) form.append('tags', params.tags.map(tag => safeSegment(tag, '')).filter(Boolean).join(','));
