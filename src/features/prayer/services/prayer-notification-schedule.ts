@@ -124,3 +124,14 @@ export function getZonedDateTime(
   }
   return null;
 }
+
+export function getPrayerAlertDateKey(date: Date, timeZone?: string): string {
+  const resolvedTimeZone =
+    timeZone?.trim() ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone ||
+    "UTC";
+  const zonedDate = formatDateInTimeZone(date, resolvedTimeZone);
+  if (zonedDate) return zonedDate;
+
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
