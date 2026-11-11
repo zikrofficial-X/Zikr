@@ -91,6 +91,12 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /youtubePublishedVideoId: queueYouTubeId/);
   assert.match(auditScript, /youtubePublishedUrl: "https:\/\/www\.youtube\.com\/watch\?v="/);
   assert.match(auditScript, /mediaFallbackAvailable: true/);
+  assert.match(auditScript, /getConfirmedYoutubeFallbackId\(\{/);
+  assert.match(auditScript, /youtubeFallback: hasConfirmedYoutubeFallback/);
+  assert.doesNotMatch(auditScript, /youtubeFallback: Boolean\(youtubeId\)/);
+  assert.match(auditScript, /catalog_row_missing_updated_at_for_compare_and_set/);
+  assert.match(auditScript, /catalog_row_changed_during_media_audit/);
+  assert.match(auditScript, /const updatedAt = row\.updated_at/);
   assert.match(auditScript, /youtubePublicationsByRequest/);
   assert.match(auditScript, /status=in\.\(published,partial\)/);
   assert.match(auditScript, /!\["published", "partial"\]\.includes\(row\.status\)/);
