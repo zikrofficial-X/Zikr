@@ -116,6 +116,27 @@ const bridge = read("src/components/layout/native-capacitor-bridge.tsx");
 for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications"]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
 }
+const nativePluginImports = [
+  ["App", "@capacitor/app"],
+  ["Browser", "@capacitor/browser"],
+  ["Camera", "@capacitor/camera"],
+  ["Filesystem", "@capacitor/filesystem"],
+  ["Geolocation", "@capacitor/geolocation"],
+  ["Haptics", "@capacitor/haptics"],
+  ["LocalNotifications", "@capacitor/local-notifications"],
+  ["Network", "@capacitor/network"],
+  ["Share", "@capacitor/share"],
+  ["SplashScreen", "@capacitor/splash-screen"],
+  ["StatusBar", "@capacitor/status-bar"],
+];
+for (const [plugin, packageName] of nativePluginImports) {
+  if (!packageDependencies[packageName]) failures.push(`package.json is missing native plugin ${packageName}`);
+  if (!bridge.includes(`import { ${plugin} } from "${packageName}";`)) failures.push(`Native bridge must import ${plugin} directly from ${packageName}`);
+  if (!bridge.includes(`${plugin}: ${plugin} as unknown as CapacitorPlugin`)) failures.push(`Native bridge must register the direct ${plugin} export`);
+}
+if (bridge.includes("capacitor.Plugins") || bridge.includes("Capacitor.Plugins")) {
+  failures.push("Native bridge must not depend on the deprecated Capacitor.Plugins registry");
+}
 if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("exchangeCodeForSession")) {
   failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
 }

@@ -1,9 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
-import { LocalNotifications } from "@capacitor/local-notifications";
+import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { Camera } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem } from "@capacitor/filesystem";
+import { Geolocation } from "@capacitor/geolocation";
+import { Haptics } from "@capacitor/haptics";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { Network } from "@capacitor/network";
+import { Share } from "@capacitor/share";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { StatusBar } from "@capacitor/status-bar";
+import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
 import { syncQuranReminderFromAccount } from "@/features/notifications/services/quran-reminder";
 import { PRODUCTION_URL } from "@/lib/site";
 
@@ -12,10 +22,6 @@ type CapacitorPlugin = Record<
   (...args: unknown[]) => Promise<unknown> | unknown
 >;
 type CapacitorWindow = Window & {
-  Capacitor?: {
-    isNativePlatform?: () => boolean;
-    Plugins?: Record<string, CapacitorPlugin | undefined>;
-  };
   zikrNative?: {
     isNative: boolean;
     share: (data: {
@@ -50,14 +56,21 @@ type CapacitorWindow = Window & {
 };
 
 function getNativePlugins(): Record<string, CapacitorPlugin | undefined> | null {
-  const capacitor = (window as CapacitorWindow).Capacitor;
-  if (!capacitor?.isNativePlatform?.()) return null;
+  if (!Capacitor.isNativePlatform()) return null;
+  // Use official Capacitor 7 package exports. The deprecated global Plugins
+  // registry is not guaranteed to expose every plugin in production builds.
   return {
-    ...(capacitor.Plugins ?? {}),
-    // Capacitor v7 does not guarantee that every plugin is exposed through the
-    // legacy Capacitor.Plugins registry. Use the official plugin export for
-    // notifications so background alarms remain available in release builds.
+    App: App as unknown as CapacitorPlugin,
+    Browser: Browser as unknown as CapacitorPlugin,
+    Camera: Camera as unknown as CapacitorPlugin,
+    Filesystem: Filesystem as unknown as CapacitorPlugin,
+    Geolocation: Geolocation as unknown as CapacitorPlugin,
+    Haptics: Haptics as unknown as CapacitorPlugin,
     LocalNotifications: LocalNotifications as unknown as CapacitorPlugin,
+    Network: Network as unknown as CapacitorPlugin,
+    Share: Share as unknown as CapacitorPlugin,
+    SplashScreen: SplashScreen as unknown as CapacitorPlugin,
+    StatusBar: StatusBar as unknown as CapacitorPlugin,
   };
 }
 
