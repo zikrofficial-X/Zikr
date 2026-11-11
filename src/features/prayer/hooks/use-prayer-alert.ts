@@ -254,7 +254,10 @@ export function usePrayerAlert(
   const alertCallbackRef = useRef<((p: PrayerKey) => void) | null>(null);
   const settingsRef = useRef(settings);
   const pendingServerPushSyncRef = useRef(false);
-  settingsRef.current = settings;
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   const syncExistingServerPush = useCallback(async (
     enabledPrayers: Record<PrayerKey, boolean>,
