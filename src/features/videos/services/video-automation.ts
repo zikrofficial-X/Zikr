@@ -272,12 +272,14 @@ export async function updateVideoRequestStatus(
     if (metadata?.youtubeId) body.youtube_id = metadata.youtubeId;
     if (metadata?.facebookId) body.facebook_id = metadata.facebookId;
     if (metadata?.videoUrl) body.video_url = metadata.videoUrl;
+    let expectedUpdatedAt: string | null = null;
     if (status === 'pending') {
       const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown; status: string; updated_at: string }>>(
         '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content,status,updated_at&limit=1',
       );
       const existingRow = existingContentRows?.[0];
       if (!existingRow || (expectedStatus && existingRow.status !== expectedStatus)) return false;
+      expectedUpdatedAt = existingRow.updated_at;
       const existing = existingRow.content;
       const content = existing && typeof existing === 'object' && !Array.isArray(existing)
         ? existing as Record<string, unknown> : {};
@@ -292,8 +294,9 @@ export async function updateVideoRequestStatus(
       body.heygen_submitted_at = null;
       body.heygen_last_polled_at = null;
     }
+    if (expectedStatus && !expectedUpdatedAt) return false;
     const filter = expectedStatus
-      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}&updated_at=eq.${encodeURIComponent(existingContentRows?.[0]?.updated_at ?? "")}`
+      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`
       : `id=eq.${encodeURIComponent(videoId)}`;
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/video_generation_requests?${filter}`,
