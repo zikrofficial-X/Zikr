@@ -126,6 +126,11 @@ async function patchCatalog(row: VideoCatalogRow, patch: Record<string, unknown>
   return Boolean(updated?.length);
 }
 
+function comparableMediaAudit(value: unknown): JsonRecord {
+  const { checkedAt: _checkedAt, ...stableFields } = asRecord(value);
+  return stableFields;
+}
+
 async function auditOne(
   row: VideoCatalogRow,
   youtubeIdsByRequest: Map<string, string>,
@@ -171,7 +176,12 @@ async function auditOne(
   if (!existingYouTubeId && youtubeId) patch.youtube_id = youtubeId;
   if (!row.thumbnail_url && thumbnail) patch.thumbnail_url = thumbnail;
 
-  const needsUpdate = JSON.stringify(nextMetadata) !== JSON.stringify(metadata) ||
+  const mediaStateChanged = nextMetadata.mediaState !== metadata.mediaState;
+  const mediaAuditChanged = JSON.stringify(comparableMediaAudit(nextMetadata.mediaAudit)) !==
+    JSON.stringify(comparableMediaAudit(metadata.mediaAudit));
+  // checkedAt is observational metadata, not a catalog change. Do not rewrite
+  // every published row on every daily audit and invalidate admin updated_at guards.
+  const needsUpdate = mediaStateChanged || mediaAuditChanged ||
     (!existingYouTubeId && Boolean(youtubeId)) ||
     (!row.thumbnail_url && Boolean(thumbnail));
   if (!needsUpdate) return { state: mediaState, id: row.id, updated: false };
@@ -228,7 +238,7 @@ async function main() {
   }, {});
   console.log("[video-media-audit] " + JSON.stringify({ checked: rows.length, summary, at: now }));
   for (const result of results) {
-    if (result.state === "conflict" || result.state === "error" ||
+    if (result.state === "conflict" || result.state === "error" || result.state === "unavailable" ||
         (result.state === "cloudinary_missing" && !("youtubeFallback" in result && result.youtubeFallback))) {
       console.error("[video-media-audit] attention:", JSON.stringify(result));
     }
