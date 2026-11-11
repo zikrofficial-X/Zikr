@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
-import { fetchAllIdPages } from "./pagination.ts";
+import { forEachIdPage } from "./pagination.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -299,27 +299,10 @@ async function loadVapidBundle(): Promise<VapidBundle> {
   return stored as VapidBundle;
 }
 
-async function ensureSchedules(now: Date): Promise<number> {
-  // The database function plans opt-in dhikr/salawat rows for every active device.
-  const { error: backgroundError } = await supabase.rpc('plan_background_reminder_deliveries', { now_at: now.toISOString() });
-  if (backgroundError) throw backgroundError;
-  // Read every active device in stable UUID order. A fixed first-page limit
-  // silently starved subscriptions after the first 100 forever.
-  const subscriptions = await fetchAllIdPages<PushSubscriptionRow>(
-    async (afterId, pageSize) => {
-      let query = supabase
-        .from("push_subscriptions")
-        .select("id, user_id, endpoint, p256dh, auth")
-        .eq("is_active", true)
-        .order("id", { ascending: true })
-        .limit(pageSize);
-      if (afterId) query = query.gt("id", afterId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []) as PushSubscriptionRow[];
-    },
-    BATCH_SIZE,
-  );
+async function ensureSubscriptionBatchSchedules(
+  subscriptions: readonly PushSubscriptionRow[],
+  now: Date,
+): Promise<number> {
   if (!subscriptions.length) return 0;
 
   const userIds = [
@@ -359,7 +342,7 @@ async function ensureSchedules(now: Date): Promise<number> {
     preferenceByUser.set(preference.user_id, preference);
   }
 
-  const eligible = (subscriptions as PushSubscriptionRow[]).filter(
+  const eligible = subscriptions.filter(
     subscription => {
       const preference = preferenceByUser.get(subscription.user_id);
       return Boolean(
@@ -486,6 +469,38 @@ async function ensureSchedules(now: Date): Promise<number> {
     if (deliveryError) throw deliveryError;
   }
   return inserts.length;
+}
+
+async function ensureSchedules(now: Date): Promise<number> {
+  // The database function plans opt-in dhikr/salawat rows for every active device.
+  const { error: backgroundError } = await supabase.rpc(
+    "plan_background_reminder_deliveries",
+    { now_at: now.toISOString() },
+  );
+  if (backgroundError) throw backgroundError;
+
+  let scheduled = 0;
+  // Stream one bounded page at a time. The location/preference/cache .in()
+  // queries therefore never receive an unbounded list of user or location IDs.
+  await forEachIdPage(
+    async (afterId, pageSize) => {
+      let query = supabase
+        .from("push_subscriptions")
+        .select("id, user_id, endpoint, p256dh, auth")
+        .eq("is_active", true)
+        .order("id", { ascending: true })
+        .limit(pageSize);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as PushSubscriptionRow[];
+    },
+    BATCH_SIZE,
+    async page => {
+      scheduled += await ensureSubscriptionBatchSchedules(page, now);
+    },
+  );
+  return scheduled;
 }
 
 async function recoverStaleClaims(now: Date) {
