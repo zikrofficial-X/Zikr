@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription } from "./eligibility.ts";
-import { buildNotificationTopic, nextLocalDate } from "./time-zone.ts";
+import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "./time-zone.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -140,46 +140,6 @@ function minutesFromTime(value: string): number | null {
   const minute = Number(match[2]);
   if (hour > 23 || minute > 59) return null;
   return hour * 60 + minute;
-}
-
-function zonedDateTime(
-  dateString: string,
-  timeZone: string,
-  time: string
-): Date | null {
-  const minutes = minutesFromTime(time);
-  if (minutes === null) return null;
-  const [year, month, day] = dateString.split("-").map(Number);
-  const hour = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const desiredUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
-  let guess = desiredUtc;
-
-  // Resolve a wall-clock time in an IANA zone without relying on the runtime
-  // timezone; a second pass accounts for daylight-saving offset transitions.
-  for (let i = 0; i < 2; i += 1) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date(guess));
-    const value = (type: string) =>
-      Number(parts.find(part => part.type === type)?.value ?? 0);
-    const renderedUtc = Date.UTC(
-      value("year"),
-      value("month") - 1,
-      value("day"),
-      value("hour"),
-      value("minute")
-    );
-    guess += desiredUtc - renderedUtc;
-  }
-
-  return new Date(guess);
 }
 
 function localMinute(date: Date, timeZone: string): number {
