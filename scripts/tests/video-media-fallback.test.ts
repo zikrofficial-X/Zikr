@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
+import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome, VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT } from "../../src/features/videos/services/video-media-audit-outcome";
+import { supabaseServerAdminExactCount } from "../../src/lib/supabase/admin-rest";
+import { test } from "node:test";
 import {
   getConfirmedYoutubeFallbackId,
   resolveVideoMediaUrl,
@@ -20,10 +22,20 @@ assert.throws(
   /refusing to report a partial audit/,
   "an inventory that reaches the video query limit must fail before any catalog updates",
 );
+
+assert.equal(VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT, 1000, "the social queue audit cap must match Supabase max_rows");
+const supabaseConfig = readFileSync("supabase/config.toml", "utf8");
+assert.match(supabaseConfig, /max_rows\\s*=\\s*1000/);
+const mediaAuditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+assert.match(mediaAuditScript, /supabaseServerAdminExactCount\\("videos"\\)/);
+assert.match(mediaAuditScript, /supabaseServerAdminExactCount\\("social_publish_queue"\\)/);
+assert.match(mediaAuditScript, /social_publish_queue[^\\n]*limit=1000/);
+assert.doesNotMatch(mediaAuditScript, /social_publish_queue[^\\n]*limit=2000/);
+
 assert.throws(
-  () => assertCompleteVideoMediaAuditInventory(79, 2000),
+  () => assertCompleteVideoMediaAuditInventory(79, 1000),
   /refusing to report a partial audit/,
-  "an inventory that reaches the social queue query limit must fail before any catalog updates",
+  "an inventory that reaches the Supabase PostgREST row cap must fail before any catalog updates",
 );
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "conflict" }), true);
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "error" }), true);
@@ -186,3 +198,41 @@ assert.ok(socialPublisher.includes("shouldRestorePurgedPublishedVideo(row)"), "c
 assert.ok(socialPublisher.includes("published: true"), "eligible late YouTube fallback sync must restore the previously public catalog row");
 
 console.log("Purged video YouTube fallback contract tests passed.");
+
+
+test("exact Supabase inventory counts require a numeric Content-Range", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
+
+  try {
+    globalThis.fetch = (async (input, init) => {
+      assert.equal(String(input), "https://supabase.test/rest/v1/social_publish_queue?select=id&limit=1");
+      assert.equal(init?.method, "HEAD");
+      const headers = new Headers(init?.headers);
+      assert.equal(headers.get("prefer"), "count=exact");
+      assert.equal(headers.get("range"), "0-0");
+      return new Response(null, { status: 200, headers: { "content-range": "0-0/1001" } });
+    }) as typeof fetch;
+    assert.equal(await supabaseServerAdminExactCount("social_publish_queue"), 1001);
+
+    globalThis.fetch = (async () => new Response(null, { status: 200 })) as typeof fetch;
+    await assert.rejects(
+      () => supabaseServerAdminExactCount("social_publish_queue"),
+      /exact Content-Range/,
+      "a missing count header must never be interpreted as a one-row table",
+    );
+    await assert.rejects(
+      () => supabaseServerAdminExactCount("social_publish_queue;drop"),
+      /Invalid table name/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = originalUrl;
+    if (originalKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    else process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+  }
+});

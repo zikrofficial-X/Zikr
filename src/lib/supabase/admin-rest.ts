@@ -162,3 +162,44 @@ export async function supabaseServerAdminCount(table: string): Promise<number> {
   const rows = await res.json().catch(() => []);
   return Array.isArray(rows) && rows.length > 0 ? 1 : 0;
 }
+
+
+/**
+ * Return an exact PostgREST row count or fail closed when Content-Range is absent.
+ * Unlike the legacy display-count helper, this never substitutes a boolean 0/1.
+ */
+export async function supabaseServerAdminExactCount(table: string): Promise<number> {
+  const url = getSupabaseUrl();
+  const key = getServiceKey();
+  if (!/^[a-z_][a-z0-9_]*$/i.test(table)) {
+    throw new Error("Invalid table name for exact Supabase admin count.");
+  }
+
+  const res = await fetch(`${url}/rest/v1/${table}?select=id&limit=1`, {
+    method: "HEAD",
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Prefer: "count=exact",
+      "Range-Unit": "items",
+      Range: "0-0",
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Supabase REST ${res.status}: ${body.slice(0, 500)}`);
+  }
+
+  const contentRange = res.headers.get("content-range") ?? "";
+  const match = /^(?:\\d+-\\d+|\\*)\\/(\\d+)$/.exec(contentRange);
+  if (!match) {
+    throw new Error("Supabase REST did not return an exact Content-Range count.");
+  }
+  const total = Number(match[1]);
+  if (!Number.isSafeInteger(total) || total < 0) {
+    throw new Error("Supabase REST returned an invalid exact Content-Range count.");
+  }
+  return total;
+}

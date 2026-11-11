@@ -36,6 +36,17 @@ if (!audit.includes("concurrency = Math.min(5")) failures.push("Cloudinary avail
 if (!audit.includes('status: "unknown"')) failures.push("Transient media probe failures must remain unknown and must not mark valid assets missing");
 if (!audit.includes("return null") || !audit.includes("unavailable")) failures.push("Video media audit must distinguish missing media from a valid YouTube fallback");
 
+const outcome = read("src/features/videos/services/video-media-audit-outcome.ts");
+const supabaseConfig = read("supabase/config.toml");
+if (!audit.includes('supabaseServerAdminExactCount("videos")') ||
+    !audit.includes('supabaseServerAdminExactCount("social_publish_queue")') ||
+    !audit.includes("&limit=1000") ||
+    audit.includes("&limit=2000") ||
+    !outcome.includes("VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT = 1000") ||
+    !supabaseConfig.includes("max_rows = 1000")) {
+  failures.push("Video media audit must verify exact table counts and fail closed at the configured Supabase PostgREST max_rows cap");
+}
+
 const service = read("src/features/videos/services/videos.ts");
 const mediaContract = read("src/features/videos/services/video-media-contract.ts");
 const requiredFallbackStates = ["cloudinary_missing", "unavailable", "youtube_only", "purged"];

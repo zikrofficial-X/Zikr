@@ -1,6 +1,6 @@
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
-import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import { supabaseServerAdminExactCount, supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
 
 type JsonRecord = Record<string, unknown>;
@@ -209,15 +209,19 @@ async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Video media audit requires the production Supabase service-role environment.");
   }
-  const [videos, queue] = await Promise.all([
+  const [videos, queue, videoTableCount, socialQueueTableCount] = await Promise.all([
     supabaseServerAdminRequest<VideoCatalogRow[]>(
       "/rest/v1/videos?published=eq.true&metadata->>generator=eq.zikr_internal_video_factory&select=id,slug,title,published,youtube_id,thumbnail_url,metadata,updated_at&order=created_at.asc&limit=1000",
     ),
     supabaseServerAdminRequest<SocialQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=in.(published,partial)&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=2000",
+      "/rest/v1/social_publish_queue?status=in.(published,partial)&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=1000",
     ),
+    // Count the whole tables exactly: Supabase PostgREST caps responses at max_rows=1000.
+    // If either table reaches that cap, refuse to mutate a possibly partial audit inventory.
+    supabaseServerAdminExactCount("videos"),
+    supabaseServerAdminExactCount("social_publish_queue"),
   ]);
-  assertCompleteVideoMediaAuditInventory(videos?.length ?? 0, queue?.length ?? 0);
+  assertCompleteVideoMediaAuditInventory(videoTableCount, socialQueueTableCount);
 
   const youtubePublicationsByRequest = new Map<string, { id: string; publishedAt: string | null }>();
   for (const row of queue ?? []) {
