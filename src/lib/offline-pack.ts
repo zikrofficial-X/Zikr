@@ -1,7 +1,7 @@
 "use client";
 
 import { offlineDb } from "@/lib/offline-db";
-import { resolveSafeOfflineRoute } from "@/lib/offline-route-safety";
+import { filterOfflineSupplementalKidsRoutes, getPublishedKidsOfflineRoutes, resolveSafeOfflineRoute } from "@/lib/offline-route-safety";
 
 type OfflineManifest = {
   version: string;
@@ -145,9 +145,14 @@ export type OfflineHydrationResult = {
   failedRoutes: string[];
 };
 
-function mergedRoutes(manifest: OfflineManifest, supplementalRoutes: string[] = [], additionalRoutes: string[] = []): string[] {
+function mergedRoutes(
+  manifest: OfflineManifest,
+  supplementalRoutes: string[] = [],
+  additionalRoutes: string[] = [],
+  extraRoutes: string[] = [],
+): string[] {
   return Array.from(
-    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? []), ...supplementalRoutes, ...additionalRoutes])
+    new Set([...ESSENTIAL_ROUTES, ...(manifest.routes ?? []), ...supplementalRoutes, ...additionalRoutes, ...extraRoutes])
   ).filter(isCacheableOfflinePageRoute);
 }
 
@@ -464,10 +469,14 @@ export async function hydrateOfflineContent(
     };
   }
 
-  const routeInventory = mergedRoutes(
+  const supplementalRouteInventory = await fetchSupplementalRouteInventory();
+  const existingKidsRows = await offlineDb.getAll<unknown>("kids").catch(() => []);
+  const existingKidsRoutes = getPublishedKidsOfflineRoutes(existingKidsRows);
+  let routeInventory = mergedRoutes(
     manifest,
-    await fetchSupplementalRouteInventory(),
+    filterOfflineSupplementalKidsRoutes(supplementalRouteInventory, existingKidsRoutes),
     options.additionalRoutes,
+    existingKidsRoutes,
   );
 
   if (!options.force) {
@@ -524,6 +533,15 @@ export async function hydrateOfflineContent(
       console.warn(`[OfflinePack] Failed to hydrate ${dataset}`, error);
     }
   }
+
+  const refreshedKidsRows = pendingDatasets.kids ?? existingKidsRows;
+  const refreshedKidsRoutes = getPublishedKidsOfflineRoutes(refreshedKidsRows);
+  routeInventory = mergedRoutes(
+    manifest,
+    filterOfflineSupplementalKidsRoutes(supplementalRouteInventory, refreshedKidsRoutes),
+    options.additionalRoutes,
+    refreshedKidsRoutes,
+  );
 
   if (failedDatasets.length === 0) {
     try {
