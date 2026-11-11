@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { sanitizeInternalPath } from "../../src/lib/safe-redirect";
-import { getCanonicalAuthBaseUrl } from "../../src/lib/auth-enhanced";
+import { getCanonicalAuthBaseUrl, getTrustedAuthOrigin } from "../../src/lib/auth-enhanced";
 import { PRODUCTION_URL, isV0PreviewHost } from "../../src/lib/site";
 
 assert.equal(sanitizeInternalPath("/profile"), "/profile");
@@ -47,6 +47,30 @@ try {
   assert.equal(getCanonicalAuthBaseUrl("https://attacker.vercel.app"), PRODUCTION_URL, "untrusted Vercel hosts must still canonicalize to production");
   process.env.VERCEL_ENV = "production";
   assert.equal(getCanonicalAuthBaseUrl("https://zikr-pr-320-preview.vercel.app"), PRODUCTION_URL, "production must never preserve a preview origin");
+  const spoofedProductionRequest = new Request(`${PRODUCTION_URL}/auth/callback`, {
+    headers: {
+      "x-forwarded-host": "127.0.0.1:3000",
+      "x-forwarded-proto": "http",
+    },
+  });
+  assert.equal(
+    getTrustedAuthOrigin(spoofedProductionRequest),
+    PRODUCTION_URL,
+    "OAuth error redirects must ignore forwarded headers that could target a local service",
+  );
+
+  process.env.VERCEL_ENV = "preview";
+  const previewRequest = new Request("https://zikr-pr-320-preview.vercel.app/auth/callback", {
+    headers: {
+      "x-forwarded-host": "attacker.example",
+      "x-forwarded-proto": "http",
+    },
+  });
+  assert.equal(
+    getTrustedAuthOrigin(previewRequest),
+    "https://zikr-pr-320-preview.vercel.app",
+    "trusted preview OAuth redirects must use the request origin, not spoofed forwarded headers",
+  );
 } finally {
   if (originalRedirect === undefined) delete process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL;
   else process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL = originalRedirect;
