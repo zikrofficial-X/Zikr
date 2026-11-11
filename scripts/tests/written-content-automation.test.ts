@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,parseWrittenGenerationRequest,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,parseWrittenGenerationRequest,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,isKidsWrittenSourceReservation,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
 assert.equal(normalizeWrittenCategory("hadith"),"hadith");assert.equal(normalizeWrittenCategory("other"),"auto");assert.equal(normalizeWrittenCategory("companions"),"companions");assert.equal(normalizeWrittenCategory("kids"),"kids");
@@ -172,6 +172,15 @@ assert.equal(isKidsWrittenPostCandidate({
  ...kidsPublishCandidate,
  metadata: { audience: "general", source: { type: "quran" }, publicPath: "/quran/ash-sharh" },
 }), false, "general written posts must not be classified as Kids candidates");
+assert.equal(isKidsWrittenSourceReservation({
+ source: { type: "kids_story", id: "legacy-kids-source", verified: true },
+ publicPath: "/kids/legacy-kids-story",
+}), true, "legacy Kids reservations must be recognized even when the newer audience and kidsContentId markers are absent");
+assert.equal(isKidsWrittenPostCandidate({
+ content_type: "written_post",
+ metadata: {},
+ automation_key: "written-social-v1:kids_story:legacy-kids-source",
+}), true, "legacy Kids automation keys must reserve the daily Kids slot even when metadata markers are incomplete");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, liveKidsStory), true, "Kids written posts require a currently approved live story before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing({ ...kidsPublishCandidate, body: "أرسل رقم هاتفك لي" }, liveKidsStory), false, "unsafe child personal-data solicitation must be blocked again immediately before provider delivery");
 assert.equal(isEligibleKidsWrittenPostForPublishing(kidsPublishCandidate, { ...liveKidsStory, published: false }), false, "unpublished Kids sources must be held before provider delivery");
@@ -244,18 +253,20 @@ assert.match(worker, /order=created_at\.asc,id\.asc&limit=\$\{pageSize\}&offset=
 assert.match(worker, /automation_key=in\.\(\$\{automationKeyFilter\}\)/, "backfill must batch-check existing automation keys for each page");
 assert.match(worker, /existingKeys\.add\(automationKey\)/, "newly queued keys must be excluded from later duplicate candidates in the same page");
 assert.match(worker, /offset\+=rows\.length/, "backfill pagination must advance by the number of rows actually read");
-assert.match(worker, /metadata->>audience=eq\.kids&or=\$\{kidsDayFilter\}/, "Kids backfill must inspect all UTC-day reservation timestamps");
+assert.match(worker, /select=id,content_type,automation_key,metadata&limit=1000/, "Kids reservation scans must inspect the complete UTC-day written-post metadata rather than only the newest audience marker");
+assert.match(worker, /todaysKidsPosts\.some\(isKidsWrittenPostCandidate\)/, "backfill must recognize both current and legacy Kids queue reservations");
+assert.match(worker, /todaysKidsArticles\.some\(\(row\) => isKidsWrittenSourceReservation\(row\.metadata\)\)/, "backfill must reserve a Kids source article even if its social queue insert has not completed");
 assert.match(worker, /shouldBackfillKidsWrittenPost\(sourceType,hasKidsPostToday\)/, "Kids backfill must stop after one daily reservation");
 assert.match(worker, /scheduleKidsBackfillWithinUtcDay\(now\)/, "Kids backfill must not schedule its reserved slot into a future UTC day");
 assert.match(worker, /if\(sourceType==="kids_story"\)hasKidsPostToday=true/, "a successful Kids backfill must reserve the current UTC day for later rows");
 assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
 assert.match(worker, /const todaysKidsPosts = category === "auto" \|\| category === "kids"/, "explicit Kids generation must inspect the same UTC-day reservation before selecting a source");
-assert.match(worker, /metadata->>audience=eq\.kids/);
+assert.match(worker, /todays\.some\(\(row\) => isKidsWrittenSourceReservation\(row\.metadata\)\)/, "automatic and explicit Kids generation must honor a same-day source article reservation even without a queue row");
 assert.match(worker, /scheduled_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts scheduled for the current UTC day");
 assert.match(worker, /published_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts published during the current UTC day");
 assert.match(worker, /created_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include rows created during the current UTC day");
-assert.match(worker, /content_type=eq\.written_post&metadata->>audience=eq\.kids/);
+assert.match(worker, /content_type=eq\.written_post&or=\$\{kidsDayFilter\}/, "UTC-day queue scans must include all written-post metadata markers");
 assert.match(worker, /if\(kind==="kids_story"\)hasKidsPostToday=true/);
 assert.match(worker, /Kids safety gate/);
 assert.match(worker, /containsKidsPersonalDataSolicitation/);

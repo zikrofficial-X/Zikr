@@ -309,11 +309,8 @@ export type KidsWrittenPublishQueueItem = Pick<
   "content_type" | "content_id" | "title" | "body" | "metadata"
 >;
 
-export function isKidsWrittenPostCandidate(
-  row: Pick<KidsWrittenPublishQueueItem, "content_type" | "metadata">,
-): boolean {
-  if (row.content_type !== "written_post") return false;
-  const metadata = asWrittenRecord(row.metadata);
+export function isKidsWrittenSourceReservation(value: unknown): boolean {
+  const metadata = asWrittenRecord(value);
   const sourceMetadata = asWrittenRecord(metadata.source);
   const publicPath = typeof metadata.publicPath === "string" ? metadata.publicPath : "";
   return metadata.audience === "kids" ||
@@ -321,6 +318,15 @@ export function isKidsWrittenPostCandidate(
     sourceMetadata.type === "kids_story" ||
     publicPath === "/kids" ||
     publicPath.startsWith("/kids/");
+}
+
+export function isKidsWrittenPostCandidate(
+  row: { content_type?: unknown; metadata?: unknown; automation_key?: unknown },
+): boolean {
+  if (row.content_type !== "written_post") return false;
+  const automationKey = typeof row.automation_key === "string" ? row.automation_key : "";
+  return isKidsWrittenSourceReservation(row.metadata) ||
+    automationKey.startsWith("written-social-v1:kids_story:");
 }
 
 export function isEligibleKidsWrittenPostForPublishing(
