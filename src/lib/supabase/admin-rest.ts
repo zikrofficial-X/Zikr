@@ -193,7 +193,7 @@ export async function supabaseServerAdminExactCount(table: string): Promise<numb
   }
 
   const contentRange = res.headers.get("content-range") ?? "";
-  const match = /^(?:\\d+-\\d+|\\*)\\/(\\d+)$/.exec(contentRange);
+  const match = /^(?:\d+-\d+|\*)\/(\d+)$/.exec(contentRange);
   if (!match) {
     throw new Error("Supabase REST did not return an exact Content-Range count.");
   }

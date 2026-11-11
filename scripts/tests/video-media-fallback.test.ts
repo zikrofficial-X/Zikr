@@ -25,12 +25,12 @@ assert.throws(
 
 assert.equal(VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT, 1000, "the social queue audit cap must match Supabase max_rows");
 const supabaseConfig = readFileSync("supabase/config.toml", "utf8");
-assert.match(supabaseConfig, /max_rows\\s*=\\s*1000/);
+assert.match(supabaseConfig, /max_rows\s*=\s*1000/);
 const mediaAuditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
-assert.match(mediaAuditScript, /supabaseServerAdminExactCount\\("videos"\\)/);
-assert.match(mediaAuditScript, /supabaseServerAdminExactCount\\("social_publish_queue"\\)/);
-assert.match(mediaAuditScript, /social_publish_queue[^\\n]*limit=1000/);
-assert.doesNotMatch(mediaAuditScript, /social_publish_queue[^\\n]*limit=2000/);
+assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("videos"\)/);
+assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("social_publish_queue"\)/);
+assert.match(mediaAuditScript, /social_publish_queue[^\n]*limit=1000/);
+assert.doesNotMatch(mediaAuditScript, /social_publish_queue[^\n]*limit=2000/);
 
 assert.throws(
   () => assertCompleteVideoMediaAuditInventory(79, 1000),

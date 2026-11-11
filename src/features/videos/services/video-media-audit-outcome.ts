@@ -10,18 +10,18 @@ export function assertCompleteVideoMediaAuditInventory(
   videoTableCount: number,
   socialQueueTableCount: number,
 ): void {
-  if (!Number.isSafeInteger(videoTableCount) || publishedVideoCount < 0) {
+  if (!Number.isSafeInteger(videoTableCount) || videoTableCount < 0) {
     throw new Error("Video table audit inventory returned an invalid exact row count.");
   }
-  if (!Number.isSafeInteger(socialQueueTableCount) || socialPublicationCount < 0) {
+  if (!Number.isSafeInteger(socialQueueTableCount) || socialQueueTableCount < 0) {
     throw new Error("Social queue audit inventory returned an invalid exact row count.");
   }
-  if (publishedVideoCount >= VIDEO_MEDIA_AUDIT_VIDEO_LIMIT) {
+  if (videoTableCount >= VIDEO_MEDIA_AUDIT_VIDEO_LIMIT) {
     throw new Error(
       `Video table audit reached the ${VIDEO_MEDIA_AUDIT_VIDEO_LIMIT}-row query limit; refusing to report a partial audit.`,
     );
   }
-  if (socialPublicationCount >= VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT) {
+  if (socialQueueTableCount >= VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT) {
     throw new Error(
       `Social queue audit reached the ${VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT}-row query limit; refusing to report a partial audit.`,
     );
