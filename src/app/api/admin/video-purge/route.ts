@@ -363,6 +363,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Memory cleanup also deletes generation-request rows. Their IDs are soft
+    // references in video catalog metadata and historical social queue rows;
+    // preserve those relationships until a complete archival/detachment
+    // contract has been implemented and verified across every consumer.
+    if (includeMemory) {
+      return NextResponse.json(
+        {
+          error: "Project-memory purge is disabled until generation-request, video-catalog metadata, social-queue, automation-run, and audit-event references are inventoried and safely preserved or detached. No database rows were changed.",
+          deletionStarted: false,
+          memoryPurgeAvailable: false,
+          retryRequired: false,
+        },
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+
     const cloudinary = includeFiles ? cloudinaryConfig() : null;
     const lockToken = randomUUID();
     const lockAcquired = await acquirePurgeLock(lockToken);
