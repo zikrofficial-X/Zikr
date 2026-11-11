@@ -29,13 +29,28 @@ assert.match(
 );
 assert.match(
   questionsMigration,
-  /CREATE POLICY kids_game_questions_public_read[\s\S]*?TO anon[\s\S]*?published IS TRUE[\s\S]*?FROM public\.kids_game_levels[\s\S]*?JOIN public\.kids_games[\s\S]*?level\.published IS TRUE[\s\S]*?game\.published IS TRUE/i,
-  "published questions must be visible only when both their level and parent game are published",
+  /DROP POLICY IF EXISTS kids_game_questions_public_read[\s\S]*?ON public\.kids_game_questions/i,
+  "the previous public question policy must be removed",
 );
 assert.doesNotMatch(
   questionsMigration,
-  /TO anon,\s*authenticated/i,
-  "authenticated non-admin clients must retain the existing anonymous-only publication boundary",
+  /CREATE POLICY kids_game_questions_public_read|TO anon/i,
+  "question rows must never be exposed directly because they include the correct_index answer key",
+);
+assert.match(
+  questionsMigration,
+  /REVOKE SELECT ON TABLE public\.kids_game_questions FROM PUBLIC, anon/i,
+  "anonymous clients must not have direct SELECT privilege on question rows",
+);
+assert.match(
+  questionsMigration,
+  /GRANT SELECT ON TABLE public\.kids_game_questions TO authenticated/i,
+  "authenticated admins must retain table privilege subject to the existing admin RLS policy",
+);
+assert.match(
+  questionsMigration,
+  /public gameplay must use a reviewed projection that omits correct_index/i,
+  "future public gameplay must use a safe question projection without answer keys",
 );
 assert.match(integrationSetup, /CREATE TABLE public\.kids_game_questions/);
 assert.match(integrationSetup, /CREATE POLICY kids_game_questions_admin_all/);
