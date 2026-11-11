@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedPushEndpoint } from "@/features/notifications/services/push-endpoint";
 import {
   createAdminClient,
   getSupabaseUser,
@@ -48,14 +49,7 @@ function parseSubscription(body: SubscriptionBody) {
   const endpoint = asBoundedString(body.endpoint, 4096);
   const p256dh = asBoundedString(body.keys?.p256dh, 1024);
   const auth = asBoundedString(body.keys?.auth, 1024);
-  if (!endpoint || !p256dh || !auth) return null;
-
-  try {
-    const url = new URL(endpoint);
-    if (url.protocol !== "https:") return null;
-  } catch {
-    return null;
-  }
+  if (!endpoint || !p256dh || !auth || !isAllowedPushEndpoint(endpoint)) return null;
 
   return {
     endpoint,
