@@ -270,4 +270,23 @@ assert.match(supabaseTypes.slice(reminderTypesStart, reminderTypesEnd), /timezon
 assert.match(reminderMigration, /security invoker\s+set search_path = ''/i, "the scheduler RPC must run with service-role invoker privileges and an empty search path");
 assert.doesNotMatch(reminderMigration, /security definer/i, "the service-only reminder scheduler must not use definer privileges");
 
+
+const dueClaimStart = worker.indexOf("async function claimDueDeliveries");
+const dueClaimEnd = worker.indexOf("async function deliverDue", dueClaimStart);
+const dueClaimSource = worker.slice(dueClaimStart, dueClaimEnd);
+assert.ok(dueClaimStart >= 0 && dueClaimEnd > dueClaimStart);
+assert.match(dueClaimSource, /retry_after, updated_at, attempt_count/);
+const dueClaimUpdateStart = dueClaimSource.indexOf("const { data: updated");
+const dueClaimUpdate = dueClaimSource.slice(dueClaimUpdateStart);
+assert.match(dueClaimUpdate, /\.lte\("scheduled_at", now\.toISOString\(\)\)/,
+  "the atomic claim must recheck that the delivery is due after the candidate read");
+assert.match(dueClaimUpdate, /\.or\(\`retry_after\.is\.null,retry_after\.lte\.\$\{now\.toISOString\(\)\}\`\)/,
+  "the atomic claim must recheck retry_after so a concurrent backoff cannot be bypassed");
+assert.match(dueClaimUpdate, /\.eq\("updated_at", row\.updated_at\)/,
+  "the atomic claim must compare the exact candidate row version to avoid stale-snapshot claims");
+assert.doesNotMatch(dueClaimUpdate, /processed_at: now\.toISOString\(\)/,
+  "processed_at must not be set before a push attempt has completed");
+assert.match(staleRecovery, /processed_at: now\.toISOString\(\)/,
+  "a recovered stale attempt must record its completion timestamp");
+
 console.log("Prayer notification subscription pagination contracts passed.");

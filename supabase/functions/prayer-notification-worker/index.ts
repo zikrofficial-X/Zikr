@@ -59,6 +59,8 @@ type Delivery = {
   notification_kind: 'prayer' | 'dhikr' | 'salawat';
   notification_text: string | null;
   scheduled_at: string;
+  retry_after: string | null;
+  updated_at: string;
   attempt_count: number;
 };
 
@@ -491,6 +493,7 @@ async function recoverStaleClaims(now: Date) {
     .update({
       status: "failed",
       failed_at: now.toISOString(),
+      processed_at: now.toISOString(),
       retry_after: retryAfter,
       error_message: "Recovered stale worker claim; retry scheduled",
       updated_at: now.toISOString(),
@@ -520,7 +523,7 @@ async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
   const { data: rows, error } = await supabase
     .from("prayer_notification_deliveries")
     .select(
-      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count"
+      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, retry_after, updated_at, attempt_count"
     )
     .in("status", ["pending", "failed"])
     .lte("scheduled_at", now.toISOString())
@@ -536,13 +539,15 @@ async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
       .update({
         status: "processing",
         processing_at: now.toISOString(),
-        processed_at: now.toISOString(),
         attempt_count: row.attempt_count + 1,
         error_message: null,
         updated_at: now.toISOString(),
       })
       .eq("id", row.id)
       .in("status", ["pending", "failed"])
+      .lte("scheduled_at", now.toISOString())
+      .or(`retry_after.is.null,retry_after.lte.${now.toISOString()}`)
+      .eq("updated_at", row.updated_at)
       .select(
         "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count"
       )
