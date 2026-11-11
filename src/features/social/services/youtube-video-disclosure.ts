@@ -2,6 +2,7 @@ type YouTubeVideoDisclosureInput = {
   content: unknown;
   provider?: unknown;
   queueMetadata?: unknown;
+  contentType?: unknown;
 };
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -22,7 +23,11 @@ export function resolveYouTubeVideoDisclosure(input: YouTubeVideoDisclosureInput
 } {
   const content = asRecord(input.content);
   const queueMetadata = asRecord(input.queueMetadata);
-  const audience = content.audience === "kids" || queueMetadata.audience === "kids"
+  const contentType = typeof input.contentType === "string"
+    ? input.contentType.trim().toLowerCase()
+    : "";
+  const isKidsContentType = contentType === "kids" || contentType.startsWith("kids_");
+  const audience = content.audience === "kids" || queueMetadata.audience === "kids" || isKidsContentType
     ? "kids"
     : content.audience === "general" || queueMetadata.audience === "general"
       ? "general"

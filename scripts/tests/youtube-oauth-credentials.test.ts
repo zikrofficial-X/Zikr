@@ -98,6 +98,26 @@ assert.deepEqual(
 );
 assert.deepEqual(
   resolveYouTubeVideoDisclosure({
+    content: {},
+    provider: "template",
+    queueMetadata: {},
+    contentType: "kids_video",
+  }),
+  { selfDeclaredMadeForKids: true, containsSyntheticMedia: false },
+  "the canonical Kids video queue type must protect legacy requests with missing audience metadata",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
+    content: { audience: "general" },
+    provider: "template",
+    queueMetadata: { audience: "general" },
+    contentType: "kids_video",
+  }),
+  { selfDeclaredMadeForKids: true, containsSyntheticMedia: false },
+  "the explicit Kids video queue type must win over stale conflicting general-audience metadata",
+);
+assert.deepEqual(
+  resolveYouTubeVideoDisclosure({
     content: { audience: "general", aiProvider: "template" },
     provider: "template",
     queueMetadata: { audience: "general" },

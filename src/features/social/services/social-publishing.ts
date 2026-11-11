@@ -412,6 +412,7 @@ async function getYouTubeVideoDisclosure(item: SocialPublishQueueItem): Promise<
     content: rows[0].content,
     provider: rows[0].provider,
     queueMetadata: item.metadata,
+    contentType: item.content_type,
   });
 }
 
