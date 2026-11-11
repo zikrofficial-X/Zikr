@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildDueSocialQueueClaimFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
@@ -124,6 +124,22 @@ assert.equal(
 );
 
 assert.equal(
+  buildSocialPublishLeaseFilter("queue id/1", "processing", "2026-11-11T17:30:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.processing&updated_at=eq.2026-11-11T17%3A30%3A00.000Z",
+  "a publisher must advance a queue row only while its exact processing lease version is still current",
+);
+assert.throws(
+  () => buildSocialPublishLeaseFilter("queue-1", "processing", "not-a-date"),
+  /valid updated_at timestamp/,
+  "publisher lease compare-and-set must fail closed when the claimed row version is invalid",
+);
+assert.throws(
+  () => buildSocialPublishLeaseFilter(" ", "processing", "2026-11-11T17:30:00.000Z"),
+  /queue item ID/,
+  "publisher lease compare-and-set must reject an empty queue ID",
+);
+
+assert.equal(
   buildStaleSocialPublishRecoveryFilter("queue id/1", "2026-11-11T17:30:00.000Z"),
   "id=eq.queue%20id%2F1&status=eq.processing&updated_at=lt.2026-11-11T17%3A30%3A00.000Z",
   "stale recovery must recheck updated_at in the UPDATE to avoid overwriting a row refreshed by a live publisher",
@@ -145,6 +161,10 @@ assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
 assert.match(socialPublisher, /Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows/, "invalid queue cutoffs must fail visibly instead of returning an empty batch");
 assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimStatus, claimAt\)/, "the worker claim must use the atomic due-time filter");
+assert.match(socialPublisher, /buildSocialPublishLeaseFilter\(item\.id, claimLease\.status, claimLease\.updatedAt\)/, "the provider in-flight marker must compare the exact initial worker lease");
+assert.match(socialPublisher, /const finalized = await markQueueItem\(item\.id, persistedStatus,[\s\S]*?\}, inFlightLease\);/, "provider results must only finalize while the same in-flight lease is current");
+assert.match(socialPublisher, /Provider result arrived after the worker lease was recovered/, "a stale provider result must leave the newer recovery state untouched");
+assert.match(socialPublisher, /expectedLease \? buildSocialPublishLeaseFilter\(itemId, expectedLease\.status, expectedLease\.updatedAt\)/, "status updates with a lease must use the versioned compare-and-set filter");
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
