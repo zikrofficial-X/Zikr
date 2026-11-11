@@ -65,6 +65,7 @@ await assert.rejects(
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 assert.match(worker, /forEachIdPage\(/);
 assert.match(worker, /canSchedulePrayerSubscription\(/);
+assert.match(worker, /preference\.notifications_enabled !== true/);
 assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(false, { notifications_enabled: true }), false, "a subscription without a default location must not be scheduled");
