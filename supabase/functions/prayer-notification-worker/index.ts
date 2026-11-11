@@ -375,9 +375,10 @@ async function ensureSubscriptionBatchSchedules(
   const dateByUser = new Map<string, string[]>();
   for (const subscription of eligible) {
     const location = locationByUser.get(subscription.user_id)!;
+    const timeZone = safeTimeZone(location.timezone);
     dateByUser.set(subscription.user_id, [
-      formatLocalDate(now, location.timezone!),
-      nextLocalDate(now, location.timezone!),
+      formatLocalDate(now, timeZone),
+      nextLocalDate(now, timeZone),
     ]);
   }
   const allDates = [...new Set([...dateByUser.values()].flat())];
@@ -397,6 +398,7 @@ async function ensureSubscriptionBatchSchedules(
   const inserts: Array<Record<string, unknown>> = [];
   for (const subscription of eligible) {
     const location = locationByUser.get(subscription.user_id)!;
+    const timeZone = safeTimeZone(location.timezone);
     const preference = preferenceByUser.get(subscription.user_id)!;
     const method = preference.calculation_method ?? "umm-al-qura";
     const madhab = preference.madhab ?? "shafi";
@@ -408,7 +410,7 @@ async function ensureSubscriptionBatchSchedules(
           row,
           location,
           date,
-          location.timezone!,
+          timeZone,
           method,
           madhab
         )
@@ -423,7 +425,7 @@ async function ensureSubscriptionBatchSchedules(
               prayer_date: date,
               latitude: location.latitude,
               longitude: location.longitude,
-              timezone: location.timezone,
+              timezone: timeZone,
               calculation_method: method,
               madhab,
               timings,
@@ -448,7 +450,7 @@ async function ensureSubscriptionBatchSchedules(
         if (!Number.isInteger(offset)) continue;
         const prayerAt = zonedDateTime(
           date,
-          location.timezone!,
+          timeZone,
           cache.timings[prayer] ?? ""
         );
         if (!prayerAt) continue;
@@ -459,7 +461,7 @@ async function ensureSubscriptionBatchSchedules(
         if (
           inQuietHours(
             scheduledAt,
-            location.timezone!,
+            timeZone,
             preference.quiet_hours_start,
             preference.quiet_hours_end
           )
