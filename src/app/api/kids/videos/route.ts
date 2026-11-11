@@ -79,7 +79,7 @@ export async function GET() {
         }),
         supabaseServerAdminRequest<SocialQueueRow[]>(
           "/rest/v1/social_publish_queue?content_id=in.(" + filter +
-            ")&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
+            ")&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
         ).catch((error) => {
           console.warn("[api/kids/videos] Could not load linked social posts:", error);
           return [];
