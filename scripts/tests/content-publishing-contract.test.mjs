@@ -119,7 +119,7 @@ assert.match(
 );
 
 const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
-assert.match(adminActions, /table === "stories" \? "id,published,is_approved,user_id"/,
+assert.match(adminActions, /const select = table === "stories"[\s\S]*?"id,published,is_approved,user_id"/,
   "story scheduling must load its public-approval fields");
 assert.match(adminActions, /target\.is_approved !== true \|\| target\.user_id !== null/,
   "only approved, non-user-owned stories may be scheduled for public publication");
