@@ -508,13 +508,13 @@ export async function POST(request: NextRequest) {
           const allTargetsSucceeded =
             targets.length > 0 && targets.every(platform => succeeded.has(platform));
           if (allTargetsSucceeded) {
-            await supabaseServerAdminRequest(
-              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+            const updated = await supabaseServerAdminRequest<QueueItem[]>(
+              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
               {
                 method: "PATCH",
                 headers: {
                   "Content-Type": "application/json",
-                  Prefer: "return=minimal",
+                  Prefer: "return=representation",
                 },
                 body: JSON.stringify({
                   status: "published",
@@ -524,7 +524,7 @@ export async function POST(request: NextRequest) {
                 }),
               }
             );
-            affected += 1;
+            if (Array.isArray(updated) && updated[0]) affected += 1;
           }
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
@@ -553,13 +553,13 @@ export async function POST(request: NextRequest) {
           !Array.isArray(item.metadata?.permanentFailurePlatforms) &&
           item.metadata?.permanentFailure === true &&
           platforms.length < item.target_platforms.length;
-        await supabaseServerAdminRequest(
-          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}`,
+        const updated = await supabaseServerAdminRequest<QueueItem[]>(
+          `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
           {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
-              Prefer: "return=minimal",
+              Prefer: "return=representation",
             },
             body: JSON.stringify({
               status: "queued",
@@ -592,7 +592,7 @@ export async function POST(request: NextRequest) {
             }),
           }
         );
-        affected += 1;
+        if (Array.isArray(updated) && updated[0]) affected += 1;
       }
       return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped };
     };
