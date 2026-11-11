@@ -20,8 +20,8 @@ using (
 create or replace function public.increment_kids_content_shares(p_slug text)
 returns table(slug text, shares integer)
 language sql
-security definer
-set search_path to public
+security invoker
+set search_path = ''
 as $function$
   update public.kids_content
   set shares = coalesce(kids_content.shares, 0) + 1,
