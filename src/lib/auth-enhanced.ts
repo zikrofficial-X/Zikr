@@ -122,15 +122,13 @@ export function getGoogleOAuthConfigStatus() {
  * Resolve the safe origin used by auth route handlers after callback.
  */
 export function getTrustedAuthOrigin(request: Request): string {
-  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const host = forwardedHost ?? request.headers.get("host");
-
-  if (host) {
-    return getCanonicalAuthBaseUrl(`${forwardedProto}://${host}`);
+  try {
+    // The absolute request URL is supplied by the trusted hosting adapter.
+    // Do not build an OAuth redirect from client-controlled forwarded headers.
+    return getCanonicalAuthBaseUrl(new URL(request.url).origin);
+  } catch {
+    return PRODUCTION_URL;
   }
-
-  return PRODUCTION_URL;
 }
 
 /**
