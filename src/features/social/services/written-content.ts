@@ -105,12 +105,12 @@ export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?
  if (question.length > 240) return {ok:false,reason:"question_length"};
  const generatedText=[title,hook,reflection,question].join("\n")
   .normalize("NFKC")
-  .replace(/[\\u064B-\\u065F\\u0670\\u0640]/g,"")
+  .replace(/[\u064B-\u065F\u0670\u0640]/g,"")
   .replace(/[أإآ]/g,"ا")
   .replace(/ى/g,"ي")
-  .replace(/\\s+/g," ")
+  .replace(/\s+/g," ")
   .trim();
- if(/(?:قال\\s+(?:رسول\\s+الله|النبي|تعالى)|رواه|روى\\s+\\S+|حديث\\s+قدسي|فتوى\\s+قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
+ if(/(?:قال\s+(?:رسول\s+الله|النبي|تعالى)|رواه|روى\s+\S+|حديث\s+قدسي|فتوى\s+قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
  return {ok:true};
 }
 export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDraft){
