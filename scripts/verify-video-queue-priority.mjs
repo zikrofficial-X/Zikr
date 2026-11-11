@@ -40,6 +40,14 @@ assert(
   queue.includes("export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number)"),
   "queue processor supports an optional daily priority key",
 );
+assert(
+  queue.includes("calculateDailyVideoQuotaState(todaysRows ?? [])"),
+  "daily video quota excludes terminal failed/cancelled requests while retaining their slot keys",
+);
+assert(
+  queue.includes("const slot = dailyQuota.nextSlot + i;"),
+  "replacement video requests use a fresh automation slot after terminal rows",
+);
 const priorityQuery = queue.indexOf("automation_key=like.*:${priorityDay}:*");
 const fallbackQuery = queue.indexOf("const backlog =", priorityQuery);
 assert(priorityQuery >= 0 && fallbackQuery > priorityQuery, "today's automation keys are selected before legacy backlog");
