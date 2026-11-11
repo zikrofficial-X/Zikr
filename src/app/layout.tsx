@@ -20,11 +20,6 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
   variable: "--font-noto-arabic-loaded",
 });
 
-// These are public identifiers, not secrets. Environment variables remain the
-// canonical deployment configuration; the verified production IDs are safe
-// fallbacks so a missing Vercel build variable cannot silently disable tags.
-const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-W30Z9JW0VF";
-const isValidGoogleAnalyticsId = /^G-[A-Z0-9]+$/i.test(googleAnalyticsId ?? "");
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -167,21 +162,6 @@ gtag('consent', 'default', {
 });
 gtag('set', 'ads_data_redaction', true);`}
         </Script>
-        {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
-          <>
-            <Script
-              id="google-analytics-src"
-              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
-              strategy="lazyOnload"
-            />
-            <Script id="google-analytics-config" strategy="lazyOnload">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
-            </Script>
-          </>
-        )}
         <meta
           name="google-adsense-account"
           content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2457467624248791"}

@@ -92,6 +92,22 @@ if (!adsenseSlot.includes('data-ad-slot') || !adsenseSlot.includes('requestNonPe
 if (!adsenseSlot.includes('Capacitor.isNativePlatform()') || !articlePage.includes('<AdSenseSlot')) {
   fail('AdSense must be limited to web editorial articles and excluded from native app builds.');
 }
+if (
+  !adsenseSlot.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !adsenseSlot.includes("isCanonicalProductionHost") ||
+  !adsenseSlot.includes("setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionHost())")
+) {
+  fail('The AdSense slot markup and queue must be excluded from Preview aliases and non-canonical hosts.');
+}
+if (
+  !webAdvertisingRuntime.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !webAdvertisingRuntime.includes("isCanonicalProductionHost") ||
+  !webAdvertisingRuntime.includes("if (!isCanonicalProductionHost())") ||
+  !read('src/components/layout/runtime-effects.tsx').includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !read('src/components/layout/runtime-effects.tsx').includes("window.location.hostname.toLowerCase()")
+) {
+  fail('Monetization scripts must load only on the canonical production host, never on Vercel Preview aliases.');
+}
 if (!layout.includes('requestNonPersonalizedAds = 1')) {
   fail('AdSense requests must default to non-personalized before the Google tag is loaded.');
 }
