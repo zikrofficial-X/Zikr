@@ -37,9 +37,10 @@ function publicSocialPublication(row: SocialQueueRow | null, stored: unknown) {
   // confirmed remote deletion must not be overridden by stale catalog metadata.
   const platforms = row ? confirmedSocialPlatforms(row) : storedPlatforms;
   if (platforms.length === 0) return null;
-  const status: "published" | "partial" = row
-    ? row.status === "published" ? "published" : "partial"
-    : storedRecord.status === "published" ? "published" : "partial";
+  let status: "published" | "partial" = "partial";
+  if (row?.status === "published" || (!row && storedRecord.status === "published")) {
+    status = "published";
+  }
   let publishedAt: string | null = null;
   if (row) publishedAt = row.published_at;
   else if (typeof storedRecord.publishedAt === "string") publishedAt = storedRecord.publishedAt;
