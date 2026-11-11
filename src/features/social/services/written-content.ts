@@ -302,7 +302,7 @@ export type PublicKidsWrittenPost = {
  platforms: Array<"facebook" | "facebook_reels" | "youtube">;
 };
 
-function asWrittenRecord(value: unknown): Record<string, unknown> {
+export function asWrittenRecord(value: unknown): Record<string, unknown> {
  return value && typeof value === "object" && !Array.isArray(value)
   ? value as Record<string, unknown>
   : {};
