@@ -74,12 +74,17 @@ export async function scheduleContentPublishAction(formData: FormData) {
   if (!scheduledAt || Number.isNaN(date.getTime()) || date.getTime() <= Date.now() + 60_000) {
     throw new Error("اختر موعداً مستقبلياً للنشر بعد دقيقة على الأقل.");
   }
-  const select = table === "stories" ? "id,published,is_approved,user_id" : "id,published";
+  const select = table === "stories"
+    ? "id,published,is_approved,user_id"
+    : table === "articles"
+      ? "id,published,metadata"
+      : "id,published";
   const targets = await supabaseServerAdminRequest<Array<{
     id: string;
     published: boolean | null;
     is_approved?: boolean | null;
     user_id?: string | null;
+    metadata?: unknown;
   }>>(
     `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&select=${select}&limit=1`,
     { method: "GET" },
@@ -89,6 +94,14 @@ export async function scheduleContentPublishAction(formData: FormData) {
   if (target.published !== false) throw new Error("لا يمكن جدولة عنصر منشور بالفعل.");
   if (table === "stories" && (target.is_approved !== true || target.user_id !== null)) {
     throw new Error("لا يمكن جدولة قصة غير معتمدة أو مرتبطة بحساب مستخدم؛ اعتمد قصة عامة أولاً.");
+  }
+  if (table === "articles") {
+    const metadata = target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)
+      ? target.metadata as Record<string, unknown>
+      : {};
+    if (metadata.automationPublicationHold === true) {
+      throw new Error("لا يمكن جدولة المقال أثناء وجود إيقاف نشر صريح؛ أعد مراجعته وانشره يدويًا أولاً.");
+    }
   }
   await supabaseServerAdminRequest("/rest/v1/content_publish_queue", {
     method: "POST",
