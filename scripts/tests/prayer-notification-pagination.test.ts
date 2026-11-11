@@ -15,7 +15,7 @@ assert.equal(isAllowedPushEndpoint("https://web.push.apple.com/subscription-toke
 assert.equal(isAllowedPushEndpoint("https://tenant.notify.windows.com/subscription-token"), true);
 for (const endpoint of [
   "http://fcm.googleapis.com/fcm/send/token",
-  "https://example.com/push/token",
+  "https://www.wikipedia.org/push/token",
   "https://fcm.googleapis.com.attacker.test/fcm/send/token",
   "https://127.0.0.1/push/token",
   "https://169.254.169.254/latest/meta-data",
