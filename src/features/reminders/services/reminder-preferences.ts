@@ -180,7 +180,7 @@ export async function updateCurrentReminderPreferences(
     .from("background_reminder_preferences")
     .upsert(payload, { onConflict: "user_id" })
     .select(
-      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quiet_hours_start,quiet_hours_end,timezone,updated_at",
+      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,timezone,updated_at",
     )
     .single();
 
