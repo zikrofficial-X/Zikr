@@ -14,6 +14,18 @@ export function isVideoContentType(contentType: string): boolean {
   const normalized = contentType.trim().toLowerCase();
   return normalized === "video" || normalized.endsWith("_video") || normalized === "video_generation";
 }
+export function hasCompleteKidsVideoSeriesMetadata(value: unknown): boolean {
+  const content = record(value);
+  if (content?.audience !== "kids") return false;
+  return content.contentFormat === "series_episode" &&
+    content.aiMode === "original_kids_story" &&
+    content.sourceType === "original_kids_fiction" &&
+    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
+    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
+    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
+    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
+    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0;
+}
 export function hasCompleteVideoApprovalChecklist(value: unknown): value is VideoApprovalChecklist {
   const checklist = record(value);
   return REQUIRED_VIDEO_APPROVAL_CHECKS.every((key) => checklist?.[key] === true);
@@ -149,6 +161,14 @@ export function inspectVideoQueueItemApproval(input: {
   const reviewData = record(content?.qualityReview);
   const missingChecks = REQUIRED_VIDEO_APPROVAL_CHECKS.filter((key) => reviewData?.[key] !== true);
   const approvalStatus = typeof content?.approvalStatus === "string" ? content.approvalStatus : null;
+  if (content?.audience === "kids" && !hasCompleteKidsVideoSeriesMetadata(content)) {
+    return {
+      approved: false,
+      reason: "بيانات سلسلة الأطفال غير مكتملة؛ تم إيقاف النشر الخارجي.",
+      missingChecks: [...REQUIRED_VIDEO_APPROVAL_CHECKS],
+      approvalStatus,
+    };
+  }
   const snapshotHash = buildVideoApprovalSnapshotHash({
     category: input.request.category,
     sourceHash: input.request.source_hash,
