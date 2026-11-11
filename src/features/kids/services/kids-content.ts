@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
 import {
   getFallbackKidsContentBySlug,
+  isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
   normalizeKidsContentSlug,
 } from "@/features/kids/services/kids-content-visibility";
@@ -44,7 +45,7 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
     Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
-      "/rest/v1/kids_content?select=*&published=eq.true&is_active=eq.true&order=created_at.desc&limit=1000",
+      `/rest/v1/kids_content?select=*&published=eq.true&is_active=eq.true&or=${encodeURIComponent("(type.neq.story,metadata->>age_appropriate.eq.true)")}&order=created_at.desc&limit=1000`,
       { timeoutMs: 10_000, retries: 1 },
     )),
     // Defer the service-role call so missing Preview credentials are captured
@@ -66,7 +67,7 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
     ? dedupeBySlug(
         (publicResult.value ?? [])
           .map((row) => normalizeKidsContentRow(row))
-          .filter((item): item is KidsItem => item !== null),
+          .filter((item): item is KidsItem => item !== null && isKidsContentPubliclyVisible(item)),
       )
     : [];
   const knownSlugs = visibilityResult.status === "fulfilled"
@@ -90,7 +91,7 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
     Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
-      `/rest/v1/kids_content?select=*&slug=eq.${encodedSlug}&published=eq.true&is_active=eq.true&limit=1`,
+      `/rest/v1/kids_content?select=*&slug=eq.${encodedSlug}&published=eq.true&is_active=eq.true&or=${encodeURIComponent("(type.neq.story,metadata->>age_appropriate.eq.true)")}&limit=1`,
       { timeoutMs: 10_000, retries: 1 },
     )),
     Promise.resolve().then(() => supabaseServerAdminRequest<KidsVisibilityDbRow[]>(
@@ -106,8 +107,11 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
     console.error("[kids] Failed to verify fallback slug visibility:", visibilityResult.reason);
   }
 
-  const databaseItem = publicResult.status === "fulfilled" && publicResult.value[0]
+  const normalizedItem = publicResult.status === "fulfilled" && publicResult.value[0]
     ? normalizeKidsContentRow(publicResult.value[0])
+    : null;
+  const databaseItem = normalizedItem && isKidsContentPubliclyVisible(normalizedItem)
+    ? normalizedItem
     : null;
   const knownSlugs = visibilityResult.status === "fulfilled"
     ? new Set(

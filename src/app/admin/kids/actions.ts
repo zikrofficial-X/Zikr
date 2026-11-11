@@ -42,6 +42,12 @@ export async function saveKidsContentAction(formData: FormData) {
 
   if (!isKidsContentType(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
   if (!allowedAgeGroups.has(ageGroup)) throw new Error("الفئة العمرية غير صالحة.");
+  if (type === "story" && published && !ageAppropriate) {
+    throw new Error("يجب اعتماد ملاءمة القصة للعمر قبل نشرها.");
+  }
+  if (type === "video" && !videoUrl) {
+    throw new Error("رابط فيديو YouTube آمن مطلوب قبل نشر محتوى الفيديو.");
+  }
 
   if (!title_ar || !slug || !content_ar) {
     throw new Error("العنوان بالعربية والرابط المختصر والمحتوى كلها مطلوبة.");

@@ -3,6 +3,7 @@ import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeK
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
+  isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
 } from "../../src/features/kids/services/kids-content-visibility";
 
@@ -25,6 +26,10 @@ for (const type of KIDS_CONTENT_TYPES) {
   assert.equal(isKidsContentType(type), true, `supported Kids type ${type} must pass validation`);
 }
 assert.equal(isKidsContentType("unsupported"), false, "unknown Kids content types must fail validation");
+assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: { age_appropriate: true } }), true, "age-approved Kids stories remain publicly visible");
+assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: { age_appropriate: false } }), false, "unapproved Kids stories must be hidden from public content");
+assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: {} }), false, "missing age approval must fail closed for Kids stories");
+assert.equal(isKidsContentPubliclyVisible({ type: "game", metadata: {} }), true, "non-story Kids content keeps its existing publication contract");
 assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube.com/embed/dQw4w9WgXcQ"), "https://www.youtube.com/embed/dQw4w9WgXcQ", "standard HTTPS YouTube embed URLs must remain supported");
 assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "privacy-enhanced YouTube embeds must remain supported");
 for (const unsafeUrl of [
@@ -144,6 +149,10 @@ const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8"
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
 const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
 assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
+const storyApprovalPosition = adminAction.indexOf('if (type === "story" && published && !ageAppropriate)');
+assert.ok(storyApprovalPosition > 0 && storyApprovalPosition < imageUploadPosition, "unapproved Kids stories must be rejected before publication or media upload");
+const videoRequiredPosition = adminAction.indexOf('if (type === "video" && !videoUrl)');
+assert.ok(videoRequiredPosition > 0 && videoRequiredPosition < imageUploadPosition, "video content must require a validated YouTube embed before media upload");
 const duplicateSlugCheckPosition = adminAction.indexOf("/rest/v1/kids_content?select=id&slug=eq.");
 assert.ok(
   duplicateSlugCheckPosition > 0 && duplicateSlugCheckPosition < imageUploadPosition,
@@ -227,23 +236,37 @@ assert.ok(kidsLevelsAdminPage.includes('gamesResult.status === "fulfilled" ? gam
 
 assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{false\}/, "Kids content must default to draft until an editor explicitly publishes it");
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
+const spiritualRetriever = readFileSync("src/features/spiritual-ai/services/retriever.ts", "utf8");
+const offlineExporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
+const offlineKidsSnapshot = JSON.parse(readFileSync("public/offline-content/v1/kids.json", "utf8"));
+const offlineManifest = JSON.parse(readFileSync("public/offline-content/v1/manifest.json", "utf8"));
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
-assert.doesNotMatch(service, /isKidsContentPublishable/, "age_appropriate is an automation eligibility flag, not a public visibility filter");
+assert.match(service, /metadata->>age_appropriate\.eq\.true/, "public Kids database reads must exclude stories without explicit age approval");
+assert.match(service, /isKidsContentPubliclyVisible/, "public Kids services must enforce age approval for stories even when the database RLS policy is unavailable");
 assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress to a story-only database feed");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
 assert.match(service, /getFallbackKidsContentBySlug\(cleanSlug, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
+assert.equal(offlineKidsSnapshot.some((item) => item.type === "story" && item.metadata?.age_appropriate !== true), false, "the committed offline Kids corpus must not contain unapproved stories");
+assert.equal(offlineManifest.datasets?.kids?.count, offlineKidsSnapshot.length, "the offline manifest must match the filtered Kids corpus count");
+assert.ok(offlineManifest.routes.every((route) => {
+  const match = typeof route === "string" ? route.match(/^\/kids\/([^/]+)$/) : null;
+  const item = match ? offlineKidsSnapshot.find((row) => row.slug === match[1]) : null;
+  return !item || item.type !== "story" || item.metadata?.age_appropriate === true;
+}), "offline route inventory must not include a path to an unapproved story still present in the corpus");
+assert.match(offlineExporter, /previousKidsRows[\s\S]*blockedKidsRoutes/, "offline refresh must remember previously exported unapproved story routes");
+assert.match(offlineExporter, /rows = rows\.filter\(\(row\) => row && \(row\.type !== 'story' \|\| row\.metadata\?\.age_appropriate === true\)\)/, "offline refresh must filter unapproved stories even when a service-role key bypasses RLS");
+assert.match(offlineExporter, /routes: Array\.isArray\(previous\.routes\)[\s\S]*blockedKidsRoutes\.has\(route\)/, "offline refresh must remove routes for unapproved stories");
+assert.match(spiritualRetriever, /type=neq\.story&published=eq\.true&is_active=eq\.true/, "AI retrieval must only use active, published non-story Kids content");
+assert.match(spiritualRetriever, /type=eq\.story&metadata->>age_appropriate=eq\.true/, "AI retrieval must only use age-approved Kids stories");
 
 const migration = readFileSync(
   "supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql",
   "utf8",
 );
 assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
-assert.match(
-  migration,
-  /using\s*\(\s*published\s+is\s+true\s+and\s+is_active\s+is\s+true\s*\)/i,
-  "public Kids RLS must hide unpublished and inactive rows while preserving published active stories regardless of automation eligibility",
-);
+assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true[\s\S]*type\s*<>\s*'story'[\s\S]*metadata->>'age_appropriate'\s*=\s*'true'/i, "public Kids RLS must hide unpublished, inactive, and age-unapproved stories");
+assert.match(migration, /kids_content\.type\s*<>\s*'story'[\s\S]*kids_content\.metadata->>'age_appropriate'\s*=\s*'true'/i, "the share counter must use the same age-approved story visibility contract");
 
 console.log("Kids content visibility and fallback contracts passed.");

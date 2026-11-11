@@ -1,3 +1,14 @@
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+export function isKidsContentPubliclyVisible(item: { type?: unknown; metadata?: unknown }): boolean {
+  if (item.type !== "story") return true;
+  return asRecord(item.metadata).age_appropriate === true;
+}
+
 export function normalizeKidsContentSlug(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }

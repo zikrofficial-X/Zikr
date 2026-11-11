@@ -107,10 +107,37 @@ async function fetchAll(table, filters) {
 const manifestPath = path.join(outputDir, 'manifest.json');
 let previous = { routes: [], datasets: {} };
 try { previous = JSON.parse(await readFile(manifestPath, 'utf8')); } catch { /* first export */ }
+let previousKidsRows = [];
+try {
+  const previousKids = JSON.parse(await readFile(path.join(outputDir, 'kids.json'), 'utf8'));
+  if (Array.isArray(previousKids)) previousKidsRows = previousKids;
+} catch { /* first export */ }
 
+const blockedKidsRoutes = new Set();
 const exported = [];
 for (const [dataset, table, ...filters] of datasets) {
   let rows = await fetchAll(table, filters);
+  if (dataset === 'kids') {
+    const visibleSlugs = new Set(
+      rows
+        .filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true))
+        .map((row) => row.slug)
+        .filter((slug) => typeof slug === 'string' && slug.trim()),
+    );
+    for (const row of previousKidsRows) {
+      if (row?.type === 'story' && row?.metadata?.age_appropriate !== true &&
+          typeof row.slug === 'string' && !visibleSlugs.has(row.slug)) {
+        blockedKidsRoutes.add(`/kids/${row.slug}`);
+      }
+    }
+    for (const row of rows) {
+      if (row?.type === 'story' && row?.metadata?.age_appropriate !== true &&
+          typeof row.slug === 'string' && row.slug.trim()) {
+        blockedKidsRoutes.add(`/kids/${row.slug}`);
+      }
+    }
+    rows = rows.filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true));
+  }
   const minimum = minimumRecords[dataset] ?? 0;
   let stale = false;
   let source = 'supabase';
@@ -153,7 +180,9 @@ const manifest = {
   licenseNote: 'Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.',
   staleDatasets: exported.filter((item) => item.stale).map((item) => item.dataset),
   datasets: {},
-  routes: Array.isArray(previous.routes) ? previous.routes : [],
+  routes: Array.isArray(previous.routes)
+    ? previous.routes.filter((route) => !blockedKidsRoutes.has(route))
+    : [],
 };
 
 for (const { dataset, rows, stale, source } of exported) {

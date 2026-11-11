@@ -264,8 +264,12 @@ export async function retrieveSpiritualSources(question: string): Promise<Spirit
       'companion', 'قصة صحابي في ZIKR', ['title_ar'], 'id', ['content_ar'],
     ),
     queryRows(
-      `/rest/v1/kids_content?select=id,title_ar,slug,content_ar,summary_ar,type&published=eq.true&or=${filter(['title_ar', 'content_ar', 'summary_ar', 'type'], query)}&limit=3`,
+      `/rest/v1/kids_content?select=id,title_ar,slug,content_ar,summary_ar,type&published=eq.true&is_active=eq.true&type=neq.story&or=${filter(['title_ar', 'content_ar', 'summary_ar', 'type'], query)}&limit=3`,
       'kids', 'محتوى تعليمي للأطفال في ZIKR', ['title_ar'], 'slug', ['content_ar', 'summary_ar', 'type'], row => row.slug ? `/kids/${row.slug}` : undefined,
+    ),
+    queryRows(
+      `/rest/v1/kids_content?select=id,title_ar,slug,content_ar,summary_ar,type&published=eq.true&is_active=eq.true&type=eq.story&metadata->>age_appropriate=eq.true&or=${filter(['title_ar', 'content_ar', 'summary_ar', 'type'], query)}&limit=3`,
+      'kids', 'قصة أطفال معتمدة في ZIKR', ['title_ar'], 'slug', ['content_ar', 'summary_ar', 'type'], row => row.slug ? `/kids/${row.slug}` : undefined,
     ),
     searchHadith(query).then(items => items.slice(0, 6).map(mapHadith)).catch(() => []),
   ]);
