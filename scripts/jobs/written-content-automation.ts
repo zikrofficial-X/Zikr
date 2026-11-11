@@ -242,7 +242,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&select=id,content_type,automation_key,metadata&limit=1000`,
  );
  const todaysKidsArticles = await readRequired<Row>(
-  `/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata&limit=1000`,
+  `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata,published&limit=1000`,
  );
  if (todaysKidsPosts.length >= 1000 || todaysKidsArticles.length >= 1000) {
   throw new Error("Kids daily reservation scan reached its safe row limit; refusing to backfill without a complete check.");
