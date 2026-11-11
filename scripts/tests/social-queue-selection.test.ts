@@ -89,8 +89,8 @@ assert.deepEqual(
 
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
-assert.match(adminRoute, /id=eq\\.\\$\\{encodeURIComponent\\(item\\.id\\)\\}&status=eq\\.\\$\\{encodeURIComponent\\(item\\.status\\)\\}/);
-assert.match(adminRoute, /Prefer: "return=representation"/);
-assert.match(adminRoute, /if \\(Array\\.isArray\\(updated\\) && updated\\[0\\]\\) affected \\+= 1/);
+assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
+assert.ok(adminRoute.includes('Prefer: "return=representation"'));
+assert.ok(adminRoute.includes("if (Array.isArray(updated) && updated[0]) affected += 1"));
 
 console.log("Social queue starvation regression checks passed.");
