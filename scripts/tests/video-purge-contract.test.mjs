@@ -195,7 +195,7 @@ assert.ok(
     filePurgeGuard.includes("status: 409"),
   "file purge must return a non-destructive conflict until every external and Storage reference can be proven safe",
 );
-const memoryPurgeGuardPosition = route.indexOf("if (includeMemory) {", filePurgeGuardEnd);
+const memoryPurgeGuardPosition = route.indexOf("if (includeMemory) {", filePurgeGuardPosition);
 const memoryPurgeLockPosition = route.indexOf("const lockToken = randomUUID()", memoryPurgeGuardPosition);
 const memoryPurgeGuard = route.slice(memoryPurgeGuardPosition, memoryPurgeLockPosition);
 assert.ok(
