@@ -14,7 +14,7 @@ export function GET() {
             { '/': '/articles/*' },
             { '/': '/dua/*' },
             { '/': '/stories/*' },
-            { '/': '/auth/callback*' },
+            { '/': '/auth/callback*', exclude: true },
             { '/': '/*' },
           ],
         },
