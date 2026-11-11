@@ -341,6 +341,7 @@ export function isEligibleKidsWrittenPostForPublishing(
   const slug = typeof source.slug === "string" ? source.slug.trim() : "";
   const title = typeof row.title === "string" ? row.title.trim() : "";
   const body = typeof row.body === "string" ? row.body.trim() : "";
+  const sourceTitle = typeof source.title_ar === "string" ? source.title_ar.trim() : "";
 
   return row.content_type === "written_post" &&
     Boolean(row.content_id) &&
@@ -359,7 +360,7 @@ export function isEligibleKidsWrittenPostForPublishing(
     rawPublicPath === "/kids/" + slug &&
     Boolean(title) &&
     Boolean(body) &&
-    !containsKidsPersonalDataSolicitation([title, body].join("\n"));
+    !containsKidsPersonalDataSolicitation([title, body, sourceTitle].filter(Boolean).join("\n"));
 }
 
 /** Re-check the live Kids source before exposing a previously published social post. */
@@ -375,6 +376,7 @@ export function buildPublicKidsWrittenPost(
  const slug = typeof source.slug === "string" ? source.slug.trim() : "";
  const title = typeof row.title === "string" ? row.title.trim() : "";
  const body = typeof row.body === "string" ? row.body.trim() : "";
+ const sourceTitle = typeof source.title_ar === "string" ? source.title_ar.trim() : "";
  const publishedAt = typeof row.published_at === "string" ? row.published_at.trim() : "";
  const publicPath = "/kids/" + slug;
  const platforms = (row.target_platforms ?? []).filter(
@@ -401,7 +403,7 @@ export function buildPublicKidsWrittenPost(
   rawPublicPath !== publicPath ||
   !title ||
   !body ||
-  containsKidsPersonalDataSolicitation([title, body].join("\n")) ||
+  containsKidsPersonalDataSolicitation([title, body, sourceTitle].filter(Boolean).join("\n")) ||
   !publishedAt ||
   platforms.length === 0
  ) return null;
@@ -412,7 +414,7 @@ export function buildPublicKidsWrittenPost(
   publishedAt,
   ageGroup: typeof source.age_group === "string" && source.age_group.trim() ? source.age_group.trim() : null,
   publicPath,
-  sourceTitle: typeof source.title_ar === "string" && source.title_ar.trim() ? source.title_ar.trim() : null,
+  sourceTitle: sourceTitle || null,
   platforms,
  };
 }
