@@ -15,7 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
+import { getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,7 @@ type QueueItem = {
   published_at: string | null;
   error_message: string | null;
   created_at: string;
+  updated_at?: string | null;
   video_url: string | null;
   metadata?: Record<string, unknown> | null;
   videoApproval?: { approved: boolean; reason: string | null; missingChecks: string[]; approvalStatus: string | null };
@@ -187,6 +188,70 @@ function deliveryForPlatform(metadata: Record<string, unknown> | null | undefine
     return asRecord(item);
   }
   return asRecord(asRecord(results)?.[platform]);
+}
+
+async function deleteSafeLocalSocialQueueRows(items: QueueItem[]) {
+  const result = {
+    deleted: 0,
+    preserved: 0,
+    stale: 0,
+    uncertain: 0,
+    blocked: [] as Array<{ id: string; title: string; reason: string }>,
+  };
+
+  for (const item of items) {
+    const blockers = getLocalSocialQueueDeletionBlockers(item);
+    if (blockers.length > 0) {
+      result.preserved += 1;
+      result.blocked.push({
+        id: item.id,
+        title: item.title,
+        reason: blockers.includes("status_not_fully_failed")
+          ? "حالة النشر جزئية أو لم تعد فشلًا خالصًا؛ تم الاحتفاظ بسجل النشر."
+          : "توجد نتيجة منصة ناجحة أو غير مؤكدة أو بيانات منصة ناقصة؛ تم الاحتفاظ بسجل النشر.",
+      });
+      continue;
+    }
+
+    const expectedUpdatedAt = item.updated_at?.trim();
+    if (!expectedUpdatedAt) {
+      result.preserved += 1;
+      result.blocked.push({
+        id: item.id,
+        title: item.title,
+        reason: "إصدار سجل الطابور غير متاح؛ تم الاحتفاظ به بدل الحذف.",
+      });
+      continue;
+    }
+
+    try {
+      const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
+          "&status=eq.failed&updated_at=eq." + encodeURIComponent(expectedUpdatedAt) +
+          "&select=id",
+        {
+          method: "DELETE",
+          headers: { Prefer: "return=representation" },
+        },
+      );
+      if (Array.isArray(deleted) && deleted.some((row) => row.id === item.id)) {
+        result.deleted += 1;
+      } else {
+        result.stale += 1;
+      }
+    } catch (error) {
+      // The remote result must remain recoverable if a local delete response is ambiguous.
+      result.uncertain += 1;
+      result.blocked.push({
+        id: item.id,
+        title: item.title,
+        reason: "تعذر تأكيد نتيجة حذف السجل المحلي؛ لا تعاود الحذف قبل تحديث الطابور.",
+      });
+      console.error("[api/admin/social] local queue deletion result is uncertain:", error);
+    }
+  }
+
+  return result;
 }
 
 async function triggerSocialWorker() {
@@ -488,7 +553,10 @@ export async function POST(request: NextRequest) {
       !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published"].includes(action)
     )
       return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
-    if ((action === "retry" || action === "delete" || action === "publish_now" || action === "delete_published") && ids.length === 0)
+    if (ids.length > 200) {
+      return NextResponse.json({ error: "يمكن تنفيذ الإجراء على 200 عنصر كحد أقصى في المرة الواحدة." }, { status: 400 });
+    }
+    if (["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published"].includes(action) && ids.length === 0)
       return NextResponse.json(
         { error: "حدد عملية فاشلة أولًا." },
         { status: 400 }
@@ -496,12 +564,18 @@ export async function POST(request: NextRequest) {
 
     const retryItems = async (filter: string, includeQueued = false, allowAmbiguous = false) => {
       const items = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status`
+        `/rest/v1/social_publish_queue?${filter}&select=id,target_platforms,metadata,status,updated_at`
       );
       let affected = 0;
       let manualReconciliationSkipped = 0;
       let sourceMediaMissingSkipped = 0;
+      let staleSkipped = 0;
       for (const item of items ?? []) {
+        const expectedUpdatedAt = item.updated_at?.trim();
+        if (!expectedUpdatedAt) {
+          staleSkipped += 1;
+          continue;
+        }
         if (item.metadata?.sourceMediaMissing === true) {
           sourceMediaMissingSkipped += 1;
           continue;
@@ -525,7 +599,7 @@ export async function POST(request: NextRequest) {
             targets.length > 0 && targets.every(platform => succeeded.has(platform));
           if (allTargetsSucceeded) {
             const updated = await supabaseServerAdminRequest<QueueItem[]>(
-              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}`,
+              `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
               {
                 method: "PATCH",
                 headers: {
@@ -541,6 +615,8 @@ export async function POST(request: NextRequest) {
               }
             );
             if (Array.isArray(updated) && updated[0]) affected += 1;
+        else staleSkipped += 1;
+            else staleSkipped += 1;
           }
           // Leave partial/failed records unchanged if any target is still blocked.
           continue;
@@ -611,7 +687,7 @@ export async function POST(request: NextRequest) {
         );
         if (Array.isArray(updated) && updated[0]) affected += 1;
       }
-      return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped };
+      return { affected, manualReconciliationSkipped, sourceMediaMissingSkipped, staleSkipped };
     };
 
     if (action === "publish_now") {
@@ -639,29 +715,29 @@ export async function POST(request: NextRequest) {
       ];
       const retryResult = approvedIds.length
         ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true, false)
-        : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0 };
+        : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0, staleSkipped: 0 };
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.publish_now",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
     }
 
     if (action === "retry_all_failed") {
-      const retryResult = await retryItems("status=in.(failed,partial)", false, false);
+      const retryResult = await retryItems("id=in.(" + ids.map(encodeURIComponent).join(",") + ")&status=in.(failed,partial)", false, false);
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
       await recordAdminAuditEvent({
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
@@ -682,25 +758,46 @@ export async function POST(request: NextRequest) {
           affected,
           manualReconciliationSkipped: retryResult.manualReconciliationSkipped,
           sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped,
+          staleSkipped: retryResult.staleSkipped,
           confirmedNoRemotePublication,
           workerDispatched: affected > 0,
         },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
     }
 
-    if (action === "delete") {
-      const affected = await supabaseServerAdminRequest<QueueItem[]>(
-        `/rest/v1/social_publish_queue?id=in.(${filter})&status=in.(failed,partial)&select=id`,
-        { method: "DELETE", headers: { Prefer: "return=representation" } }
+    if (action === "delete" || action === "delete_failed") {
+      if (!confirmedNoRemotePublication) {
+        return NextResponse.json(
+          { error: "أكد أولًا أنك تحققت من عدم وجود منشور فعلي قبل حذف سجل الطابور المحلي." },
+          { status: 400 },
+        );
+      }
+      const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
+        "/rest/v1/social_publish_queue?id=in.(" + filter + ")&status=in.(failed,partial)&select=id,title,status,target_platforms,metadata,error_message,updated_at&limit=200",
       );
+      const deletion = await deleteSafeLocalSocialQueueRows(selectedItems ?? []);
+      const stale = deletion.stale + Math.max(0, ids.length - (selectedItems?.length ?? 0));
       await recordAdminAuditEvent({
-        action: "social.queue.delete",
+        action: action === "delete_failed" ? "social.queue.delete_failed" : "social.queue.delete",
         permission: "social.manage",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected: affected?.length ?? 0 },
+        metadata: {
+          requestedIds: ids.length,
+          affected: deletion.deleted,
+          preserved: deletion.preserved,
+          stale,
+          uncertain: deletion.uncertain,
+        },
       });
-      return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+      return NextResponse.json({
+        ok: true,
+        affected: deletion.deleted,
+        preserved: deletion.preserved,
+        stale,
+        uncertain: deletion.uncertain,
+        blocked: deletion.blocked,
+      });
     }
 
     if (action === "delete_published") {
@@ -789,17 +886,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, results });
     }
 
-    const affected = await supabaseServerAdminRequest<QueueItem[]>(
-      "/rest/v1/social_publish_queue?status=in.(failed,partial)&select=id",
-      { method: "DELETE", headers: { Prefer: "return=representation" } }
-    );
-    await recordAdminAuditEvent({
-      action: "social.queue.delete_failed",
-      permission: "social.manage",
-      resourceType: "social_publish_queue",
-      metadata: { affected: affected?.length ?? 0 },
-    });
-    return NextResponse.json({ ok: true, affected: affected?.length ?? 0 });
+    return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
   } catch (error) {
     console.error("[api/admin/social] POST:", error);
     return NextResponse.json(
