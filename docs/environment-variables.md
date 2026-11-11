@@ -224,7 +224,7 @@ The deployment validator rejects the legacy public Google client ID and warns on
 - `POSTGRES_URL_NON_POOLING`
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
 
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not retired: they are server-only OAuth client credentials for optional GA4 reporting, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and numeric `GA4_PROPERTY_ID`. If any GA4 credential is missing, the reporting panel remains `not_configured`. Google sign-in continues to use Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not retired: they are server-only OAuth client credentials for optional GA4 reporting, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and numeric `GA4_PROPERTY_ID`. If any GA4 credential is missing, the reporting panel remains `not_configured`. Google sign-in continues to use Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`. For Android native Credential Manager builds, define `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in the build environment; it is a public OAuth client ID, not a secret. Store-release readiness checks require it, while ordinary web deployments may continue to use the browser OAuth fallback.
 
 Do not provision a direct Postgres application URL. Database schema changes are managed through Supabase migrations and Supabase client/API access.
 
