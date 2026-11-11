@@ -99,6 +99,7 @@ function sourceFromRow(
   reference: string,
   contentKeys: string[],
   url?: string,
+  authority: SpiritualSource["authority"] = kind === "quran" || kind === "hadith" ? "primary" : "site",
 ): SpiritualSource | null {
   const title = titleKeys.map(key => row[key]).find(value => String(value ?? '').trim()) as string | undefined;
   const content = contentKeys.map(key => row[key]).find(value => String(value ?? '').trim());
@@ -112,7 +113,7 @@ function sourceFromRow(
     excerpt: text,
     url,
     sourceUrl: typeof row.source_url === 'string' ? row.source_url : undefined,
-    authority: kind === 'quran' || kind === 'hadith' ? 'primary' : 'site',
+    authority,
   };
 }
 
@@ -124,6 +125,7 @@ async function queryRows(
   referenceKey: string | ((row: Record<string, unknown>) => string),
   contentKeys: string[],
   urlBuilder?: (row: Record<string, unknown>) => string | undefined,
+  authority: SpiritualSource["authority"] = kind === "quran" || kind === "hadith" ? "primary" : "site",
 ): Promise<SpiritualSource[]> {
   try {
     const rows = await supabaseServerAnonRequest<Record<string, unknown>[]>(path);
@@ -136,6 +138,7 @@ async function queryRows(
         `${label} — ${typeof referenceKey === 'function' ? referenceKey(row) : String(row[referenceKey] ?? row.id ?? '')}`,
         contentKeys,
         urlBuilder?.(row),
+        authority,
       ))
       .filter((item): item is SpiritualSource => Boolean(item));
   } catch (error) {
@@ -229,7 +232,7 @@ export async function retrieveSpiritualSources(question: string): Promise<Spirit
     ),
     queryRows(
       `/rest/v1/quran_tafsir?select=id,surah_id,ayah_number,author,tafsir_ar,source_url,retrieved_at&or=${filter(['tafsir_ar', 'author'], query)}&limit=4`,
-      'quran', 'تفسير قرآني متاح في ZIKR', ['author'], row => `سورة ${String(row.surah_id ?? '?')}، آية ${String(row.ayah_number ?? '?')} — ${String(row.author ?? 'غير محدد')}`, ['tafsir_ar'],
+      'quran', 'تفسير قرآني متاح في ZIKR', ['author'], row => `سورة ${String(row.surah_id ?? '?')}، آية ${String(row.ayah_number ?? '?')} — ${String(row.author ?? 'غير محدد')}`, ['tafsir_ar'], undefined, 'site',
     ),
     queryRows(
       `/rest/v1/prophets?select=id,name_ar,slug,bio_ar&published=eq.true&or=${filter(['name_ar', 'bio_ar'], query)}&limit=3`,
