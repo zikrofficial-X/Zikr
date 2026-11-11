@@ -45,6 +45,21 @@ const offlinePack = readFileSync("src/lib/offline-pack.ts", "utf8");
 assert.ok(offlinePack.includes("resolveSafeOfflineRoute(route, origin)"), "client offline route filtering must use the same-origin validator");
 assert.ok(serviceWorker.includes('route.includes("\\\\")'), "service worker must reject raw backslashes before URL normalization");
 assert.ok(serviceWorker.includes("/%(?:2f|5c)/i.test(route)"), "service worker must reject encoded slash and backslash route separators");
+assert.match(
+  serviceWorker,
+  /const safeNotificationUrl = isSafeOfflineRoute\(data\.url\) \? data\.url : "\/";/,
+  "push notification URLs must pass the same local-route safety check before being stored",
+);
+assert.match(
+  serviceWorker,
+  /const target = isSafeOfflineRoute\(rawTarget\) \? rawTarget : "\/";/,
+  "notification clicks must revalidate stored targets and reject protocol-relative external URLs",
+);
+assert.equal(
+  serviceWorker.includes('data.url.startsWith("/")'),
+  false,
+  "a leading slash alone must not authorize a protocol-relative notification URL",
+);
 
 assert.match(
   offlinePack,
