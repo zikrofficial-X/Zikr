@@ -48,27 +48,65 @@ async function rollbackScheduledContentPublication(item: QueueItem, publishedUpd
   );
 }
 
-async function validateScheduledStoryForPublication(storyId: string): Promise<void> {
+async function validateScheduledStoryForPublication(storyId: string): Promise<string> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
+    updated_at: string;
+    published: boolean | null;
     is_approved: boolean | null;
     user_id: string | null;
   }>>(
-    "/rest/v1/stories?id=eq." + encodeURIComponent(storyId) + "&select=id,is_approved,user_id&limit=1",
+    "/rest/v1/stories?id=eq." + encodeURIComponent(storyId) + "&select=id,updated_at,published,is_approved,user_id&limit=1",
   );
   const story = rows?.[0];
-  if (!story || story.is_approved !== true || story.user_id !== null) {
-    throw new Error("Scheduled story is no longer an approved public story; publication was blocked.");
+  if (!story || story.published !== false || story.is_approved !== true || story.user_id !== null || !story.updated_at) {
+    throw new Error("Scheduled story is no longer an unpublished, approved public story; publication was blocked.");
   }
+  return story.updated_at;
+}
+
+async function validateScheduledArticleForPublication(articleId: string): Promise<string> {
+  const rows = await supabaseServerAdminRequest<Array<{
+    id: string;
+    updated_at: string;
+    published: boolean | null;
+    metadata: Record<string, unknown> | null;
+  }>>(
+    "/rest/v1/articles?id=eq." + encodeURIComponent(articleId) + "&select=id,updated_at,published,metadata&limit=1",
+  );
+  const article = rows?.[0];
+  const metadata = article?.metadata && typeof article.metadata === "object" && !Array.isArray(article.metadata)
+    ? article.metadata
+    : {};
+  if (!article || article.published !== false || metadata.automationPublicationHold === true || !article.updated_at) {
+    throw new Error("Scheduled article is already published, missing, or protected by an explicit unpublish hold; publication was blocked.");
+  }
+  return article.updated_at;
+}
+
+async function validateSimpleScheduledContentForPublication(table: string, contentId: string): Promise<string> {
+  const rows = await supabaseServerAdminRequest<Array<{
+    id: string;
+    updated_at: string;
+    published: boolean | null;
+  }>>(
+    `/rest/v1/${table}?id=eq.${encodeURIComponent(contentId)}&select=id,updated_at,published&limit=1`,
+  );
+  const content = rows?.[0];
+  if (!content || content.published !== false || !content.updated_at) {
+    throw new Error("Scheduled content is missing or is no longer an unpublished draft; publication was blocked.");
+  }
+  return content.updated_at;
 }
 
 async function validateInternalVideoForPublication(videoId: string): Promise<void> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
+    updated_at: string;
     published: boolean | null;
     metadata: Record<string, unknown> | null;
   }>>(
-    "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&select=id,published,metadata&limit=1",
+    "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&select=id,updated_at,published,metadata&limit=1",
   );
   const row = rows?.[0];
   const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
@@ -117,9 +155,17 @@ async function validateInternalVideoForPublication(videoId: string): Promise<voi
   const kidsQaPassed = audience !== "kids" ||
     (metadata.kidsVideoQaStatus === "passed" && automatedQa.status === "passed");
 
-  if (!row || !approvedCloudinaryMedia || !audienceEligible || !approval.approved || !kidsQaPassed) {
-    throw new Error("Generated video is not a verified, QA-approved, available ZIKR-owned media asset.");
+  if (!row || row.published !== false || !row.updated_at || !approvedCloudinaryMedia || !audienceEligible || !approval.approved || !kidsQaPassed) {
+    throw new Error("Generated video is not an unpublished, verified, QA-approved, available ZIKR-owned media asset.");
   }
+  return row.updated_at;
+}
+
+async function validateScheduledContentForPublication(item: QueueItem): Promise<string> {
+  if (item.content_table === "articles") return validateScheduledArticleForPublication(item.content_id);
+  if (item.content_table === "stories") return validateScheduledStoryForPublication(item.content_id);
+  if (item.content_table === "videos") return validateInternalVideoForPublication(item.content_id);
+  return validateSimpleScheduledContentForPublication(item.content_table, item.content_id);
 }
 
 async function recoverStaleContentPublishingClaims(now: Date): Promise<number> {
@@ -195,12 +241,7 @@ export async function processScheduledContent(limit = 20) {
     let contentPublished = false;
     let contentPublishedUpdatedAt: string | null = null;
     try {
-      if (item.content_table === "videos") {
-        await validateInternalVideoForPublication(item.content_id);
-      }
-      if (item.content_table === "stories") {
-        await validateScheduledStoryForPublication(item.content_id);
-      }
+      const validatedContentUpdatedAt = await validateScheduledContentForPublication(item);
 
       // Recheck the exact claim version immediately before touching content.
       // A cancellation or a newer queue edit must invalidate this worker.
@@ -215,7 +256,7 @@ export async function processScheduledContent(limit = 20) {
 
       const requestedContentUpdatedAt = new Date().toISOString();
       const updatedContent = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
-        `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id,updated_at`,
+        `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.false&updated_at=eq.${encodeURIComponent(validatedContentUpdatedAt)}&select=id,updated_at`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
