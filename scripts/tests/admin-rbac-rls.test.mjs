@@ -61,6 +61,10 @@ const videoRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/videos/[id]/route.ts"),
   "utf8",
 );
+const videoGenerationRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/video-generation/route.ts"),
+  "utf8",
+);
 
 function requireMatch(pattern, description) {
   assert.match(migration, pattern, `Missing admin RLS invariant: ${description}`);
@@ -285,6 +289,20 @@ assert.ok(
       "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",
     ),
   "RLS event-trigger function must not be callable by browser roles",
+);
+
+const videoGenerationDelete = videoGenerationRoute.match(
+  /export async function DELETE\([\s\S]*?(?=export async function PATCH|$)/,
+)?.[0] ?? "";
+assert.match(
+  videoGenerationDelete,
+  /requireAdminStepUpApi\(['"]video\.delete['"]/,
+  "bulk video-generation deletion must require the dedicated video.delete permission and MFA step-up",
+);
+assert.doesNotMatch(
+  videoGenerationDelete,
+  /requireAdminApi\(['"]video\.manage['"]/,
+  "video-generation deletion must not be authorized by the less-privileged video.manage permission",
 );
 
 console.log("Admin RBAC/RLS migration contract passed.");
