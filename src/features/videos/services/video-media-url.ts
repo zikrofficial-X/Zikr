@@ -38,3 +38,44 @@ export function assertCloudinaryVideoUrl(videoUrl: string, target: string): stri
 
   return parsed.toString();
 }
+
+
+/**
+ * Detect a generated MP4 referenced by a pending social queue row.
+ * Cloudinary transformation segments may appear before the version and public
+ * ID, so the terminal filename is used for the generated "auto-" identity.
+ */
+export function isGeneratedCloudinaryVideoUrl(value: unknown, cloudName: string): boolean {
+  if (typeof value !== "string" || !value.trim() || !cloudName.trim()) return false;
+  try {
+    const parsed = new URL(value.trim());
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.hostname.toLowerCase() !== CLOUDINARY_VIDEO_HOST ||
+      parsed.username ||
+      parsed.password ||
+      (parsed.port && parsed.port !== "443")
+    ) {
+      return false;
+    }
+
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    if (
+      segments.length < 4 ||
+      segments[0] !== cloudName ||
+      segments[1] !== "video" ||
+      segments[2] !== "upload"
+    ) {
+      return false;
+    }
+
+    const fileName = segments.at(-1) ?? "";
+    const extensionIndex = fileName.lastIndexOf(".");
+    if (extensionIndex <= 0) return false;
+    const extension = fileName.slice(extensionIndex + 1).toLowerCase();
+    const fileStem = fileName.slice(0, extensionIndex);
+    return extension === "mp4" && fileStem.startsWith("auto-");
+  } catch {
+    return false;
+  }
+}
