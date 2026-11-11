@@ -195,11 +195,27 @@ assert.ok(
     filePurgeGuard.includes("status: 409"),
   "file purge must return a non-destructive conflict until every external and Storage reference can be proven safe",
 );
+const memoryPurgeGuardPosition = route.indexOf("if (includeMemory) {", filePurgeGuardEnd);
+const memoryPurgeLockPosition = route.indexOf("const lockToken = randomUUID()", memoryPurgeGuardPosition);
+const memoryPurgeGuard = route.slice(memoryPurgeGuardPosition, memoryPurgeLockPosition);
+assert.ok(
+  memoryPurgeGuardPosition > filePurgeGuardEnd &&
+    memoryPurgeLockPosition > memoryPurgeGuardPosition &&
+    memoryPurgeGuard.includes("video-catalog metadata") &&
+    memoryPurgeGuard.includes("social-queue") &&
+    memoryPurgeGuard.includes("audit-event") &&
+    memoryPurgeGuard.includes("memoryPurgeAvailable: false") &&
+    memoryPurgeGuard.includes("deletionStarted: false") &&
+    memoryPurgeGuard.includes("No database rows were changed") &&
+    memoryPurgeGuard.includes("status: 409"),
+  "memory purge must fail closed before lock acquisition or request-row deletion until every soft reference is safely preserved or detached",
+);
 assert.ok(
   control.includes('<option value="files" disabled>') &&
+    control.includes('<option value="memory" disabled>') &&
     control.includes('<option value="both" disabled>') &&
-    control.includes("حذف ملفات Cloudinary وSupabase Storage متوقف مؤقتًا"),
-  "the admin UI must not offer file or combined purge while the API is fail-closed",
+    control.includes("حذف الملفات والذاكرة معطّل"),
+  "the admin UI must disable every purge scope while file and memory reference inventories remain incomplete",
 );
 
 assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
