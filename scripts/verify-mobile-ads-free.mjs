@@ -120,9 +120,9 @@ requireCondition(
   "The AdSense script loader itself must be gated to web runtime, not only the empty ad slot.",
 );
 requireCondition(
-  deferredRuntime.includes('import { Capacitor } from "@capacitor/core"') &&
+  /import\s+\{\s*Capacitor\s*\}\s+from\s+["']@capacitor\/core["']/.test(deferredRuntime) &&
     deferredRuntime.includes("if (Capacitor.isNativePlatform())"),
-  "Native reminder runtime must initialize immediately without depending on a late window.Capacitor injection.",
+  "Native reminder runtime must import Capacitor directly and initialize immediately without depending on a late window.Capacitor injection.",
 );
 
 if (failures.length) {
