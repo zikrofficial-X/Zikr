@@ -46,7 +46,7 @@ const privilegedPatterns = [
 
 function checkGuardedBlock({ block, label, allow405 = false }) {
   const gatePattern =
-    /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z0-9_.-]*)\3\s*\)|\brequireAdminStepUp\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\5\s*,|\brequireAdmin\s*\(\s*\)/;
+    /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminStepUpApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\3\s*,|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\5\s*\)|\brequireAdminStepUp\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\7\s*,|\brequireAdmin\s*\(\s*\)/;
   const gate = gatePattern.exec(block);
 
   if (!gate && allow405 && isMethodRejectionOnly(block)) {
@@ -129,7 +129,7 @@ const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > soc
   : "";
 if (
   !socialActionGate.includes("adopt_server_facebook_token") ||
-  !socialActionGate.includes('requireAdminApi("social.publish")')
+  !/\brequireAdmin(?:StepUp)?Api\s*\(\s*["']social\.publish["']\s*(?:,|\))/.test(socialActionGate)
 ) {
   failures.push("social token adoption must require social.publish because it releases and dispatches public queue items");
 }
@@ -163,7 +163,7 @@ for (const file of routeFiles) {
     if (
       route === "src/app/api/admin/social/written/route.ts" &&
       match[1] === "POST" &&
-      !/requireAdminApi\s*\(\s*(["'])social\.publish\1\s*\)/.test(block)
+      !/requireAdmin(?:StepUp)?Api\s*\(\s*(["'])social\.publish\1\s*(?:,|\))/.test(block)
     ) {
       failures.push(route + " POST: auto-published written-content generation requires social.publish.");
     }
@@ -173,9 +173,9 @@ for (const file of routeFiles) {
       failures.push(handlerKey + ": missing canonical permission matrix entry.");
     } else {
       const guardMatches = [
-        ...block.matchAll(/\brequireAdminApi\s*\(\s*(["'])([^"']+)\1\s*\)|\brequireAdminPermission\s*\(\s*(["'])([^"']+)\3\s*\)|\brequireAdminStepUp\s*\(\s*(["'])([^"']+)\5\s*,/g),
+        ...block.matchAll(/\brequireAdminApi\s*\(\s*(["'])([^"']+)\1\s*\)|\brequireAdminStepUpApi\s*\(\s*(["'])([^"']+)\3\s*,|\brequireAdminPermission\s*\(\s*(["'])([^"']+)\5\s*\)|\brequireAdminStepUp\s*\(\s*(["'])([^"']+)\7\s*,/g),
       ];
-      const actualPermissions = [...new Set(guardMatches.map((item) => item[2] ?? item[4] ?? item[6]).filter(Boolean))].sort();
+      const actualPermissions = [...new Set(guardMatches.map((item) => item[2] ?? item[4] ?? item[6] ?? item[8]).filter(Boolean))].sort();
       const expectedSorted = [...expectedPermissions].sort();
       if (actualPermissions.join("|") !== expectedSorted.join("|")) {
         failures.push(handlerKey + ": expected [" + expectedSorted.join(", ") + "] but found [" + actualPermissions.join(", ") + "].");
