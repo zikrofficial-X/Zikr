@@ -250,6 +250,7 @@ assert.doesNotMatch(
 );
 const socialAdminClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
 assert.match(socialAdminClient, /localDeletable\.map\(item => item\.id\)/);
+assert.match(socialAdminClient, /retryable\.map\(item => item\.id\)/);
 assert.match(socialAdminClient, /حذف الفاشلة الآمنة/);
 assert.match(socialAdminClient, /confirmedNoRemotePublication = true/);
 
