@@ -167,6 +167,11 @@ assert.match(prayerAlertHook, /zikr:prayer-location-saved/);
 assert.doesNotMatch(prayerAlertHook, /LOCATION_KEY\s*=\s*["']zikr_prayer_location["']/);
 assert.match(pushSubscription, /getSavedPrayerLocation/);
 assert.match(pushSubscription, /timezone:\s*location\.timezone/);
+assert.ok(
+  pushSubscription.indexOf("getPrayerContext(context.enabledPrayers)") <
+    pushSubscription.indexOf("registration.pushManager.subscribe"),
+  "a missing prayer location must not create an orphan browser push subscription",
+);
 assert.doesNotMatch(pushSubscription, /PRAYER_LOCATION_KEY/);
 
 console.log("Prayer-time next-prayer, selected-location scheduling, and push-location contracts passed.");
