@@ -95,7 +95,10 @@ requireMatch(
   "direct role assignment updates must be restricted to super_admin",
 );
 requireMatch(
-  /CREATE POLICY admin_role_asassert.match(
+  /CREATE POLICY admin_role_assignments_delete[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
+  "direct role assignment deletes must be restricted to super_admin",
+);
+assert.match(
   userActions,
   /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/,
   "only a super administrator may assign either full-admin role",
@@ -119,9 +122,6 @@ assert.match(
   selfRoleMigration,
   /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
   "the self-role protection RPC must remain service-role only",
-);
-id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
-  "the server action must prevent an administrator from removing their own admin role",
 );
 assert.match(
   atomicRoleMigration,
