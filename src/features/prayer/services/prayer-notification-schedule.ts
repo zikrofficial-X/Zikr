@@ -135,3 +135,55 @@ export function getPrayerAlertDateKey(date: Date, timeZone?: string): string {
 
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+
+
+/**
+ * Select only native prayer alarms that can be safely refreshed.
+ * Enabled alarms for a day/prayer whose timing could not be resolved are
+ * deliberately preserved; disabled alarms and successfully refreshed alarms
+ * are cancelled so the caller can replace or remove them deterministically.
+ */
+export function getPrayerNotificationIdsToCancel(input: {
+  scheduleDays: number;
+  prayers: readonly string[];
+  enabledPrayers: Readonly<Record<string, boolean>>;
+  refreshedPrayerIds: readonly number[];
+  idBase: number;
+  hasLocation?: boolean;
+}): number[] {
+  const {
+    scheduleDays,
+    prayers,
+    enabledPrayers,
+    refreshedPrayerIds,
+    idBase,
+    hasLocation = true,
+  } = input;
+  if (!Number.isInteger(scheduleDays) || scheduleDays <= 0 ||
+      !Number.isInteger(idBase) || prayers.length === 0) {
+    return [];
+  }
+
+  const hasEnabledPrayer = prayers.some(prayer => enabledPrayers[prayer] === true);
+  const refreshedIds = new Set(
+    refreshedPrayerIds.filter(id => Number.isInteger(id)),
+  );
+  const ids: number[] = [];
+
+  for (let dayOffset = 0; dayOffset < scheduleDays; dayOffset += 1) {
+    for (let prayerIndex = 0; prayerIndex < prayers.length; prayerIndex += 1) {
+      const prayer = prayers[prayerIndex];
+      const id = idBase + dayOffset * prayers.length + prayerIndex;
+      if (
+        !hasLocation ||
+        !hasEnabledPrayer ||
+        enabledPrayers[prayer] !== true ||
+        refreshedIds.has(id)
+      ) {
+        ids.push(id);
+      }
+    }
+  }
+
+  return ids;
+}
