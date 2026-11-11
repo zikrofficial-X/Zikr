@@ -7,6 +7,7 @@
 
 import { getServerEnv } from "@/lib/env";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 /**
  * Build OAuth redirect URI
@@ -119,20 +120,7 @@ export function getTrustedAuthOrigin(request: Request): string {
  * Validates against open-redirect: only same-origin relative paths are allowed.
  */
 export function extractNextPath(searchParams: URLSearchParams): string {
-  const next = searchParams.get("next");
-
-  if (!next) return "/profile";
-
-  if (!next.startsWith("/") || next.startsWith("//")) return "/profile";
-
-  try {
-    const url = new URL(next, "http://localhost");
-    if (url.origin === "http://localhost" && url.pathname.startsWith("/")) {
-      return url.pathname + url.search;
-    }
-  } catch {
-    // Invalid URL, use default
-  }
-
-  return "/profile";
+  const safePath = sanitizeInternalPath(searchParams.get("next"));
+  const hashIndex = safePath.indexOf("#");
+  return hashIndex === -1 ? safePath : safePath.slice(0, hashIndex);
 }
