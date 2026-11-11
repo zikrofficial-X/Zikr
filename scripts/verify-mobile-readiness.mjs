@@ -86,13 +86,31 @@ for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permis
 }
 
 const plist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = plist.match(/<key>WKAppBoundDomains<\\/key>\\s*<array>([\\s\\S]*?)<\\/array>/)?.[1] ?? "";
+const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\\/string>/g)].map(match => match[1]));
+if (appBoundDomains.size > 10) failures.push("iOS WKAppBoundDomains must stay within Apple’s 10-domain limit");
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  if (capacitor.server?.allowNavigation?.includes(host) && !appBoundDomains.has(host)) {
+    failures.push(`iOS WKAppBoundDomains missing ${host} required by embedded video routes`);
+  }
+}
+if (plist.includes("<key>NSFaceIDUsageDescription</key>")) {
+  failures.push("Do not request Face ID permission until a supported native biometric feature is implemented.");
+}
+const mobileReadme = read("mobile/README.md");
+if (!mobileReadme.includes("does not request Face ID permission")) {
+  failures.push("The mobile runtime guide must state that no Face ID permission is requested while biometric UI is unavailable.");
+}
+const biometricDependencies = Object.keys(capacitorDeps.dependencies ?? {}).filter(name => /biometric/i.test(name));
+if (biometricDependencies.length > 0) {
+  failures.push("Do not add a biometric plugin until the native biometric feature is implemented and reviewed.");
+}
 for (const token of [
   "<string>com.zikr.app</string>",
   "<key>NSCameraUsageDescription</key>",
   "<key>NSPhotoLibraryUsageDescription</key>",
   "<key>NSPhotoLibraryAddUsageDescription</key>",
   "<key>NSMicrophoneUsageDescription</key>",
-  "<key>NSFaceIDUsageDescription</key>",
   "<string>audio</string>",
   "<string>remote-notification</string>",
   "<key>WKAppBoundDomains</key>",
@@ -237,6 +255,7 @@ if (serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/)) {
   if (coreAssets.includes('"/"')) failures.push("Service worker must not pre-cache the root HTML route");
 }
 
+if (releaseCheck && releaseChannel === "store" && ["all", "android"].includes(releasePlatform) && !process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim()) failures.push("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for Android native Google sign-in in store builds.");
 if (releaseCheck && releaseChannel === "store" && ["all", "android"].includes(releasePlatform) && !process.env.ANDROID_APP_LINKS_SHA256) failures.push("ANDROID_APP_LINKS_SHA256 is required for a Play Store release; provide the real release signing certificate SHA-256 fingerprint.");
 if (releaseCheck && releaseChannel === "store" && ["all", "ios"].includes(releasePlatform) && !process.env.IOS_ASSOCIATED_DOMAIN_APP_ID) failures.push("IOS_ASSOCIATED_DOMAIN_APP_ID is required for an App Store release; provide the real Apple Team ID and bundle ID.");
 if (releaseCheck && !["all", "android", "ios"].includes(releasePlatform)) failures.push("MOBILE_RELEASE_PLATFORM must be one of: all, android, ios.");

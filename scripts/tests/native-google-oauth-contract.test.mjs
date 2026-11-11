@@ -7,6 +7,15 @@ const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java"
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
+const capacitor = JSON.parse(read("capacitor.config.json"));
+const iosPlist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = iosPlist.match(/<key>WKAppBoundDomains<\\/key>\\s*<array>([\\s\\S]*?)<\\/array>/)?.[1] ?? "";
+const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\\/string>/g)].map(match => match[1]));
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  assert.ok(capacitor.server?.allowNavigation?.includes(host), `${host} must remain an allowed Capacitor destination`);
+  assert.ok(appBoundDomains.has(host), `${host} must be app-bound when WKWebView navigation limits are enabled`);
+}
+assert.ok(appBoundDomains.size <= 10, "WKAppBoundDomains must not exceed Apple’s 10-domain limit");
 
 assert.ok(pkg.dependencies?.["@capgo/capacitor-social-login"], "Capgo Social Login dependency is required");
 assert.ok(lock.includes("@capgo/capacitor-social-login@7.20.0"), "pnpm lockfile must include the resolved native plugin");
@@ -15,6 +24,8 @@ assert.ok(button.includes("SocialLogin.initialize("), "Native Google plugin must
 assert.ok(button.includes("SocialLogin.login("), "Native Google Credential Manager must be invoked");
 assert.ok(button.includes("supabase.auth.signInWithIdToken("), "Google ID token must be exchanged with Supabase");
 assert.ok(button.includes("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Native login must use the Web OAuth client ID");
+assert.match(read(".env.example"), /^NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=/m, "the public native OAuth client ID must be documented in the environment template");
+assert.match(read("scripts/verify-mobile-readiness.mjs"), /NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for Android native Google sign-in/, "store-readiness must fail when the native Google client ID is absent");
 assert.ok(button.includes("window.location.replace(safeNext)"), "Native success must return to the in-app route");
 assert.ok(button.includes('Capacitor.isPluginAvailable("SocialLogin")'), "Credential Manager must only run when the installed APK contains the native plugin");
 assert.ok(button.includes("startBrowserGoogleOAuth("), "Native-compatible browser OAuth fallback must remain available");

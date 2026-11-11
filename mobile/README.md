@@ -30,7 +30,7 @@ com.zikr.app://auth/callback
 
 ## Native capability checklist
 
-Capacitor configuration enables splash screen, status bar, keyboard, local notifications, push notification presentation, app links, universal links, deep links, camera, filesystem, share, network, preferences-backed local settings, haptics and background-task extension points. The current release does not expose a biometric UI or install a biometric plugin; the old `@capacitor-community/biometric-auth` reference was removed because that package is not published under that name.
+Capacitor configuration enables splash screen, status bar, keyboard, local notifications, push notification presentation, app links, universal links, deep links, camera, filesystem, share, network, preferences-backed local settings, haptics and background-task extension points. The current release does not expose a biometric UI or install a biometric plugin, and it does not request Face ID permission. The iOS plist intentionally omits `NSFaceIDUsageDescription` until a supported native biometric feature is implemented and reviewed; the old `@capacitor-community/biometric-auth` reference was removed because that package is not published under that name.
 
 Prayer notifications use the bundled `adhan.wav` asset and the `zikr-prayer-adhan-v2` Android channel. Salawat reminders use the bundled `salawat.wav` asset and the `zikr-salawat-v2` channel; the clip says `صل على سيدنا محمد` and is generated locally for this application. The short clips are also available under `public/audio` for foreground playback and offline PWA use.
 
