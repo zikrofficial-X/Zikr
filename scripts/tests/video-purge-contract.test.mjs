@@ -100,6 +100,15 @@ assert.ok(
     route.includes("Automated video Storage inventory exceeded the safe 5,000-object limit."),
   "automated Storage pagination must detect and reject inventories larger than the safe 5,000-object limit before deletion.",
 );
+const storageInventoryStart = route.indexOf("async function listAutomatedStorageObjects");
+const storageInventoryEnd = route.indexOf("async function deleteAutomatedStorageObjects", storageInventoryStart);
+const storageInventory = route.slice(storageInventoryStart, storageInventoryEnd);
+assert.ok(
+  storageInventory.includes('await walk("automated")') && storageInventory.includes('path.startsWith("automated/")'),
+  "the purge may inventory only generated video objects under the dedicated automated/ prefix",
+);
+assert.doesNotMatch(storageInventory, /await walk\(["']{0,1}["']{0,1}\)/, "the purge must never recursively enumerate the entire videos bucket");
+
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
