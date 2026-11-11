@@ -281,8 +281,18 @@ assert.match(
 const legacyVideoPatch = videoRoute.match(/export async function PATCH\([\s\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
 assert.match(
   legacyVideoPatch,
-  /status === 'pending'[\s\S]*?youtube_id: null[\s\S]*?facebook_id: null[\s\S]*?video_url: null/,
-  "resetting a legacy video request must clear stale platform IDs and media URLs before it returns to the generation queue",
+  /body\.status !== 'pending'[\s\S]*?currentRows\[0\]\.status !== 'failed'[\s\S]*?updateVideoRequestStatus\(id, 'pending', undefined, 'failed'\)/,
+  "the legacy request reset must be limited to failed rows and use the compare-and-set retry service",
+);
+assert.match(
+  videoGenerationRoute,
+  /DIRECT_VIDEO_STATUS_MUTATION_RETIRED/,
+  "the generic admin endpoint must not let callers overwrite worker-owned video queue states",
+);
+assert.doesNotMatch(
+  videoGenerationRoute,
+  /ALLOWED_STATUSES|const patch: Record<string, unknown> = \{ status, updated_at:/,
+  "unrestricted status mutation must not remain reachable through the legacy route",
 );
 
 
