@@ -281,6 +281,8 @@ assert.match(worker, /source\.kind==="kids_story"/);
 assert.match(worker, /chooseWrittenSourceKind\(/);
 assert.match(worker, /const todaysKidsPosts = category === "auto" \|\| category === "kids"/, "explicit Kids generation must inspect the same UTC-day reservation before selecting a source");
 assert.match(worker, /todays\.some\(\(row\) => isKidsWrittenSourceReservation\(row\.metadata\)\)/, "automatic and explicit Kids generation must honor a same-day source article reservation even without a queue row");
+const dailyKidsReservationScan = worker.match(/const todays=await readRequired<Row>\(([\s\S]*?)\);/)?.[1] ?? "";
+assert.match(dailyKidsReservationScan, /published=eq\.true/, "unpublished generated articles must not reserve the daily Kids slot during generation");
 assert.match(worker, /scheduled_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts scheduled for the current UTC day");
 assert.match(worker, /published_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include posts published during the current UTC day");
 assert.match(worker, /created_at\.gte\.\$\{dayStartIso\}/, "daily Kids reservation must include rows created during the current UTC day");
