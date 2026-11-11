@@ -33,6 +33,20 @@ async function deferVideoPublication(itemId: string): Promise<void> {
   );
 }
 
+async function rollbackScheduledContentPublication(item: QueueItem, publishedUpdatedAt: string | null): Promise<void> {
+  if (!publishedUpdatedAt) return;
+  // Roll back only the exact worker write. A later admin republish has a new
+  // updated_at value and must never be undone by this stale queue worker.
+  await supabaseServerAdminRequest(
+    `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.true&updated_at=eq.${encodeURIComponent(publishedUpdatedAt)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
+    },
+  );
+}
+
 async function validateScheduledStoryForPublication(storyId: string): Promise<void> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
@@ -133,6 +147,7 @@ export async function processScheduledContent(limit = 20) {
       continue;
     }
     let contentPublished = false;
+    let contentPublishedUpdatedAt: string | null = null;
     try {
       if (item.content_table === "videos") {
         await validateInternalVideoForPublication(item.content_id);
@@ -152,12 +167,13 @@ export async function processScheduledContent(limit = 20) {
         continue;
       }
 
+      contentPublishedUpdatedAt = new Date().toISOString();
       const updatedContent = await supabaseServerAdminRequest<Array<{ id: string }>>(
         `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ published: true, updated_at: now }),
+          body: JSON.stringify({ published: true, updated_at: contentPublishedUpdatedAt }),
         },
       );
       if (!updatedContent?.some(row => row.id === item.content_id)) {
@@ -178,14 +194,7 @@ export async function processScheduledContent(limit = 20) {
           `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
         ).catch(() => []);
         if (currentQueue?.[0]?.status === "cancelled") {
-          await supabaseServerAdminRequest(
-            `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.true`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-              body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
-            },
-          );
+          await rollbackScheduledContentPublication(item, contentPublishedUpdatedAt);
           contentPublished = false;
           continue;
         }
@@ -200,14 +209,7 @@ export async function processScheduledContent(limit = 20) {
           `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&select=status&limit=1`,
         ).catch(() => []);
         if (currentQueue?.[0]?.status !== "published") {
-          await supabaseServerAdminRequest(
-            `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.true`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-              body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
-            },
-          ).catch(() => {});
+          await rollbackScheduledContentPublication(item, contentPublishedUpdatedAt).catch(() => {});
         }
       }
       await supabaseServerAdminRequest(
