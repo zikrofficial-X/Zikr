@@ -77,6 +77,8 @@ assert.match(worker, /from\("background_reminder_preferences"\)/);
 assert.match(worker, /enabled !== true/);
 assert.match(worker, /!Number\.isInteger\(preference\.prayer_reminders\?\.\[delivery\.prayer_name\]\)/);
 assert.match(worker, /inQuietHours\(\s*now,/);
+assert.match(worker, /const scheduledAt = new Date\(delivery\.scheduled_at\)/);
+assert.match(worker, /inQuietHours\(\s*scheduledAt,/);
 assert.match(worker, /status: "cancelled"/);
 assert.match(worker, /Background reminder is no longer enabled/);
 assert.match(worker, /Prayer reminder is no longer enabled or configured/);
