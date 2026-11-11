@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ? item.content_ar.replace(/\s+/g, " ").slice(0, 160)
     : 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
   return pageMetadata({
-    title: item.title_ar || item.title,
+    title: item.title_ar || item.title_en,
     description,
     path: `/kids/${slug}`,
   });
