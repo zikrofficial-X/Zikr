@@ -38,6 +38,10 @@ assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T18:00:00.000Z
 assert.equal(scheduleKidsBackfillWithinUtcDay(new Date("2026-11-11T23:58:00.000Z")),null,"Kids backfill must defer when its lead time would spill into the next UTC day");
 assert.notEqual(createWrittenAutomationKey("quran","1"),createWrittenAutomationKey("quran","2"));
 assert.deepEqual(validateWrittenPostDraft(draft),{ok:true});
+assert.equal(validateWrittenPostDraft({...draft,question:123 as unknown as string}).ok,false,"malformed AI question values must be rejected before the post builder");
+assert.equal(validateWrittenPostDraft({...draft,question:"سؤال طويل ".repeat(30)}).ok,false,"generated questions must stay within the bounded post contract");
+assert.equal(validateWrittenPostDraft({...draft,hook:"قالَ رسولُ اللهِ ﷺ: هذا نص غير موثق."}).ok,false,"religious attribution with Arabic diacritics must be normalized before screening");
+assert.doesNotThrow(()=>buildWrittenPost(source,{...draft,question:123 as unknown as string}),"the post builder must never throw on malformed optional AI question data");
 assert.equal(validateWrittenPostDraft({...draft,reflection:"قال رسول الله كذا"}).ok,false);
 assert.equal(validateWrittenPostDraft({...draft,hook:"قال رسول الله: افعلوا الخير دائمًا، واجعلوا الصدق طريقكم في كل يوم."}).ok,false,"unattributed religious claims in the hook must be rejected");
 assert.equal(validateWrittenPostDraft({...draft,title:"حديث قدسي عن الأمل"}).ok,false,"unattributed religious claims in the title must be rejected");
@@ -192,6 +196,11 @@ assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.m
 assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, publicPath: "/kids/other-story" } }, liveKidsStory), null, "stale story paths must never be exposed");
 assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, source: { type: "kids_story", id: "different-source", verified: true } } }, liveKidsStory), null, "source metadata must identify the same approved story");
 assert.equal(containsKidsPersonalDataSolicitation("أرسل رقم هاتفك لي"), true, "Arabic phone-number solicitation must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتلي رقمك"), true, "Egyptian colloquial concatenated requests for a child's phone number must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتيلي صورتك"), true, "Egyptian colloquial requests for a child's photo must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("هات عنوان بيتك"), true, "colloquial requests for a child's home address must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("اديني رقمك"), true, "colloquial requests for a child's phone number must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("اكتبلي اسم مدرستك"), true, "colloquial requests for a child's school must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("ما عنوان بيتك؟"), true, "direct Arabic questions about a child's address must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("راسلني على واتساب"), true, "private-contact requests must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("DM me your location"), true, "English personal-location requests must be rejected");

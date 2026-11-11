@@ -79,7 +79,7 @@ export function containsKidsPersonalDataSolicitation(value: string): boolean {
   .replace(/\s+/g, " ")
   .trim();
  const personalData = "(?:اسم(?:ك(?: الكامل)?| مدرستك| ولي امرك| والديك)|رقم(?:ك| هاتفك| الموبايل| جوالك| ولي امرك)|عنوانك|عنوان (?:بيتك|منزلك)|مدرستك|بريدك(?: الالكتروني)?|ايميلك|كلمة المرور|كلمة السر|موقعك|مكانك|صورتك|صورك|صورة لك|صورة شخصية|حسابك|اسم المستخدم|بياناتك الشخصية|معلوماتك الشخصية)";
- const askVerbs = "(?:ارسل|ابعث|ابعت|شارك|اكتب|اذكر|قل لي|اخبرني|اعطني|تعطيني|اترك|ضع|سجل|ادخل|ارسل لي|ابعث لي|ابعت لي|ارسال|مشاركة)";
+ const askVerbs = "(?:ارسل(?:لي)?|ابعث(?:لي)?|ابعت(?:لي)?|ابعتي(?:لي)?|شارك|اكتب(?:لي)?|اذكر|قل لي|قوللي|قولي|اخبرني|اعطني|اديني|تعطيني|هات(?:لي)?|وريني|اترك|ضع|سجل|ادخل|ارسل لي|ابعث لي|ابعت لي|ارسال|مشاركة|تبعت(?:لي)?|ترسل(?:لي)?|تديني|تقولي|تكتب(?:لي)?)";
  const channels = "(?:واتساب|واتس اب|تيليجرام|تلجرام|انستجرام|سناب(?: شات)?|فيسبوك|ماسنجر|الخاص|رسالة خاصة)";
  const asksForData = new RegExp("(?:^|\\s)" + askVerbs + "(?:\\s+[^.!؟?]{1,30})?\\s+" + personalData, "u");
  const asksDirectly = new RegExp("(?:^|\\s)(?:ما|ما هو|ما هي|اين|اين هو|اين هي)(?:\\s+[^.!؟?]{0,24})?\\s+" + personalData, "u");
@@ -98,14 +98,26 @@ export function validateWrittenPostDraft(d:WrittenPostDraft):{ok:boolean;reason?
  if(hook.length<12||hook.length>260)return {ok:false,reason:"hook_length"};
  if(reflection.length<70||reflection.length>900)return {ok:false,reason:"reflection_length"};
  if(!/[\u0600-\u06FF]/u.test(title+hook+reflection))return {ok:false,reason:"arabic_required"};
- const generatedText=[title,hook,reflection,typeof d.question==="string"?d.question.trim():""].join("\n");
- if(/(قال رسول الله|قال النبي|قال تعالى|رواه|حديث قدسي|فتوى قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
+ if (d.question !== undefined && d.question !== null && typeof d.question !== "string") {
+  return {ok:false,reason:"question_type"};
+ }
+ const question = typeof d.question === "string" ? d.question.trim() : "";
+ if (question.length > 240) return {ok:false,reason:"question_length"};
+ const generatedText=[title,hook,reflection,question].join("\n")
+  .normalize("NFKC")
+  .replace(/[\\u064B-\\u065F\\u0670\\u0640]/g,"")
+  .replace(/[أإآ]/g,"ا")
+  .replace(/ى/g,"ي")
+  .replace(/\\s+/g," ")
+  .trim();
+ if(/(?:قال\\s+(?:رسول\\s+الله|النبي|تعالى)|رواه|روى\\s+\\S+|حديث\\s+قدسي|فتوى\\s+قاطعة)/u.test(generatedText))return {ok:false,reason:"unattributed_religious_quote"};
  return {ok:true};
 }
 export function buildWrittenPost(source:WrittenContentSource,draft:WrittenPostDraft){
  const quote=source.quoteRequired?`«${source.sourceText.trim()}»`:draft.reflection.trim();
  const reflection=source.quoteRequired?draft.reflection.trim():"";
- return {title:draft.title.trim(),body:[draft.hook.trim(),quote,reflection,draft.question?.trim()||"",source.reference.trim()].filter(Boolean).join("\n\n"),publicPath:source.publicPath};
+ const question=typeof draft.question==="string"?draft.question.trim():"";
+ return {title:draft.title.trim(),body:[draft.hook.trim(),quote,reflection,question,source.reference.trim()].filter(Boolean).join("\n\n"),publicPath:source.publicPath};
 }
 
 export function countUniqueWrittenContentReservations(
