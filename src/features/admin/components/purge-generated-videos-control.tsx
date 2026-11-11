@@ -28,7 +28,7 @@ export function PurgeGeneratedVideosControl({
   onCompleted?: () => void | Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [scope, setScope] = useState<PurgeScope>("both");
+  const [scope, setScope] = useState<PurgeScope | "">("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +49,7 @@ export function PurgeGeneratedVideosControl({
   }, []);
 
   async function purge() {
-    if (confirmation !== CONFIRMATION_PHRASE || busy) return;
+    if (!scope || confirmation !== CONFIRMATION_PHRASE || busy) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -88,7 +88,7 @@ export function PurgeGeneratedVideosControl({
       }
       const completed: PurgeResult = {
         ok: true,
-        scope: payload.scope ?? scope,
+        scope: payload.scope ?? (scope || "files"),
         automationResumed: payload.automationResumed === true,
         cloudinaryAssetsDeleted: payload.cloudinaryAssetsDeleted ?? 0,
         cloudinaryBytesDeleted: payload.cloudinaryBytesDeleted ?? 0,
@@ -104,6 +104,7 @@ export function PurgeGeneratedVideosControl({
       };
       setResult(completed);
       setConfirmation("");
+      setScope("");
       setExpanded(false);
       setMessage(
         scope === "files"
@@ -135,7 +136,12 @@ export function PurgeGeneratedVideosControl({
           type="button"
           disabled={busy}
           onClick={() => {
-            setExpanded(value => !value);
+            const nextExpanded = !expanded;
+            setExpanded(nextExpanded);
+            if (!nextExpanded) {
+              setScope("");
+              setConfirmation("");
+            }
             setError("");
             setMessage("");
           }}
@@ -156,6 +162,7 @@ export function PurgeGeneratedVideosControl({
               disabled={busy}
               className="w-full rounded-xl border border-brand-gold/20 bg-black/30 px-3 py-3 text-sm text-brand-cream"
             >
+              <option value="" disabled>اختر نطاق الحذف صراحةً</option>
               <option value="files">ملفات الفيديو فقط — Cloudinary وSupabase Storage</option>
               <option value="memory">ذاكرة المشروع فقط — إخفاء مكتبة ZIKR وسجلات التوليد، مع إبقاء الملفات</option>
               <option value="both">الملفات وذاكرة المشروع معًا</option>
@@ -165,7 +172,9 @@ export function PurgeGeneratedVideosControl({
                 ? "سيتم حذف ملفات MP4، وإخفاء سجلات الفيديو حتى لا تظهر روابط مكسورة. ستبقى عناوينها ومصادرها وسجلات التوليد."
                 : scope === "memory"
                   ? "سيتم إخفاء سجلات الفيديو الداخلية وإزالة طلبات وسجلات التوليد، بينما تبقى ملفات Cloudinary دون حذف."
-                  : "سيتم حذف ملفات MP4 وإخفاء ذاكرة الفيديو الداخلية وإزالة سجلات التوليد. ستبقى سجلات التدقيق والمنصات الخارجية دون تغيير."}
+                  : scope === "both"
+                  ? "سيتم حذف ملفات MP4 وإخفاء ذاكرة الفيديو الداخلية وإزالة سجلات التوليد. ستبقى سجلات التدقيق والمنصات الخارجية دون تغيير."
+                  : "اختر نطاق الحذف قبل كتابة عبارة التأكيد."}
             </p>
           </div>
           <p className="text-xs leading-6 text-amber-200/90">
@@ -188,7 +197,7 @@ export function PurgeGeneratedVideosControl({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy || confirmation !== CONFIRMATION_PHRASE}
+              disabled={busy || !scope || confirmation !== CONFIRMATION_PHRASE}
               onClick={() => void purge()}
               className="rounded-xl border border-red-400/45 bg-red-600/20 px-4 py-3 text-sm font-bold text-red-100 hover:bg-red-600/30 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -199,6 +208,7 @@ export function PurgeGeneratedVideosControl({
               disabled={busy}
               onClick={() => {
                 setExpanded(false);
+                setScope("");
                 setConfirmation("");
               }}
               className="rounded-xl border border-brand-gold/15 px-4 py-3 text-sm text-brand-cream/65 hover:bg-white/5 disabled:opacity-50"
