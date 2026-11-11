@@ -53,7 +53,7 @@ if (!sitemap.includes('siteConfigRoutes().map')) {
 if (rootLayout.includes('alternates: { canonical: "/" }')) {
   failures.push('Root layout must not publish a homepage canonical inherited by unrelated child routes.');
 }
-if (/openGraph:\\s*\\{[^}]*url:\\s*siteConfig\\.url/.test(rootLayout)) {
+if (/openGraph:\s*\{[^}]*url:\s*siteConfig\.url/.test(rootLayout)) {
   failures.push('Root layout must not publish a homepage og:url inherited by unrelated child routes.');
 }
 if (!sitemap.includes('getKidsContent("ar")')) {
