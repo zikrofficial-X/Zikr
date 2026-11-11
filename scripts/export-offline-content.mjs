@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { getBlockedKidsRoutes } from './lib/offline-kids-route-safety.mjs';
+import { getBlockedKidsRoutes, getPublishedKidsRoutes } from './lib/offline-kids-route-safety.mjs';
 import { getPublishedParentScope, isParentScopedOfflineDataset } from './lib/offline-export-parent-scope.mjs';
 import { getBlockedPublishedContentRoutes } from './lib/offline-export-route-pruning.mjs';
 
@@ -169,6 +169,8 @@ for (const [dataset, table, ...filters] of datasets) {
 
 const blockedPublishedContentRoutes = getBlockedPublishedContentRoutes(previous.routes, exported);
 const blockedRoutes = new Set([...blockedKidsRoutes, ...blockedPublishedContentRoutes]);
+const currentKidsRows = exported.find((item) => item.dataset === 'kids')?.rows ?? [];
+const currentKidsRoutes = getPublishedKidsRoutes(currentKidsRows);
 
 await mkdir(outputDir, { recursive: true });
 const generatedAt = new Date().toISOString();
@@ -180,9 +182,10 @@ const manifest = {
   licenseNote: 'Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.',
   staleDatasets: exported.filter((item) => item.stale).map((item) => item.dataset),
   datasets: {},
-  routes: Array.isArray(previous.routes)
-    ? previous.routes.filter((route) => !blockedRoutes.has(route))
-    : [],
+  routes: [...new Set([
+    ...(Array.isArray(previous.routes) ? previous.routes.filter((route) => !blockedRoutes.has(route)) : []),
+    ...currentKidsRoutes,
+  ])].sort(),
 };
 
 for (const { dataset, rows, stale, source } of exported) {

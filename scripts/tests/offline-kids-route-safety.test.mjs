@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { getBlockedKidsRoutes } from "../lib/offline-kids-route-safety.mjs";
+import { getBlockedKidsRoutes, getPublishedKidsRoutes } from "../lib/offline-kids-route-safety.mjs";
 
 const previousRows = [
   { type: "story", slug: "removed-approved-story", metadata: { age_appropriate: true } },
@@ -39,6 +39,11 @@ assert.deepEqual(
 );
 assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
+assert.deepEqual(
+  getPublishedKidsRoutes(currentRows),
+  ["/kids/current-approved-story", "/kids/current-game"],
+  "newly published and approved Kids slugs must be added to the offline route manifest while unapproved stories stay excluded",
+);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
 const serviceWorker = readFileSync("public/sw.js", "utf8");
 const offlinePack = readFileSync("src/lib/offline-pack.ts", "utf8");
@@ -79,6 +84,8 @@ assert.match(offlineContentHandler, /cache\.put\(request, copy\)/);
 assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows, previous\.routes\)/);
 assert.match(exporter, /const blockedRoutes = new Set\(\[\.\.\.blockedKidsRoutes, \.\.\.blockedPublishedContentRoutes\]\)/);
 assert.match(exporter, /previous\.routes\.filter\(\(route\) => !blockedRoutes\.has\(route\)\)/);
+assert.match(exporter, /getPublishedKidsRoutes\(currentKidsRows\)/);
+assert.match(exporter, /\.\.\.currentKidsRoutes/);
 assert.match(exporter, /const stamp = generatedAt\.replace/);
 assert.match(exporter, /version: `\$\{stamp\.slice\(0, 8\)\}-\$\{stamp\}`/);
 

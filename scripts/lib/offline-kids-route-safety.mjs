@@ -1,3 +1,14 @@
+export function getPublishedKidsRoutes(currentRows) {
+  const routes = new Set();
+  for (const row of Array.isArray(currentRows) ? currentRows : []) {
+    if (!row || (row.type === "story" && row.metadata?.age_appropriate !== true)) continue;
+    const slug = typeof row.slug === "string" ? row.slug.trim() : "";
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) continue;
+    routes.add(`/kids/${slug}`);
+  }
+  return [...routes].sort();
+}
+
 export function getBlockedKidsRoutes(previousRows, currentRows, previousRoutes = []) {
   const rows = Array.isArray(currentRows) ? currentRows : [];
   const previous = Array.isArray(previousRows) ? previousRows : [];
