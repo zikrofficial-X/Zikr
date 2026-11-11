@@ -15,4 +15,19 @@ for (const route of [
 ]) {
   assert.equal(resolveSafeOfflineRoute(route, origin), null, `unsafe offline route must be rejected: ${route}`);
 }
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+const offlinePackSource = readFileSync(resolve(process.cwd(), "src/lib/offline-pack.ts"), "utf8");
+const serviceWorkerSource = readFileSync(resolve(process.cwd(), "public/sw.js"), "utf8");
+assert.match(offlinePackSource, /requestOfflineRoutePrune\(routeInventory\)/,
+  "a successful offline refresh must reconcile cached routes against the current public inventory");
+assert.match(serviceWorkerSource, /event\.data\.type === "PRUNE_OFFLINE_ROUTES"/,
+  "the service worker must expose the stale-route pruning message");
+assert.match(serviceWorkerSource, /request\.headers\.get\("accept"\)\?\.includes\("text\/html"\)/,
+  "route pruning must only remove cached HTML, never datasets or static assets");
+assert.match(serviceWorkerSource, /url\.origin !== self\.location\.origin/,
+  "route pruning must remain restricted to same-origin cache entries");
+assert.match(serviceWorkerSource, /cache\.delete\(request\)/,
+  "stale HTML route entries must be removed from Cache Storage");
+
 console.log("Offline route same-origin safety tests passed.");

@@ -49,6 +49,7 @@ const OFFLINE_CACHE_NAME = "zikr-v15";
 const ROUTE_SNAPSHOT_URL = "/offline-content/v2/routes.json";
 // Keep the client verifier, offline pack, and Service Worker on one cache name.
 const ROUTE_CACHE_REQUEST = "CACHE_OFFLINE_ROUTES";
+const ROUTE_PRUNE_REQUEST = "PRUNE_OFFLINE_ROUTES";
 const CLEAR_OFFLINE_REQUEST = "CLEAR_OFFLINE_LIBRARY";
 
 const OFFLINE_CONTENT_STORES = [
@@ -329,6 +330,33 @@ export async function requestOfflineRouteCache(
   }
 }
 
+async function requestOfflineRoutePrune(routes: string[]): Promise<number> {
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("A service worker is required to reconcile the offline route cache.");
+  }
+
+  const registration = await navigator.serviceWorker.ready;
+  const worker = registration.active ?? registration.waiting ?? registration.installing;
+  if (!worker) throw new Error("No service worker is available to reconcile the offline route cache.");
+
+  return new Promise((resolve, reject) => {
+    const channel = new MessageChannel();
+    const timeoutId = window.setTimeout(() => {
+      channel.port1.onmessage = null;
+      reject(new Error("Timed out waiting for stale offline routes to be pruned."));
+    }, 30_000);
+
+    channel.port1.onmessage = event => {
+      window.clearTimeout(timeoutId);
+      const result = (event.data ?? {}) as { ok?: boolean; removed?: number; error?: string };
+      if (result.ok === true) resolve(Number(result.removed ?? 0));
+      else reject(new Error(result.error || "The service worker could not prune stale offline routes."));
+    };
+
+    worker.postMessage({ type: ROUTE_PRUNE_REQUEST, routes }, [channel.port2]);
+  });
+}
+
 export async function clearOfflineLibrary(): Promise<void> {
   await offlineDb.initialize();
 
@@ -538,6 +566,10 @@ export async function hydrateOfflineContent(
 
     failedRoutes = Array.from(failures);
     cachedRoutes = routeInventory.filter(route => !failures.has(route));
+
+    // The current route inventory is authoritative. Remove cached HTML for
+    // unpublished/deleted routes while preserving current routes and assets.
+    await requestOfflineRoutePrune(routeInventory);
   }
 
   const routesComplete =

@@ -210,6 +210,29 @@ async function cacheOfflineRoutes(routes, replyPort) {
   });
 }
 
+async function pruneOfflineRoutes(routes, replyPort) {
+  if (!Array.isArray(routes)) throw new Error("The current offline route inventory is invalid.");
+
+  const keep = new Set(
+    routes
+      .filter(isSafeOfflineRoute)
+      .map(route => new URL(route, self.location.origin).href),
+  );
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  let removed = 0;
+
+  for (const request of requests) {
+    if (request.method !== "GET" || !request.headers.get("accept")?.includes("text/html")) continue;
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin || !isSafeOfflineRoute(url.pathname) || url.search || url.hash) continue;
+    if (keep.has(url.href)) continue;
+    if (await cache.delete(request)) removed += 1;
+  }
+
+  replyPort?.postMessage({ ok: true, removed });
+}
+
 // The complete offline pack is cached explicitly by the user from the Offline Library page.
 // Only the tiny shell is installed automatically so first install stays lightweight.
 const CORE_INSTALL_ASSETS = [
@@ -510,6 +533,18 @@ self.addEventListener("message", event => {
 
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data && event.data.type === "PRUNE_OFFLINE_ROUTES") {
+    event.waitUntil(
+      pruneOfflineRoutes(event.data.routes, event.ports?.[0]).catch(error => {
+        event.ports?.[0]?.postMessage({
+          ok: false,
+          error: error instanceof Error ? error.message : "Offline route pruning failed",
+        });
+      }),
+    );
     return;
   }
 
