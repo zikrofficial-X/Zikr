@@ -332,17 +332,32 @@ self.addEventListener("fetch", event => {
   }
 
   if (url.pathname.startsWith(OFFLINE_CONTENT_PREFIX)) {
+    // The offline manifest changes when the validated public snapshot is
+    // refreshed. Fetch datasets from the network first (bypassing the HTTP
+    // cache), then replace the Cache Storage copy; use the cached copy only
+    // when the device is actually offline.
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
+      fetch(new Request(request, { cache: "no-store" }))
+        .then(response => {
           if (response.ok) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
           return response;
-        });
-      })
+        })
+        .catch(() =>
+          caches.match(request).then(
+            cached =>
+              cached ||
+              new Response(
+                JSON.stringify({ error: "Offline snapshot unavailable" }),
+                {
+                  status: 503,
+                  headers: { "Content-Type": "application/json" },
+                }
+              )
+          )
+        )
     );
     return;
   }
