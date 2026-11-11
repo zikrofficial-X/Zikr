@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, buildRunNowRequestValueFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
@@ -86,6 +86,17 @@ const originalRunNow = {
   requestedAt: "2026-11-11T19:00:00.000Z",
 };
 assert.equal(isSameRunNowRequest(originalRunNow, originalRunNow), true);
+const originalUpdateFilter = buildRunNowRequestValueFilter(originalRunNow);
+assert.equal(
+  originalUpdateFilter,
+  `key=eq.video_automation_run_now&value=eq.${encodeURIComponent(JSON.stringify(originalRunNow))}`,
+  "dispatch result updates must compare the complete JSONB request before mutating the row",
+);
+assert.notEqual(
+  originalUpdateFilter,
+  buildRunNowRequestValueFilter({ ...originalRunNow, requestId: "run-request-b" }),
+  "a stale dispatch result must not match a newer request, even when requestedAt is identical",
+);
 const originalDeleteFilter = buildRunNowRequestDeleteFilter(originalRunNow.requestedAt, originalRunNow);
 assert.equal(
   originalDeleteFilter,
@@ -126,3 +137,9 @@ assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "
 assert.match(backgroundRunnerSource, /import \{[^}]*isSameRunNowRequest[^}]*\} from "\.\.\/src\/features\/videos\/services\/background-job-outcome"/, "the Run Now identity guard must be imported from the shared policy");
 const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/admin/system-actions.ts"), "utf8");
 assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");
+assert.match(adminSystemActionsSource, /buildRunNowRequestValueFilter\(request\)/, "Run Now dispatch must build a compare-and-set predicate from the request it created");
+assert.equal(
+  (adminSystemActionsSource.match(/"\\/rest\\/v1\\/admin_settings\\?" \\+ requestFilter/g) ?? []).length,
+  3,
+  "success, scheduled-worker fallback, and failure updates must all compare-and-set the original request",
+);
