@@ -11,7 +11,7 @@ import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
 } from "@/features/social/services/social-publishing";
-import { canDeleteLocalSocialQueueItem, getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem, getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem & {
@@ -533,7 +533,7 @@ export default function AdminSocialPage() {
           : action === "retry_all_failed"
             ? `ستتم إعادة محاولة ${retryable.length} عنصرًا فاشلًا/جزئيًا ظاهرًا فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها.`
             : action === "delete_failed"
-              ? `سيتم حذف ${localDeletable.length} سجل فشل آمن ظاهر فقط. لن يُحذف أي سجل جزئي أو يحمل نتيجة منصة ناجحة أو غير مؤكدة.`
+              ? `سيتم حذف ${Math.min(localDeletable.length, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT)} من ${localDeletable.length} سجل فشل آمن ظاهر فقط. لن يُحذف أي سجل جزئي أو يحمل نتيجة منصة ناجحة أو غير مؤكدة.`
               : `سيتم حذف ${selectedLocalDeletableCount} سجل فشل آمن من المحدد فقط. ستظل السجلات الجزئية والناجحة والملتبسة محفوظة.`;
         if (!window.confirm(confirmation)) return;
         if (action === "delete" || action === "delete_failed") confirmedNoRemotePublication = true;
@@ -541,7 +541,7 @@ export default function AdminSocialPage() {
       const ids = action === "retry_all_failed"
         ? retryable.map(item => item.id)
         : action === "delete_failed"
-          ? localDeletable.map(item => item.id)
+          ? localDeletable.slice(0, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT).map(item => item.id)
           : selected;
       if (["retry", "retry_all_failed", "delete", "delete_failed"].includes(action) && ids.length === 0) {
         setError("حدد عملية فاشلة أو نشرًا جزئيًا أولًا.");
@@ -1066,7 +1066,7 @@ export default function AdminSocialPage() {
               disabled={!localDeletable.length || busy}
               onClick={() => void runAction("delete_failed")}
             >
-              حذف الفاشلة الآمنة ({localDeletable.length})
+              حذف الفاشلة الآمنة ({Math.min(localDeletable.length, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT)} / {localDeletable.length})
             </Button>
           </div>
         </div>
