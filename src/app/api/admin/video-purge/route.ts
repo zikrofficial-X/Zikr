@@ -427,6 +427,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+
+
+
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
@@ -629,7 +632,8 @@ export async function POST(request: NextRequest) {
     }
     const automationRemainsDisabled = automationWasEnabled === true &&
       (recoveryErrors.some(message => message.startsWith("automation state:")) ||
-        (destructiveWorkStarted && !dataCleanupFinished));
+        (destructiveWorkStarted && !dataCleanupFinished) ||
+        !purgeLockCleared);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "تعذر إتمام تصفير الفيديوهات.",
