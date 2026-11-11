@@ -378,11 +378,11 @@ export async function claimPendingSocialPublishItems(
   for (const item of items) {
     try {
       const claimStatus = item.status === "partial" ? "partial" : item.status === "failed" ? "failed" : "queued";
-      // Atomic claim: the status predicate is the concurrency guard. Exact updated_at
-      // equality is intentionally avoided because PostgREST/JSON timestamp normalization
-      // can make a still-eligible row match zero rows and silently strand the queue.
+      // Atomic claim compares the exact updated_at value returned with this candidate.
+      // This prevents a concurrent edit from publishing stale title/body/media metadata;
+      // PostgREST receives the server-returned timestamp rather than a reconstructed value.
       const result = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, claimStatus, claimAt)}`,
+        `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, claimStatus, claimAt, item.updated_at)}`,
         {
           method: "PATCH",
           headers: {
@@ -1016,12 +1016,15 @@ export async function processSocialPublishItem(
     }
     claimUpdatedAt = item.updated_at;
   } else {
-    if (item.status === "processing" || !Number.isFinite(Date.parse(item.updated_at))) {
+    if (
+      !["queued", "partial", "failed"].includes(item.status) ||
+      !Number.isFinite(Date.parse(item.updated_at))
+    ) {
       return "deferred";
     }
     const claimAt = new Date().toISOString();
     const claimed = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, item.status, claimAt)}`,
+      `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, item.status, claimAt, item.updated_at)}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
