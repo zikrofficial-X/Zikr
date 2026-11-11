@@ -86,8 +86,10 @@ for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permis
 }
 
 const plist = read("ios/App/App/Info.plist");
-const appBoundDomainBlock = plist.match(/<key>WKAppBoundDomains<\\/key>\\s*<array>([\\s\\S]*?)<\\/array>/)?.[1] ?? "";
-const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\\/string>/g)].map(match => match[1]));
+const appBoundDomainBlock = plist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
+const appBoundDomains = new Set(
+  appBoundDomainBlock.split("<string>").slice(1).map(value => value.split("</string>")[0]).filter(Boolean),
+);
 if (appBoundDomains.size > 10) failures.push("iOS WKAppBoundDomains must stay within Apple’s 10-domain limit");
 for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
   if (capacitor.server?.allowNavigation?.includes(host) && !appBoundDomains.has(host)) {

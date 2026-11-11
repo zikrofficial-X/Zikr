@@ -9,8 +9,10 @@ const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const iosPlist = read("ios/App/App/Info.plist");
-const appBoundDomainBlock = iosPlist.match(/<key>WKAppBoundDomains<\\/key>\\s*<array>([\\s\\S]*?)<\\/array>/)?.[1] ?? "";
-const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\\/string>/g)].map(match => match[1]));
+const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
+const appBoundDomains = new Set(
+  appBoundDomainBlock.split("<string>").slice(1).map(value => value.split("</string>")[0]).filter(Boolean),
+);
 for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
   assert.ok(capacitor.server?.allowNavigation?.includes(host), `${host} must remain an allowed Capacitor destination`);
   assert.ok(appBoundDomains.has(host), `${host} must be app-bound when WKWebView navigation limits are enabled`);
