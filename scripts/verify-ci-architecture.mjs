@@ -135,6 +135,7 @@ assert.ok(
     quality.includes("github.event_name == 'push' && github.ref == 'refs/heads/main'") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-')") &&
     quality.includes("startsWith(github.head_ref, 'codex/zikr-final-cleanup-')") &&
+    quality.includes("startsWith(github.head_ref, 'audit/zikr-')") &&
     quality.includes('if [[ "${QUALITY_GATE_FULL_SCOPE}" == "true" ]]') &&
     quality.includes("pnpm verify") &&
     quality.includes("pnpm verify:pr"),
@@ -400,6 +401,18 @@ assert.ok(
   circleSafetyBranches.includes("comprehensive-repair-safety-20261110") &&
     circleSafetyBranches.includes("offline-content-snapshot"),
   "CircleCI source and application build gates must cover the safety remediation and generated offline snapshot branches",
+);
+
+const circleWorkflow = circleSafetyBranches.split("\nworkflows:\n")[1] ?? "";
+const circleSourceFilter =
+  circleWorkflow.split("      - source-verify:")[1]?.split("      - application-build-docs:")[0] ?? "";
+const circleBuildFilter =
+  circleWorkflow.split("      - application-build-docs:")[1]?.split("\n      - ")[0] ?? "";
+const auditBranchPattern = String.raw`- /^audit\/zikr-.*$/`;
+assert.ok(
+  circleSourceFilter.includes(auditBranchPattern) &&
+    circleBuildFilter.includes(auditBranchPattern),
+  "CircleCI source verification and application build must cover cumulative audit repair branches",
 );
 
 console.log("✅ CI/CD architecture checks passed");
