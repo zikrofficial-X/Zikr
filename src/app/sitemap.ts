@@ -78,7 +78,7 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
       getPublicContentLibrary(100).catch(() => []),
-      getKidsContent().catch(() => []),
+      getKidsContent("ar").catch(() => []),
     ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
