@@ -50,5 +50,19 @@ export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
   if (typeof row.published_at !== "string" || !Number.isFinite(Date.parse(row.published_at))) return false;
 
   const metadata = asRecord(row.metadata);
-  return metadata.audience === "kids";
+  if (metadata.audience !== "kids") return false;
+  if (row.status === "published") return true;
+
+  const platformResults = asRecord(metadata.platformResults);
+  const platformDeletions = asRecord(metadata.platformDeletions);
+  const hasConfirmedDelivery = Object.values(platformResults).some((value) => {
+    const result = asRecord(value);
+    return result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+  });
+  const hasConfirmedDeletion = Object.values(platformDeletions).some((value) =>
+    asRecord(value).status === "deleted",
+  );
+  // Keep a partially deleted row available to override stale catalog badges,
+  // but never expose an ordinary partial row with no confirmed remote result.
+  return hasConfirmedDelivery || hasConfirmedDeletion;
 }
