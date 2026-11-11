@@ -15,7 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
+import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -411,10 +411,11 @@ export async function POST(request: NextRequest) {
           ),
         ]
       : [];
-    const allowedPlatforms = new Set(["facebook", "facebook_reels", "youtube"]);
-    const requestedPlatforms = Array.isArray(body.platforms)
-      ? [...new Set(body.platforms.filter((value): value is string => typeof value === "string" && allowedPlatforms.has(value)))]
-      : [];
+    const parsedPlatforms = parseRequestedSocialPlatforms(body.platforms);
+    if (!parsedPlatforms.ok) {
+      return NextResponse.json({ error: "قائمة المنصات غير صالحة؛ لم يتم تنفيذ أي إجراء." }, { status: 400 });
+    }
+    const requestedPlatforms = parsedPlatforms.platforms;
     if (action === "test_facebook") {
       const health = await getFacebookPageConnectionHealth();
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });

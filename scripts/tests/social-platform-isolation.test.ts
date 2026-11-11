@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(both, ["facebook", "facebook_reels", "youtube"]);
+assert.deepEqual(parseRequestedSocialPlatforms(undefined), { ok: true, platforms: [] }, "an omitted platform filter intentionally means all eligible targets");
+assert.deepEqual(parseRequestedSocialPlatforms([]), { ok: true, platforms: [] }, "an explicit empty platform filter preserves the existing all-target UI behavior");
+assert.deepEqual(parseRequestedSocialPlatforms(["youtube", "facebook", "youtube"]), { ok: true, platforms: ["youtube", "facebook"] }, "valid platform filters are deduplicated without widening");
+assert.equal(parseRequestedSocialPlatforms(["instagram"]).ok, false, "unsupported platform values must not widen a delete/retry action to every platform");
+assert.equal(parseRequestedSocialPlatforms("youtube").ok, false, "non-array platform input must be rejected");
+assert.equal(parseRequestedSocialPlatforms(["youtube", null]).ok, false, "mixed valid/invalid platform input must be rejected atomically");
 
 const facebookOnly = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "false" });
 assert.deepEqual(facebookOnly, ["facebook", "facebook_reels"]);
@@ -215,6 +221,7 @@ const adminSocialRoute = readFileSync(
   "utf8",
 );
 assert.match(adminSocialRoute, /normalizeSocialPlatformResults\(item\.metadata\?\.platformResults\)/);
+assert.match(adminSocialRoute, /parseRequestedSocialPlatforms\(body\.platforms\)/, "admin social actions must reject invalid platform filters instead of silently broadening scope");
 assert.match(adminSocialRoute, /getRetryableSocialPlatforms\(item\.target_platforms, item\.metadata, allowAmbiguous\)/);
 assert.ok(adminSocialRoute.includes("approvalDeferredPlatforms: preservedApprovalDeferredPlatforms"), "admin retries must preserve all outstanding approval gates.");
 assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.target_platforms\)/);

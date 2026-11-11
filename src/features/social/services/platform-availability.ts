@@ -15,6 +15,29 @@ export type SocialPlatformMetadata = {
   attempts?: unknown;
 } | null | undefined;
 
+export type RequestedSocialPlatformsResult =
+  | { ok: true; platforms: SocialPlatform[] }
+  | { ok: false; error: string };
+
+/**
+ * Omitted/empty platform lists intentionally mean "all eligible targets".
+ * A malformed or unsupported non-empty list must never silently widen a
+ * destructive or publishing action to every platform.
+ */
+export function parseRequestedSocialPlatforms(value: unknown): RequestedSocialPlatformsResult {
+  if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+    return { ok: true, platforms: [] };
+  }
+  if (!Array.isArray(value)) {
+    return { ok: false, error: "A platform list must be an array." };
+  }
+  const supported = new Set<SocialPlatform>(["facebook", "facebook_reels", "youtube"]);
+  if (value.some(platform => typeof platform !== "string" || !supported.has(platform as SocialPlatform))) {
+    return { ok: false, error: "The platform list contains an unsupported target." };
+  }
+  return { ok: true, platforms: [...new Set(value as SocialPlatform[])] };
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
