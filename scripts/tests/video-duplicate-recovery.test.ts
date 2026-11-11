@@ -150,6 +150,13 @@ assert.deepEqual(
 );
 
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+const videoAutomationService = readFileSync("src/features/videos/services/video-automation.ts", "utf8");
+const videoRetryRoute = readFileSync("src/app/api/admin/videos/[id]/retry/route.ts", "utf8");
+assert.match(videoRetryRoute, /currentRows\[0\]\.status !== 'failed'/, "only failed video requests may be retried");
+assert.match(videoRetryRoute, /updateVideoRequestStatus\(id, 'pending', undefined, 'failed'\)/, "retry must use a failed-state compare-and-set");
+assert.match(videoAutomationService, /status=eq\.\$\{encodeURIComponent\(expectedStatus\)\}/);
+assert.match(videoAutomationService, /return Array\.isArray\(updated\) && updated\.length > 0/);
+
 
 const recoveredFailed = buildMissingMediaQueueRecoveryPatch({
   item: {
