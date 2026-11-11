@@ -252,6 +252,39 @@ export function usePrayerAlert(
   const [currentTimings, setCurrentTimings] =
     useState<Record<string, string> | null>(null);
   const alertCallbackRef = useRef<((p: PrayerKey) => void) | null>(null);
+  const settingsRef = useRef(settings);
+  const pendingServerPushSyncRef = useRef(false);
+  settingsRef.current = settings;
+
+  const syncExistingServerPush = useCallback(async (
+    enabledPrayers: Record<PrayerKey, boolean>,
+  ) => {
+    if (
+      typeof window === "undefined" ||
+      !("Notification" in window) ||
+      Notification.permission !== "granted" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
+    ) {
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) return;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) return;
+      await registerPrayerPushSubscription({ enabledPrayers });
+    } catch (error) {
+      console.warn("[prayer-alert] Existing server push preference sync failed", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!pendingServerPushSyncRef.current) return;
+    pendingServerPushSyncRef.current = false;
+    void syncExistingServerPush(settings.enabledPrayers);
+  }, [settings.enabledPrayers, syncExistingServerPush]);
 
   useEffect(() => {
     void refreshSiteAudio();
@@ -299,12 +332,19 @@ export function usePrayerAlert(
     const refreshWhenVisible = () => {
       if (document.visibilityState !== "hidden") void refreshTimings();
     };
+    const syncPushContext = () => {
+      if (document.visibilityState === "hidden") return;
+      void syncExistingServerPush(settingsRef.current.enabledPrayers);
+    };
 
     void refreshTimings();
     window.addEventListener("zikr:prayer-location-updated", refreshWhenVisible);
     window.addEventListener("zikr:prayer-location-saved", refreshWhenVisible);
     window.addEventListener("zikr:native-ready", refreshWhenVisible);
     window.addEventListener("zikr:native-resumed", refreshWhenVisible);
+    window.addEventListener("zikr:prayer-location-updated", syncPushContext);
+    window.addEventListener("zikr:prayer-location-saved", syncPushContext);
+    window.addEventListener("zikr:native-resumed", syncPushContext);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     const refreshInterval = window.setInterval(
       () => void refreshTimings(),
@@ -318,6 +358,9 @@ export function usePrayerAlert(
       window.removeEventListener("zikr:prayer-location-saved", refreshWhenVisible);
       window.removeEventListener("zikr:native-ready", refreshWhenVisible);
       window.removeEventListener("zikr:native-resumed", refreshWhenVisible);
+      window.removeEventListener("zikr:prayer-location-updated", syncPushContext);
+      window.removeEventListener("zikr:prayer-location-saved", syncPushContext);
+      window.removeEventListener("zikr:native-resumed", syncPushContext);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [passive]);
@@ -399,6 +442,7 @@ export function usePrayerAlert(
   }, [settings, passive, currentTimings]);
 
   const togglePrayer = useCallback((p: PrayerKey) => {
+    pendingServerPushSyncRef.current = true;
     setSettings(prev => {
       const next: AzanSettings = {
         ...prev,
