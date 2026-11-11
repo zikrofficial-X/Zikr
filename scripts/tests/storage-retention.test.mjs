@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   compareSemverTags,
+  getReferenceOrderColumn,
   assertExpectedSupabaseProject,
   assertRetentionApplyConfirmation,
   probeCloudinaryPlayback,
@@ -220,6 +221,21 @@ assert.equal(
 );
 
 const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage.mjs", import.meta.url), "utf8");
+assert.equal(getReferenceOrderColumn("youtube_feed_cache"), "video_id");
+assert.equal(getReferenceOrderColumn("social_platform_profiles"), "platform");
+assert.equal(getReferenceOrderColumn("content_library"), "id");
+assert.throws(() => getReferenceOrderColumn("unknown_table"), /No deterministic primary-key order/);
+const orderMapStart = storageRetentionSource.indexOf("const REFERENCE_ORDER_COLUMNS = Object.freeze({");
+const orderMapEnd = storageRetentionSource.indexOf("});", orderMapStart);
+const orderMapSource = orderMapStart >= 0 && orderMapEnd > orderMapStart
+  ? storageRetentionSource.slice(orderMapStart, orderMapEnd)
+  : "";
+const referenceTables = [...storageRetentionSource.matchAll(/table: "([^"]+)"/g)].map((match) => match[1]);
+for (const table of new Set(referenceTables)) {
+  assert.ok(orderMapSource.includes(`${table}:`), `reference inventory table ${table} must declare a stable primary-key ordering`);
+}
+assert.match(storageRetentionSource, /pattern\.filter\(query\)\.order\(orderColumn, \{ ascending: true \}\)/);
+assert.match(storageRetentionSource, /from\("content_library"\)[\s\S]*?order\("id", \{ ascending: true \}\)[\s\S]*?range/);
 const inventoryStart = storageRetentionSource.indexOf("const [queueRows, requestRows, videoFiles, androidRoot]");
 const inventoryEnd = storageRetentionSource.indexOf("const requestById =", inventoryStart);
 const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
