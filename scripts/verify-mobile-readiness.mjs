@@ -83,6 +83,14 @@ for (const token of [
 }
 
 const plist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = plist.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/)?.[1] ?? "";
+const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\/string>/g)].map(match => match[1]));
+if (appBoundDomains.size > 10) failures.push("iOS WKAppBoundDomains must stay within Apple’s 10-domain limit");
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  if (capacitor.server?.allowNavigation?.includes(host) && !appBoundDomains.has(host)) {
+    failures.push(`iOS WKAppBoundDomains missing ${host} required by embedded video routes`);
+  }
+}
 if (plist.includes("<key>NSFaceIDUsageDescription</key>")) {
   failures.push("Do not request Face ID permission until a supported native biometric feature is implemented.");
 }
