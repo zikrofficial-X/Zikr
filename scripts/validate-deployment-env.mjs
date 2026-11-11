@@ -33,7 +33,6 @@ const OPTIONAL = [
   "YOUTUBE_CHANNEL_ID",
   "YOUTUBE_CLIENT_ID",
   "YOUTUBE_CLIENT_SECRET",
-  "YOUTUBE_REFRESH_TOKEN",
   "FACEBOOK_APP_ID",
   "FACEBOOK_APP_SECRET",
   "FACEBOOK_PAGE_ID",
@@ -74,6 +73,9 @@ for (const name of REQUIRED) {
 }
 for (const name of OPTIONAL) {
   if (!env(name)) add("warn", name, "optional integration is not configured");
+}
+if (env("YOUTUBE_REFRESH_TOKEN")) {
+  add("warn", "Legacy YouTube refresh token", "The current runtime ignores YOUTUBE_REFRESH_TOKEN; analytics and publishing require a scope-verified credential stored through Admin → Social in Supabase.");
 }
 
 function parseUrl(name) {
