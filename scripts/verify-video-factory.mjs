@@ -70,11 +70,12 @@ for (const token of ["scene text", "render_duration_ms integer", "video_generati
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("function isContentHashConflict(error: unknown)")) failures.push("video worker must recognize content-hash uniqueness conflicts consistently");
-const renderedHashClaimPosition = template.indexOf("const hashClaimRows = await supabaseServerAdminRequest");
-const renderedHashWritePosition = template.indexOf("content_hash: rendered.contentHash", renderedHashClaimPosition);
-const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)");
-if (renderedHashClaimPosition < 0 || renderedHashWritePosition < renderedHashClaimPosition || siteRegistrationPosition < 0 || renderedHashWritePosition > siteRegistrationPosition) {
-  failures.push("rendered content hash must be atomically written before public site registration");
+const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLease = async");
+const leaseFencePosition = template.indexOf("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt)", leaseHelperPosition);
+const renderedHashWritePosition = template.indexOf("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });", leaseHelperPosition);
+const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)", renderedHashWritePosition);
+if (leaseHelperPosition < 0 || leaseFencePosition < leaseHelperPosition || renderedHashWritePosition < leaseFencePosition || siteRegistrationPosition < renderedHashWritePosition) {
+  failures.push("rendered content hash must be atomically written under the current processing lease before public site registration");
 }
 for (const token of [
   'status: "cancelled"',

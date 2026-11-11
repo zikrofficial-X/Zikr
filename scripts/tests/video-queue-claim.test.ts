@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
@@ -98,4 +99,16 @@ test("a stale worker lease cannot update after recovery and a newer claim", () =
   assert.match(newClaim ?? "", /status=eq\.retry_wait/);
   assert.match(newLease ?? "", /updated_at=eq\.2026-11-11T23%3A12%3A00\.000Z/);
   assert.notEqual(oldLease, newLease);
+});
+
+test("Video Factory verifier accepts the lease-fenced hash claim before site registration", () => {
+  const result = spawnSync(process.execPath, ["scripts/verify-video-factory.mjs"], {
+    encoding: "utf8",
+  });
+  assert.equal(
+    result.status,
+    0,
+    [result.stdout, result.stderr].filter(Boolean).join("\n") ||
+      "Video Factory verifier must accept the current lease-based worker contract",
+  );
 });
