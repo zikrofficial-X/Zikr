@@ -432,11 +432,6 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
     },
     {
       table: "videos",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "videos",
       column: "thumbnail_url",
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
     },

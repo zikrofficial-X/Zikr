@@ -226,7 +226,6 @@ const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
   ? storageRetentionSource.slice(inventoryStart, inventoryEnd)
   : "";
 assert.ok(inventoryBlock.includes("collectPaginatedRows"), "queue and request inventories must use complete paginated scans");
-assert.match(storageRetentionSource, /table: "videos",[\s\S]*?column: "video_url"/);
 assert.match(storageRetentionSource, /table: "social_publish_queue",[\s\S]*?column: "video_url"/);
 assert.match(storageRetentionSource, /table: "video_generation_requests",[\s\S]*?column: "video_url"/);
 assert.ok(storageRetentionSource.includes("await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName)"));
