@@ -11,7 +11,7 @@ import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
 } from "@/features/social/services/social-publishing";
-import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
+import { canDeleteLocalSocialQueueItem, getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem & {
@@ -499,7 +499,9 @@ export default function AdminSocialPage() {
     const matchesPlatform = platformFilter === "all" || item.target_platforms.includes(platformFilter);
     return matchesStatus && matchesPlatform;
   }), [filter, queueOpenItems, platformFilter]);
-  const retryable = items.filter(item => item.status === "failed" || item.status === "partial");
+  const retryable = useMemo(() => items.filter(item => item.status === "failed" || item.status === "partial"), [items]);
+  const localDeletable = useMemo(() => items.filter(canDeleteLocalSocialQueueItem), [items]);
+  const selectedLocalDeletableCount = selected.filter(id => localDeletable.some(item => item.id === id)).length;
   const selectedRetryableCount = selected.filter(id => retryable.some(item => item.id === id)).length;
   const selectedManualReconciliationCount = items.filter(item =>
     selected.includes(item.id) && getManualReconciliationPlatforms(item.metadata).length > 0,
@@ -529,14 +531,19 @@ export default function AdminSocialPage() {
         const confirmation = action === "publish_now"
           ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
           : action === "retry_all_failed"
-            ? "سيتم إعادة محاولة العناصر الفاشلة أو الجزئية المؤهلة فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها."
+            ? `ستتم إعادة محاولة ${retryable.length} عنصرًا فاشلًا/جزئيًا ظاهرًا فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها.`
             : action === "delete_failed"
-              ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
-              : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
+              ? `سيتم حذف ${localDeletable.length} سجل فشل آمن ظاهر فقط. لن يُحذف أي سجل جزئي أو يحمل نتيجة منصة ناجحة أو غير مؤكدة.`
+              : `سيتم حذف ${selectedLocalDeletableCount} سجل فشل آمن من المحدد فقط. ستظل السجلات الجزئية والناجحة والملتبسة محفوظة.`;
         if (!window.confirm(confirmation)) return;
+        if (action === "delete" || action === "delete_failed") confirmedNoRemotePublication = true;
       }
-      const ids = action === "retry_all_failed" || action === "delete_failed" ? [] : selected;
-      if ((action === "retry" || action === "delete") && ids.length === 0) {
+      const ids = action === "retry_all_failed"
+        ? retryable.map(item => item.id)
+        : action === "delete_failed"
+          ? localDeletable.map(item => item.id)
+          : selected;
+      if (["retry", "retry_all_failed", "delete", "delete_failed"].includes(action) && ids.length === 0) {
         setError("حدد عملية فاشلة أو نشرًا جزئيًا أولًا.");
         return;
       }
@@ -557,6 +564,10 @@ export default function AdminSocialPage() {
           error?: string;
           nextPath?: string;
           affected?: number;
+          preserved?: number;
+          stale?: number;
+          uncertain?: number;
+          staleSkipped?: number;
           manualReconciliationSkipped?: number;
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
@@ -572,11 +583,25 @@ export default function AdminSocialPage() {
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }
+        } else if (action === "delete" || action === "delete_failed") {
+          const preserved = payload.preserved ?? 0;
+          const stale = payload.stale ?? 0;
+          const uncertain = payload.uncertain ?? 0;
+          setMessage(
+            `حُذف ${payload.affected ?? 0} سجل محلي آمن. تم الاحتفاظ بـ${preserved} سجل بسبب نتيجة ناجحة أو جزئية أو غير مؤكدة.` +
+              (stale > 0 ? ` تم تجاوز ${stale} سجل تغيّر قبل تنفيذ الحذف.` : "") +
+              (uncertain > 0 ? ` تعذر تأكيد نتيجة ${uncertain} عملية؛ حدّث الطابور قبل أي محاولة أخرى.` : ""),
+          );
+          if (payload.blocked?.length) {
+            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
+          }
         } else {
           const skipped = payload.manualReconciliationSkipped ?? 0;
+          const staleSkipped = payload.staleSkipped ?? 0;
           setMessage(
-            `تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.` +
-              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : ""),
+            `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
+              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
+              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : ""),
           );
         }
         await load();
@@ -586,7 +611,7 @@ export default function AdminSocialPage() {
         setBusy(false);
       }
     },
-    [load, retryable.length, selected, selectedManualReconciliationCount, selectedPublishNowCount]
+    [load, localDeletable, retryable, selected, selectedLocalDeletableCount, selectedManualReconciliationCount, selectedPublishNowCount]
   );
 
   const deletePublished = useCallback(async (ids: string[], platforms?: string[]) => {
@@ -1027,7 +1052,7 @@ export default function AdminSocialPage() {
               disabled={!retryable.length || busy}
               onClick={() => void runAction("retry_all_failed")}
             >
-              إعادة محاولة الفاشلة/الجزئية ({retryable.length})
+              إعادة محاولة الظاهرة ({retryable.length})
             </Button>
             <Button
               variant="outline"
@@ -1038,10 +1063,10 @@ export default function AdminSocialPage() {
             </Button>
             <Button
               variant="outline"
-              disabled={!retryable.length || busy}
+              disabled={!localDeletable.length || busy}
               onClick={() => void runAction("delete_failed")}
             >
-              حذف الفاشلة/الجزئية ({retryable.length})
+              حذف الفاشلة الآمنة ({localDeletable.length})
             </Button>
           </div>
         </div>
