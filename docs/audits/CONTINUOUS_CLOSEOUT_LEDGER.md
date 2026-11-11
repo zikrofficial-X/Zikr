@@ -901,7 +901,7 @@ No content generation, Gemini request, social publication, production migration,
 - Audit branch tree: 2,220 entries, 1,724 files, 496 directories.
 - PR file delta: 204 changed files; 62 added, 142 modified, 0 deleted. The historical 68-path table is a subset and is not a full review of the current PR delta.
 - The main-baseline manifest contains 2,153 records because it excludes its own file entry. The `docs` and `docs/audits` directory hashes remain null to avoid self-reference.
-- The manifest's `CONTINUOUS_CLOSEOUT_LEDGER.md` entry was stale (intermediate branch blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076`). It is corrected to the exact main-baseline blob `057c5b9ffb16691abfc6e245e583c908a0dbe73d`, size 93,248 bytes. The manifest remains pinned to `main@c4560d9`; it is not a branch-tree manifest.
+- The checked-in main manifest's `CONTINUOUS_CLOSEOUT_LEDGER.md` entry `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes is stale. Recursive main-tree validation identifies the actual main ledger blob as `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes; the branch manifest records this tree-verified value. All other entries match the main tree after excluding the manifest itself and allowing the two intentional null ancestor-directory hashes.
 - The file-status matrix still records 1,525 current-main `REVIEW_REQUIRED` rows and 0 closed modules. This run adds targeted file-content notes but does not close repository-wide rows.
 
 ### Supabase and deployment gates
@@ -929,3 +929,5 @@ No content generation, Gemini request, social publication, production migration,
 
 No content generation, Gemini request, social publication, audit-triggered production database mutation, storage/media deletion, Android release, merge, or deployment was performed by this audit. The independent scheduled main-branch content-sync status is not attributable to this run.
 
+
+- Documentation checkpoint `78d6520ee8388abdb58bed7fbabf94a74ca68a2a` was superseded before its queued CI completed: it had copied the stale ledger SHA from the checked-in main manifest. Recursive Git tree validation proved the actual main ledger blob is `31c64dc29e01e9d92a2a2ae82ae103e8d6521076`; the corrected manifest now uses that exact SHA and size. The superseded Quality Gate run #2509 is not treated as final verification.
