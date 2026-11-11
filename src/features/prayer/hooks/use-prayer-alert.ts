@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createAsyncSerialQueue } from "@/lib/async-serial-queue";
 import {
   unlockAudioContext,
   isAudioUnlocked,
@@ -47,6 +48,7 @@ const PRAYER_NATIVE_ID_BASE = 7000;
 const PRAYER_SCHEDULE_DAYS = 4;
 const SETTINGS_UPDATED_EVENT = "zikr:prayer-settings-updated";
 let nativePrayerScheduleGeneration = 0;
+const enqueueNativePrayerSchedule = createAsyncSerialQueue();
 
 const DEFAULT_SETTINGS: AzanSettings = {
   enabledPrayers: {
@@ -114,6 +116,19 @@ async function scheduleNativePrayerNotifications(
   timings: Record<string, string> | null,
 ): Promise<void> {
   if (typeof window === "undefined") return;
+  const generation = ++nativePrayerScheduleGeneration;
+  await enqueueNativePrayerSchedule(async () => {
+    if (generation !== nativePrayerScheduleGeneration) return;
+    await scheduleNativePrayerNotificationsNow(settings, timings, generation);
+  });
+}
+
+async function scheduleNativePrayerNotificationsNow(
+  settings: AzanSettings,
+  timings: Record<string, string> | null,
+  generation: number,
+): Promise<void> {
+  if (typeof window === "undefined") return;
   const native = (
     window as Window & {
       zikrNative?: {
@@ -131,7 +146,6 @@ async function scheduleNativePrayerNotifications(
   ).zikrNative;
   if (!native?.scheduleLocalNotification) return;
 
-  const generation = ++nativePrayerScheduleGeneration;
   const nativeIds = Array.from(
     { length: PRAYER_SCHEDULE_DAYS * PRAYERS.length },
     (_, index) => PRAYER_NATIVE_ID_BASE + index,

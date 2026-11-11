@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createAsyncSerialQueue } from "@/lib/async-serial-queue";
 import { unlockAudioContext, refreshSiteAudio } from "@/lib/audio/spiritual-tones";
 import { getNativeAudio } from "@/lib/audio/config";
 import {
@@ -84,16 +85,28 @@ function isQuietAt(date: Date, quietHours: QuietHours): boolean {
 }
 
 let salawatScheduleGeneration = 0;
+const enqueueNativeSalawatSchedule = createAsyncSerialQueue();
 
 async function scheduleNativeSalawatReminders(
   settings: SalawatSettings
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  const generation = ++salawatScheduleGeneration;
+  await enqueueNativeSalawatSchedule(async () => {
+    if (generation !== salawatScheduleGeneration) return;
+    await scheduleNativeSalawatRemindersNow(settings, generation);
+  });
+}
+
+async function scheduleNativeSalawatRemindersNow(
+  settings: SalawatSettings,
+  generation: number,
 ): Promise<void> {
   if (typeof window === "undefined") return;
   const native = (window as Window & { zikrNative?: NativeSalawatFacade })
     .zikrNative;
   if (!native?.scheduleLocalNotification) return;
 
-  const generation = ++salawatScheduleGeneration;
   await native.cancelLocalNotifications?.(SALAWAT_NATIVE_IDS);
   if (
     generation !== salawatScheduleGeneration ||
