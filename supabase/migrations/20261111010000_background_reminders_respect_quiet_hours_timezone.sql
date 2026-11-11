@@ -85,8 +85,8 @@ begin
           local_clock.local_time < preferences.quiet_hours_start
           or local_clock.local_time >= preferences.quiet_hours_end
         else
-          local_clock.local_time < preferences.quiet_hours_start
-          and local_clock.local_time >= preferences.quiet_hours_end
+          local_clock.local_time >= preferences.quiet_hours_start
+          or local_clock.local_time < preferences.quiet_hours_end
       end
     )
   on conflict (push_subscription_id, notification_kind, scheduled_at) do nothing;
