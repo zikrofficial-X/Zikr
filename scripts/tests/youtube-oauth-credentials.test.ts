@@ -104,9 +104,8 @@ const videoAutomationSource = readFileSync(
   new URL("../../src/features/videos/services/video-automation.ts", import.meta.url),
   "utf8",
 );
-assert.match(
-  videoAutomationSource,
-  /stored credential with the youtube\\.upload scope/,
+assert.ok(
+  videoAutomationSource.includes("stored credential with the youtube.upload scope"),
   "publishing diagnostics must describe the Supabase-stored upload-scoped credential rather than a legacy YOUTUBE_REFRESH_TOKEN environment variable",
 );
 assert.doesNotMatch(videoAutomationSource, /YOUTUBE_REFRESH_TOKEN are required/);
