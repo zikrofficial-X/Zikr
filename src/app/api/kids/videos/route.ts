@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import { getKidsGeneratedVideos } from "@/features/videos/services/videos";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { isPublicKidsVideoSocialQueueRow } from "@/features/social/services/kids-video-social-visibility";
+import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow } from "@/features/social/services/kids-video-social-visibility";
 
 export const dynamic = "force-dynamic";
-
-const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
 
 type SocialQueueRow = {
   content_id: string | null;
@@ -25,36 +23,28 @@ function asRecord(value: unknown): Record<string, unknown> {
 }
 
 function confirmedSocialPlatforms(row: SocialQueueRow): string[] {
-  const results = asRecord(row.metadata?.platformResults);
-  const delivered = Object.entries(results)
-    .filter(([platform, value]) => {
-      if (!SOCIAL_PLATFORMS.has(platform)) return false;
-      const result = asRecord(value);
-      return result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
-    })
-    .map(([platform]) => platform);
-  if (delivered.length > 0) return delivered;
-  return row.status === "published"
-    ? (row.target_platforms ?? []).filter((platform) => SOCIAL_PLATFORMS.has(platform))
-    : [];
+  return getConfirmedPublicKidsVideoSocialPlatforms(row);
 }
 
 function publicSocialPublication(row: SocialQueueRow | null, stored: unknown) {
   const storedRecord = asRecord(stored);
   const storedPlatforms = Array.isArray(storedRecord.platforms)
     ? storedRecord.platforms.filter((platform): platform is string =>
-        typeof platform === "string" && SOCIAL_PLATFORMS.has(platform))
+        typeof platform === "string" &&
+        (platform === "youtube" || platform === "facebook" || platform === "facebook_reels"))
     : [];
-  const platforms = storedPlatforms.length > 0 ? storedPlatforms : row ? confirmedSocialPlatforms(row) : [];
+  // When a queue row exists it is the live source of truth. In particular, a
+  // confirmed remote deletion must not be overridden by stale catalog metadata.
+  const platforms = row ? confirmedSocialPlatforms(row) : storedPlatforms;
   if (platforms.length === 0) return null;
   return {
-    status: storedRecord.status === "published" || row?.status === "published"
-      ? "published"
-      : "partial",
+    status: row
+      ? row.status === "published" ? "published" : "partial"
+      : storedRecord.status === "published" ? "published" : "partial",
     platforms,
-    publishedAt: typeof storedRecord.publishedAt === "string"
-      ? storedRecord.publishedAt
-      : row?.published_at ?? null,
+    publishedAt: row
+      ? row.published_at
+      : typeof storedRecord.publishedAt === "string" ? storedRecord.publishedAt : null,
   };
 }
 
