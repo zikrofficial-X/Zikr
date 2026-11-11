@@ -544,6 +544,13 @@ function isContentHashConflict(error: unknown): boolean {
     message.includes("duplicate key value violates unique constraint") && message.includes("content_hash");
 }
 
+class VideoRequestLeaseLostError extends Error {
+  constructor(requestId: string) {
+    super(`Video request ${requestId} no longer owns the processing lease.`);
+    this.name = "VideoRequestLeaseLostError";
+  }
+}
+
 export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
 
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
@@ -2225,6 +2232,27 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     }
     processed += 1;
     const attemptStartedAt = Date.now();
+    let leaseUpdatedAt = claimUpdatedAt;
+    const patchProcessingRequestWithLease = async (patch: Record<string, unknown>) => {
+      const leaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt);
+      if (!leaseFilter) throw new VideoRequestLeaseLostError(request.id);
+      const rows = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
+        `/rest/v1/video_generation_requests?${leaseFilter}&select=id,updated_at`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+        },
+      );
+      const row = rows?.[0];
+      if (!row?.id) throw new VideoRequestLeaseLostError(request.id);
+      const nextLeaseAt = row.updated_at?.trim();
+      if (!nextLeaseAt) {
+        throw new Error(`Lease update for video request ${request.id} did not return an updated_at value.`);
+      }
+      leaseUpdatedAt = nextLeaseAt;
+      return row;
+    };
     try {
       const rendered = await renderVideo(request);
       const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
@@ -2287,20 +2315,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       // A unique conflict means equivalent content already exists; retain this render on
       // its request row for review, but never publish or retry the duplicate.
       try {
-        const hashClaimRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-          {
-            method: "PATCH",
-            headers: { Prefer: "return=representation" },
-            body: JSON.stringify({
-              content_hash: rendered.contentHash,
-              updated_at: new Date().toISOString(),
-            }),
-          },
-        );
-        if (!hashClaimRows?.[0]?.id) {
-          throw new Error(`Could not claim the rendered content hash for ${request.id}.`);
-        }
+        await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });
       } catch (hashError) {
         if (!isContentHashConflict(hashError)) throw hashError;
         const duplicateRows = await supabaseServerAdminRequest<GeneratedRequest[]>(
@@ -2344,6 +2359,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             ...duplicate,
             content: recoveredContent,
           };
+          await patchProcessingRequestWithLease({});
           const recoveryResult = await registerGeneratedVideoOnSite(
             recoveredRequest,
             rendered,
@@ -2377,28 +2393,17 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
             }
 
-            const cancelledDuplicateRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-              {
-                method: "PATCH",
-                headers: { Prefer: "return=representation" },
-                body: JSON.stringify({
-                  status: "cancelled",
-                  video_url: null,
-                  scene: null,
-                  render_duration_ms: null,
-                  generation_attempts: attempts,
-                  next_retry_at: null,
-                  last_attempt_at: duplicateAt,
-                  error_message: "Duplicate render recovered into the canonical request",
-                  error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
-                  updated_at: duplicateAt,
-                }),
-              },
-            );
-            if (!cancelledDuplicateRows?.[0]?.id) {
-              throw new Error(`Duplicate request ${request.id} could not be cancelled after canonical media recovery; social publishing remains held.`);
-            }
+            await patchProcessingRequestWithLease({
+              status: "cancelled",
+              video_url: null,
+              scene: null,
+              render_duration_ms: null,
+              generation_attempts: attempts,
+              next_retry_at: null,
+              last_attempt_at: duplicateAt,
+              error_message: "Duplicate render recovered into the canonical request",
+              error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
+            });
 
             let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
             try {
@@ -2416,25 +2421,17 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           }
         }
 
-        await supabaseServerAdminRequest(
-          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-          {
-            method: "PATCH",
-            headers: { Prefer: "return=minimal" },
-            body: JSON.stringify({
-              status: "cancelled",
-              video_url: rendered.videoUrl,
-              scene: rendered.scene,
-              render_duration_ms: rendered.renderDurationMs,
-              generation_attempts: attempts,
-              next_retry_at: null,
-              last_attempt_at: duplicateAt,
-              error_message: "Duplicate generated content; publication skipped",
-              error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
-              updated_at: duplicateAt,
-            }),
-          },
-        );
+        await patchProcessingRequestWithLease({
+          status: "cancelled",
+          video_url: rendered.videoUrl,
+          scene: rendered.scene,
+          render_duration_ms: rendered.renderDurationMs,
+          generation_attempts: attempts,
+          next_retry_at: null,
+          last_attempt_at: duplicateAt,
+          error_message: "Duplicate generated content; publication skipped",
+          error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
+        });
         skipped += 1;
         console.warn(`[template-video] Skipped duplicate rendered content for ${request.id}; existing request ${duplicate.id}.`);
         continue;
@@ -2444,6 +2441,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
       if (qaApproval) {
+        await patchProcessingRequestWithLease({});
         await registerGeneratedVideoOnSite(request, rendered);
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
@@ -2453,6 +2451,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       // generation rows and unfinished social rows as media-retention guards;
       // completing first would leave a race where purge deletes the asset before
       // this worker inserts the queue row that references it.
+      await patchProcessingRequestWithLease({});
       try {
         await queueSocialItems(request, rendered.videoUrl);
       } catch (socialError) {
@@ -2461,45 +2460,59 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           socialError instanceof Error ? socialError.message : String(socialError),
         );
       }
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          status: "completed",
-          video_url: rendered.videoUrl,
-          scene: rendered.scene,
-          render_duration_ms: rendered.renderDurationMs,
-          source_hash: rendered.sourceHash,
-          template_version: rendered.templateVersion,
-          provider:
-            typeof request.content.aiProvider === "string"
-              ? request.content.aiProvider
-              : "template",
-          provider_job_id:
-            typeof request.content.aiProviderJobId === "string"
-              ? request.content.aiProviderJobId
-              : null,
-          content: request.content,
-          updated_at: new Date().toISOString(),
-          error_message: null,
-          error_details: null,
-        }),
+      await patchProcessingRequestWithLease({
+        status: "completed",
+        video_url: rendered.videoUrl,
+        scene: rendered.scene,
+        render_duration_ms: rendered.renderDurationMs,
+        source_hash: rendered.sourceHash,
+        template_version: rendered.templateVersion,
+        provider:
+          typeof request.content.aiProvider === "string"
+            ? request.content.aiProvider
+            : "template",
+        provider_job_id:
+          typeof request.content.aiProviderJobId === "string"
+            ? request.content.aiProviderJobId
+            : null,
+        content: request.content,
+        error_message: null,
+        error_details: null,
       });
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {
-      failed += 1;
+      if (error instanceof VideoRequestLeaseLostError) {
+        skipped += 1;
+        console.warn(`[template-video] Abandoned stale worker for ${request.id}; another worker owns the current queue lease.`);
+        continue;
+      }
       const message = error instanceof Error ? error.message : String(error);
       const failedScene = request.content?.ai && typeof request.content.ai === "object" && ["calm", "dawn", "night", "gold", "emerald", "paper", "rose"].includes(String((request.content.ai as { scene?: unknown }).scene))
         ? String((request.content.ai as { scene?: unknown }).scene)
         : deterministicScene(request);
       const attempts = (request.generation_attempts ?? 0) + 1;
       const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: terminalStatus, scene: failedScene, render_duration_ms: Date.now() - attemptStartedAt, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
-      });
+      try {
+        await patchProcessingRequestWithLease({
+          status: terminalStatus,
+          scene: failedScene,
+          render_duration_ms: Date.now() - attemptStartedAt,
+          generation_attempts: attempts,
+          next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null,
+          last_attempt_at: new Date().toISOString(),
+          error_message: "Template generation failed",
+          error_details: message.slice(0, 2000),
+        });
+        failed += 1;
+      } catch (leaseError) {
+        if (leaseError instanceof VideoRequestLeaseLostError) {
+          skipped += 1;
+          console.warn(`[template-video] Did not overwrite a newer queue owner after failure for ${request.id}.`);
+          continue;
+        }
+        throw leaseError;
+      }
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }
   }

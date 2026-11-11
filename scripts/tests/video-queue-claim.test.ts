@@ -81,3 +81,21 @@ test("pause-lock release is fenced by the exact processing lease", () => {
   );
   assert.equal(buildProcessingVideoRequestLeaseFilter("request-2", null), null);
 });
+
+test("a stale worker lease cannot update after recovery and a newer claim", () => {
+  const oldLease = buildProcessingVideoRequestLeaseFilter("request-3", updatedAt);
+  const recoveredAt = "2026-11-11T23:10:00.000Z";
+  const newClaim = buildVideoRequestClaimFilter({
+    id: "request-3",
+    status: "retry_wait",
+    updated_at: recoveredAt,
+    next_retry_at: "2026-11-11T23:11:00.000Z",
+  }, "2026-11-11T23:12:00.000Z");
+  const newLease = buildProcessingVideoRequestLeaseFilter("request-3", "2026-11-11T23:12:00.000Z");
+
+  assert.match(oldLease ?? "", /status=eq\.processing/);
+  assert.match(oldLease ?? "", /updated_at=eq\.2026-11-11T22%3A40%3A00\.000Z/);
+  assert.match(newClaim ?? "", /status=eq\.retry_wait/);
+  assert.match(newLease ?? "", /updated_at=eq\.2026-11-11T23%3A12%3A00\.000Z/);
+  assert.notEqual(oldLease, newLease);
+});

@@ -79,6 +79,28 @@ assert(
   queue.includes("buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt)"),
   "pause-lock release cannot overwrite a request changed after the worker claim",
 );
+const workerStart = queue.indexOf("export async function processTemplateVideoQueue");
+const postClaimWorker = workerStart >= 0 ? queue.slice(workerStart) : "";
+assert(
+  postClaimWorker.includes("let leaseUpdatedAt = claimUpdatedAt;") &&
+    postClaimWorker.includes("const patchProcessingRequestWithLease = async") &&
+    postClaimWorker.includes("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt)"),
+  "post-claim writes use a rolling exact-row-version lease",
+);
+assert(
+  postClaimWorker.includes("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });") &&
+    postClaimWorker.includes("await patchProcessingRequestWithLease({ status: \"completed\"") &&
+    postClaimWorker.includes("await patchProcessingRequestWithLease({\n          status: terminalStatus,"),
+  "hash claim, completion and failure updates are fenced by the processing lease",
+);
+assert(
+  !postClaimWorker.includes("/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}"),
+  "no post-claim ID-only PATCH can overwrite a newer worker",
+);
+assert(
+  postClaimWorker.includes("error instanceof VideoRequestLeaseLostError"),
+  "a worker that loses its lease is skipped without rewriting the newer owner",
+);
 assert(
   claim.includes("updated_at=eq.") && claim.includes("next_retry_at=lte."),
   "video queue filters include optimistic row-version and retry-due predicates",
