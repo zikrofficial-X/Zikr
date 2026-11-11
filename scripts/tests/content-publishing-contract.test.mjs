@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const job = readFileSync("scripts/jobs/content-publishing.ts", "utf8");
 const adminContent = readFileSync("src/features/admin/services/content.ts", "utf8");
 const contentUpdate = job.indexOf("const updatedContent = await supabaseServerAdminRequest");
-const missingRowGuard = job.indexOf("if (!updatedContent?.some(row => row.id === item.content_id))");
+const missingRowGuard = job.indexOf("if (!updatedRow || typeof updatedRow.updated_at !== \"string\" || !updatedRow.updated_at)");
 const queuePublishedUpdate = job.indexOf('status: "published"', contentUpdate);
 
 assert.ok(contentUpdate >= 0, "scheduled publishing must request the updated content row");
