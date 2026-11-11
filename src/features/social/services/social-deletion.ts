@@ -51,7 +51,7 @@ async function youtubeAccessToken(
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
   const refreshToken = (await resolveRefreshToken(env))?.trim();
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error("حذف فيديو YouTube يحتاج بيانات OAuth مكتملة على Vercel.");
+    throw new Error("حذف فيديو YouTube يحتاج بيانات العميل على Vercel واعتماد OAuth مخزنًا على Supabase بصلاحية حذف صريحة.");
   }
 
   const response = await fetcher("https://oauth2.googleapis.com/token", {
