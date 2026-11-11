@@ -144,6 +144,37 @@ if (!entitlements.includes("applinks:zikrmediaofficial.vercel.app")) failures.pu
 
 const pbxproj = read("ios/App/App.xcodeproj/project.pbxproj");
 const iosPodfile = read("ios/App/Podfile");
+const iosPodPackages = {
+  Capacitor: "@capacitor/ios",
+  CapacitorCordova: "@capacitor/ios",
+  CapacitorApp: "@capacitor/app",
+  CapacitorBrowser: "@capacitor/browser",
+  CapacitorCamera: "@capacitor/camera",
+  CapacitorFilesystem: "@capacitor/filesystem",
+  CapacitorGeolocation: "@capacitor/geolocation",
+  CapacitorHaptics: "@capacitor/haptics",
+  CapacitorKeyboard: "@capacitor/keyboard",
+  CapacitorLocalNotifications: "@capacitor/local-notifications",
+  CapacitorNetwork: "@capacitor/network",
+  CapacitorPreferences: "@capacitor/preferences",
+  CapacitorPushNotifications: "@capacitor/push-notifications",
+  CapacitorShare: "@capacitor/share",
+  CapacitorSplashScreen: "@capacitor/splash-screen",
+  CapacitorStatusBar: "@capacitor/status-bar",
+  CapawesomeCapacitorBackgroundTask: "@capawesome/capacitor-background-task",
+};
+if (!iosPodfile.includes("require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'")) {
+  failures.push("iOS CocoaPods helpers must resolve through the stable node_modules symlink.");
+}
+if (iosPodfile.includes("node_modules/.pnpm/")) {
+  failures.push("iOS Podfile must not pin transient pnpm store paths that change when Capacitor packages are upgraded.");
+}
+for (const [pod, packageName] of Object.entries(iosPodPackages)) {
+  if (!packageDependencies[packageName]) failures.push(`iOS CocoaPods dependency is missing from package.json: ${packageName}`);
+  if (!iosPodfile.includes(`pod '${pod}', :path => '../../node_modules/${packageName}'`)) {
+    failures.push(`iOS CocoaPods path for ${pod} must resolve through ../../node_modules/${packageName}.`);
+  }
+}
 const configuredIosScheme = capacitor.ios?.scheme ?? "App";
 if (configuredIosScheme !== "App") {
   failures.push(`Capacitor iOS scheme must match the Xcode App target; received "${configuredIosScheme}".`);
