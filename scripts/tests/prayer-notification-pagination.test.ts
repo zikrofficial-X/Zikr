@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
+import { canSchedulePrayerSubscription } from "../../supabase/functions/prayer-notification-worker/eligibility";
 
 const source = Array.from({ length: 205 }, (_, index) => ({
   id: String(index + 1).padStart(4, "0"),
@@ -62,6 +63,12 @@ await assert.rejects(
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 assert.match(worker, /forEachIdPage\(/);
+assert.match(worker, /canSchedulePrayerSubscription\(/);
+assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing prayer preference must not be treated as opted in");
+assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
+assert.equal(canSchedulePrayerSubscription(false, { notifications_enabled: true }), false, "a subscription without a default location must not be scheduled");
+assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: false }), false, "disabled prayer notifications must be skipped");
+assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "configured, opted-in prayer notifications may be scheduled");
 assert.match(worker, /.order\("id", \{ ascending: true \}\)/);
 assert.match(worker, /query\.gt\("id", afterId\)/);
 
@@ -130,6 +137,11 @@ assert.equal(isOutsideQuietHours(21 * 60 + 30, 22 * 60, 7 * 60), true, "21:30 is
 assert.match(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to service_role/i);
 assert.doesNotMatch(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to (?:public|anon|authenticated)/i);
 assert.match(reminderService, /normalizeIanaTimeZone\(body\.timezone\)/);
+assert.match(
+  reminderService,
+  /\.upsert\(payload,[\s\S]*?\.select\(\s*"user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,timezone,updated_at"/,
+  "reminder updates must return the complete preference contract, including Quran settings",
+);
 assert.match(timezoneUtility, /Intl\.DateTimeFormat\("en-US",\s*\{\s*timeZone:/);
 assert.match(reminderService, /updates\.timezone = timezone/);
 assert.match(reminderService, /quiet_hours_end,timezone,updated_at/);
