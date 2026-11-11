@@ -103,6 +103,12 @@ if (!videoGenerator.includes("async function queueSocialItems") ||
     videoGenerator.includes("reconcileCompletedVideoSocialQueue")) {
   failures.push("only newly generated videos may create social queue items; historical generation requests must not be reconciled");
 }
+if (!videoGenerator.includes("function hasCompleteKidsSeriesMetadata") ||
+    !videoGenerator.includes('content.contentFormat === "series_episode"') ||
+    !videoGenerator.includes("hasCompleteKidsSeriesMetadata(request.content)") ||
+    !videoGenerator.includes("hasCompleteKidsSeriesMetadata(content)")) {
+  failures.push("Kids video catalog visibility and social publishing must share one complete series-episode contract");
+}
 if (!videoGenerator.includes("getYouTubeUploadRefreshToken") ||
     !videoGenerator.includes("getFacebookPageCredentials") ||
     !videoGenerator.includes("FACEBOOK_PUBLISHING_REQUESTED") ||
