@@ -37,8 +37,8 @@ export async function readStoredYouTubeRefreshToken(): Promise<string | null> {
     const token = row?.refresh_token;
     return typeof token === "string" && token.trim() ? token.trim() : null;
   } catch {
-    // A missing table during deployment or a temporary REST error must not
-    // break the currently configured environment credential.
+    // Fail closed. Environment refresh tokens are not used because their
+    // granted scopes cannot be verified before analytics or publishing calls.
     return null;
   }
 }

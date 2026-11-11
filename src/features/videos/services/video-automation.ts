@@ -35,7 +35,7 @@ async function getYoutubeAccessToken(): Promise<string> {
   const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
   const refreshToken = await getYouTubeUploadRefreshToken();
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required');
+    throw new Error('YouTube OAuth is not configured: set YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET, then reconnect a channel with the youtube.upload scope in the admin publishing center.');
   }
 
   try {

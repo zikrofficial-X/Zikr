@@ -19,11 +19,12 @@ test("rejects arbitrary external hosts and SSRF targets", () => {
     "https://example.com/video.mp4",
     "https://localhost/video.mp4",
     "http://127.0.0.1/video.mp4",
+    "https://127.0.0.1/zikr/video/upload/episode.mp4",
     "http://169.254.169.254/latest/meta-data",
     "https://res.cloudinary.com.evil.example/zikr/video/upload/episode.mp4",
     "https://user:pass@res.cloudinary.com/zikr/video/upload/episode.mp4",
   ]) {
-    assert.throws(() => assertCloudinaryVideoUrl(url, "Facebook"), url);
+    assert.throws(() => assertCloudinaryVideoUrl(url, "Facebook"), /Cloudinary|HTTPS/);
   }
 });
 
