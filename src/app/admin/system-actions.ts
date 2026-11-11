@@ -7,6 +7,7 @@ import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
+import { buildRunNowRequestValueFilter } from "@/features/videos/services/background-job-outcome";
 
 function formValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -154,6 +155,8 @@ export async function requestVideoAutomationRunAction() {
   const key = "video_automation_run_now";
   const requestedAt = new Date().toISOString();
   const request = { requestId: randomUUID(), requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+  const requestFilter = buildRunNowRequestValueFilter(request);
+  if (!requestFilter) throw new Error("تعذر إنشاء شرط آمن لطلب التشغيل الفوري.");
 
   try {
     await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
@@ -168,7 +171,7 @@ export async function requestVideoAutomationRunAction() {
     });
 
     const dispatchedAt = new Date().toISOString();
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ value: { ...request, dispatchedAt }, updated_at: dispatchedAt }),
@@ -193,7 +196,7 @@ export async function requestVideoAutomationRunAction() {
         queuedForScheduledWorker: true,
         fallbackMessage: "تم حفظ الطلب. سيعالجه عامل الفيديو عند دورة GitHub Actions المجدولة التالية؛ التشغيل الفوري يحتاج ضبط GITHUB_DISPATCH_TOKEN في Vercel.",
       };
-      await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+      await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ value: queuedRequest, updated_at: queuedAt }),
@@ -210,7 +213,7 @@ export async function requestVideoAutomationRunAction() {
     }
 
     const failedAt = new Date().toISOString();
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ value: { ...request, failedAt, error: message.slice(0, 500) }, updated_at: failedAt }),
