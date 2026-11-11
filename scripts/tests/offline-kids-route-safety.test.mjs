@@ -12,6 +12,8 @@ const currentRows = [
   { type: "story", slug: "current-approved-story", metadata: { age_appropriate: true } },
   { type: "story", slug: "approval-withdrawn", metadata: { age_appropriate: false } },
   { type: "game", slug: "current-game", metadata: {} },
+  { type: "activity", slug: "current-double--hyphen", metadata: {} },
+  { type: "activity", slug: "unsafe/slug", metadata: {} },
 ];
 
 const blocked = getBlockedKidsRoutes(previousRows, currentRows, [
@@ -41,7 +43,7 @@ assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
 assert.deepEqual(
   getPublishedKidsRoutes(currentRows),
-  ["/kids/current-approved-story", "/kids/current-game"],
+  ["/kids/current-approved-story", "/kids/current-double--hyphen", "/kids/current-game"],
   "newly published and approved Kids slugs must be added to the offline route manifest while unapproved stories stay excluded",
 );
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
