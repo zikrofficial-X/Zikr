@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAllowedPushEndpoint } from "@/features/notifications/services/push-endpoint";
+import { mergePrayerReminderPreferences } from "@/features/prayer/services/prayer-reminder-preferences";
 import {
   createAdminClient,
   getSupabaseUser,
@@ -124,6 +125,18 @@ async function upsertPrayerContext(
   userId: string,
   context: NonNullable<ReturnType<typeof parsePrayerContext>>
 ) {
+  const { data: existingPreferences, error: preferenceLookupError } = await admin
+    .from("prayer_preferences")
+    .select("prayer_reminders")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (preferenceLookupError) throw preferenceLookupError;
+
+  const mergedPrayerReminders = mergePrayerReminderPreferences(
+    existingPreferences?.prayer_reminders,
+    context.prayerReminders
+  );
+
   const { data: existingLocation, error: locationLookupError } = await admin
     .from("prayer_locations")
     .select("id")
@@ -151,7 +164,7 @@ async function upsertPrayerContext(
     .upsert(
       {
         user_id: userId,
-        prayer_reminders: context.prayerReminders,
+        prayer_reminders: mergedPrayerReminders,
         notifications_enabled: true,
         updated_at: new Date().toISOString(),
       },

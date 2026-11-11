@@ -23,8 +23,11 @@ export function mergePrayerReminderPreferences(
       continue;
     }
     const savedOffset = existing[prayer];
-    merged[prayer] = Number.isInteger(savedOffset)
-      ? Number(savedOffset)
+    const normalizedSavedOffset = Number(savedOffset);
+    merged[prayer] = Number.isInteger(savedOffset) &&
+      normalizedSavedOffset >= -60 &&
+      normalizedSavedOffset <= 60
+      ? normalizedSavedOffset
       : requestedOffset;
   }
 
