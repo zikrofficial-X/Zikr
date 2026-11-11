@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDueSocialQueueClaimFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
@@ -122,7 +123,23 @@ assert.equal(
   "the atomic claim must recheck scheduled_at so a stale queued snapshot cannot publish a row rescheduled into the future",
 );
 
+assert.equal(
+  buildStaleSocialPublishRecoveryFilter("queue id/1", "2026-11-11T17:30:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.processing&updated_at=lt.2026-11-11T17%3A30%3A00.000Z",
+  "stale recovery must recheck updated_at in the UPDATE to avoid overwriting a row refreshed by a live publisher",
+);
+assert.throws(
+  () => buildStaleSocialPublishRecoveryFilter("queue-1", "not-a-date"),
+  /valid cutoff timestamp/,
+  "stale recovery must reject an invalid cutoff instead of weakening the compare-and-set",
+);
+
 const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+assert.match(
+  socialPublisher,
+  /buildStaleSocialPublishRecoveryFilter\(item\.id, staleBefore\)/,
+  "stale recovery updates must include the same stale cutoff that selected the candidate",
+);
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");

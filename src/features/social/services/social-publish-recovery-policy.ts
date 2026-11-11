@@ -9,6 +9,19 @@ function normalizePlatforms(value: unknown): SocialPlatform[] {
   ))];
 }
 
+/**
+ * Build a compare-and-set filter for stale recovery. Recheck the timestamp in
+ * the UPDATE itself so a row refreshed by a live publisher after the SELECT
+ * cannot be recovered from a stale snapshot.
+ */
+export function buildStaleSocialPublishRecoveryFilter(id: string, staleBefore: string): string {
+  if (!id.trim()) throw new Error("Stale social recovery filter requires a queue item ID.");
+  if (!Number.isFinite(Date.parse(staleBefore))) {
+    throw new Error("Stale social recovery filter requires a valid cutoff timestamp.");
+  }
+  return `id=eq.${encodeURIComponent(id)}&status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}`;
+}
+
 function isSuccessfulResult(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const result = value as { ok?: unknown; remoteId?: unknown };

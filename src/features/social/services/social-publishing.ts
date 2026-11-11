@@ -15,7 +15,7 @@ import {
   selectEligibleSocialPublishItems,
 } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
-import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
+import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
@@ -307,7 +307,7 @@ export async function getPendingSocialPublishItems(
 }
 
 async function recoverStaleSocialPublishItems() {
-  const staleBefore = encodeURIComponent(new Date(Date.now() - 20 * 60_000).toISOString());
+  const staleBefore = new Date(Date.now() - 20 * 60_000).toISOString();
   const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
   if (!Number.isFinite(cutoff.getTime())) {
     throw new Error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; stale recovery is disabled.");
@@ -315,7 +315,7 @@ async function recoverStaleSocialPublishItems() {
   const createdSince = encodeURIComponent(cutoff.toISOString());
   try {
     const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${staleBefore}&created_at=gte.${createdSince}&select=id,metadata,target_platforms&order=updated_at.asc,id.asc&limit=50`,
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&created_at=gte.${createdSince}&select=id,metadata,target_platforms&order=updated_at.asc,id.asc&limit=50`,
     );
     let recovered = 0;
     for (const item of stale ?? []) {
@@ -334,7 +334,7 @@ async function recoverStaleSocialPublishItems() {
         ? "Manual reconciliation required for uncertain provider outcome(s): " + manualReconciliationPlatforms.join(", ")
         : "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.";
       const updated = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing`,
+        `/rest/v1/social_publish_queue?${buildStaleSocialPublishRecoveryFilter(item.id, staleBefore)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
