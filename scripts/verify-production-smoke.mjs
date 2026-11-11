@@ -138,7 +138,7 @@ const ASSOCIATION_CHECKS = [
     path: "/.well-known/apple-app-site-association",
     label: "iOS Universal Links and web credentials association",
     expectedJson: (payload) => {
-      const validAppId = (value) => typeof value === "string" && /^[A-Z0-9]{10}\\.com\\.zikr\\.app$/.test(value);
+      const validAppId = (value) => typeof value === "string" && /^[A-Z0-9]{10}\.com\.zikr\.app$/.test(value);
       const appIds = (payload?.applinks?.details ?? []).flatMap((detail) =>
         Array.isArray(detail?.appIDs) ? detail.appIDs : [],
       );
