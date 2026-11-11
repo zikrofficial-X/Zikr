@@ -217,13 +217,15 @@ assert.ok(finalization.includes('supabase db push --db-url "${SUPABASE_DB_URL}" 
 assert.equal(finalization.split("secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING").length - 1, 5, "the explicitly configured Supabase release URL must take precedence over a stale generic Postgres secret in every release phase");
 assert.ok(!finalization.includes("secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL"), "a generic Postgres secret must not silently override the dedicated Supabase release URL");
 const baselineStep = finalization.indexOf("Verify production data and baseline schema against parent commit");
+const vercelPullStep = finalization.indexOf("Pull production Vercel configuration");
 const buildStep = finalization.indexOf("Build production artifact");
+const preMigrationShaStep = finalization.indexOf("Recheck approved main SHA immediately before production database changes");
 const deployStep = finalization.indexOf("Deploy prebuilt artifact to production");
 const migrationStep = finalization.indexOf("Apply pending production migrations before deployment");
 const schemaStep = finalization.indexOf("Verify production schema after migration");
 const finalSmokeStep = finalization.indexOf("Production smoke test after schema migration and deployment");
-assert.ok(baselineStep >= 0 && baselineStep < migrationStep, "pre-release schema/data preflight must occur before production migrations");
-assert.ok(migrationStep < schemaStep && schemaStep < buildStep && buildStep < deployStep && deployStep < finalSmokeStep, "production migrations and schema verification must finish before deploying dependent code and smoke-testing it");
+assert.ok(baselineStep >= 0 && baselineStep < vercelPullStep && vercelPullStep < buildStep && buildStep < preMigrationShaStep && preMigrationShaStep < migrationStep, "Vercel configuration pull, production build, and exact-main recheck must complete before any production database mutation");
+assert.ok(migrationStep < schemaStep && schemaStep < deployStep && deployStep < finalSmokeStep, "production migrations and schema verification must finish before deploying dependent code and smoke-testing it");
 assert.ok(!finalization.includes("Smoke test deployed app before schema migration"), "the application must never be smoke-tested against a schema that has not received its pending migrations");
 
 const gameRegistry = read("src/lib/games/registry.ts");

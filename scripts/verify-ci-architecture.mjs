@@ -198,19 +198,23 @@ assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync mus
 
 assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Vercel release must be main-only");
 const baselineSchemaIndex = release.indexOf("Verify production data and baseline schema against parent commit");
+const vercelPullIndex = release.indexOf("Pull production Vercel configuration");
+const artifactBuildIndex = release.indexOf("Build production artifact");
+const preMigrationShaIndex = release.indexOf("Recheck approved main SHA immediately before production database changes");
 const migrationApplyIndex = release.indexOf("Apply pending production migrations before deployment");
 const schemaVerifyIndex = release.indexOf("Verify production schema after migration");
-const artifactBuildIndex = release.indexOf("Build production artifact");
 const deploymentIndex = release.indexOf("Deploy prebuilt artifact to production");
 const productionSmokeIndex = release.indexOf("Production smoke test after schema migration and deployment");
 assert.ok(
   baselineSchemaIndex >= 0 &&
-    migrationApplyIndex > baselineSchemaIndex &&
+    vercelPullIndex > baselineSchemaIndex &&
+    artifactBuildIndex > vercelPullIndex &&
+    preMigrationShaIndex > artifactBuildIndex &&
+    migrationApplyIndex > preMigrationShaIndex &&
     schemaVerifyIndex > migrationApplyIndex &&
-    artifactBuildIndex > schemaVerifyIndex &&
-    deploymentIndex > artifactBuildIndex &&
+    deploymentIndex > schemaVerifyIndex &&
     productionSmokeIndex > deploymentIndex,
-  "Controlled release must verify the parent schema, apply and verify reviewed migrations before building/deploying, then smoke-test the deployed app",
+  "Controlled release must verify the parent schema and build the production artifact before database mutations, recheck main, then apply/verify migrations before deployment and smoke testing",
 );
 assert.ok(
   !release.includes("Smoke test deployed app before schema migration") &&

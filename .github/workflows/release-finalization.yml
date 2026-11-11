@@ -20,7 +20,7 @@ permissions:
 
 concurrency:
   group: zikr-finalization-production-release
-  # Never cancel an active production deployment between deploy and migration.
+  # Never cancel an active production release between migration and deployment.
   # A queued release revalidates the exact main SHA before it can make changes.
   cancel-in-progress: false
 
@@ -97,7 +97,7 @@ jobs:
           print("PASS: current main SHA, CircleCI required contexts, and ZIKR Quality Gate are successful.")
           PY
 
-# Prefer the dedicated rotated token, but accept common GitHub secret names too. These are GitHub Actions secrets, not Vercel project environment variables.
+      # Prefer the dedicated rotated token, but accept common GitHub secret names too. These are GitHub Actions secrets, not Vercel project environment variables.
       - name: Verify Vercel deployment credential is available
         shell: bash
         env:
@@ -218,6 +218,34 @@ jobs:
             TAFSIR_EXPECTED_COUNT=0,6236 bash scripts/reconcile-supabase-migration-history.sh
           )
 
+      - name: Pull production Vercel configuration
+        shell: bash
+        env:
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}
+        run: |
+          set -uo pipefail
+          if ! out="$(vercel pull --yes --environment=production --scope "${VERCEL_ORG_ID}" 2>&1)"; then
+            echo "::error title=vercel pull failed::$(printf '%s' "$out" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
+            exit 1
+          fi
+          printf '%s\n' "$out" | tail -n 3
+
+      - name: Build production artifact
+        env:
+          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --scope "${VERCEL_ORG_ID}"
+
+      - name: Recheck approved main SHA immediately before production database changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --no-tags
+          current_main="$(git rev-parse origin/main)"
+          if [[ "${current_main}" != "${GITHUB_SHA}" ]]; then
+            echo "::error::Refusing production database changes because main advanced during the build. Approved SHA ${GITHUB_SHA}; current main ${current_main}."
+            exit 1
+          fi
+
       - name: Apply pending production migrations before deployment
         shell: bash
         env:
@@ -241,24 +269,6 @@ jobs:
           EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
           TAFSIR_EXPECTED_COUNT: "6236"
         run: bash scripts/reconcile-supabase-migration-history.sh
-
-
-      - name: Pull production Vercel configuration
-        shell: bash
-        env:
-          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}
-        run: |
-          set -uo pipefail
-          if ! out="$(vercel pull --yes --environment=production --scope "${VERCEL_ORG_ID}" 2>&1)"; then
-            echo "::error title=vercel pull failed::$(printf '%s' "$out" | tail -n 4 | tr '\n' ' ' | cut -c1-350)"
-            exit 1
-          fi
-          printf '%s\n' "$out" | tail -n 3
-
-      - name: Build production artifact
-        env:
-          VERCEL_TOKEN: ${{ secrets.ZIKR_VERCEL_TOKEN || secrets.VERCEL_DEPLOY_TOKEN || secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --scope "${VERCEL_ORG_ID}"
 
       - name: Recheck approved main SHA immediately before production deployment
         shell: bash
