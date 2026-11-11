@@ -262,6 +262,7 @@ export async function updateVideoRequestStatus(
   videoId: string,
   status: 'pending' | 'processing' | 'completed' | 'failed',
   metadata?: { youtubeId?: string; facebookId?: string; videoUrl?: string },
+  expectedStatus?: "failed",
 ): Promise<boolean> {
   try {
     const body: Record<string, unknown> = {
@@ -272,10 +273,12 @@ export async function updateVideoRequestStatus(
     if (metadata?.facebookId) body.facebook_id = metadata.facebookId;
     if (metadata?.videoUrl) body.video_url = metadata.videoUrl;
     if (status === 'pending') {
-      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown }>>(
-        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content&limit=1',
+      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown; status: string }>>(
+        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content,status&limit=1',
       );
-      const existing = existingContentRows?.[0]?.content;
+      const existingRow = existingContentRows?.[0];
+      if (!existingRow || (expectedStatus && existingRow.status !== expectedStatus)) return false;
+      const existing = existingRow.content;
       const content = existing && typeof existing === 'object' && !Array.isArray(existing)
         ? existing as Record<string, unknown> : {};
       body.content = { ...content, approvalStatus: 'awaiting_human_review', approvalReviewedAt: null, qualityReview: null };
@@ -289,11 +292,14 @@ export async function updateVideoRequestStatus(
       body.heygen_submitted_at = null;
       body.heygen_last_polled_at = null;
     }
-    await supabaseServerAdminRequest(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(videoId)}`,
-      { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(body) },
+    const filter = expectedStatus
+      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}`
+      : `id=eq.${encodeURIComponent(videoId)}`;
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/video_generation_requests?${filter}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(body) },
     );
-    return true;
+    return Array.isArray(updated) && updated.length > 0;
   } catch (error) {
     console.error('[video-automation] Failed to update video request:', error);
     return false;
