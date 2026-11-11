@@ -37,6 +37,42 @@ assert.equal(isVideoApprovalRecorded({ ...content, approvalReviewerId: null }, s
 assert.equal(isVideoApprovalRecorded(content, "different-snapshot-hash"), false);
 assert.equal(buildVideoApprovalSnapshotHash({ ...snapshot, sourceHash: null }), null);
 assert.equal(isVideoQueueItemApprovedForPublishing(queueItem), true);
+
+const completeKidsContent = {
+  ...content,
+  audience: "kids",
+  contentFormat: "series_episode",
+  aiMode: "original_kids_story",
+  sourceType: "original_kids_fiction",
+  seriesId: "series-1",
+  seriesTitle: "قصص القيم",
+  learningObjective: "تعلم الصدق والأمانة",
+  seasonNumber: 1,
+  episodeNumber: 2,
+};
+const kidsQueueItem = {
+  ...queueItem,
+  contentType: "kids_video",
+  request: { ...request, content: completeKidsContent },
+};
+assert.equal(isVideoQueueItemApprovedForPublishing(kidsQueueItem), true);
+assert.equal(
+  isVideoQueueItemApprovedForPublishing({
+    ...kidsQueueItem,
+    request: { ...request, content: { ...completeKidsContent, contentFormat: undefined } },
+  }),
+  false,
+  "Kids videos without the series-episode format must fail closed before external publishing",
+);
+assert.equal(
+  isVideoQueueItemApprovedForPublishing({
+    ...kidsQueueItem,
+    request: { ...request, content: { ...completeKidsContent, seriesId: "" } },
+  }),
+  false,
+  "Kids videos without complete series metadata must fail closed",
+);
+
 assert.equal(inspectVideoQueueItemApproval(queueItem).approved, true);
 assert.deepEqual(inspectVideoQueueItemApproval(queueItem).missingChecks, []);
 
