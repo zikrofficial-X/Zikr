@@ -6,7 +6,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { saveKidsContentAction } from "@/app/admin/kids/actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
-import type { KidsContentType } from "@/features/kids/services/kids-content-validation";
+import { isKidsContentType, type KidsContentType } from "@/features/kids/services/kids-content-validation";
 
 const typeLabels: Record<KidsContentType, string> = {
   story: "قصة",
@@ -121,7 +121,7 @@ export async function AdminKidsContentManager() {
       <section className="flex flex-wrap gap-2">
         {Object.entries(typeCounts).map(([type, count]) => (
           <span key={type} className="rounded-full border border-brand-gold/15 bg-black/15 px-3 py-1.5 text-xs text-brand-cream/65">
-            {typeLabels[type] ?? type}: {count}
+            {isKidsContentType(type) ? typeLabels[type] : type}: {count}
           </span>
         ))}
       </section>
@@ -185,7 +185,7 @@ export async function AdminKidsContentManager() {
               {rows.map(item => (
                 <tr key={item.id} className="hover:bg-black/10">
                   <td className="py-2 text-brand-cream"><div>{item.title_ar}</div><div className="text-xs text-brand-cream/30" dir="ltr">/{item.slug}</div></td>
-                  <td className="py-2"><span className="px-2 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold text-xs">{typeLabels[item.type] ?? item.type}</span></td>
+                  <td className="py-2"><span className="px-2 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold text-xs">{isKidsContentType(item.type) ? typeLabels[item.type] : item.type}</span></td>
                   <td className="py-2 text-brand-cream/60">{ageGroupLabels[item.age_group ?? ""] ?? item.age_group ?? "—"}</td>
                   <td className="py-2">{item.type !== "story" ? "—" : item.metadata?.age_appropriate === true ? <span className="text-emerald-300">معتمد للتوليد</span> : <span className="text-amber-300">غير معتمد للتوليد</span>}</td>
                   <td className="py-2">{item.published && item.is_active ? <span className="text-emerald-300">منشور</span> : <span className="text-amber-300">مخفي/مسودة</span>}</td>

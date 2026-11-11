@@ -108,6 +108,9 @@ const typeLabelsEnd = adminManager.indexOf("\n};", typeLabelsStart);
 const typeLabelsSource = adminManager.slice(typeLabelsStart, typeLabelsEnd);
 const managerTypes = typeLabelsSource.split("\n").map((line) => line.trim().match(/^([a-z_]+):/)?.[1]).filter(Boolean);
 assert.deepEqual(managerTypes, [...KIDS_CONTENT_TYPES], "the Kids admin selector must expose exactly the shared supported content types");
+assert.ok(adminManager.includes("isKidsContentType(type) ? typeLabels[type] : type"), "type-count labels must narrow database strings before indexing the shared type map");
+assert.ok(adminManager.includes("isKidsContentType(item.type) ? typeLabels[item.type] : item.type"), "record labels must narrow database strings before indexing the shared type map");
+
 assert.ok(adminManager.includes('fileName="featured_image_file"'), "the Kids form must submit the selected file to its validated server action");
 assert.ok(imageField.includes("name={fileName}"), "the image field must include the server-action file input name");
 assert.equal(imageField.includes("fetch("), false, "Kids media must not upload before the server validates the slug");
