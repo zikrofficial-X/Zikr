@@ -118,9 +118,19 @@ assert.deepEqual(
 
 
 assert.equal(
-  buildDueSocialQueueClaimFilter("queue id/1", "queued", "2026-11-11T17:30:00.000Z"),
-  "id=eq.queue%20id%2F1&status=eq.queued&or=(scheduled_at.is.null,scheduled_at.lte.2026-11-11T17%3A30%3A00.000Z)",
-  "the atomic claim must recheck scheduled_at so a stale queued snapshot cannot publish a row rescheduled into the future",
+  buildDueSocialQueueClaimFilter("queue id/1", "queued", "2026-11-11T17:30:00.000Z", "2026-11-11T17:29:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.queued&updated_at=eq.2026-11-11T17%3A29%3A00.000Z&or=(scheduled_at.is.null,scheduled_at.lte.2026-11-11T17%3A30%3A00.000Z)",
+  "the atomic claim must compare the exact row version and recheck scheduled_at before publishing a snapshot",
+);
+assert.throws(
+  () => buildDueSocialQueueClaimFilter("queue-1", "published", "2026-11-11T17:30:00.000Z", "2026-11-11T17:29:00.000Z"),
+  /retryable queue status/,
+  "published rows must never be eligible for a new publisher claim",
+);
+assert.throws(
+  () => buildDueSocialQueueClaimFilter("queue-1", "queued", "not-a-date", "2026-11-11T17:29:00.000Z"),
+  /valid due-time and updated_at timestamps/,
+  "a malformed due-time must not weaken the atomic queue claim",
 );
 
 assert.equal(
@@ -160,7 +170,7 @@ assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must 
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
 assert.match(socialPublisher, /Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows/, "invalid queue cutoffs must fail visibly instead of returning an empty batch");
-assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimStatus, claimAt\)/, "the worker claim must use the atomic due-time filter");
+assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimStatus, claimAt, item\.updated_at\)/, "the worker claim must compare the exact candidate row version and due time");
 assert.match(socialPublisher, /buildSocialPublishLeaseFilter\(item\.id, claimLease\.status, claimLease\.updatedAt\)/, "the provider in-flight marker must compare the exact initial worker lease");
 assert.match(socialPublisher, /const finalized = await markQueueItem\(item\.id, persistedStatus,[\s\S]*?\}, inFlightLease\);/, "provider results must only finalize while the same in-flight lease is current");
 assert.match(socialPublisher, /Provider result arrived after the worker lease was recovered/, "a stale provider result must leave the newer recovery state untouched");
