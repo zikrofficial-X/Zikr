@@ -6,6 +6,9 @@ async function main() {
   const prayerHook = readFileSync("src/features/prayer/hooks/use-prayer-alert.ts", "utf8");
   const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
   const dhikrHook = readFileSync("src/features/reminders/hooks/use-dhikr-reminder.ts", "utf8");
+  const notificationService = readFileSync("src/features/notifications/services/notifications.ts", "utf8");
+  const serviceWorker = readFileSync("public/sw.js", "utf8");
+  const pushWorker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 
   assert.match(prayerHook, /createAsyncSerialQueue/, "prayer schedule refreshes must be serialized");
   assert.match(prayerHook, /enqueueNativePrayerSchedule/, "prayer alarm cancellation and replacement must share one queue");
@@ -17,6 +20,11 @@ async function main() {
   assert.match(dhikrHook, /localStorage\.setItem\(SETTINGS_KEY/, "Dhikr changes must persist for anonymous users");
   assert.match(dhikrHook, /setSettings\(loadSettings\(\)\)/, "local settings must load before authenticated server reconciliation");
   assert.match(dhikrHook, /saveSettings\(next\)/, "server preference reconciliation must refresh the local copy");
+  assert.match(notificationService, /const tag = "dhikr-reminder"/, "foreground Dhikr notifications must use the shared deduplication tag");
+  assert.match(notificationService, /const tag = "salawat-reminder"/, "foreground Salawat notifications must use the shared deduplication tag");
+  assert.match(serviceWorker, /tag: isSalawat \? "salawat-reminder" : "dhikr-reminder"/, "service-worker local reminders must use the same stable tags as foreground notifications");
+  assert.match(pushWorker, /const notificationTag = isPrayer[\s\S]*?"dhikr-reminder"[\s\S]*?"salawat-reminder"/, "background push reminders must reuse stable local tags while keeping prayer tags distinct");
+  assert.match(pushWorker, /tag: notificationTag/, "background push delivery must use the deduplication tag instead of a per-slot notification tag");
 
   const enqueue = createAsyncSerialQueue();
   const events: string[] = [];
