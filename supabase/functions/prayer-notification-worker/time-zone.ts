@@ -78,8 +78,8 @@ export function zonedDateTime(
   timeZone: string,
   time: string,
 ): Date | null {
-  const dateMatch = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateString);
-  const timeMatch = /^(\\d{1,2}):(\\d{2})/.exec(time.trim());
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateString);
+  const timeMatch = /^(\d{1,2}):(\d{2})/.exec(time.trim());
   if (!dateMatch || !timeMatch) return null;
 
   const year = Number(dateMatch[1]);
