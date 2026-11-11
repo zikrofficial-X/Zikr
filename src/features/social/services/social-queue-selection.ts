@@ -11,13 +11,26 @@ export type SocialQueueSelectionCandidate = {
   metadata: Record<string, unknown> | null;
 };
 
-/** Build an atomic queue claim filter that rechecks the due time at update time. */
+/** Build an atomic queue claim filter that rechecks row version and due time at update time. */
 export function buildDueSocialQueueClaimFilter(
   id: string,
   status: string,
   now: string,
+  expectedUpdatedAt: string,
 ): string {
-  return `id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(status)}&or=(scheduled_at.is.null,scheduled_at.lte.${encodeURIComponent(now)})`;
+  if (!id.trim()) throw new Error("Social queue claim requires a queue item ID.");
+  if (!["queued", "partial", "failed"].includes(status)) {
+    throw new Error("Social queue claim requires a retryable queue status.");
+  }
+  if (!Number.isFinite(Date.parse(now)) || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+    throw new Error("Social queue claim requires valid due-time and updated_at timestamps.");
+  }
+  return [
+    `id=eq.${encodeURIComponent(id)}`,
+    `status=eq.${encodeURIComponent(status)}`,
+    `updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
+    `or=(scheduled_at.is.null,scheduled_at.lte.${encodeURIComponent(now)})`,
+  ].join("&");
 }
 
 /**
