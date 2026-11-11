@@ -119,7 +119,7 @@ const exported = [];
 for (const [dataset, table, ...filters] of datasets) {
   let rows = await fetchAll(table, filters);
   if (dataset === 'kids') {
-    blockedKidsRoutes = getBlockedKidsRoutes(previousKidsRows, rows);
+    blockedKidsRoutes = getBlockedKidsRoutes(previousKidsRows, rows, previous.routes);
     rows = rows.filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true));
   }
   const minimum = minimumRecords[dataset] ?? 0;
