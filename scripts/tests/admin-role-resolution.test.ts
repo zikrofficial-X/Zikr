@@ -29,6 +29,11 @@ assert.match(usersTable, /!canManageRoles/);
 assert.match(usersTable, /!canAssignFullAdminAccounts && \(effectiveRole === "admin" \|\| effectiveRole === "super_admin"\)/);
 assert.match(usersTable, /value !== "admin" && value !== "super_admin"/);
 assert.match(usersAction, /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/);
+assert.match(usersAction, /userId === admin\.id && roleValue !== admin\.role/, "the server action must block self-demotion even from super_admin to admin");
+const selfRoleMigration = readFileSync("supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql", "utf8");
+assert.match(selfRoleMigration, /p_user_id = p_actor_user_id AND p_role <> v_previous_role/);
+assert.match(selfRoleMigration, /self-role changes are not allowed/);
+
 
 
 const adminPredicateGrantMigration = readFileSync("supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql", "utf8");
