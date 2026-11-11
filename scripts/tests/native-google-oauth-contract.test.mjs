@@ -60,7 +60,7 @@ assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forwa
 assert.ok(proxy.includes('request.headers.get("host")'), "Canonical-host logic must inspect the incoming Host header");
 assert.ok(proxy.includes('process.env.VERCEL_ENV === "production"'), "Preview deployments must not be redirected to production");
 assert.ok(proxy.includes("PRODUCTION_URL"), "Production canonical host must come from the single source of truth");
-assert.ok(proxy.includes("isProductionDeployment &&\\n    requestHost !== canonicalHost"), "all non-canonical production hosts must redirect before auth cookie creation");
+assert.match(proxy, /isProductionDeployment\s*&&\s*requestHost !== canonicalHost/, "all non-canonical production hosts must redirect before auth cookie creation");
 assert.ok(!proxy.includes('requestHost.endsWith(".vercel.app")'), "production canonicalization must cover custom domains as well as Vercel aliases");
 assert.ok(googleOAuth.includes("request.nextUrl.origin !== canonicalOrigin.origin"), "OAuth start must reject a non-canonical cookie origin");
 assert.ok(googleOAuth.includes("NextResponse.redirect(canonicalStart, 307)"), "OAuth start must redirect before generating PKCE state");
