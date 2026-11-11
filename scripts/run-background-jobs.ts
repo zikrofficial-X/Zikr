@@ -4,7 +4,7 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
-import { evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
@@ -114,10 +114,14 @@ async function clearRunNowRequest(request: VideoAutomationRunNow) {
   const parsed = parseRunNowRequest(row?.value);
   if (!row?.updated_at || !parsed || !isSameRunNowRequest(parsed, request)) return;
 
-  // The request identity protects same-millisecond writes; updated_at is the
-  // database compare-and-set so a newer Run Now request cannot be deleted.
+  // Compare both updated_at and the complete JSONB value in the DELETE itself.
+  // A replacement request can arrive after the read above, even with the same
+  // millisecond timestamp; the value predicate makes the consumption atomic.
+  const deleteFilter = buildRunNowRequestDeleteFilter(row.updated_at, row.value);
+  if (!deleteFilter) return;
+
   await supabaseServerAdminRequest(
-    `/rest/v1/admin_settings?key=eq.video_automation_run_now&updated_at=eq.${encodeURIComponent(row.updated_at)}`,
+    `/rest/v1/admin_settings?${deleteFilter}`,
     {
       method: "DELETE",
       headers: { Prefer: "return=representation" },
