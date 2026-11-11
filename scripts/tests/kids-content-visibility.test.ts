@@ -1,10 +1,28 @@
 import assert from "node:assert/strict";
-import { getKidsQuizQuestions, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
+import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
 import {
   getFallbackKidsContentBySlug,
   mergeKidsContentWithFallback,
 } from "../../src/features/kids/services/kids-content-visibility";
+
+const typesMigration = readFileSync(
+  "supabase/migrations/20261111003000_expand_kids_content_supported_types.sql",
+  "utf8",
+);
+const typeConstraint = typesMigration.match(
+  /add constraint\\s+kids_content_type_check\\s+check\\s*\\(\\s*type\\s+in\\s*\\(([^)]*)\\)\\s*\\)/i,
+);
+assert.ok(typeConstraint, "the Kids type migration must replace the canonical database check constraint");
+assert.deepEqual(
+  [...typeConstraint[1].matchAll(/'([^']+)'/g)].map((match) => match[1]),
+  [...KIDS_CONTENT_TYPES],
+  "the admin-supported Kids types and the database constraint must remain identical",
+);
+for (const type of KIDS_CONTENT_TYPES) {
+  assert.equal(isKidsContentType(type), true, `supported Kids type ${type} must pass validation`);
+}
+assert.equal(isKidsContentType("unsupported"), false, "unknown Kids content types must fail validation");
 
 const databaseItems = [
   { slug: "story-live", source: "database" },
@@ -79,6 +97,7 @@ assert.deepEqual(getKidsQuizQuestions({ questions: [{ text: "  ", options: ["A",
 
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+assert.match(adminAction, /isKidsContentType\\(type\\)/, "the Kids admin action must use the shared supported-type contract");
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 const kidsQuizValidation = readFileSync("src/features/kids/services/kids-content-validation.ts", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");

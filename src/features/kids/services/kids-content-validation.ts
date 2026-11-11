@@ -1,5 +1,24 @@
 import type { KidsQuizQuestion } from "../data/content";
 
+export const KIDS_CONTENT_TYPES = [
+  "story",
+  "prayer",
+  "wudu",
+  "quiz",
+  "game",
+  "puzzle",
+  "coloring",
+  "matching",
+  "video",
+  "memorize",
+] as const;
+
+export type KidsContentType = (typeof KIDS_CONTENT_TYPES)[number];
+
+export function isKidsContentType(value: unknown): value is KidsContentType {
+  return typeof value === "string" && KIDS_CONTENT_TYPES.includes(value as KidsContentType);
+}
+
 export type KidsQuizData = { questions: KidsQuizQuestion[] };
 
 function invalidQuiz(): never {

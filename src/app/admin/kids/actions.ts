@@ -6,7 +6,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
-import { parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
+import { isKidsContentType, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
@@ -29,13 +29,12 @@ export async function saveKidsContentAction(formData: FormData) {
   const content_ar = String(formData.get("content_ar") ?? "").trim();
   const type = value(formData, "type") ?? "story";
   const gameId = value(formData, "game_id");
-  const allowedTypes = new Set(["story", "prayer", "wudu", "quiz", "game", "puzzle", "coloring", "matching", "video", "memorize"]);
   const allowedAgeGroups = new Set(["3-5", "6-8", "9-12", "13-15"]);
   const ageGroup = value(formData, "age_group") ?? "6-8";
   const ageAppropriate = type === "story" && formData.has("age_appropriate");
   const published = formData.has("published");
 
-  if (!allowedTypes.has(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
+  if (!isKidsContentType(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
   if (!allowedAgeGroups.has(ageGroup)) throw new Error("الفئة العمرية غير صالحة.");
 
   if (!title_ar || !slug || !content_ar) {
