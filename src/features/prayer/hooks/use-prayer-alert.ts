@@ -92,7 +92,8 @@ function parsePrayerTime(
 
 /** Dedup key: fires once per prayer per calendar day. */
 function getAlertKey(prayer: PrayerKey, timeZone?: string): string {
-  const dateKey = formatDateInTimeZone(new Date(), timeZone) ?? formatLocalDate(new Date());
+  const resolvedTimeZone = timeZone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const dateKey = formatDateInTimeZone(new Date(), resolvedTimeZone) ?? formatLocalDate(new Date());
   return `zikr_alert_${prayer}_${dateKey}`;
 }
 
