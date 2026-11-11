@@ -2,6 +2,7 @@ import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
 import { getServerEnv } from '@/lib/env';
 import { getYouTubeUploadRefreshToken } from '@/features/social/services/youtube-oauth-credentials';
+import { assertCloudinaryVideoUrl } from '@/features/videos/services/video-media-url';
 import {
   getFacebookPageCredentials,
   setFacebookReelsNextAllowedAt,
@@ -26,13 +27,7 @@ function getEnv(name: string): string | undefined {
 
 
 function assertRemoteVideoUrl(videoUrl: string, target: string): string {
-  const parsed = new URL(videoUrl);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(`${target} requires an HTTP(S) media URL`);
-  const host = parsed.hostname.toLowerCase();
-  if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be' || host.endsWith('.youtu.be')) {
-    throw new Error(`${target} requires the original media file, not a YouTube watch URL`);
-  }
-  return parsed.toString();
+  return assertCloudinaryVideoUrl(videoUrl, target);
 }
 
 async function getYoutubeAccessToken(): Promise<string> {

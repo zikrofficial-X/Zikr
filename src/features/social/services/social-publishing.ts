@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { assertCloudinaryVideoUrl } from "@/features/videos/services/video-media-url";
 import { publishFacebookReelWithIds, publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
 import { getServerEnv } from "@/lib/env";
 import { getYouTubeUploadRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
@@ -51,32 +52,7 @@ function siteUrl() {
 }
 
 function assertPublishableVideoUrl(videoUrl: string, target: "facebook" | "youtube") {
-  let parsed: URL;
-  try {
-    parsed = new URL(videoUrl);
-  } catch {
-    throw new Error(target + " publishing requires an absolute video media URL");
-  }
-
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    throw new Error(target + " publishing requires an http(s) video media URL");
-  }
-
-  const host = parsed.hostname.toLowerCase();
-  const isYoutubeWatchUrl =
-    host === "youtube.com" ||
-    host.endsWith(".youtube.com") ||
-    host === "youtu.be" ||
-    host.endsWith(".youtu.be");
-
-  if (isYoutubeWatchUrl) {
-    throw new Error(
-      target +
-        " publishing requires the original media file or an approved direct media URL; YouTube watch/embed URLs cannot be republished as video assets"
-    );
-  }
-
-  return parsed.toString();
+  return assertCloudinaryVideoUrl(videoUrl, target);
 }
 
 function publicUrl(item: SocialPublishQueueItem) {
