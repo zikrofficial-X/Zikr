@@ -273,8 +273,8 @@ export async function updateVideoRequestStatus(
     if (metadata?.facebookId) body.facebook_id = metadata.facebookId;
     if (metadata?.videoUrl) body.video_url = metadata.videoUrl;
     if (status === 'pending') {
-      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown; status: string }>>(
-        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content,status&limit=1',
+      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown; status: string; updated_at: string }>>(
+        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content,status,updated_at&limit=1',
       );
       const existingRow = existingContentRows?.[0];
       if (!existingRow || (expectedStatus && existingRow.status !== expectedStatus)) return false;
@@ -293,7 +293,7 @@ export async function updateVideoRequestStatus(
       body.heygen_last_polled_at = null;
     }
     const filter = expectedStatus
-      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}`
+      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}&updated_at=eq.${encodeURIComponent(existingContentRows?.[0]?.updated_at ?? "")}`
       : `id=eq.${encodeURIComponent(videoId)}`;
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/video_generation_requests?${filter}`,
