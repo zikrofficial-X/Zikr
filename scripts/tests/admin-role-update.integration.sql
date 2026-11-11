@@ -170,4 +170,48 @@ BEGIN
 END;
 $$;
 
+-- A full administrator cannot demote or otherwise change their own role.
+SET ROLE service_role;
+DO $
+BEGIN
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '11111111-1111-4111-8111-111111111111',
+      'admin',
+      '11111111-1111-4111-8111-111111111111'
+    );
+    RAISE EXCEPTION 'super administrator unexpectedly changed its own role to admin';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    NULL;
+  END;
+
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '11111111-1111-4111-8111-111111111111',
+      'user',
+      '11111111-1111-4111-8111-111111111111'
+    );
+    RAISE EXCEPTION 'super administrator unexpectedly demoted itself to user';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    NULL;
+  END;
+END;
+$;
+RESET ROLE;
+
+DO $
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles WHERE id = '11111111-1111-4111-8111-111111111111';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments WHERE user_id = '11111111-1111-4111-8111-111111111111';
+
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'super_admin' THEN
+    RAISE EXCEPTION 'self-role rejection did not preserve the super administrator assignment';
+  END IF;
+END;
+$;
 SELECT 'ADMIN_ROLE_UPDATE_INTEGRATION_PASSED' AS result;
