@@ -25,6 +25,10 @@ const selfRoleMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql"),
   "utf8",
 );
+const roleAssignmentWritesMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql"),
+  "utf8",
+);
 const revokePublicAdminPredicateMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql"),
   "utf8",
@@ -98,17 +102,32 @@ assert.doesNotMatch(
   "RLS policies must not infer full administrator access from profiles.role alone",
 );
 
-requireMatch(
-  /CREATE POLICY admin_role_assignments_insert[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment inserts must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /REVOKE ALL PRIVILEGES ON TABLE public\.admin_role_assignments[\s\S]*?FROM PUBLIC, anon, authenticated/i,
+  "browser roles must not mutate role assignments outside the audited service RPC",
 );
-requireMatch(
-  /CREATE POLICY admin_role_assignments_update[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment updates must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /GRANT SELECT ON TABLE public\.admin_role_assignments TO authenticated/i,
+  "authenticated sessions must retain the role read needed for delegated-admin resolution",
 );
-requireMatch(
-  /CREATE POLICY admin_role_assignments_delete[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment deletes must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /GRANT SELECT, INSERT, UPDATE, DELETE[\s\S]*?TO service_role/i,
+  "the service role must retain the atomic role RPC's table access",
+);
+for (const policy of ["write", "insert", "update", "delete"]) {
+  assert.match(
+    roleAssignmentWritesMigration,
+    new RegExp("DROP POLICY IF EXISTS admin_role_assignments_" + policy + " ON public\\.admin_role_assignments", "i"),
+    "direct role-assignment " + policy + " policy must be removed",
+  );
+}
+assert.doesNotMatch(
+  roleAssignmentWritesMigration,
+  /CREATE POLICY admin_role_assignments_(?:write|insert|update|delete)/i,
+  "no browser-facing role-assignment write policy may remain",
 );
 assert.match(
   userActions,
