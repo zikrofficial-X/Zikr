@@ -79,7 +79,7 @@ const workflow = read(".github/workflows/audit-video-media.yml");
 if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("workflow_dispatch:") ||
     !workflow.includes("inputs.confirmation == 'RUN_MEDIA_AUDIT'") ||
-    workflow.includes("\\n  push:") ||
+    workflow.includes("\n  push:") ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
     !workflow.includes("pnpm video:media:audit")) {
