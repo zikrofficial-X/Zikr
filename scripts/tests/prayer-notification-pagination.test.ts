@@ -70,6 +70,8 @@ assert.match(worker, /subscriptions: readonly PushSubscriptionRow\[\]/);
 assert.match(worker, /\.in\("user_id", userIds\)/);
 assert.match(worker, /\.in\("location_id", locationIds\)/);
 assert.match(worker, /scheduled \+= await ensureSubscriptionBatchSchedules/);
+assert.match(worker, /const timeZone = safeTimeZone\(location\.timezone\)/);
+assert.doesNotMatch(worker, /location\.timezone!/);
 
 assert.match(worker, /from\("prayer_preferences"\)/);
 assert.match(worker, /from\("prayer_locations"\)/);
