@@ -46,7 +46,6 @@ export async function proxy(request: NextRequest) {
   const isProductionDeployment = process.env.VERCEL_ENV === "production";
   if (
     isProductionDeployment &&
-    requestHost.endsWith(".vercel.app") &&
     requestHost !== canonicalHost
   ) {
     const canonicalUrl = new URL(request.url);
