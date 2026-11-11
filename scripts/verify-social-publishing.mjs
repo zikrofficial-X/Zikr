@@ -11,6 +11,7 @@ const read = (path) => {
 };
 
 const socialApi = read("src/app/api/admin/social/route.ts");
+const adminSecurity = read("src/features/admin/services/security.ts");
 const writtenApi = read("src/app/api/admin/social/written/route.ts");
 const socialPage = read("src/app/admin/social/page.tsx");
 const writtenPage = read("src/app/admin/social/written-studio/page.tsx");
@@ -38,7 +39,9 @@ const facebookPublicPosts = read("src/features/social/services/facebook-public-p
 const sitePublisher = read("scripts/jobs/content-publishing.ts");
 
 if (!socialApi.includes('requireAdminApi("social.manage")') ||
-    !socialApi.includes('requireAdminApi("social.publish")') ||
+    !socialApi.includes('requireAdminStepUpApi("social.publish"') ||
+    !adminSecurity.includes("export async function requireAdminStepUpApi(") ||
+    !adminSecurity.includes('data.currentLevel !== "aal2"') ||
     !socialApi.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
   failures.push("social API must retain separate management/publish permissions and dispatch only the controlled workflow");
 }
@@ -54,7 +57,7 @@ if (!adminClient.includes('href="/admin/social/written-studio"') ||
   failures.push("social dashboard must expose the written-post studio and its pending queue count");
 }
 if (!writtenApi.includes('requireAdminApi("social.manage")') ||
-    !writtenApi.includes('requireAdminApi("social.publish")') ||
+    !writtenApi.includes('requireAdminStepUpApi("social.publish"') ||
     !writtenApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"') ||
     !writtenApi.includes("content_type=eq.written_post")) {
   failures.push("written Facebook posts API must expose queue rows and dispatch the authenticated written-content generator");
