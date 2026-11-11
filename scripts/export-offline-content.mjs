@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { getBlockedKidsRoutes } from './lib/offline-kids-route-safety.mjs';
 import { getPublishedParentScope, isParentScopedOfflineDataset } from './lib/offline-export-parent-scope.mjs';
+import { getBlockedPublishedContentRoutes } from './lib/offline-export-route-pruning.mjs';
 
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
@@ -166,6 +167,9 @@ for (const [dataset, table, ...filters] of datasets) {
   console.log(`[offline-export] verified ${dataset}: ${rows.length} (${source})`);
 }
 
+const blockedPublishedContentRoutes = getBlockedPublishedContentRoutes(previous.routes, exported);
+const blockedRoutes = new Set([...blockedKidsRoutes, ...blockedPublishedContentRoutes]);
+
 await mkdir(outputDir, { recursive: true });
 const generatedAt = new Date().toISOString();
 const stamp = generatedAt.replace(/[-:.TZ]/g, '').slice(0, 14);
@@ -177,7 +181,7 @@ const manifest = {
   staleDatasets: exported.filter((item) => item.stale).map((item) => item.dataset),
   datasets: {},
   routes: Array.isArray(previous.routes)
-    ? previous.routes.filter((route) => !blockedKidsRoutes.has(route))
+    ? previous.routes.filter((route) => !blockedRoutes.has(route))
     : [],
 };
 
