@@ -79,8 +79,10 @@ assert.match(job, /async function rollbackScheduledContentPublication/,
   "worker rollback must be isolated behind a version-checked helper");
 assert.ok(job.includes("updated_at=eq.${encodeURIComponent(publishedUpdatedAt)}"),
   "worker rollback must match the exact updated_at written by that worker so a later admin republish is preserved");
-assert.ok(job.includes("contentPublishedUpdatedAt = new Date().toISOString()"),
-  "the worker must retain its exact publication-write timestamp for a safe rollback");
+assert.ok(job.includes("&select=id,updated_at"),
+  "the worker must read back the committed row version after publication");
+assert.ok(job.includes("contentPublishedUpdatedAt = updatedRow.updated_at"),
+  "the worker must use the database-returned updated_at value because the Stories trigger replaces the requested timestamp");
 assert.equal(
   (job.split("rollbackScheduledContentPublication(item, contentPublishedUpdatedAt)").length - 1),
   2,
