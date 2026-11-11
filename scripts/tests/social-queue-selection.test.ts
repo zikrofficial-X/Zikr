@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
@@ -85,5 +86,11 @@ assert.deepEqual(
   ["post-1", "post-2", "post-3"],
   "disabled YouTube targets must be skipped without blocking Facebook posts",
 );
+
+
+const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
+assert.match(adminRoute, /id=eq\\.\\$\\{encodeURIComponent\\(item\\.id\\)\\}&status=eq\\.\\$\\{encodeURIComponent\\(item\\.status\\)\\}/);
+assert.match(adminRoute, /Prefer: "return=representation"/);
+assert.match(adminRoute, /if \\(Array\\.isArray\\(updated\\) && updated\\[0\\]\\) affected \\+= 1/);
 
 console.log("Social queue starvation regression checks passed.");
