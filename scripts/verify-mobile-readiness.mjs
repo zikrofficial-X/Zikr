@@ -191,7 +191,9 @@ for (const token of [
 }
 for (const token of [
   "Capacitor.isNativePlatform()",
-  'new URL("/auth/callback", getCanonicalBrowserOrigin())',
+  'new URL("/auth/callback", PRODUCTION_URL)',
+  'url.searchParams.set("native", "1")',
+  'url.searchParams.set("next", nextPath)',
   'url.searchParams.set("native", "1")',
   "Browser.open({ url: data.url })",
 ]) {
