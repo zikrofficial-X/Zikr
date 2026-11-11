@@ -22,6 +22,7 @@ const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
+const videoPublishApproval = read("src/features/videos/services/video-publish-approval.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
 const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
@@ -103,10 +104,11 @@ if (!videoGenerator.includes("async function queueSocialItems") ||
     videoGenerator.includes("reconcileCompletedVideoSocialQueue")) {
   failures.push("only newly generated videos may create social queue items; historical generation requests must not be reconciled");
 }
-if (!videoGenerator.includes("function hasCompleteKidsSeriesMetadata") ||
-    !videoGenerator.includes('content.contentFormat === "series_episode"') ||
-    !videoGenerator.includes("hasCompleteKidsSeriesMetadata(request.content)") ||
-    !videoGenerator.includes("hasCompleteKidsSeriesMetadata(content)")) {
+if (!videoPublishApproval.includes("export function hasCompleteKidsVideoSeriesMetadata") ||
+    !videoPublishApproval.includes('content.contentFormat === "series_episode"') ||
+    !videoGenerator.includes("hasCompleteKidsVideoSeriesMetadata(request.content)") ||
+    !videoGenerator.includes("hasCompleteKidsVideoSeriesMetadata(content)") ||
+    !videoPublishApproval.includes("content?.audience === \"kids\"")) {
   failures.push("Kids video catalog visibility and social publishing must share one complete series-episode contract");
 }
 if (!videoGenerator.includes("getYouTubeUploadRefreshToken") ||
