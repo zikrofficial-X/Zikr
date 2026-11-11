@@ -87,6 +87,19 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
 
 });
 
+test("internal video catalog IDs are never trusted without publisher confirmation", () => {
+  const internal = {
+    youtube_id: "abc123xyz_1",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "cloudinary_ready",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-ready.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(internal), "https://res.cloudinary.com/zikr/video/upload/auto-ready.mp4");
+  assert.equal(resolveVideoThumbnail(internal, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+});
+
 test("missing internal masters use only publisher-confirmed YouTube fallbacks", () => {
   const unconfirmed = {
     youtube_id: "unverified123",
