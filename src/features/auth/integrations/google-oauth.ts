@@ -19,20 +19,17 @@ export async function handleGoogleOAuth(request: NextRequest) {
   const safePath = extractNextPath(request.nextUrl.searchParams);
   const native = request.nextUrl.searchParams.get("native") === "1";
   const authOrigin = getCanonicalAuthBaseUrl(request.nextUrl.origin);
-  // The PKCE verifier is written to the response origin. Redirect aliases
-  // before starting OAuth so the verifier and callback share one host.
-  const requestHost = request.nextUrl.hostname.toLowerCase();
-  const canonicalHost = new URL(authOrigin).hostname.toLowerCase();
-  if (
-    !native &&
-    process.env.VERCEL_ENV === "production" &&
-    requestHost.endsWith(".vercel.app") &&
-    requestHost !== canonicalHost
-  ) {
+  // The PKCE verifier is written to the response origin. Redirect every
+  // non-canonical production origin before creating it; restricting this to
+  // Vercel aliases would leave custom-domain callbacks without the verifier.
+  const canonicalOrigin = new URL(authOrigin);
+  if (request.nextUrl.origin !== canonicalOrigin.origin) {
     const canonicalStart = new URL(request.url);
-    canonicalStart.protocol = "https:";
-    canonicalStart.host = canonicalHost;
-    return NextResponse.redirect(canonicalStart, 308);
+    canonicalStart.protocol = canonicalOrigin.protocol;
+    canonicalStart.host = canonicalOrigin.host;
+    const response = NextResponse.redirect(canonicalStart, 307);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
   }
   const redirectTo = native
     ? buildNativeOAuthRedirectUri(safePath, authOrigin)
