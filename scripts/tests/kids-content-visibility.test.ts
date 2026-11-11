@@ -162,6 +162,11 @@ const kidsSitemap = readFileSync("src/app/sitemap.ts", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 const kidsContentApi = readFileSync("src/app/api/kids/content/route.ts", "utf8");
 const kidsVideosApi = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+const kidsVideoDetailPage = readFileSync("src/app/kids/videos/[slug]/page.tsx", "utf8");
+assert.match(kidsVideoDetailPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/, "the public Kids video detail iframe must be sandboxed to the trusted player capabilities");
+assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-origin"/, "the public Kids video detail iframe must not leak full referrer paths");
+assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
+
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
 assert.ok(kidsVideosApi.includes('row.content_type.endsWith("_video")'), "the Kids video feed must ignore non-video queue rows even when they share a source ID");
 
