@@ -97,7 +97,7 @@ test("internal video catalog IDs are never trusted without publisher confirmatio
     },
   };
   assert.equal(resolveVideoMediaUrl(internal), "https://res.cloudinary.com/zikr/video/upload/auto-ready.mp4");
-  assert.equal(resolveVideoThumbnail(internal, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+  assert.equal(resolveVideoThumbnail(internal, "/branding/og-image.jpg"), "https://res.cloudinary.com/zikr/video/upload/so_0/auto-ready.jpg");
 });
 
 test("missing internal masters use only publisher-confirmed YouTube fallbacks", () => {
