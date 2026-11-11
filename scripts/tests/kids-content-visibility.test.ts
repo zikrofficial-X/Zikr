@@ -172,9 +172,27 @@ assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detai
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
 assert.ok(kidsVideosApi.includes("isPublicKidsVideoSocialQueueRow(row)"), "the Kids video feed must only use confirmed public social queue rows");
 assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
+assert.ok(kidsVideosApi.includes("published_at=not.is.null"), "the public Kids video feed must require a confirmed publication timestamp");
 
-assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", metadata: { audience: "kids" } }), true);
-assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "partial", metadata: { audience: "kids" } }), true, "partial rows are public only when the publisher has confirmed at least one target");
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", published_at: "2026-11-11T12:00:00.000Z", metadata: { audience: "kids" } }), true);
+assert.equal(isPublicKidsVideoSocialQueueRow({
+  content_type: "kids_video",
+  status: "partial",
+  published_at: "2026-11-11T12:00:00.000Z",
+  metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-123" } } },
+}), true, "partial rows are public only when at least one platform has a confirmed remote ID");
+assert.equal(isPublicKidsVideoSocialQueueRow({
+  content_type: "kids_video",
+  status: "partial",
+  published_at: "2026-11-11T12:00:00.000Z",
+  metadata: { audience: "kids", platformResults: {} },
+}), false, "retryable partial rows with no confirmed platform publication must remain private");
+assert.equal(isPublicKidsVideoSocialQueueRow({
+  content_type: "kids_video",
+  status: "partial",
+  published_at: null,
+  metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-123" } } },
+}), false, "a partial row without a publication timestamp must remain private");
 for (const status of ["queued", "processing", "failed"]) {
   assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status, metadata: { audience: "kids" } }), false, `${status} social drafts must not be exposed through the public Kids feed`);
 }
