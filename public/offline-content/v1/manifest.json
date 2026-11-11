@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-30-20261111043116",
+  "version": "2026-11-11-20261111043116",
   "generatedAt": "2026-11-11T04:31:16.000Z",
   "source": "Zikr Supabase public-content snapshot; Kids stories are included only when metadata.age_appropriate=true; the exporter retains the last validated tafsir corpus only if live quran_tafsir falls below its safety floor",
   "licenseNote": "Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.",
