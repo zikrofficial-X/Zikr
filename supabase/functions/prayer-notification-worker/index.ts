@@ -59,9 +59,12 @@ type Delivery = {
   notification_kind: 'prayer' | 'dhikr' | 'salawat';
   notification_text: string | null;
   scheduled_at: string;
+  attempt_count: number;
+};
+
+type DueDeliveryCandidate = Delivery & {
   retry_after: string | null;
   updated_at: string;
-  attempt_count: number;
 };
 
 type VapidBundle = {
@@ -533,7 +536,7 @@ async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
   if (error) throw error;
 
   const claimed: Delivery[] = [];
-  for (const row of (rows ?? []) as Delivery[]) {
+  for (const row of (rows ?? []) as DueDeliveryCandidate[]) {
     const { data: updated, error: claimError } = await supabase
       .from("prayer_notification_deliveries")
       .update({
