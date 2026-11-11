@@ -1,3 +1,47 @@
+const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+/**
+ * Resolve only confirmed, still-existing Kids social publications.
+ * A successful remote deletion must override both the original platform result
+ * and the legacy target_platforms fallback so public feeds cannot report a
+ * deleted post as still published.
+ */
+export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): string[] {
+  const row = asRecord(value);
+  const metadata = asRecord(row.metadata);
+  const platformResults = asRecord(metadata.platformResults);
+  const platformDeletions = asRecord(metadata.platformDeletions);
+  const isDeleted = (platform: string) =>
+    asRecord(platformDeletions[platform]).status === "deleted";
+
+  const delivered = Object.entries(platformResults)
+    .filter(([platform, value]) => {
+      if (!SOCIAL_PLATFORMS.has(platform) || isDeleted(platform)) return false;
+      const result = asRecord(value);
+      return result.ok === true &&
+        typeof result.remoteId === "string" &&
+        result.remoteId.trim().length > 0;
+    })
+    .map(([platform]) => platform);
+  if (delivered.length > 0) return delivered;
+
+  // Only legacy rows without a result ledger may infer delivery from the
+  // original target list. An explicit result ledger with no live success is
+  // authoritative and must not be replaced by that optimistic fallback.
+  if (Object.keys(platformResults).length > 0 || row.status !== "published") return [];
+  const targets = Array.isArray(row.target_platforms) ? row.target_platforms : [];
+  return [...new Set(targets.filter(
+    (platform): platform is string =>
+      typeof platform === "string" && SOCIAL_PLATFORMS.has(platform) && !isDeleted(platform),
+  ))];
+}
+
 export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const row = value as Record<string, unknown>;
@@ -5,20 +49,6 @@ export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
   if (typeof row.content_type !== "string" || !row.content_type.endsWith("_video")) return false;
   if (typeof row.published_at !== "string" || !Number.isFinite(Date.parse(row.published_at))) return false;
 
-  const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-    ? row.metadata as Record<string, unknown>
-    : null;
-  if (metadata?.audience !== "kids") return false;
-  if (row.status === "published") return true;
-
-  const platformResults = metadata.platformResults && typeof metadata.platformResults === "object" && !Array.isArray(metadata.platformResults)
-    ? metadata.platformResults as Record<string, unknown>
-    : {};
-  return Object.values(platformResults).some((result) => {
-    if (!result || typeof result !== "object" || Array.isArray(result)) return false;
-    const platformResult = result as Record<string, unknown>;
-    return platformResult.ok === true &&
-      typeof platformResult.remoteId === "string" &&
-      platformResult.remoteId.trim().length > 0;
-  });
+  const metadata = asRecord(row.metadata);
+  return metadata.audience === "kids";
 }
