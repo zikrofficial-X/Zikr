@@ -35,11 +35,15 @@ assert.deepEqual(
     "/kids/story-old-unpublished",
     "/kids/zikr-kids-old-unpublished",
     "/kids/story-approved",
+    "/kids/revoked-but-generic",
     "/kids/game-memory",
+    "/kids/approved-story",
+    "/kids/games",
+    "/kids/adventures/",
     "/articles/old-article",
   ], publishedKidsRoutes),
-  ["/kids/story-approved", "/kids/game-memory", "/articles/old-article"],
-  "supplemental offline routes must not reintroduce stale Kids story pages while preserving static games and other route families",
+  ["/kids/approved-story", "/kids/games", "/kids/adventures/", "/articles/old-article"],
+  "supplemental offline routes must retain only current public Kids detail slugs plus real static Kids pages and unrelated route families",
 );
 
 const offlinePackSource = readFileSync(resolve(process.cwd(), "src/lib/offline-pack.ts"), "utf8");

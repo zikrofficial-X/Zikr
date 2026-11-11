@@ -50,16 +50,36 @@ export function getPublishedKidsOfflineRoutes(rows: unknown[]): string[] {
   return [...routes].sort();
 }
 
+const STATIC_KIDS_PAGE_ROUTES = new Set([
+  "/kids/achievements",
+  "/kids/adventures",
+  "/kids/audio",
+  "/kids/games",
+  "/kids/parent-dashboard",
+  "/kids/progress",
+  "/kids/puzzle",
+  "/kids/videos",
+]);
+
+function normalizeKidsOfflineRoute(route: string): string {
+  return route.replace(/\/+$/, "") || "/";
+}
+
 export function filterOfflineSupplementalKidsRoutes(
   routes: string[],
   publishedKidsRoutes: string[],
 ): string[] {
-  const allowed = new Set(publishedKidsRoutes);
+  const allowed = new Set(publishedKidsRoutes.map(normalizeKidsOfflineRoute));
   return routes.filter((route) => {
-    const match = /^\/kids\/([^/]+)$/.exec(route);
+    if (typeof route !== "string") return false;
+    const normalizedRoute = normalizeKidsOfflineRoute(route);
+    const match = /^\/kids\/([^/]+)$/.exec(normalizedRoute);
     if (!match) return true;
-    const slug = match[1];
-    const isStoryRoute = slug.startsWith("story-") || slug.startsWith("zikr-kids-");
-    return !isStoryRoute || allowed.has(route);
+
+    // Every one-segment /kids/<slug> path is a database-backed detail route
+    // unless it is one of the actual static pages under src/app/kids.
+    // Slug prefixes are not a reliable content-type discriminator: editors
+    // can publish or revoke stories with arbitrary valid slugs.
+    return STATIC_KIDS_PAGE_ROUTES.has(normalizedRoute) || allowed.has(normalizedRoute);
   });
 }
