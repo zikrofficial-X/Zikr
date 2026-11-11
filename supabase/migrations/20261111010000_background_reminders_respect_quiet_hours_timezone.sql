@@ -55,16 +55,21 @@ begin
   ) as reminder(kind, enabled, interval_minutes)
   cross join lateral (
     select
-      date_trunc('minute', now_at)
-      + (
-        reminder.interval_minutes
-        * floor(
-          extract(epoch from (now_at - date_trunc('day', now_at)))
-          / 60
-          / reminder.interval_minutes
-          + 1
-        )
-      ) * interval '1 minute' as scheduled_at
+      date_trunc('day', now_at at time zone 'UTC') at time zone 'UTC'
+        as utc_day_start
+  ) as day_start
+  cross join lateral (
+    select
+      day_start.utc_day_start
+      + make_interval(
+        mins => (
+          floor(
+            extract(epoch from (now_at - day_start.utc_day_start))
+            / 60
+            / reminder.interval_minutes
+          )::integer + 1
+        ) * reminder.interval_minutes
+      ) as scheduled_at
   ) as next_slot
   left join pg_catalog.pg_timezone_names timezone
     on timezone.name = preferences.timezone
