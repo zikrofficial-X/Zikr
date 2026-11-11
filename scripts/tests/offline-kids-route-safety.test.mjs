@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { getBlockedKidsRoutes } from "../lib/offline-kids-route-safety.mjs";
 
 const previousRows = [
@@ -25,5 +26,9 @@ assert.deepEqual(
 );
 assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
+const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
+assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows\)/);
+assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
+
 
 console.log("Offline Kids route revocation contracts passed.");
