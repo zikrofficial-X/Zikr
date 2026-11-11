@@ -345,6 +345,7 @@ export type Database = {
           quran_time: string
           salawat_enabled: boolean
           salawat_interval_minutes: number
+          timezone: string
           updated_at: string
           user_id: string
         }
@@ -358,6 +359,7 @@ export type Database = {
           quran_time?: string
           salawat_enabled?: boolean
           salawat_interval_minutes?: number
+          timezone?: string
           updated_at?: string
           user_id: string
         }
@@ -371,6 +373,7 @@ export type Database = {
           quran_time?: string
           salawat_enabled?: boolean
           salawat_interval_minutes?: number
+          timezone?: string
           updated_at?: string
           user_id?: string
         }
