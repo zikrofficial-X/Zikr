@@ -62,11 +62,17 @@ function isPublicContentApi(url) {
 }
 
 function isSafeOfflineRoute(route) {
-  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) return false;
+  if (
+    typeof route !== "string" ||
+    !route.startsWith("/") ||
+    route.startsWith("//") ||
+    route.includes("\\") ||
+    /%(?:2f|5c)/i.test(route)
+  ) return false;
   let pathname;
   try {
     const url = new URL(route, self.location.origin);
-    if (url.origin !== self.location.origin) return false;
+    if (url.origin !== self.location.origin || url.search || url.hash) return false;
     pathname = url.pathname.replace(/\/+$/, "") || "/";
   } catch {
     return false;
