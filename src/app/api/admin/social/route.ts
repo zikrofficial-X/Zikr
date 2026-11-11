@@ -15,7 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -553,6 +553,9 @@ export async function POST(request: NextRequest) {
       !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published"].includes(action)
     )
       return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
+    if (["delete", "delete_failed"].includes(action) && ids.length > LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT) {
+      return NextResponse.json({ error: "يمكن حذف 50 سجلًا آمنًا كحد أقصى في الدفعة الواحدة." }, { status: 400 });
+    }
     if (ids.length > 200) {
       return NextResponse.json({ error: "يمكن تنفيذ الإجراء على 200 عنصر كحد أقصى في المرة الواحدة." }, { status: 400 });
     }
