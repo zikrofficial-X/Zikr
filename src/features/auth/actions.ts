@@ -8,6 +8,7 @@ import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
 import { isPwnedPassword } from '@/lib/security/pwned-password';
 import { updateCurrentProfile } from '@/features/profile/services/profile';
 import { sanitizeInternalPath } from '@/lib/safe-redirect';
+import { sanitizeInternalPath } from '@/lib/safe-redirect';
 
 type AuthActionResult =
   | { ok: true; next?: string; message?: string }
