@@ -109,12 +109,12 @@ assert.match(
 );
 assert.match(
   job,
-  /if \\(queueStatus && queueStatus !== "published"\\)/,
+  /if \(queueStatus && queueStatus !== "published"\)/,
   "automatic rollback must require a positively verified non-published queue state",
 );
 assert.match(
   job,
-  /else if \\(!queueStatus\\)/,
+  /else if \(!queueStatus\)/,
   "missing queue state must leave content unchanged for manual reconciliation",
 );
 
