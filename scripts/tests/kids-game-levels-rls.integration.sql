@@ -34,3 +34,27 @@ BEGIN
 END
 $admin$;
 COMMIT;
+
+DO $policy_contract$
+BEGIN
+  IF (
+    SELECT count(*)
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'kids_game_levels'
+      AND policyname = 'kids_game_levels_admin_all'
+  ) <> 1 THEN
+    RAISE EXCEPTION 'Kids levels must retain exactly one admin ALL policy';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'kids_game_levels'
+      AND policyname = 'admin_all_kids_game_levels_select'
+  ) THEN
+    RAISE EXCEPTION 'The duplicate Kids levels admin SELECT policy must not remain';
+  END IF;
+END
+$policy_contract$;
