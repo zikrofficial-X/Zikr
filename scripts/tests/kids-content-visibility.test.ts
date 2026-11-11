@@ -137,6 +137,11 @@ assert.ok(adminAction.includes("audit event unavailable after content save"), "a
 assert.ok(cloudinaryUploadRoute.includes("randomUUID()"), "generic Cloudinary uploads must use collision-resistant default public ids");
 assert.ok(cloudinaryUploadRoute.includes("audit event unavailable after upload"), "audit failure must not report a completed media upload as failed");
 assert.ok(cloudinaryUploadRoute.includes("4 * 1024 * 1024"), "the generic upload route must stay within the Vercel request-body ceiling");
+assert.ok(cloudinaryUploadRoute.includes("حجم الصورة يجب ألا يتجاوز 4 ميجابايت."), "the generic upload validation message must match its enforced 4 MB limit");
+assert.equal(cloudinaryUploadRoute.includes("8 ميجابايت"), false, "the upload route must not advertise a size that the server rejects");
+assert.ok(adminManager.includes('{ok ? `${rows.length} سجل` : "غير متاح"}'), "the Kids admin count must not display zero when the database read failed");
+assert.ok(adminManager.includes("{ok && rows.length === 0 && <p"), "the empty state must appear only after a successful empty database read");
+assert.ok(adminManager.includes('label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)"'), "the quiz field must explain that quiz records require structured questions");
 assert.ok(imageField.includes("3 * 1024 * 1024"), "the Kids server-action upload must stay below the 4 MB action body limit");
 
 assert.ok(

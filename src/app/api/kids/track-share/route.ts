@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { consumeKidsShareRateLimit } from '@/features/kids/services/share-rate-limit';
+import { getTrustedClientAddress } from '@/features/kids/services/client-address';
 
 const VALID_PLATFORMS = new Set([
   'facebook',
@@ -16,10 +17,9 @@ type ShareRequest = {
 };
 
 function getClientAddress(request: NextRequest): string {
-  return (
-    request.headers.get('x-real-ip')?.trim() ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
+  return getTrustedClientAddress(
+    request.headers.get('x-real-ip'),
+    request.headers.get('x-forwarded-for'),
   );
 }
 

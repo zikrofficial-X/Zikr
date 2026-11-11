@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { getTrustedClientAddress } from "../../src/features/kids/services/client-address";
 
 const route = readFileSync("src/app/api/kids/track-share/route.ts", "utf8");
 const limiter = readFileSync("src/features/kids/services/share-rate-limit.ts", "utf8");
@@ -10,6 +11,9 @@ const migration = readFileSync(
 );
 
 assert.match(route, /consumeKidsShareRateLimit\(getClientAddress\(request\)\)/);
+assert.equal(getTrustedClientAddress("198.51.100.2", "spoofed,203.0.113.9"), "198.51.100.2", "the proxy-provided real IP must take precedence over forwarded values");
+assert.equal(getTrustedClientAddress(null, "spoofed, 203.0.113.9"), "203.0.113.9", "the last forwarded hop must be used so a client-supplied first value cannot bypass rate limiting");
+assert.equal(getTrustedClientAddress(null, "  "), "unknown", "missing client address headers must use a stable fail-closed bucket");
 
 assert.ok(shareComponent.includes("fetch('/api/kids/track-share'"), "the Kids share UI must call the rate-limited tracking endpoint");
 for (const platform of ["facebook", "whatsapp", "twitter", "copy-link"]) {

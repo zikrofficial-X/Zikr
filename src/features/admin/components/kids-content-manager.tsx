@@ -155,7 +155,7 @@ export async function AdminKidsContentManager() {
           <Field name="memorization_target" label="هدف الحفظ" placeholder="الفاتحة / الإخلاص / آية الكرسي" />
           <Field name="reward" label="رسالة تشجيع الطفل" placeholder="أحسنت! اقتربت من الوسام الذهبي" />
           <div className="md:col-span-2"><Field name="content_ar" label="المحتوى بالعربية" textarea required placeholder="اكتب محتوى القصة أو الدعاء هنا..." /></div>
-          <div className="md:col-span-2"><Field name="quiz_data" label="بيانات اللعبة / الأسئلة (JSON اختياري)" textarea placeholder='{"questions":[{"text":"من ربك؟","options":["الله","غير ذلك"],"correctAnswer":0}]}' /></div>
+          <div className="md:col-span-2"><Field name="quiz_data" label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)" textarea placeholder='{"questions":[{"text":"من ربك؟","options":["الله","غير ذلك"],"correctAnswer":0}]}' /></div>
           <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="age_appropriate" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
             اعتماد القصة لاستخدامها في التوليد الآلي لمنشورات الأطفال (اختياري)
@@ -174,7 +174,7 @@ export async function AdminKidsContentManager() {
             <h2 className="text-xl text-brand-gold">المحتوى الحالي</h2>
             <p className="text-sm arabic-muted mt-1">هذه القائمة تقرأ مباشرة من جدول kids_content، وليست من بيانات ثابتة داخل الكود.</p>
           </div>
-          <span className="text-xs text-brand-cream/40">{rows.length} سجل</span>
+          <span className="text-xs text-brand-cream/40">{ok ? `${rows.length} سجل` : "غير متاح"}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px] text-sm">
@@ -195,7 +195,7 @@ export async function AdminKidsContentManager() {
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <p className="py-6 text-center text-sm text-brand-cream/40">لا توجد سجلات في قاعدة البيانات حتى الآن.</p>}
+        {ok && rows.length === 0 && <p className="py-6 text-center text-sm text-brand-cream/40">لا توجد سجلات في قاعدة البيانات حتى الآن.</p>}
       </Card>
 
       <Card className="flex items-center justify-between gap-4">

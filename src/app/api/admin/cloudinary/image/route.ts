@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) return errorResponse('يرجى اختيار صورة صالحة.', 400);
     if (!folder) return errorResponse('مجلد الرفع غير صالح.', 400);
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) return errorResponse('الصيغ المدعومة: JPG وPNG وWEBP وGIF.', 400);
-    if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return errorResponse('حجم الصورة يجب ألا يتجاوز 8 ميجابايت.', 400);
+    if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return errorResponse('حجم الصورة يجب ألا يتجاوز 4 ميجابايت.', 400);
 
     const upload = await uploadCloudinaryImage({
       file,
