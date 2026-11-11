@@ -718,7 +718,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       column: "thumbnail_url",
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
     },
-    ...textReferencePatterns("admin_audit_events", "metadata"),
+    ...jsonReferencePattern("admin_audit_events", "metadata"),
     ...jsonReferencePattern("admin_queue_alert_deliveries", "payload"),
     ...textReferencePatterns("articles", "content"),
     ...textReferencePatterns("articles", "content_ar"),
