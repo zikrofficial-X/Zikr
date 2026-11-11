@@ -5,7 +5,7 @@ import {
   assertCloudinaryVideoUrl,
   isGeneratedCloudinaryVideoUrl,
 } from "../../src/features/videos/services/video-media-url";
-import { resolveVideoMediaUrl } from "../../src/features/videos/services/video-media-contract";
+import { resolveVideoMediaUrl, resolveVideoThumbnail } from "../../src/features/videos/services/video-media-contract";
 
 const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
   assertCloudinaryVideoUrl(url, target, "zikr");
@@ -85,6 +85,33 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /mediaFallbackAvailable: true/);
   assert.match(auditScript, /youtubePublicationsByRequest/);
 
+});
+
+test("missing internal masters use only publisher-confirmed YouTube fallbacks", () => {
+  const unconfirmed = {
+    youtube_id: "unverified123",
+    thumbnail_url: "https://res.cloudinary.com/zikr/video/upload/so_0/auto-missing.jpg",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "cloudinary_missing",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-missing.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(unconfirmed), null);
+  assert.equal(resolveVideoThumbnail(unconfirmed, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+
+  const confirmed = {
+    ...unconfirmed,
+    youtube_id: "abc123xyz_1",
+    metadata: {
+      ...unconfirmed.metadata,
+      mediaFallbackAvailable: true,
+      youtubePublishedVideoId: "abc123xyz_1",
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=abc123xyz_1",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(confirmed), "https://www.youtube.com/watch?v=abc123xyz_1");
+  assert.equal(resolveVideoThumbnail(confirmed, "/branding/og-image.jpg"), "https://i.ytimg.com/vi/abc123xyz_1/hqdefault.jpg");
 });
 
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
