@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getKidsGeneratedVideos } from "@/features/videos/services/videos";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { isPublicKidsVideoSocialQueueRow } from "@/features/social/services/kids-video-social-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,7 @@ export async function GET() {
         }),
         supabaseServerAdminRequest<SocialQueueRow[]>(
           "/rest/v1/social_publish_queue?content_id=in.(" + filter +
-            ")&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
+            ")&status=in.(published,partial)&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
         ).catch((error) => {
           console.warn("[api/kids/videos] Could not load linked social posts:", error);
           return [];
@@ -91,7 +92,7 @@ export async function GET() {
       for (const row of socialRows ?? []) {
         if (
           !row.content_id ||
-          !row.content_type.endsWith("_video") ||
+          !isPublicKidsVideoSocialQueueRow(row) ||
           socialQueueByRequestId.has(row.content_id)
         ) continue;
         socialQueueByRequestId.set(row.content_id, row);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
+import { isPublicKidsVideoSocialQueueRow } from "../../src/features/social/services/kids-video-social-visibility";
 import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
 import {
   getFallbackKidsContentBySlug,
@@ -170,6 +171,15 @@ assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detai
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
 assert.ok(kidsVideosApi.includes('row.content_type.endsWith("_video")'), "the Kids video feed must ignore non-video queue rows even when they share a source ID");
+assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
+assert.match(kidsVideosApi, /isPublicKidsVideoSocialQueueRow\\(row\\)/, "the Kids video feed must revalidate social queue visibility before using a queue body");
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", metadata: { audience: "kids" } }), true);
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "partial", metadata: { audience: "kids" } }), true, "partial rows are public only when the publisher has confirmed at least one target");
+for (const status of ["queued", "processing", "failed"]) {
+  assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status, metadata: { audience: "kids" } }), false, `${status} social drafts must not be exposed through the public Kids feed`);
+}
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "written_post", status: "published", metadata: { audience: "kids" } }), false);
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", metadata: { audience: "general" } }), false);
 
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
