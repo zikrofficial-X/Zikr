@@ -197,13 +197,27 @@ assert.ok(english.includes("environment: production"), "English sync must use pr
 assert.ok(english.includes("github.ref == 'refs/heads/main'"), "English sync must be main-only");
 
 assert.ok(release.includes("github.ref == 'refs/heads/main'"), "Controlled Vercel release must be main-only");
+const baselineSchemaIndex = release.indexOf("Verify production data and baseline schema against parent commit");
+const migrationApplyIndex = release.indexOf("Apply pending production migrations before deployment");
+const schemaVerifyIndex = release.indexOf("Verify production schema after migration");
+const artifactBuildIndex = release.indexOf("Build production artifact");
+const deploymentIndex = release.indexOf("Deploy prebuilt artifact to production");
+const productionSmokeIndex = release.indexOf("Production smoke test after schema migration and deployment");
 assert.ok(
-  release.includes("Smoke test deployed app before schema migration") &&
-    release.includes("Post-migration production smoke test"),
-  "Controlled release must smoke-test the deployed app before and after applying database migrations",
+  baselineSchemaIndex >= 0 &&
+    migrationApplyIndex > baselineSchemaIndex &&
+    schemaVerifyIndex > migrationApplyIndex &&
+    artifactBuildIndex > schemaVerifyIndex &&
+    deploymentIndex > artifactBuildIndex &&
+    productionSmokeIndex > deploymentIndex,
+  "Controlled release must verify the parent schema, apply and verify reviewed migrations before building/deploying, then smoke-test the deployed app",
 );
-assert.ok(release.includes("Apply pending production migrations after deployment"), "Controlled release must apply access-restricting migrations only after compatible code is live");
-assert.ok(release.includes("Verify production schema after migration"), "Controlled release must verify schema parity after applying migrations");
+assert.ok(
+  !release.includes("Smoke test deployed app before schema migration") &&
+    !release.includes("Post-migration production smoke test") &&
+    !release.includes("Apply pending production migrations after deployment"),
+  "Controlled release must not retain the retired deploy-first migration sequence",
+);
 assert.ok(release.includes("pnpm release:contract:check"), "Controlled release must use the canonical release contract check");
 assert.ok(release.includes("pnpm production:smoke"), "Controlled release must use the canonical production smoke script");
 assert.ok(!release.includes("--token"), "Controlled Vercel release must not pass credentials through CLI arguments");
