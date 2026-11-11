@@ -73,4 +73,36 @@ assert.match(worker, /scheduled \+= await ensureSubscriptionBatchSchedules/);
 
 assert.match(worker, /inserts\.slice\(offset, offset \+ BATCH_SIZE\)/);
 
+
+const reminderMigration = readFileSync(
+  "supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql",
+  "utf8",
+);
+const reminderService = readFileSync(
+  "src/features/reminders/services/reminder-preferences.ts",
+  "utf8",
+);
+const dhikrHook = readFileSync("src/features/reminders/hooks/use-dhikr-reminder.ts", "utf8");
+const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
+const supabaseTypes = readFileSync("src/lib/types/supabase.ts", "utf8");
+
+assert.match(reminderMigration, /add column if not exists timezone text not null default 'UTC'/);
+assert.match(reminderMigration, /left join pg_catalog\.pg_timezone_names/);
+assert.match(reminderMigration, /local_clock\.local_time < preferences\.quiet_hours_start/);
+assert.match(reminderMigration, /local_clock\.local_time >= preferences\.quiet_hours_end/);
+assert.match(reminderMigration, /preferences\.quiet_hours_start = preferences\.quiet_hours_end/);
+assert.match(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to service_role/i);
+assert.doesNotMatch(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to (?:public|anon|authenticated)/i);
+assert.match(reminderService, /function normalizeTimeZone\(value: unknown\)/);
+assert.match(reminderService, /Intl\.DateTimeFormat\("en-US",\s*\{\s*timeZone:/);
+assert.match(reminderService, /updates\.timezone = timezone/);
+assert.match(reminderService, /quiet_hours_end,timezone,updated_at/);
+assert.match(dhikrHook, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/);
+assert.match(salawatHook, /timezone: Intl\.DateTimeFormat\(\)\.resolvedOptions\(\)\.timeZone \|\| "UTC"/);
+const reminderTypesStart = supabaseTypes.indexOf("background_reminder_preferences: {");
+const reminderTypesEnd = supabaseTypes.indexOf("battle_events:", reminderTypesStart);
+assert.ok(reminderTypesStart >= 0 && reminderTypesEnd > reminderTypesStart);
+assert.match(supabaseTypes.slice(reminderTypesStart, reminderTypesEnd), /timezone: string/);
+assert.match(supabaseTypes.slice(reminderTypesStart, reminderTypesEnd), /timezone\?: string/);
+
 console.log("Prayer notification subscription pagination contracts passed.");
