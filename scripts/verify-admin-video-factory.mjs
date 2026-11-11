@@ -42,9 +42,9 @@ if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)")) {
 }
 
 const generation = read("src/app/api/admin/video-generation/route.ts");
-const generationGet = generation.match(/export async function GET\\([\\s\\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
-const generationDelete = generation.match(/export async function DELETE\\([\\s\\S]*?(?=export async function PATCH|$)/)?.[0] ?? "";
-const generationPatch = generation.match(/export async function PATCH\\([\\s\\S]*$/)?.[0] ?? "";
+const generationGet = generation.match(/export async function GET\([\s\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
+const generationDelete = generation.match(/export async function DELETE\([\s\S]*?(?=export async function PATCH|$)/)?.[0] ?? "";
+const generationPatch = generation.match(/export async function PATCH\([\s\S]*$/)?.[0] ?? "";
 if (!generationGet.includes("requireAdminApi('video.manage')")) failures.push("video generation GET must require video.manage");
 if (!generationPatch.includes("requireAdminStepUpApi('video.manage')")) failures.push("video generation PATCH must require video.manage step-up");
 if (!generationDelete.includes("requireAdminStepUpApi('video.delete')")) failures.push("video generation DELETE must require video.delete step-up");
