@@ -155,23 +155,22 @@ assert.match(
   /published=eq\.false&updated_at=eq\.\$\{encodeURIComponent\(validatedContentUpdatedAt\)\}/,
   "the content write must compare-and-set against the exact version validated by the worker",
 );
-const exactProcessingClaimUrl = String.raw\`/rest/v1/content_publish_queue\\?id=eq\\.\\$\\{encodeURIComponent\\(item\\.id\\)\\}&status=eq\\.processing&updated_at=eq\\.\\$\\{encodeURIComponent\\(claimUpdatedAt\\)\\}\`;
+const exactProcessingClaimPredicate = "/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claimUpdatedAt)}";
+const exactProcessingClaimCount = job.split(exactProcessingClaimPredicate).length - 1;
 assert.ok(
-  [...job.matchAll(new RegExp(exactProcessingClaimUrl, "g"))].length >= 3,
+  exactProcessingClaimCount >= 3,
   "the pre-publish recheck, queue completion, and failure cleanup must all require the exact processing claim version",
 );
-assert.match(
-  job,
-  new RegExp(\`\${exactProcessingClaimUrl}&select=id&limit=1\`),
+assert.ok(
+  job.includes(`${exactProcessingClaimPredicate}&select=id&limit=1`),
   "the worker must recheck its exact queue claim immediately before publishing",
 );
 const completionStart = job.indexOf("const completed = await supabaseServerAdminRequest");
 const completionEnd = job.indexOf("if (!completed", completionStart);
 assert.ok(completionStart >= 0 && completionEnd > completionStart);
-assert.match(
-  job.slice(completionStart, completionEnd),
-  new RegExp(\`\${exactProcessingClaimUrl}&select=id\`),
+assert.ok(
+  job.slice(completionStart, completionEnd).includes(`${exactProcessingClaimPredicate}&select=id`),
   "the worker must commit publication only while it still owns the exact processing claim",
 );
-assert.match(job, /currentQueue\\?\\.\\[0\\]\\?\\.status === "cancelled"/,
+assert.match(job, /currentQueue\?\.\[0\]\?\.status === "cancelled"/,
   "a concurrent unpublish must win over an in-flight scheduled publication");
