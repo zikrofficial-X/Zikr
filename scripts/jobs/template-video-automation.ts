@@ -28,7 +28,7 @@ import { evaluateArabicNarrationText } from "../../src/features/videos/services/
 import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
 import { paginateCaptionText, planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
-import { AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, REQUIRED_VIDEO_APPROVAL_CHECKS, createAutomatedVideoQaApproval, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
+import { hasCompleteKidsVideoSeriesMetadata, AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, REQUIRED_VIDEO_APPROVAL_CHECKS, createAutomatedVideoQaApproval, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
@@ -160,17 +160,7 @@ type SocialQueueRow = {
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
 };
-export function hasCompleteKidsSeriesMetadata(content: GeneratedRequest["content"]): boolean {
-  return content.contentFormat === "series_episode" &&
-    content.aiMode === "original_kids_story" &&
-    content.sourceType === "original_kids_fiction" &&
-    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
-    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
-    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
-    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
-    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0;
-}
-
+export 
 type GeneratedRequest = {
   id: string;
   title: string;
@@ -1776,7 +1766,7 @@ async function registerGeneratedVideoOnSite(
   const qaSnapshot = request.content.automatedVideoQa && typeof request.content.automatedVideoQa === "object" && !Array.isArray(request.content.automatedVideoQa)
     ? request.content.automatedVideoQa as Record<string, unknown>
     : {};
-  const kidsSeriesMetadataComplete = isKidsVideo && hasCompleteKidsSeriesMetadata(request.content);
+  const kidsSeriesMetadataComplete = isKidsVideo && hasCompleteKidsVideoSeriesMetadata(request.content);
   const kidsVideoQaStatus = !isKidsVideo
     ? null
     : kidsSeriesMetadataComplete && qaSnapshot.status === "passed"
@@ -1999,7 +1989,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     return;
   }
   const isKidsVideo = content.audience === "kids";
-  const kidsSocialStoryContractPassed = !isKidsVideo || hasCompleteKidsSeriesMetadata(content);
+  const kidsSocialStoryContractPassed = !isKidsVideo || hasCompleteKidsVideoSeriesMetadata(content);
   if (!kidsSocialStoryContractPassed) {
     console.warn(`[template-video] Kids story contract did not pass for ${request.id}; no Kids social post was queued.`);
     return;
