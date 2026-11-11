@@ -79,6 +79,28 @@ assert.equal(
   "curated static-only content remains available when no database row owns the slug",
 );
 
+const approvalAwareFallbackItems = [
+  { slug: "approved-story", type: "story", metadata: { age_appropriate: true } },
+  { slug: "unapproved-story", type: "story", metadata: { age_appropriate: false } },
+  { slug: "legacy-story", type: "story", metadata: {} },
+  { slug: "public-game", type: "game", metadata: {} },
+];
+assert.deepEqual(
+  mergeKidsContentWithFallback([], approvalAwareFallbackItems, new Set()),
+  [approvalAwareFallbackItems[0], approvalAwareFallbackItems[3]],
+  "static fallback stories must require explicit age approval even when no database row owns their slug",
+);
+assert.equal(
+  getFallbackKidsContentBySlug("unapproved-story", approvalAwareFallbackItems, new Set()),
+  null,
+  "static fallback detail lookup must not expose a story without explicit age approval",
+);
+assert.equal(
+  getFallbackKidsContentBySlug("approved-story", approvalAwareFallbackItems, new Set())?.slug,
+  "approved-story",
+  "explicitly approved static fallback stories remain available",
+);
+
 assert.deepEqual(
   parseKidsQuizData("{\"questions\":[{\"text\":\"من ربك؟\",\"options\":[\"الله\",\"غير ذلك\"],\"correctAnswer\":0}]}"),
   { questions: [{ text: "من ربك؟", options: ["الله", "غير ذلك"], correctAnswer: 0 }] },
