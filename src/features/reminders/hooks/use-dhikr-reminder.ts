@@ -31,11 +31,60 @@ export const DHIKR_PHRASES: string[] = [
   'حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ',
 ];
 
+const SETTINGS_KEY = "zikr_dhikr_settings";
+
 const DEFAULT_SETTINGS: DhikrReminderSettings = {
   enabled: false, // opt-in: user must explicitly enable
   intervalMinutes: 60,
   quietHours: { enabled: false, from: '22:00', to: '06:00' },
 };
+
+function isDhikrInterval(value: unknown): value is DhikrInterval {
+  return typeof value === "number" && [0, 15, 30, 60, 120].includes(value);
+}
+
+function isClockTime(value: unknown): value is string {
+  return typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
+function loadSettings(): DhikrReminderSettings {
+  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return DEFAULT_SETTINGS;
+    }
+    const quietHours = parsed.quietHours && typeof parsed.quietHours === "object"
+      ? parsed.quietHours
+      : {};
+    return {
+      enabled: typeof parsed.enabled === "boolean" ? parsed.enabled : DEFAULT_SETTINGS.enabled,
+      intervalMinutes: isDhikrInterval(parsed.intervalMinutes)
+        ? parsed.intervalMinutes
+        : DEFAULT_SETTINGS.intervalMinutes,
+      quietHours: {
+        enabled: typeof quietHours.enabled === "boolean"
+          ? quietHours.enabled
+          : DEFAULT_SETTINGS.quietHours.enabled,
+        from: isClockTime(quietHours.from) ? quietHours.from : DEFAULT_SETTINGS.quietHours.from,
+        to: isClockTime(quietHours.to) ? quietHours.to : DEFAULT_SETTINGS.quietHours.to,
+      },
+    };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
+
+function saveSettings(settings: DhikrReminderSettings): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can be unavailable in private or quota-limited browser contexts.
+  }
+}
 
 function pickDhikr(index: number): string {
   return DHIKR_PHRASES[index % DHIKR_PHRASES.length];
@@ -67,6 +116,7 @@ export function useDhikrReminder(): DhikrReminderReturn {
   // Load persisted settings only for authenticated users. The API intentionally
   // returns 401 for anonymous visitors, so avoid issuing the request at all.
   useEffect(() => {
+    setSettings(loadSettings());
     let cancelled = false;
     void getAuthenticatedSession().then(async session => {
       if (cancelled || !session?.user) return;
@@ -75,15 +125,19 @@ export function useDhikrReminder(): DhikrReminderReturn {
         if (!response.ok) return;
         const data = await response.json();
         if (cancelled) return;
-        setSettings({
+        const next: DhikrReminderSettings = {
           enabled: Boolean(data.dhikr_enabled),
-          intervalMinutes: data.dhikr_interval_minutes ?? 60,
+          intervalMinutes: isDhikrInterval(data.dhikr_interval_minutes)
+            ? data.dhikr_interval_minutes
+            : DEFAULT_SETTINGS.intervalMinutes,
           quietHours: {
             enabled: Boolean(data.quiet_hours_start && data.quiet_hours_end),
-            from: data.quiet_hours_start?.slice(0, 5) ?? '22:00',
-            to: data.quiet_hours_end?.slice(0, 5) ?? '06:00',
+            from: isClockTime(data.quiet_hours_start?.slice(0, 5)) ? data.quiet_hours_start.slice(0, 5) : '22:00',
+            to: isClockTime(data.quiet_hours_end?.slice(0, 5)) ? data.quiet_hours_end.slice(0, 5) : '06:00',
           },
-        });
+        };
+        saveSettings(next);
+        setSettings(next);
       } catch {
         // Anonymous/offline users keep the local defaults.
       }
@@ -129,6 +183,7 @@ export function useDhikrReminder(): DhikrReminderReturn {
       setSettings(prev => {
         const patch = typeof partial === 'function' ? partial(prev) : partial;
         const next = { ...prev, ...patch };
+        saveSettings(next);
         void getAuthenticatedSession().then(session => {
           if (!session?.user) return;
           void fetch('/api/reminders/background', {
