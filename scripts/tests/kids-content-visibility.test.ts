@@ -267,6 +267,8 @@ assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids quer
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
 assert.match(service, /metadata->>age_appropriate\.eq\.true/, "public Kids database reads must exclude stories without explicit age approval");
 assert.match(service, /isKidsContentPubliclyVisible/, "public Kids services must enforce age approval for stories even when the database RLS policy is unavailable");
+assert.match(service, /FALLBACK_KIDS_CONTENT\.filter\(isKidsContentPubliclyVisible\)/, "static fallback lists must apply the same explicit story age-approval gate");
+assert.match(service, /if \(!fallback \|\| !isKidsContentPubliclyVisible\(fallback\)\) return null/, "static fallback detail routes must not bypass story age approval");
 assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress to a story-only database feed");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
