@@ -41,6 +41,12 @@ assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
 const serviceWorker = readFileSync("public/sw.js", "utf8");
+const offlinePack = readFileSync("src/lib/offline-pack.ts", "utf8");
+assert.match(
+  offlinePack,
+  /fetch\(definition\.path,\s*\{\s*cache:\s*"no-store"/,
+  "dataset refreshes must bypass the browser HTTP cache when the manifest version changes",
+);
 const offlineContentStart = serviceWorker.indexOf('if (url.pathname.startsWith(OFFLINE_CONTENT_PREFIX))');
 const offlineContentEnd = serviceWorker.indexOf('if (url.pathname === "/api/prayer-times")', offlineContentStart);
 assert.ok(offlineContentStart >= 0 && offlineContentEnd > offlineContentStart, "service worker must define an offline-content handler");
