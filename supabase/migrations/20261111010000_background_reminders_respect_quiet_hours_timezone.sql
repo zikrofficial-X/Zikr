@@ -20,8 +20,8 @@ create or replace function public.plan_background_reminder_deliveries(
 )
 returns integer
 language plpgsql
-security definer
-set search_path = public
+security invoker
+set search_path = ''
 as $function$
 declare
   inserted_count integer := 0;
