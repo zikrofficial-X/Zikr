@@ -7,6 +7,15 @@ const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java"
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
+const capacitor = JSON.parse(read("capacitor.config.json"));
+const iosPlist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = iosPlist.match(/<key>WKAppBoundDomains<\/key>\s*<array>([\s\S]*?)<\/array>/)?.[1] ?? "";
+const appBoundDomains = new Set([...appBoundDomainBlock.matchAll(/<string>([^<]+)<\/string>/g)].map(match => match[1]));
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  assert.ok(capacitor.server?.allowNavigation?.includes(host), `${host} must remain an allowed Capacitor destination`);
+  assert.ok(appBoundDomains.has(host), `${host} must be app-bound when WKWebView navigation limits are enabled`);
+}
+assert.ok(appBoundDomains.size <= 10, "WKAppBoundDomains must not exceed Apple’s 10-domain limit");
 
 assert.ok(pkg.dependencies?.["@capgo/capacitor-social-login"], "Capgo Social Login dependency is required");
 assert.ok(lock.includes("@capgo/capacitor-social-login@7.20.0"), "pnpm lockfile must include the resolved native plugin");
