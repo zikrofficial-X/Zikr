@@ -25,6 +25,12 @@ assert.equal(resolveDestructiveMfaRequirement(null), true, "a null MFA setting m
 assert.equal(resolveDestructiveMfaRequirement("false"), true, "a malformed string must not disable destructive-action MFA");
 
 const securityService = readFileSync("src/features/admin/services/security.ts", "utf8");
+const adminSystemActions = readFileSync("src/app/admin/system-actions.ts", "utf8");
+assert.match(
+  adminSystemActions,
+  /key === "require_mfa_for_destructive"[\s\S]*?requireAdminStepUp\("settings\.manage", "\/admin\/settings"\)/,
+  "changing the destructive-action MFA policy must require step-up whenever the current policy is enabled or missing",
+);
 const securityPage = readFileSync("src/app/admin/security/page.tsx", "utf8");
 const settingsPage = readFileSync("src/app/admin/settings/page.tsx", "utf8");
 assert.match(securityService, /resolveDestructiveMfaRequirement\(rows\[0\]\?\.value\)/, "runtime enforcement must fail closed when the setting row is absent");

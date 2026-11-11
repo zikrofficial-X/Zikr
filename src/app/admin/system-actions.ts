@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
@@ -11,8 +12,10 @@ function formValue(formData: FormData, key: string) {
 }
 
 export async function saveAdminSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("settings.manage");
   const key = formValue(formData, "key");
+  const profile = key === "require_mfa_for_destructive"
+    ? await requireAdminStepUp("settings.manage", "/admin/settings")
+    : await requireAdminPermission("settings.manage");
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
