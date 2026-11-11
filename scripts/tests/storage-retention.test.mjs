@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   compareSemverTags,
+  assertExpectedSupabaseProject,
+  assertRetentionApplyConfirmation,
+  probeCloudinaryPlayback,
   extractManagedVideoPath,
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
@@ -14,6 +17,13 @@ import {
 } from "../cleanup-supabase-storage.mjs";
 
 const supabaseUrl = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
+assert.equal(assertExpectedSupabaseProject(supabaseUrl, "zqtssvlvmkzeeyqghqfk"), "zqtssvlvmkzeeyqghqfk");
+assert.throws(() => assertExpectedSupabaseProject(supabaseUrl, "wrong-project"), /20-character Supabase project ref/);
+assert.throws(() => assertExpectedSupabaseProject("https://other-project.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
+assert.throws(() => assertExpectedSupabaseProject("http://zqtssvlvmkzeeyqghqfk.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
+assert.doesNotThrow(() => assertRetentionApplyConfirmation(false, ""));
+assert.throws(() => assertRetentionApplyConfirmation(true, ""), /DELETE_STAGING_COPIES/);
+assert.doesNotThrow(() => assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES"));
 const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`;
 const cloudinaryMaster = "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4";
 const now = new Date("2026-10-30T12:00:00.000Z");
@@ -66,6 +76,23 @@ assert.equal(
   null,
   "Assets from another Cloudinary cloud are never deleted",
 );
+const probeResponse = (status, contentType) => ({
+  status,
+  ok: status >= 200 && status < 300,
+  headers: { get: (name) => name === "content-type" ? contentType : null },
+  body: { cancel: async () => {} },
+});
+assert.equal((await probeCloudinaryPlayback(cloudinaryMaster, "dcuveyab9", async () => probeResponse(200, "video/mp4"))).status, "available");
+assert.equal((await probeCloudinaryPlayback(cloudinaryMaster, "dcuveyab9", async () => probeResponse(404, "text/plain"))).status, "missing");
+assert.equal((await probeCloudinaryPlayback(cloudinaryMaster, "dcuveyab9", async () => probeResponse(403, "text/html"))).status, "unknown");
+const probeMethods = [];
+const rangeProbe = await probeCloudinaryPlayback(cloudinaryMaster, "dcuveyab9", async (_url, options) => {
+  probeMethods.push(options.method);
+  return options.method === "HEAD" ? probeResponse(405, null) : probeResponse(206, "video/mp4");
+});
+assert.equal(rangeProbe.status, "available");
+assert.deepEqual(probeMethods, ["HEAD", "GET"]);
+assert.equal((await probeCloudinaryPlayback("https://evil.example/video.mp4", "dcuveyab9", async () => probeResponse(200, "video/mp4"))).status, "unknown");
 assert.equal(
   extractManagedVideoPath("https://evil.example/storage/v1/object/public/videos/a.mp4", supabaseUrl),
   null,
@@ -96,16 +123,18 @@ const pagedRows = await collectPaginatedRows(
 assert.deepEqual(pagedRows, [10, 20, 30, 40, 50], "all pages must be read before retention decisions");
 const duplicateBackupReferences = indexManagedBackupReferences(
   [
-    { id: "queue-a", metadata: { supabaseOriginalVideoUrl: publicUrl } },
+    { id: "queue-a", video_url: "https://cdn.example/primary.mp4", metadata: { supabaseOriginalVideoUrl: publicUrl } },
     { id: "queue-b", metadata: { nested: { sourceVideoUrl: publicUrl } } },
+    { id: "queue-c", video_url: `${supabaseUrl}/storage/v1/object/public/videos/automated%2Fstory%3A20750%3A11.mp4`, metadata: {} },
   ],
   ["automated/story:20750:11.mp4"],
-  (row) => row.metadata,
+  (row) => ({ metadata: row.metadata, video_url: row.video_url }),
   (row) => row.id,
+  supabaseUrl,
 );
 assert.deepEqual(
   [...duplicateBackupReferences.get("automated/story:20750:11.mp4")],
-  ["queue-a", "queue-b"],
+  ["queue-a", "queue-b", "queue-c"],
   "backup ownership must be indexed across every queue/request row before deletion",
 );
 
@@ -123,6 +152,11 @@ const goodMetadata = {
   },
 };
 assert.equal(hasConfirmedPlatformResults(targets, goodMetadata), true);
+assert.equal(
+  hasConfirmedPlatformResults(["unknown_platform"], { platformResults: { unknown_platform: { ok: true, remoteId: "remote-id" } } }),
+  false,
+  "unsupported database platform values must never authorize storage deletion",
+);
 assert.equal(
   hasConfirmedPlatformResults(targets, { platformResults: { youtube: goodMetadata.platformResults.youtube } }),
   false,
@@ -146,7 +180,8 @@ const publishedCandidate = {
   target_platforms: targets,
   metadata: { ...goodMetadata, supabaseOriginalVideoUrl: publicUrl },
 };
-assert.equal(isEligiblePublishedQueueItem(publishedCandidate, cutoff, supabaseUrl, "dcuveyab9"), true);
+assert.equal(isEligiblePublishedQueueItem(publishedCandidate, cutoff, supabaseUrl, "dcuveyab9", "available"), true);
+assert.equal(isEligiblePublishedQueueItem(publishedCandidate, cutoff, supabaseUrl, "dcuveyab9", "unknown"), false);
 assert.equal(
   isEligiblePublishedQueueItem({ ...publishedCandidate, status: "partial" }, cutoff, supabaseUrl, "dcuveyab9"),
   false,
@@ -191,6 +226,12 @@ const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
   ? storageRetentionSource.slice(inventoryStart, inventoryEnd)
   : "";
 assert.ok(inventoryBlock.includes("collectPaginatedRows"), "queue and request inventories must use complete paginated scans");
+assert.match(storageRetentionSource, /table: "videos",[\s\S]*?column: "video_url"/);
+assert.match(storageRetentionSource, /table: "social_publish_queue",[\s\S]*?column: "video_url"/);
+assert.match(storageRetentionSource, /table: "video_generation_requests",[\s\S]*?column: "video_url"/);
+assert.ok(storageRetentionSource.includes("await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName)"));
+assert.ok(storageRetentionSource.includes("assertRetentionApplyConfirmation(apply, process.env.RETENTION_CONFIRMATION)"));
+assert.ok(storageRetentionSource.includes("assertExpectedSupabaseProject(supabaseUrl, process.env.EXPECTED_PROJECT_REF)"));
 assert.match(
   storageRetentionSource,
   /table: "videos",[\s\S]*?column: "metadata"[\s\S]*?query\.not\("metadata", "is", null\)/,
@@ -202,6 +243,8 @@ const retentionWorkflow = readFileSync(".github/workflows/storage-retention.yml"
 assert.ok(retentionWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'"), "destructive cleanup must require typed owner confirmation");
 assert.ok(retentionWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true"), "destructive cleanup must require manual dispatch");
 assert.equal(retentionWorkflow.includes("github.event_name == 'schedule' ||"), false, "scheduled retention runs must never apply deletion");
+assert.ok(retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk"));
+assert.ok(retentionWorkflow.includes("RETENTION_CONFIRMATION: ${{ inputs.confirmation }}"));
 assert.ok(retentionWorkflow.includes("if: github.ref == 'refs/heads/main'"), "storage retention must only run from canonical main");
 assert.ok(retentionWorkflow.includes("ref: main"), "storage retention must check out canonical main before accessing production credentials");
 

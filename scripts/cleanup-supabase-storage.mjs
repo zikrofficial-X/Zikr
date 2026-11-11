@@ -15,6 +15,8 @@ const REQUIRED_ANDROID_ASSETS = [
 ];
 const GITHUB_RELEASES_API =
   "https://api.github.com/repos/zikrofficial-X/Zikr/releases/tags";
+const SUPPORTED_RETENTION_PLATFORMS = new Set(["facebook", "facebook_reels", "youtube"]);
+const MAX_CLOUDINARY_PROBES = 1000;
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -22,6 +24,24 @@ function asObject(value) {
 
 function asString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+export function assertExpectedSupabaseProject(supabaseUrl, expectedProjectRef) {
+  const expected = asString(expectedProjectRef).toLowerCase();
+  if (!/^[a-z0-9]{20}$/.test(expected)) {
+    throw new Error("EXPECTED_PROJECT_REF must be the canonical 20-character Supabase project ref.");
+  }
+  const parsed = new URL(supabaseUrl);
+  if (parsed.protocol !== "https:" || parsed.hostname.toLowerCase() !== `${expected}.supabase.co`) {
+    throw new Error(`Refusing Storage retention for an unexpected Supabase project; expected https://${expected}.supabase.co.`);
+  }
+  return expected;
+}
+
+export function assertRetentionApplyConfirmation(apply, confirmation) {
+  if (apply && asString(confirmation) !== "DELETE_STAGING_COPIES") {
+    throw new Error("Refusing destructive Storage retention without RETENTION_CONFIRMATION=DELETE_STAGING_COPIES.");
+  }
 }
 
 export async function collectPaginatedRows(
@@ -64,7 +84,7 @@ export function hasConfirmedPlatformResults(targetPlatforms, metadata) {
   if (!Array.isArray(targetPlatforms) || targetPlatforms.length === 0) return false;
   const results = asObject(asObject(metadata).platformResults);
   return targetPlatforms.every((platform) => {
-    if (typeof platform !== "string" || !platform.trim()) return false;
+    if (typeof platform !== "string" || !SUPPORTED_RETENTION_PLATFORMS.has(platform)) return false;
     const result = asObject(results[platform]);
     return result.ok === true && Boolean(asString(result.remoteId));
   });
@@ -111,30 +131,90 @@ export function extractCloudinaryVideoPublicId(value, cloudName) {
   }
 }
 
+export async function probeCloudinaryPlayback(value, cloudName, fetchImpl = fetch) {
+  if (!extractCloudinaryVideoPublicId(value, cloudName)) {
+    return { status: "unknown", httpStatus: null, contentType: null, reason: "unverified_cloudinary_url" };
+  }
+  const probe = (method) => fetchImpl(value, {
+    method,
+    ...(method === "GET" ? { headers: { Range: "bytes=0-0" } } : {}),
+    redirect: "error",
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  try {
+    let response = await probe("HEAD");
+    if (response.status === 405 || response.status === 501) {
+      response = await probe("GET");
+      await response.body?.cancel();
+    }
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? null;
+    const isVideo = Boolean(contentType && (
+      contentType.startsWith("video/") || contentType.includes("application/octet-stream")
+    ));
+    if ((response.ok || response.status === 206) && isVideo) {
+      return { status: "available", httpStatus: response.status, contentType };
+    }
+    if (response.status === 404 || response.status === 410) {
+      return { status: "missing", httpStatus: response.status, contentType, reason: "asset_not_found" };
+    }
+    if (response.ok || response.status === 206) {
+      return { status: "unknown", httpStatus: response.status, contentType, reason: "unexpected_content_type" };
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { status: "unknown", httpStatus: response.status, contentType, reason: "asset_access_restricted" };
+    }
+    return { status: "unknown", httpStatus: response.status, contentType, reason: "transient_or_unclassified_http_status" };
+  } catch (error) {
+    return {
+      status: "unknown",
+      httpStatus: null,
+      contentType: null,
+      reason: error instanceof Error ? error.name : "network_error",
+    };
+  }
+}
+
 function getSupabaseBackupUrl(queue, request, supabaseUrl) {
   return asString(asObject(queue?.metadata).supabaseOriginalVideoUrl)
     || asString(asObject(request?.content).supabaseOriginalVideoUrl)
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
-export function indexManagedBackupReferences(rows, candidatePaths, getValue, getId) {
+export function indexManagedBackupReferences(rows, candidatePaths, getValue, getId, supabaseUrl) {
   const references = new Map();
-  const candidates = [...candidatePaths];
+  const candidates = new Set(candidatePaths);
+  const addReference = (path, id) => {
+    if (!candidates.has(path)) return;
+    const ids = references.get(path) ?? new Set();
+    ids.add(id);
+    references.set(path, ids);
+  };
+  const collectStrings = (value, output = []) => {
+    if (typeof value === "string") output.push(value);
+    else if (Array.isArray(value)) value.forEach((item) => collectStrings(item, output));
+    else if (value && typeof value === "object") Object.values(value).forEach((item) => collectStrings(item, output));
+    return output;
+  };
   for (const row of rows ?? []) {
-    const serialized = JSON.stringify(getValue(row) ?? {});
+    const value = getValue(row) ?? {};
     const id = String(getId(row) ?? "");
+    const serialized = JSON.stringify(value);
     for (const path of candidates) {
-      if (!serialized.includes(path)) continue;
-      const ids = references.get(path) ?? new Set();
-      ids.add(id);
-      references.set(path, ids);
+      if (serialized.includes(path)) addReference(path, id);
+    }
+    if (supabaseUrl) {
+      for (const candidate of collectStrings(value)) {
+        const managedPath = extractManagedVideoPath(candidate, supabaseUrl);
+        if (managedPath) addReference(managedPath, id);
+      }
     }
   }
   return references;
 }
 
-export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME)) {
-  if (!item || item.status !== "published") return false;
+export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME), cloudinaryProbeStatus = "unknown") {
+  if (!item || item.status !== "published" || cloudinaryProbeStatus !== "available") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
   if (!hasConfirmedPlatformResults(item.target_platforms, item.metadata)) return false;
   const backupUrl = asString(asObject(item.metadata).supabaseOriginalVideoUrl);
@@ -179,8 +259,7 @@ function assertEnv() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   }
-  const parsedUrl = new URL(supabaseUrl);
-  if (parsedUrl.protocol !== "https:") throw new Error("SUPABASE_URL must use HTTPS.");
+  assertExpectedSupabaseProject(supabaseUrl, process.env.EXPECTED_PROJECT_REF);
   return { supabaseUrl: supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl, serviceRoleKey };
 }
 
@@ -343,8 +422,18 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
     },
     {
       table: "video_generation_requests",
+      column: "video_url",
+      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "video_generation_requests",
       column: "thumbnail_url",
       filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "videos",
+      column: "video_url",
+      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
     },
     {
       table: "videos",
@@ -380,6 +469,11 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       table: "content_sources",
       column: "url",
       filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
+    },
+    {
+      table: "social_publish_queue",
+      column: "video_url",
+      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
     },
     {
       table: "social_publish_queue",
@@ -636,11 +730,12 @@ async function updateAndroidBucketRows(client, paths) {
 }
 
 async function main() {
+  const apply = process.argv.includes("--apply");
+  assertRetentionApplyConfirmation(apply, process.env.RETENTION_CONFIRMATION);
   const { supabaseUrl, serviceRoleKey } = assertEnv();
   const client = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const apply = process.argv.includes("--apply");
   const videosOnly = process.argv.includes("--videos-only");
   const now = new Date();
   const cutoff = new Date(now.getTime() - VIDEO_RETENTION_HOURS * 60 * 60 * 1000);
@@ -697,18 +792,20 @@ async function main() {
   const queueBackupReferences = indexManagedBackupReferences(
     queueRows,
     candidatePaths,
-    (row) => row.metadata,
+    (row) => ({ metadata: row.metadata, video_url: row.video_url }),
     (row) => row.id,
+    supabaseUrl,
   );
   const requestBackupReferences = indexManagedBackupReferences(
     requestRows,
     candidatePaths,
-    (row) => row.content,
+    (row) => ({ content: row.content, video_url: row.video_url }),
     (row) => row.id,
+    supabaseUrl,
   );
 
   const cloudinaryCloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
-  const candidates = [];
+  const candidateQueue = [];
   const skipped = [];
   for (const row of queueRows) {
     if (!row.video_url || row.status !== "published" || !row.published_at ||
@@ -768,7 +865,7 @@ async function main() {
       skipped.push({ id: row.id, reason: "Another public content table still references this video path." });
       continue;
     }
-    candidates.push({
+    candidateQueue.push({
       queue: row,
       request,
       path,
@@ -779,6 +876,29 @@ async function main() {
       publishedAt: row.published_at,
     });
   }
+
+  if (candidateQueue.length > MAX_CLOUDINARY_PROBES) {
+    throw new Error(`Cloudinary playback verification exceeded the safe limit of ${MAX_CLOUDINARY_PROBES}; refusing cleanup.`);
+  }
+  const candidates = [];
+  let probeCursor = 0;
+  const probeConcurrency = Math.min(10, candidateQueue.length);
+  await Promise.all(Array.from({ length: probeConcurrency }, async () => {
+    while (true) {
+      const index = probeCursor++;
+      if (index >= candidateQueue.length) return;
+      const candidate = candidateQueue[index];
+      const probe = await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName);
+      if (probe.status !== "available") {
+        skipped.push({
+          id: candidate.queue.id,
+          reason: `Cloudinary playback master is not confirmed available (${probe.status}${probe.reason ? `: ${probe.reason}` : ""}).`,
+        });
+        continue;
+      }
+      candidates.push(candidate);
+    }
+  }));
 
   const totalVideoBytes = candidates.reduce((sum, item) => sum + item.bytes, 0);
   console.log(

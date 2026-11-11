@@ -60,6 +60,16 @@ if (!disposal.includes("stagingCleanupEligibleAt") || disposal.includes("deleteM
   failures.push("Social delivery must preserve the permanent Cloudinary media master and defer staging-copy cleanup");
 }
 
+const retention = read("scripts/cleanup-supabase-storage.mjs");
+for (const token of ["probeCloudinaryPlayback", "assertExpectedSupabaseProject", "assertRetentionApplyConfirmation", 'column: "video_url"', "MAX_CLOUDINARY_PROBES"]) {
+  if (!retention.includes(token)) failures.push("Storage retention is missing a fail-closed safety contract: " + token);
+}
+const retentionWorkflow = read(".github/workflows/storage-retention.yml");
+if (!retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk") ||
+    !retentionWorkflow.includes("RETENTION_CONFIRMATION: ${{ inputs.confirmation }}")) {
+  failures.push("Storage retention workflow must pass the canonical project ref and explicit owner confirmation to the cleanup CLI");
+}
+
 const workflow = read(".github/workflows/audit-video-media.yml");
 if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("workflow_dispatch:") ||

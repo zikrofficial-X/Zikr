@@ -31,6 +31,7 @@ jobs:
     timeout-minutes: 25
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
       CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
@@ -72,6 +73,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing SUPABASE_URL" >&2; exit 1; }
+          test "${EXPECTED_PROJECT_REF:-}" = "zqtssvlvmkzeeyqghqfk" || { echo "::error::Unexpected EXPECTED_PROJECT_REF" >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing protected SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
           test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing CLOUDINARY_CLOUD_NAME" >&2; exit 1; }
           test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing CLOUDINARY_API_KEY" >&2; exit 1; }
@@ -89,6 +91,8 @@ jobs:
 
       - name: Apply manually approved full storage retention
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.confirmation == 'DELETE_STAGING_COPIES' }}
+        env:
+          RETENTION_CONFIRMATION: ${{ inputs.confirmation }}
         run: pnpm storage:cleanup -- --apply
 
       - name: Verify final bucket inventory
