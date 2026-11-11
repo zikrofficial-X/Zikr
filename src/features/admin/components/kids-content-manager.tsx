@@ -145,7 +145,7 @@ export async function AdminKidsContentManager() {
             </select>
           </label>
           <CloudinaryImageUploadField name="featured_image_url" fileName="featured_image_file" label="الصورة المميزة" folder="kids" hint="حتى 3MB — JPG/PNG/WEBP/GIF" />
-          <Field name="video_url" label="رابط فيديو تعليمي" placeholder="https://www.youtube.com/embed/..." />
+          <Field name="video_url" label="رابط فيديو تعليمي (مطلوب عند اختيار نوع فيديو)" placeholder="https://www.youtube.com/embed/..." />
           <label className="space-y-1 text-sm text-brand-cream/80">
             <span>معرف اللعبة</span>
             <select name="game_id" defaultValue="zikr-runner" className="w-full rounded-lg bg-black/20 border border-brand-gold/20 p-2 text-brand-cream">
@@ -158,7 +158,7 @@ export async function AdminKidsContentManager() {
           <div className="md:col-span-2"><Field name="quiz_data" label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)" textarea placeholder='{"questions":[{"text":"من ربك؟","options":["الله","غير ذلك"],"correctAnswer":0}]}' /></div>
           <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="age_appropriate" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
-            اعتماد القصة لاستخدامها في التوليد الآلي لمنشورات الأطفال (اختياري)
+            اعتماد ملاءمة القصة للعمر قبل النشر والتوليد الآلي (مطلوب لنشر القصة)
           </label>
           <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="published" type="checkbox" defaultChecked={false} className="accent-brand-gold" />

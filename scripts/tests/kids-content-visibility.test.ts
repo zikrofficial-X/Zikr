@@ -179,6 +179,13 @@ assert.ok(
 );
 const quizRequiredPosition = adminAction.indexOf("if (type === \"quiz\" && !quizData)");
 assert.ok(quizRequiredPosition > 0 && quizRequiredPosition < imageUploadPosition, "a quiz record must require a valid non-empty question set before media upload");
+const storyApprovalPosition = adminAction.indexOf('if (type === "story" && published && !ageAppropriate)');
+assert.ok(storyApprovalPosition > 0 && storyApprovalPosition < imageUploadPosition, "unapproved Kids stories must be rejected before publication or media upload");
+const videoRequiredPosition = adminAction.indexOf('if (type === "video" && !videoUrl)');
+assert.ok(videoRequiredPosition > 0 && videoRequiredPosition < imageUploadPosition, "video content must require a validated YouTube embed before media upload");
+assert.match(adminAction, /formData\.get\("age_appropriate"\) === "on"/, "age approval must be true only for a checked checkbox");
+assert.match(adminAction, /formData\.get\("published"\) === "on"/, "publication must be true only for a checked checkbox");
+assert.doesNotMatch(adminAction, /formData\.has\("(?:age_appropriate|published)"\)/, "false checkbox values must never be interpreted as approval or publication");
 assert.match(adminAction, /const quizData = type === "quiz" \? parseKidsQuizData[\s\S]*?: null;/, "non-quiz Kids records must not persist quiz metadata");
 assert.ok(
   adminAction.indexOf("if (type === \"game\" && !isRegisteredGameId(gameId))") < imageUploadPosition,
@@ -186,7 +193,8 @@ assert.ok(
 );
 assert.match(adminManager, /name="age_appropriate"/);
 assert.match(adminManager, /automationApprovalRequiredCount/);
-assert.match(adminManager, /اعتماد التوليد الآلي/);
+assert.match(adminManager, /اعتماد ملاءمة القصة للعمر قبل النشر/);
+assert.ok(adminManager.includes('label="رابط فيديو تعليمي (مطلوب عند اختيار نوع فيديو)"'), "the admin UI must identify the required video URL for video content");
 assert.match(adminManager, /"text":"من ربك؟","options":\["الله","غير ذلك"\],"correctAnswer":0/, "the admin quiz example must match the Kids detail player contract");
 assert.doesNotMatch(adminManager, /"q":|"answers":/, "the admin quiz example must not use unsupported question keys");
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
@@ -266,7 +274,7 @@ const migration = readFileSync(
   "utf8",
 );
 assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
-assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true[\s\S]*type\s*<>\s*'story'[\s\S]*metadata->>'age_appropriate'\s*=\s*'true'/i, "public Kids RLS must hide unpublished, inactive, and age-unapproved stories");
-assert.match(migration, /kids_content\.type\s*<>\s*'story'[\s\S]*kids_content\.metadata->>'age_appropriate'\s*=\s*'true'/i, "the share counter must use the same age-approved story visibility contract");
+assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true[\s\S]*type\s*<>\s*'story'[\s\S]*metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "public Kids RLS must hide unpublished, inactive, and stories without a JSON boolean age approval");
+assert.match(migration, /kids_content\.type\s*<>\s*'story'[\s\S]*kids_content\.metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "the share counter must use the same age-approved story visibility contract");
 
 console.log("Kids content visibility and fallback contracts passed.");

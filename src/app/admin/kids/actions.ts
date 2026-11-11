@@ -33,8 +33,8 @@ export async function saveKidsContentAction(formData: FormData) {
   const gameId = value(formData, "game_id");
   const allowedAgeGroups = new Set(["3-5", "6-8", "9-12", "13-15"]);
   const ageGroup = value(formData, "age_group") ?? "6-8";
-  const ageAppropriate = type === "story" && formData.has("age_appropriate");
-  const published = formData.has("published");
+  const ageAppropriate = type === "story" && formData.get("age_appropriate") === "on";
+  const published = formData.get("published") === "on";
   const rawVideoUrl = value(formData, "video_url");
   if (rawVideoUrl && type !== "video") throw new Error("رابط الفيديو مسموح به لمحتوى الفيديو فقط.");
   const videoUrl = rawVideoUrl ? normalizeKidsVideoEmbedUrl(rawVideoUrl) : null;

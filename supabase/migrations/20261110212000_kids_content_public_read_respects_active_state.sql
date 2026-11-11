@@ -11,7 +11,7 @@ using (
   and is_active is true
   and (
     type <> 'story'
-    or metadata->>'age_appropriate' = 'true'
+    or metadata->'age_appropriate' = 'true'::jsonb
   )
 );
 
@@ -31,7 +31,7 @@ as $function$
     and kids_content.is_active is true
     and (
       kids_content.type <> 'story'
-      or kids_content.metadata->>'age_appropriate' = 'true'
+      or kids_content.metadata->'age_appropriate' = 'true'::jsonb
     )
   returning kids_content.slug, kids_content.shares;
 $function$;
