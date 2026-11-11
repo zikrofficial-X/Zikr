@@ -104,5 +104,6 @@ const backgroundRunnerSource = readFileSync(resolve(process.cwd(), "scripts/run-
 assert.match(backgroundRunnerSource, /select=key,value,updated_at/, "Run Now consumption must read the row version");
 assert.match(backgroundRunnerSource, /updated_at=eq\.\$\{encodeURIComponent\(row\.updated_at\)\}/, "Run Now deletion must compare-and-set the exact row version");
 assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "Run Now deletion must match the exact request identity");
+assert.match(backgroundRunnerSource, /import \{[^}]*isSameRunNowRequest[^}]*\} from "\.\.\/src\/features\/videos\/services\/background-job-outcome"/, "the Run Now identity guard must be imported from the shared policy");
 const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/admin/system-actions.ts"), "utf8");
 assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");

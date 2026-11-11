@@ -4,7 +4,7 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
-import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
+import { evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
