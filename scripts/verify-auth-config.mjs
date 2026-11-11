@@ -73,6 +73,9 @@ requireText("Android Google button", button, 'Capacitor.isPluginAvailable("Socia
 requireText("Android Google button", button, "startBrowserGoogleOAuth(");
 requireText("Android Google button", button, "browserFallbackAvailable");
 requireText("Android Google button", button, "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID");
+if (/host\.endsWith\("\.vercel\.app"\)/.test(button)) {
+  failures.push("browser Google button: untrusted Vercel preview aliases must not bypass the exact Supabase redirect allowlist");
+}
 requireText("Google route", googleRoute, "The PKCE verifier is written to the response origin");
 requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
 
