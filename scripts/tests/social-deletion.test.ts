@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
 assert.match(
   socialClient,
-  /const confirmation = `تأكيد الحذف النهائي من \\$\\{targetText\\}؟[\\s\\S]*?سجل النشر والتدقيق محفوظة\\.`;\\s*if \\(!window\\.confirm\\(confirmation\\)\\) return;/,
+  /const confirmation = `تأكيد الحذف النهائي من \$\{targetText\}؟[\s\S]*?سجل النشر والتدقيق محفوظة\.`;\s*if \(!window\.confirm\(confirmation\)\) return;/,
   "the admin remote-delete confirmation must close before the confirmation action and must state that the internal ZIKR copy is retained",
 );
 
