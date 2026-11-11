@@ -193,6 +193,10 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
   );
   let siteScheduledAt: string;
   if(!contentQueue[0]){
+   if(existing[0]){
+    console.warn("[written-content] preserving an unpublished article without an active site-publication job",articleId);
+    return {status:"held",id:articleId};
+   }
    siteScheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
    await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
     method:"POST",
@@ -219,7 +223,6 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
    }
   }
   socialScheduledAt=new Date(Math.max(now.getTime(),Date.parse(siteScheduledAt))+5*60*1000).toISOString();
- }
  }
 
  const socialAutomationKey=createWrittenSocialAutomationKey(source.kind,source.id);
@@ -389,7 +392,8 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
    if(result.status==="queued"){
     ids.push(result.id);
     if(kind==="kids_story")hasKidsPostToday=true;
-   }else duplicates++;
+   }else if(result.status==="duplicate")duplicates++;
+   else skipped++;
   }catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
  }
  return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:dailyUsed+ids.length,ids};

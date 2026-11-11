@@ -270,6 +270,9 @@ assert.match(worker, /while\(created < maxNewRows\)/, "Facebook backfill must co
 assert.match(worker, /metadata->>automation=eq\.written-content-v2&published=eq\.true&created_at=/, "social backfill must only consider articles that remain publicly published");
 assert.match(worker, /select=id,title,content,slug,metadata,created_at,published&order=created_at\.asc,id\.asc/, "backfill must read the published flag for a defensive row-level check");
 assert.match(worker, /article\.published!==true/, "backfill must fail closed if an unpublished article is returned unexpectedly");
+assert.match(worker, /if\(existing\[0\]\)\{[\s\S]*status:"held"/, "an existing unpublished article without an active site-publication job must remain held instead of being silently republished");
+assert.match(worker, /else if\(result\.status==="duplicate"\)duplicates\+\+;\s*else skipped\+\+;/, "held drafts must be counted as skipped rather than successful duplicates");
+
 assert.match(worker, /socialScheduledAt/);
 assert.match(worker, /buildWrittenSocialQueuePayload\(\s*source,draft,articleId,socialAutomationKey,nowIso,socialScheduledAt/);
 assert.match(writtenFactory, /scheduled_at: scheduledAt/);
