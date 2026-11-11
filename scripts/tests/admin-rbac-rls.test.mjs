@@ -73,6 +73,10 @@ const videoGenerationRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/video-generation/route.ts"),
   "utf8",
 );
+const videoAutomation = readFileSync(
+  resolve(process.cwd(), "src/features/videos/services/video-automation.ts"),
+  "utf8",
+);
 
 function requireMatch(pattern, description) {
   assert.match(migration, pattern, `Missing admin RLS invariant: ${description}`);
@@ -294,6 +298,10 @@ assert.doesNotMatch(
   /ALLOWED_STATUSES|const patch: Record<string, unknown> = \{ status, updated_at:/,
   "unrestricted status mutation must not remain reachable through the legacy route",
 );
+assert.match(videoAutomation, /select=content,status,updated_at/);
+assert.match(videoAutomation, /expectedUpdatedAt = existingRow\.updated_at/);
+assert.match(videoAutomation, /&updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/,
+  "failed-request retry must compare the same row version that supplied its preserved content metadata");
 
 
 assert.match(
