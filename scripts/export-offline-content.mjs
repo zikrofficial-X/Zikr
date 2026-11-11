@@ -157,9 +157,11 @@ for (const [dataset, table, ...filters] of datasets) {
 }
 
 await mkdir(outputDir, { recursive: true });
+const generatedAt = new Date().toISOString();
+const stamp = generatedAt.replace(/[-:.TZ]/g, '').slice(0, 14);
 const manifest = {
-  version: `2026-10-30-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`,
-  generatedAt: new Date().toISOString(),
+  version: `${stamp.slice(0, 8)}-${stamp}`,
+  generatedAt,
   source: 'Zikr Supabase public-content snapshot; the exporter retains the last validated tafsir corpus only if live quran_tafsir falls below its safety floor',
   licenseNote: 'Quran and hadith records retain source attribution. Editorial records are Zikr content. External audio remains a reference unless the file is explicitly packaged locally.',
   staleDatasets: exported.filter((item) => item.stale).map((item) => item.dataset),
