@@ -100,6 +100,9 @@ export async function registerPrayerPushSubscription(
   const publicKey = await getPublicKey();
   if (!publicKey) return { status: "unavailable" };
 
+  // Validate the saved location before creating a browser subscription. A
+  // missing location must not leave an unregistered PushSubscription behind.
+  const prayerContext = await getPrayerContext(context.enabledPrayers);
   const existing = await registration.pushManager.getSubscription();
   const subscription =
     existing ??
@@ -109,7 +112,6 @@ export async function registerPrayerPushSubscription(
     }));
 
   const payload = serialize(subscription);
-  const prayerContext = await getPrayerContext(context.enabledPrayers);
   const response = await fetch("/api/push/subscription", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
