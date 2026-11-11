@@ -132,7 +132,7 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            اختر بوضوح هل تريد حذف الملفات المولّدة، أو ذاكرة المشروع الداخلية، أو الاثنين معًا. لا توجد أي عملية حذف على YouTube أو Facebook أو أي منصة خارجية.
+            تنظيف ذاكرة المشروع الداخلية فقط متاح حاليًا. حذف ملفات Cloudinary وSupabase Storage متوقف مؤقتًا حتى يكتمل فحص جميع مراجع الملفات في جداول المشروع.
           </p>
         </div>
         <button
@@ -166,9 +166,9 @@ export function PurgeGeneratedVideosControl({
               className="w-full rounded-xl border border-brand-gold/20 bg-black/30 px-3 py-3 text-sm text-brand-cream"
             >
               <option value="" disabled>اختر نطاق الحذف صراحةً</option>
-              <option value="files">ملفات الفيديو فقط — Cloudinary وSupabase Storage</option>
+              <option value="files" disabled>ملفات الفيديو — متوقفة مؤقتًا لحماية المراجع</option>
               <option value="memory">ذاكرة المشروع فقط — إخفاء مكتبة ZIKR وسجلات التوليد، مع إبقاء الملفات</option>
-              <option value="both">الملفات وذاكرة المشروع معًا</option>
+              <option value="both" disabled>الملفات وذاكرة المشروع — متوقفة مؤقتًا لحماية المراجع</option>
             </select>
             <p className="text-xs leading-6 text-brand-cream/55">
               {scope === "files"
@@ -181,7 +181,7 @@ export function PurgeGeneratedVideosControl({
             </p>
           </div>
           <p className="text-xs leading-6 text-amber-200/90">
-            لا يتأثر المحتوى اليدوي أو القوالب أو الأصوات أو الحسابات. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
+            حذف الملفات معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. خيار ذاكرة المشروع لا يحذف أي ملف أو عنصر Storage أو منشور خارجي.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
