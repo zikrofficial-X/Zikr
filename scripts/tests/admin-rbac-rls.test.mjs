@@ -158,6 +158,18 @@ assert.match(
   /PERFORM assignment\.user_id[\s\S]*?WHERE assignment\.user_id IN \(p_actor_user_id, p_user_id\)[\s\S]*?ORDER BY assignment\.user_id[\s\S]*?FOR UPDATE/i,
   "actor and target role assignments must be locked in a deterministic order before role authorization",
 );
+const roleAssignmentUpsert = selfRoleMigration.match(/ON CONFLICT \\(user_id\\) DO UPDATE([\\s\\S]*?);/i)?.[1] ?? "";
+assert.match(
+  roleAssignmentUpsert,
+  /SET role = EXCLUDED\\.role[\\s\\S]*?updated_at = EXCLUDED\\.updated_at/i,
+  "role reassignment must update the role and timestamp",
+);
+assert.doesNotMatch(
+  roleAssignmentUpsert,
+  /created_by\\s*=\\s*EXCLUDED\\.created_by/i,
+  "created_by must remain the original assignment creator when a delegated role is changed",
+);
+
 
 assert.match(
   selfRoleMigration,
