@@ -79,6 +79,10 @@ assert(
   queue.includes("buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt)"),
   "pause-lock release cannot overwrite a request changed after the worker claim",
 );
+assert(
+  queue.includes("pause-lock release lost ownership") && queue.includes("skipped += 1;"),
+  "a superseded pause-lock release is skipped without failing or overwriting the newer owner",
+);
 const workerStart = queue.indexOf("export async function processTemplateVideoQueue");
 const postClaimWorker = workerStart >= 0 ? queue.slice(workerStart) : "";
 assert(

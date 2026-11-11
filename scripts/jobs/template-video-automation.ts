@@ -2224,7 +2224,9 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         },
       );
       if (!restored?.[0]) {
-        throw new Error(`Could not release video request ${request.id} after the purge lock activated.`);
+        skipped += 1;
+        console.warn(`[template-video] pause-lock release lost ownership for ${request.id}; another worker changed the row.`);
+        continue;
       }
       skipped += 1;
       console.log(`[template-video] released unstarted queue claim ${request.id} because the generation lock activated.`);
