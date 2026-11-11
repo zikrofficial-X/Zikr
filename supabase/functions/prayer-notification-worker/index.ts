@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription } from "./eligibility.ts";
+import { nextLocalDate } from "./time-zone.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -126,13 +127,6 @@ function formatLocalDate(date: Date, timeZone: string): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function nextLocalDate(date: Date, timeZone: string): string {
-  const { year, month, day } = localDateParts(date, timeZone);
-  return formatLocalDate(
-    new Date(Date.UTC(year, month - 1, day + 1, 12)),
-    timeZone
-  );
-}
 
 function dateForProvider(value: string): string {
   const [year, month, day] = value.split("-");
