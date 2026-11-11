@@ -154,8 +154,8 @@ async function auditOne(
   let mediaState: string;
   if (assetUrl && probe?.status === "available") mediaState = "cloudinary_ready";
   else if (assetUrl && probe?.status === "missing") mediaState = "cloudinary_missing";
-  else if (!assetUrl && youtubeId) mediaState = "youtube_only";
-  else if (!assetUrl && !youtubeId) mediaState = "unavailable";
+  else if (!assetUrl && queueYouTubeId) mediaState = "youtube_only";
+  else if (!assetUrl) mediaState = "unavailable";
   else mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "unverified";
 
   const nextMetadata: JsonRecord = {
@@ -163,10 +163,10 @@ async function auditOne(
     mediaState,
     mediaAudit: {
       checkedAt: now,
-      source: assetUrl ? "cloudinary_head_or_range" : youtubeId ? "published_youtube_reference" : "no_playable_reference",
+      source: assetUrl ? "cloudinary_head_or_range" : queueYouTubeId ? "published_youtube_reference" : "no_confirmed_playable_reference",
       httpStatus: probe?.httpStatus ?? null,
       contentType: probe?.contentType ?? null,
-      result: probe?.status ?? (youtubeId ? "youtube_fallback" : "unavailable"),
+      result: probe?.status ?? (queueYouTubeId ? "youtube_fallback" : "unavailable"),
       reason: probe?.reason ?? null,
       youtubeFallbackAvailable: Boolean(queueYouTubeId && queueYouTubeId === youtubeId),
     },
@@ -177,7 +177,7 @@ async function auditOne(
       mediaFallbackAvailable: true,
     } : {}),
   };
-  const thumbnail = thumbnailFor(metadata, youtubeId, row.thumbnail_url);
+  const thumbnail = thumbnailFor(metadata, queueYouTubeId, row.thumbnail_url);
   const patch: Record<string, unknown> = {
     metadata: nextMetadata,
   };
