@@ -583,6 +583,7 @@ self.addEventListener("push", event => {
     // A malformed payload must not prevent the browser from showing a safe fallback.
   }
 
+  const safeNotificationUrl = isSafeOfflineRoute(data.url) ? data.url : "/";
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -590,10 +591,7 @@ self.addEventListener("push", event => {
       badge: "/icons/icon-192.png",
       tag: data.tag,
       data: {
-        url:
-          typeof data.url === "string" && data.url.startsWith("/")
-            ? data.url
-            : "/",
+        url: safeNotificationUrl,
       },
       renotify: false,
       dir: "rtl",
@@ -604,7 +602,8 @@ self.addEventListener("push", event => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const target = event.notification.data?.url || "/";
+  const rawTarget = event.notification.data?.url;
+  const target = isSafeOfflineRoute(rawTarget) ? rawTarget : "/";
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
