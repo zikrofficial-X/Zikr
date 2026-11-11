@@ -4,6 +4,35 @@ import { inspectVideoQueueItemApproval } from "../../src/features/videos/service
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
 
+
+async function isVideoPurgeInProgress(): Promise<boolean> {
+  try {
+    const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
+    );
+    return rows?.[0]?.value === true;
+  } catch (error) {
+    console.error("[content-publishing] Could not verify the video purge lock; holding video publication.", error);
+    return true;
+  }
+}
+
+async function deferVideoPublication(itemId: string): Promise<void> {
+  await supabaseServerAdminRequest(
+    "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(itemId) + "&status=eq.processing",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify({
+        status: "queued",
+        scheduled_at: new Date(Date.now() + 5 * 60_000).toISOString(),
+        error_message: "Video purge is in progress; publication was safely deferred.",
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+}
+
 async function validateScheduledStoryForPublication(storyId: string): Promise<void> {
   const rows = await supabaseServerAdminRequest<Array<{
     id: string;
@@ -86,6 +115,7 @@ export async function processScheduledContent(limit = 20) {
   );
   let published = 0;
   for (const item of rows ?? []) {
+    if (item.content_table === "videos" && await isVideoPurgeInProgress()) continue;
     if (!CONTENT_TABLES.has(item.content_table)) {
       await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`, {
         method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -94,10 +124,14 @@ export async function processScheduledContent(limit = 20) {
       continue;
     }
     const claimed = await supabaseServerAdminRequest<QueueItem[]>(
-      `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued`,
+      `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued&scheduled_at=lte.${encodeURIComponent(now)}`,
       { method: "PATCH", headers: { "Content-Type": "application/json", Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", updated_at: now }) },
     );
     if (!claimed?.length) continue;
+    if (item.content_table === "videos" && await isVideoPurgeInProgress()) {
+      await deferVideoPublication(item.id);
+      continue;
+    }
     let contentPublished = false;
     try {
       if (item.content_table === "videos") {
@@ -113,6 +147,10 @@ export async function processScheduledContent(limit = 20) {
         `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&select=id&limit=1`,
       );
       if (!stillProcessing?.length) continue;
+      if (item.content_table === "videos" && await isVideoPurgeInProgress()) {
+        await deferVideoPublication(item.id);
+        continue;
+      }
 
       const updatedContent = await supabaseServerAdminRequest<Array<{ id: string }>>(
         `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id`,
