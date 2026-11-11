@@ -21,6 +21,10 @@ const atomicRoleMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261101170000_admin_atomic_role_update.sql"),
   "utf8",
 );
+const selfRoleMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql"),
+  "utf8",
+);
 const contentService = readFileSync(
   resolve(process.cwd(), "src/features/admin/services/content.ts"),
   "utf8",
@@ -91,17 +95,32 @@ requireMatch(
   "direct role assignment updates must be restricted to super_admin",
 );
 requireMatch(
-  /CREATE POLICY admin_role_assignments_delete[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment deletes must be restricted to super_admin",
+  /CREATE POLICY admin_role_asassert.match(
+  userActions,
+  /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/,
+  "only a super administrator may assign either full-admin role",
 );
 assert.match(
   userActions,
-  /roleValue === "super_admin" && admin\.role !== "super_admin"/,
-  "only a super administrator may request the super_admin role",
+  /userId === admin\.id && roleValue !== admin\.role/,
+  "the server action must reject every self-role change",
 );
 assert.match(
-  userActions,
-  /userId === admin\.id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
+  selfRoleMigration,
+  /IF p_user_id = p_actor_user_id AND p_role <> v_previous_role THEN[\s\S]*?self-role changes are not allowed through this action/i,
+  "the database transaction must reject self-promotion and self-demotion",
+);
+assert.match(
+  selfRoleMigration,
+  /IF v_actor_role <> 'super_admin' AND \([\s\S]*?v_previous_role IN \('admin', 'super_admin'\)[\s\S]*?p_role IN \('admin', 'super_admin'\)/i,
+  "only super administrators may manage full-admin accounts",
+);
+assert.match(
+  selfRoleMigration,
+  /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
+  "the self-role protection RPC must remain service-role only",
+);
+id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
   "the server action must prevent an administrator from removing their own admin role",
 );
 assert.match(
