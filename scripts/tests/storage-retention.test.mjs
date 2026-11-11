@@ -247,6 +247,20 @@ assert.match(storageRetentionSource, /table: "video_generation_requests",[\s\S]*
 assert.ok(storageRetentionSource.includes("await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName)"));
 assert.ok(storageRetentionSource.includes("assertRetentionApplyConfirmation(apply, process.env.RETENTION_CONFIRMATION)"));
 assert.ok(storageRetentionSource.includes("assertExpectedSupabaseProject(supabaseUrl, process.env.EXPECTED_PROJECT_REF)"));
+const retentionRpcMigration = readFileSync(
+  "supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql",
+  "utf8",
+);
+assert.match(retentionRpcMigration, /coalesce\(retention_state, ''\) NOT IN \('purge_pending', 'purged'\)/,
+  "the retention RPC must reject a missing/null state instead of accepting SQL UNKNOWN");
+assert.match(retentionRpcMigration, /p_finalize IS DISTINCT FROM \(retention_state = 'purged'\)/,
+  "the finalization flag must agree with the explicit pending/purged state");
+assert.match(retentionRpcMigration, /content_id = p_request_id::text/,
+  "the queue row must be linked to the exact video-generation request being updated");
+assert.match(retentionRpcMigration, /metadata->'storageRetention'->>'path' = p_retention->>'path'/,
+  "recovery finalization must match the exact path previously marked purge_pending");
+assert.match(retentionRpcMigration, /p_retention->>'bucket' IS DISTINCT FROM 'videos'/,
+  "the video-retention RPC must not record a purge for a different bucket");
 assert.match(
   storageRetentionSource,
   /table: "videos",[\s\S]*?column: "metadata"[\s\S]*?query\.not\("metadata", "is", null\)/,
