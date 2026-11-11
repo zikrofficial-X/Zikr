@@ -250,11 +250,44 @@ const orderMapEnd = storageRetentionSource.indexOf("});", orderMapStart);
 const orderMapSource = orderMapStart >= 0 && orderMapEnd > orderMapStart
   ? storageRetentionSource.slice(orderMapStart, orderMapEnd)
   : "";
-const referenceTables = [...storageRetentionSource.matchAll(/table: "([^"]+)"/g)].map((match) => match[1]);
+const referenceTables = [
+  ...[...storageRetentionSource.matchAll(/table: "([^"]+)"/g)].map((match) => match[1]),
+  ...[...storageRetentionSource.matchAll(/(?:textReferencePatterns|jsonReferencePattern)\("([^"]+)"/g)].map((match) => match[1]),
+];
 for (const table of new Set(referenceTables)) {
   assert.ok(orderMapSource.includes(`${table}:`), `reference inventory table ${table} must declare a stable primary-key ordering`);
 }
 assert.match(storageRetentionSource, /pattern\.filter\(query\)\.order\(orderColumn, \{ ascending: true \}\)/);
+for (const [table, column] of [
+  ["articles", "content"],
+  ["stories", "content"],
+  ["kids_content", "content_ar"],
+  ["prophet_sections", "content_en"],
+  ["battle_events", "content_ar"],
+  ["companion_stories", "content_en"],
+  ["conquest_events", "content_ar"],
+  ["social_sync_jobs", "source_url"],
+  ["quran_audio", "source_url"],
+  ["quran_tafsir", "source_url"],
+]) {
+  assert.ok(
+    storageRetentionSource.includes(`textReferencePatterns("${table}", "${column}")`),
+    `Storage reference inventory must scan ${table}.${column} for raw and encoded video URLs`,
+  );
+}
+for (const [table, column] of [
+  ["admin_audit_events", "metadata"],
+  ["articles", "metadata"],
+  ["content_library", "metadata"],
+  ["kids_content", "metadata"],
+  ["video_automation_runs", "metadata"],
+  ["content_translation_queue", "source_payload"],
+]) {
+  assert.ok(
+    storageRetentionSource.includes(`jsonReferencePattern("${table}", "${column}")`),
+    `Storage reference inventory must recursively scan ${table}.${column}`,
+  );
+}
 assert.match(storageRetentionSource, /from\("content_library"\)[\s\S]*?order\("id", \{ ascending: true \}\)[\s\S]*?range/);
 assert.match(
   storageRetentionSource,
