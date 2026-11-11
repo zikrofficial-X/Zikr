@@ -21,6 +21,7 @@ import { getSavedPrayerLocation, loadLocalPrayerLocation } from "@/features/pray
 import { getMinutesOfDayInTimeZone, getPrayerTimes } from "@/features/prayer/services/prayer-times";
 import {
   addCalendarDays,
+  getPrayerAlertDateKey,
   formatDateInTimeZone,
   getZonedDateTime,
 } from "@/features/prayer/services/prayer-notification-schedule";
@@ -92,8 +93,7 @@ function parsePrayerTime(
 
 /** Dedup key: fires once per prayer per calendar day. */
 function getAlertKey(prayer: PrayerKey, timeZone?: string): string {
-  const resolvedTimeZone = timeZone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const dateKey = formatDateInTimeZone(new Date(), resolvedTimeZone) ?? formatLocalDate(new Date());
+  const dateKey = getPrayerAlertDateKey(new Date(), timeZone);
   return `zikr_alert_${prayer}_${dateKey}`;
 }
 
