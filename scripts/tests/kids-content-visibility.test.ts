@@ -80,6 +80,7 @@ assert.deepEqual(getKidsQuizQuestions({ questions: [{ text: "  ", options: ["A",
 const adminAction = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 const adminManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
 const kidsDetailPage = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+const kidsQuizValidation = readFileSync("src/features/kids/services/kids-content-validation.ts", "utf8");
 const kidsDetailLayout = readFileSync("src/app/kids/[slug]/layout.tsx", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
@@ -112,7 +113,8 @@ assert.doesNotMatch(adminManager, /"q":|"answers":/, "the admin quiz example mus
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
 assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
-assert.match(kidsDetailPage, /Number\.isInteger\(q\.correctAnswer\)[\s\S]*?q\.correctAnswer < q\.options\.length/, "the Kids player must reject out-of-range quiz answers");
+assert.match(kidsQuizValidation, /Number\.isInteger\(correctAnswer\)[\s\S]*?correctAnswer >= options\.length/, "the shared Kids quiz validator must reject out-of-range answers");
+assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
 assert.match(kidsDetailLayout, /getKidsContentBySlug\(slug, "ar"\)/, "SEO metadata must use the same visibility-aware resolver");
 assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
