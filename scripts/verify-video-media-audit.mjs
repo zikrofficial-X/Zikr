@@ -33,8 +33,9 @@ if (!audit.includes("return null") || !audit.includes("unavailable")) failures.p
 
 const service = read("src/features/videos/services/videos.ts");
 const mediaContract = read("src/features/videos/services/video-media-contract.ts");
-if (!mediaContract.includes('["cloudinary_missing", "unavailable", "purged"].includes(mediaState)')) {
-  failures.push("Public video media contract must prefer YouTube when the Cloudinary playback master is confirmed missing or purged");
+const requiredFallbackStates = ["cloudinary_missing", "unavailable", "youtube_only", "purged"];
+if (!requiredFallbackStates.every((state) => mediaContract.includes(JSON.stringify(state)))) {
+  failures.push("Public video media contract must cover every unavailable internal-media state before using a confirmed YouTube fallback");
 }
 if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
 if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {

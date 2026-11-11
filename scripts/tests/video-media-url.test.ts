@@ -141,6 +141,26 @@ test("missing internal masters use only publisher-confirmed YouTube fallbacks", 
   assert.equal(resolveVideoThumbnail(youtubeOnlyWithoutConfirmation, "/branding/og-image.jpg"), "/branding/og-image.jpg");
 });
 
+test("confirmed YouTube fallback covers every unavailable internal-media state", () => {
+  const youtubeId = "abc123xyz_1";
+  const youtubeUrl = "https://www.youtube.com/watch?v=" + youtubeId;
+  for (const mediaState of ["cloudinary_missing", "unavailable", "youtube_only", "purged"]) {
+    const row = {
+      youtube_id: null,
+      metadata: {
+        generator: "zikr_internal_video_factory",
+        mediaState,
+        generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-stale.mp4",
+        sourceVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-stale-source.mp4",
+        mediaFallbackAvailable: true,
+        youtubePublishedVideoId: youtubeId,
+        youtubePublishedUrl: youtubeUrl,
+      },
+    };
+    assert.equal(resolveVideoMediaUrl(row), youtubeUrl, `confirmed YouTube fallback for ${mediaState}`);
+  }
+});
+
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
   const purgedVideo = {
     youtube_id: null,
