@@ -87,7 +87,7 @@ const prayerAlertHook = readFileSync("src/features/prayer/hooks/use-prayer-alert
 const pushSubscription = readFileSync("src/lib/push-subscription.ts", "utf8");
 assert.match(prayerAlertHook, /loadLocalPrayerLocation/);
 assert.match(prayerAlertHook, /getSavedPrayerLocation/);
-assert.match(prayerAlertHook, /getPrayerTimes\(location\.latitude,\s*location\.longitude/);
+assert.match(prayerAlertHook, /getPrayerTimes\(\s*location\.latitude,\s*location\.longitude/);
 assert.match(prayerAlertHook, /getZonedDateTime\(/);
 assert.doesNotMatch(prayerAlertHook, /LOCATION_KEY\s*=\s*["']zikr_prayer_location["']/);
 assert.match(pushSubscription, /getSavedPrayerLocation/);
