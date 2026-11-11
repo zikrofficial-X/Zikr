@@ -823,6 +823,20 @@ async function deliverDue(
               Math.min(15 * 60_000, 60_000 * 2 ** delivery.attempt_count)
           ).toISOString()
         : null;
+      if (invalid) {
+        // A 404/410 is definitive for the endpoint even if this delivery lease
+        // was concurrently recovered; do not leave a dead subscription active.
+        const { error: deactivateError } = await supabase
+          .from("push_subscriptions")
+          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+          .eq("id", subscription.id)
+          .eq("user_id", delivery.user_id);
+        if (deactivateError) {
+          console.error("[prayer-notification-worker] subscription deactivation failed:", deactivateError.message);
+        } else {
+          deactivated += 1;
+        }
+      }
       const finalized = await updateDeliveryIfLease(delivery, {
         status: retryable ? "failed" : "cancelled",
         failed_at: deliveryNow.toISOString(),
@@ -835,18 +849,6 @@ async function deliverDue(
       if (!finalized) {
         console.warn("[prayer-notification-worker] Failed push result arrived after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
         continue;
-      }
-      if (invalid) {
-        const { error: deactivateError } = await supabase
-          .from("push_subscriptions")
-          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
-          .eq("id", subscription.id)
-          .eq("user_id", delivery.user_id);
-        if (deactivateError) {
-          console.error("[prayer-notification-worker] subscription deactivation failed:", deactivateError.message);
-        } else {
-          deactivated += 1;
-        }
       }
       failed += 1;
     }
