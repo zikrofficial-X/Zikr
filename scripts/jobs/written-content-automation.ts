@@ -334,7 +334,7 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
  const dayStartIso = today.toISOString();
  const dayEndIso = tomorrow.toISOString();
- const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata&limit=1000`);
+ const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata&limit=1000`);
  const todaysSocial=await readRequired<Row>(`/rest/v1/social_publish_queue?automation_key=like.written-social-v1:*&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,automation_key,metadata&limit=1000`);
  if (todays.length >= 1000 || todaysSocial.length >= 1000) {
   throw new Error("Daily written-content reservation scan reached its safe row limit; refusing to generate without a complete check.");
