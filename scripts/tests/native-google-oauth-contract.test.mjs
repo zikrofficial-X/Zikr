@@ -24,6 +24,8 @@ assert.ok(button.includes("SocialLogin.initialize("), "Native Google plugin must
 assert.ok(button.includes("SocialLogin.login("), "Native Google Credential Manager must be invoked");
 assert.ok(button.includes("supabase.auth.signInWithIdToken("), "Google ID token must be exchanged with Supabase");
 assert.ok(button.includes("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Native login must use the Web OAuth client ID");
+assert.match(read(".env.example"), /^NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=/m, "the public native OAuth client ID must be documented in the environment template");
+assert.match(read("scripts/verify-mobile-readiness.mjs"), /NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for Android native Google sign-in/, "store-readiness must fail when the native Google client ID is absent");
 assert.ok(button.includes("window.location.replace(safeNext)"), "Native success must return to the in-app route");
 assert.ok(button.includes('Capacitor.isPluginAvailable("SocialLogin")'), "Credential Manager must only run when the installed APK contains the native plugin");
 assert.ok(button.includes("startBrowserGoogleOAuth("), "Native-compatible browser OAuth fallback must remain available");
