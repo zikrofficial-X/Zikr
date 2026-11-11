@@ -70,6 +70,40 @@ assert.ok(
   queueMediaGuardPosition >= 0 && queueMediaGuardPosition < cloudinaryInventoryPosition,
   "pending social media must be checked before the Cloudinary deletion inventory is processed.",
 );
+
+const generatedCatalogPreflightPosition = route.indexOf("const generatedCatalogRows");
+const generatedRequestsPreflightPosition = route.indexOf("const generatedRequests");
+const automationRunsPreflightPosition = route.indexOf("const automationRuns");
+const destructiveMediaInventoryPosition = route.indexOf("const assets = includeFiles");
+const cloudinaryDeletePosition = route.indexOf("await deleteCloudinaryVideo");
+const storageDeletePosition = route.indexOf("deleteAutomatedStorageObjects(storagePaths)");
+assert.ok(
+  generatedCatalogPreflightPosition >= 0 &&
+    generatedCatalogPreflightPosition < destructiveMediaInventoryPosition &&
+    generatedRequestsPreflightPosition < destructiveMediaInventoryPosition &&
+    automationRunsPreflightPosition < destructiveMediaInventoryPosition &&
+    destructiveMediaInventoryPosition < cloudinaryDeletePosition &&
+    cloudinaryDeletePosition < storageDeletePosition,
+  "all catalog and generation-memory inventory queries must finish before any Cloudinary or Supabase Storage deletion",
+);
+for (const [name, position] of [
+  ["catalog", generatedCatalogPreflightPosition],
+  ["generation requests", generatedRequestsPreflightPosition],
+  ["automation runs", automationRunsPreflightPosition],
+]) {
+  assert.ok(position >= 0, `missing ${name} preflight inventory`);
+}
+assert.ok(
+  route.indexOf("generatedCatalogRows ?? []).length >= 1000") < destructiveMediaInventoryPosition &&
+    route.indexOf("generatedRequests ?? []).length >= 1000") < destructiveMediaInventoryPosition &&
+    route.indexOf("automationRuns ?? []).length >= 1000") < destructiveMediaInventoryPosition,
+  "every bounded inventory must reject a truncated 1,000-row result before destructive work",
+);
+assert.ok(
+  route.includes("||\n        !purgeLockCleared"),
+  "the response must report automation as still paused when the purge lock could not be cleared",
+);
+
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
 assert.ok(route.includes("MAX_AUTOMATED_STORAGE_OBJECTS = 5000"), "Storage inventory must have an explicit safe cap.");
 assert.ok(route.includes("offset + STORAGE_INVENTORY_PAGE_SIZE >= MAX_AUTOMATED_STORAGE_OBJECTS"), "a full final inventory page must abort before any deletion rather than silently truncate.");
