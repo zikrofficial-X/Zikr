@@ -54,7 +54,7 @@ try {
 const packageDependencies = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 if (!packageDependencies["@capgo/capacitor-social-login"]) failures.push("package.json is missing @capgo/capacitor-social-login required for Android native Google login");
 
-const mobileWebDir = typeof capacitor.webDir === "string" ? capacitor.webDir.trim().replace(/\\/+$/, "") : "";
+const mobileWebDir = typeof capacitor.webDir === "string" ? capacitor.webDir.trim() : "";
 if (!mobileWebDir || !existsSync(`${mobileWebDir}/index.html`)) {
   failures.push("Capacitor webDir must resolve to a directory containing a root index.html entry point.");
 }
