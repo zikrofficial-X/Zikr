@@ -8,7 +8,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
-import { isKidsContentType, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
+import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
 
 function value(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();
@@ -35,6 +35,10 @@ export async function saveKidsContentAction(formData: FormData) {
   const ageGroup = value(formData, "age_group") ?? "6-8";
   const ageAppropriate = type === "story" && formData.has("age_appropriate");
   const published = formData.has("published");
+  const rawVideoUrl = value(formData, "video_url");
+  if (rawVideoUrl && type !== "video") throw new Error("رابط الفيديو مسموح به لمحتوى الفيديو فقط.");
+  const videoUrl = rawVideoUrl ? normalizeKidsVideoEmbedUrl(rawVideoUrl) : null;
+  if (rawVideoUrl && !videoUrl) throw new Error("يجب استخدام رابط تضمين HTTPS صالح من YouTube فقط.");
 
   if (!isKidsContentType(type)) throw new Error("نوع محتوى الأطفال غير صالح.");
   if (!allowedAgeGroups.has(ageGroup)) throw new Error("الفئة العمرية غير صالحة.");
@@ -85,7 +89,7 @@ export async function saveKidsContentAction(formData: FormData) {
       content_en: value(formData, "content_en"),
       age_group: ageGroup,
       featured_image_url: featuredImageUrl,
-      video_url: value(formData, "video_url"),
+      video_url: videoUrl,
       quiz_data: quizData,
       published,
       metadata: {
