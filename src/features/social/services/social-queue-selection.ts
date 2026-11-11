@@ -11,6 +11,19 @@ export type SocialQueueSelectionCandidate = {
   metadata: Record<string, unknown> | null;
 };
 
+/** Merge bounded query pages while preserving priority and removing duplicate queue IDs. */
+export function mergeUniqueSocialPublishCandidates<T extends { id: string }>(
+  ...batches: readonly (readonly T[])[]
+): T[] {
+  const byId = new Map<string, T>();
+  for (const batch of batches) {
+    for (const item of batch) {
+      if (item && typeof item.id === "string" && item.id.trim()) byId.set(item.id, item);
+    }
+  }
+  return [...byId.values()];
+}
+
 export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionCandidate>(
   candidates: readonly T[],
   options: {
