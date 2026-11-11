@@ -82,7 +82,7 @@ const partialMarkerRecovery = buildStaleSocialPublishRecoveryMetadata(
 );
 assert.deepEqual(
   partialMarkerRecovery.manualReconciliationPlatforms,
-  ["facebook", "facebook_reels", "youtube"].filter(platform => ["facebook", "youtube"].includes(platform)),
+  ["facebook", "youtube"],
   "a partial marker without a target list must conservatively hold every known target",
 );
 
@@ -104,6 +104,7 @@ const inFlightMarkerPosition = socialPublisherSource.indexOf("const inFlightMeta
 const providerCallPosition = socialPublisherSource.indexOf("const results = await Promise.all(runnablePlatforms.map");
 assert.ok(inFlightMarkerPosition >= 0 && providerCallPosition > inFlightMarkerPosition, "the durable in-flight marker must be written before any provider call");
 assert.match(socialPublisherSource, /buildStaleSocialPublishRecoveryMetadata/, "stale recovery must convert interrupted calls into manual reconciliation");
+assert.match(socialPublisherSource, /Failed to recover stale social publish items; refusing to continue with an incomplete queue state/, "stale recovery failures must fail the job instead of silently skipping ambiguous rows");
 
 
 const metadata = {
