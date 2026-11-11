@@ -256,6 +256,11 @@ for (const table of new Set(referenceTables)) {
 }
 assert.match(storageRetentionSource, /pattern\.filter\(query\)\.order\(orderColumn, \{ ascending: true \}\)/);
 assert.match(storageRetentionSource, /from\("content_library"\)[\s\S]*?order\("id", \{ ascending: true \}\)[\s\S]*?range/);
+assert.match(
+  storageRetentionSource,
+  /for \(const row of libraryRows\) \{\s*recordReference\(row\.media \?\? \{\}\);/,
+  "content_library media must use the same recursive URL decoder as every other reference source",
+);
 const inventoryStart = storageRetentionSource.indexOf("const [queueRows, requestRows, videoFiles, androidRoot]");
 const inventoryEnd = storageRetentionSource.indexOf("const requestById =", inventoryStart);
 const inventoryBlock = inventoryStart >= 0 && inventoryEnd > inventoryStart
