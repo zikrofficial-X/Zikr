@@ -8,6 +8,7 @@
 import { getServerEnv } from "@/lib/env";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 /**
  * Build OAuth redirect URI
