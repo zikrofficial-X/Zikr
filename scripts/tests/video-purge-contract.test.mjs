@@ -131,6 +131,15 @@ assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFi
 assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
 assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
 assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
+const scopeValidationPosition = route.indexOf('if (scope !== "files" && scope !== "memory" && scope !== "both")');
+const purgeLockPosition = route.indexOf("const lockToken = randomUUID()");
+assert.ok(
+  scopeValidationPosition > 0 && scopeValidationPosition < purgeLockPosition,
+  "missing or unsupported purge scopes must be rejected before lock acquisition or any destructive work",
+);
+assert.match(route, /Invalid purge scope/);
+assert.doesNotMatch(route, /const scope = body\.scope ===[\s\S]*?:\s*"both"/, "an invalid scope must never silently widen to a combined destructive purge");
+
 assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
 assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));

@@ -349,9 +349,13 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const scope = body.scope === "files" || body.scope === "memory" || body.scope === "both"
-      ? body.scope
-      : "both";
+    const scope = body.scope;
+    if (scope !== "files" && scope !== "memory" && scope !== "both") {
+      return NextResponse.json(
+        { error: "Invalid purge scope. Choose files, memory, or both." },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
+      );
+    }
     const includeFiles = scope === "files" || scope === "both";
     const includeMemory = scope === "memory" || scope === "both";
 
