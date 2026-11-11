@@ -26,3 +26,44 @@ export function nextLocalDate(date: Date, timeZone: string): string {
     String(next.getUTCDate()).padStart(2, "0"),
   ].join("-");
 }
+
+export type NotificationKind = "prayer" | "dhikr" | "salawat";
+
+/**
+ * Web Push topics replace outstanding messages for the same subscription.
+ * Keep each scheduled delivery distinct while staying inside RFC 8030's
+ * 32-character URL-safe Topic limit.
+ */
+export function buildNotificationTopic(input: {
+  notificationKind: NotificationKind;
+  prayerName: string;
+  scheduledAt: string;
+}): string {
+  const instant = new Date(input.scheduledAt);
+  if (!Number.isFinite(instant.getTime())) {
+    throw new RangeError("A valid scheduledAt timestamp is required.");
+  }
+
+  const timestamp = [
+    String(instant.getUTCFullYear()).padStart(4, "0"),
+    String(instant.getUTCMonth() + 1).padStart(2, "0"),
+    String(instant.getUTCDate()).padStart(2, "0"),
+    String(instant.getUTCHours()).padStart(2, "0"),
+    String(instant.getUTCMinutes()).padStart(2, "0"),
+  ].join("");
+  const prayerName = input.prayerName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "")
+    .slice(0, 7);
+  if (input.notificationKind === "prayer" && !prayerName) {
+    throw new Error("A prayer name is required for prayer notification topics.");
+  }
+
+  const topic = `zikr-${input.notificationKind}${input.notificationKind === "prayer" ? `-${prayerName}` : ""}-${timestamp}`;
+  if (!/^[A-Za-z0-9_-]{1,32}$/.test(topic)) {
+    throw new RangeError("Web Push topic must contain at most 32 URL-safe characters.");
+  }
+  return topic;
+}
+
