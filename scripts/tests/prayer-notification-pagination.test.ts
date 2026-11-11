@@ -271,21 +271,36 @@ assert.match(reminderMigration, /security invoker\s+set search_path = ''/i, "the
 assert.doesNotMatch(reminderMigration, /security definer/i, "the service-only reminder scheduler must not use definer privileges");
 
 
-const dueClaimStart = worker.indexOf("async function claimDueDeliveries");
-const dueClaimEnd = worker.indexOf("async function deliverDue", dueClaimStart);
-const dueClaimSource = worker.slice(dueClaimStart, dueClaimEnd);
-assert.ok(dueClaimStart >= 0 && dueClaimEnd > dueClaimStart);
-assert.match(dueClaimSource, /retry_after, updated_at, attempt_count/);
-const dueClaimUpdateStart = dueClaimSource.indexOf("const { data: updated");
-const dueClaimUpdate = dueClaimSource.slice(dueClaimUpdateStart);
-assert.match(dueClaimUpdate, /\.lte\("scheduled_at", now\.toISOString\(\)\)/,
-  "the atomic claim must recheck that the delivery is due after the candidate read");
-assert.match(dueClaimUpdate, /\.or\(\`retry_after\.is\.null,retry_after\.lte\.\$\{now\.toISOString\(\)\}\`\)/,
-  "the atomic claim must recheck retry_after so a concurrent backoff cannot be bypassed");
-assert.match(dueClaimUpdate, /\.eq\("updated_at", row\.updated_at\)/,
-  "the atomic claim must compare the exact candidate row version to avoid stale-snapshot claims");
-assert.doesNotMatch(dueClaimUpdate, /processed_at: now\.toISOString\(\)/,
+const dueCandidateStart = worker.indexOf("async function getDueDeliveryCandidates");
+const dueClaimStart = worker.indexOf("async function claimDueDelivery", dueCandidateStart);
+const leaseUpdateStart = worker.indexOf("async function updateDeliveryIfLease", dueClaimStart);
+const deliverDueStart = worker.indexOf("async function deliverDue", leaseUpdateStart);
+const dueCandidateSource = worker.slice(dueCandidateStart, dueClaimStart);
+const dueClaimSource = worker.slice(dueClaimStart, leaseUpdateStart);
+const leaseUpdateSource = worker.slice(leaseUpdateStart, deliverDueStart);
+const deliverDueSource = worker.slice(deliverDueStart, worker.indexOf("function constantTimeEqual", deliverDueStart));
+assert.ok(dueCandidateStart >= 0 && dueClaimStart > dueCandidateStart && leaseUpdateStart > dueClaimStart && deliverDueStart > leaseUpdateStart);
+assert.match(dueCandidateSource, /retry_after, updated_at, attempt_count/);
+assert.match(dueCandidateSource, /\.in\("status", \["pending", "failed"\]\)/);
+assert.match(dueClaimSource, /\.lte\("scheduled_at", claimAt\)/,
+  "the per-delivery claim must recheck that the delivery is due after the candidate read");
+assert.match(dueClaimSource, /retry_after\.lte\.\$\{claimAt\}/,
+  "the per-delivery claim must recheck retry_after so a concurrent backoff cannot be bypassed");
+assert.match(dueClaimSource, /\.eq\("updated_at", candidate\.updated_at\)/,
+  "the per-delivery claim must compare the exact candidate row version to avoid stale-snapshot claims");
+assert.match(dueClaimSource, /processing_at: claimAt/);
+assert.match(dueClaimSource, /processing_at, updated_at/);
+assert.doesNotMatch(dueClaimSource, /processed_at:/,
   "processed_at must not be set before a push attempt has completed");
+assert.match(leaseUpdateSource, /\.eq\("status", "processing"\)/);
+assert.match(leaseUpdateSource, /\.eq\("processing_at", delivery\.processing_at\)/);
+assert.match(leaseUpdateSource, /\.eq\("updated_at", delivery\.updated_at\)/,
+  "delivery finalization must compare the exact processing lease version");
+assert.match(deliverDueSource, /for \(const candidate of candidates\)[\s\S]*?claimDueDelivery\(candidate, deliveryNow\)/,
+  "each delivery must be claimed immediately before it is processed, not held in a large sequential processing batch");
+assert.match(deliverDueSource, /updateDeliveryIfLease\(delivery,/,
+  "all delivery outcomes must finalize through the exact lease compare-and-set");
+
 assert.match(staleRecovery, /processed_at: now\.toISOString\(\)/,
   "a recovered stale attempt must record its completion timestamp");
 
