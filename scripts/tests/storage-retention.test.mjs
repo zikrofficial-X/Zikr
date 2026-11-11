@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import {
   compareSemverTags,
@@ -7,6 +8,7 @@ import {
   hasConfirmedPlatformResults,
   collectPaginatedRows,
   indexManagedBackupReferences,
+  matchesSha256Digest,
   isEligiblePublishedQueueItem,
   selectProtectedAndroidTags,
 } from "../cleanup-supabase-storage.mjs";
@@ -21,6 +23,16 @@ assert.equal(
   extractManagedVideoPath(publicUrl, supabaseUrl),
   "automated/story:20750:11.mp4",
   "Only canonical videos bucket URLs are converted into Storage paths",
+);
+assert.equal(
+  matchesSha256Digest(Buffer.from("ZIKR release metadata"), "sha256:" + createHash("sha256").update("ZIKR release metadata").digest("hex")),
+  true,
+  "small Android release metadata copies must match the exact GitHub asset digest",
+);
+assert.equal(
+  matchesSha256Digest(Buffer.from("tampered"), "sha256:" + createHash("sha256").update("ZIKR release metadata").digest("hex")),
+  false,
+  "a same-size but modified metadata/checksum file must not be treated as a verified backup",
 );
 assert.equal(
   extractCloudinaryVideoPublicId(

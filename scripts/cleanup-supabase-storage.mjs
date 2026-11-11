@@ -53,6 +53,13 @@ export async function collectPaginatedRows(
   throw new Error(`${label} exceeded the safe scan limit; refusing cleanup.`);
 }
 
+export function matchesSha256Digest(bytes, expectedDigest) {
+  const expected = asString(expectedDigest).toLowerCase();
+  if (!/^sha256:[a-f0-9]{64}$/.test(expected)) return false;
+  const actual = "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  return actual === expected;
+}
+
 export function hasConfirmedPlatformResults(targetPlatforms, metadata) {
   if (!Array.isArray(targetPlatforms) || targetPlatforms.length === 0) return false;
   const results = asObject(asObject(metadata).platformResults);
@@ -186,11 +193,11 @@ async function listDirectory(client, bucket, prefix) {
   }, `Storage inventory ${bucket}/${prefix}`);
 }
 
-async function readSmallStorageText(client, bucket, path, maxBytes = 128 * 1024) {
+async function readSmallStorageBytes(client, bucket, path, maxBytes = 128 * 1024) {
   const { data, error } = await client.storage.from(bucket).download(path);
   if (error || !data) throw new Error(`Cannot read required backup file ${bucket}/${path}: ${error?.message ?? "empty response"}`);
   if (data.size > maxBytes) throw new Error(`Refusing unexpectedly large metadata file: ${bucket}/${path}`);
-  return await data.text();
+  return Buffer.from(await data.arrayBuffer());
 }
 
 async function githubRelease(tag) {
@@ -227,16 +234,24 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
     }
   }
 
-  const metadataText = await readSmallStorageText(
+  const metadataBytes = await readSmallStorageBytes(
     client,
     ANDROID_BUCKET,
     `android/${version}/release-metadata.json`,
   );
-  const checksumText = await readSmallStorageText(
+  const checksumBytes = await readSmallStorageBytes(
     client,
     ANDROID_BUCKET,
     `android/${version}/SHA256SUMS`,
   );
+  const metadataText = metadataBytes.toString("utf8");
+  const checksumText = checksumBytes.toString("utf8");
+  if (!matchesSha256Digest(metadataBytes, assets.get("release-metadata.json")?.digest)) {
+    return { ok: false, reason: "Stored release-metadata.json does not match the GitHub Release asset digest." };
+  }
+  if (!matchesSha256Digest(checksumBytes, assets.get("SHA256SUMS")?.digest)) {
+    return { ok: false, reason: "Stored SHA256SUMS does not match the GitHub Release asset digest." };
+  }
   let metadata;
   try {
     metadata = JSON.parse(metadataText);
@@ -273,8 +288,8 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
     if (binaryError || !binary) {
       return { ok: false, reason: `Cannot download Supabase backup ${name}: ${binaryError?.message ?? "empty response"}.` };
     }
-    const actualDigest = `sha256:${createHash("sha256").update(Buffer.from(await binary.arrayBuffer())).digest("hex")}`;
-    if (actualDigest !== expectedDigest) {
+    const actualBytes = Buffer.from(await binary.arrayBuffer());
+    if (!matchesSha256Digest(actualBytes, expectedDigest)) {
       return { ok: false, reason: `Actual Supabase binary SHA256 does not match the published GitHub ${name}.` };
     }
   }
