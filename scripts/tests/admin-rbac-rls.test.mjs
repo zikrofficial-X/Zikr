@@ -25,6 +25,10 @@ const selfRoleMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql"),
   "utf8",
 );
+const revokePublicAdminPredicateMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql"),
+  "utf8",
+);
 const contentService = readFileSync(
   resolve(process.cwd(), "src/features/admin/services/content.ts"),
   "utf8",
@@ -159,6 +163,17 @@ assert.match(
   publicRpcMigration,
   /GRANT EXECUTE ON FUNCTION public\.is_admin_user\(\) TO anon, authenticated, service_role/i,
   "the wrapper must remain callable where public-read RLS policies reference it",
+);
+
+assert.match(
+  revokePublicAdminPredicateMigration,
+  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM PUBLIC, anon/i,
+  "anonymous execute must be revoked from PUBLIC as well as anon so inherited grants cannot survive",
+);
+assert.doesNotMatch(
+  revokePublicAdminPredicateMigration,
+  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM PUBLIC, anon, authenticated/i,
+  "the authenticated compatibility grant must remain intact",
 );
 
 assert.match(
