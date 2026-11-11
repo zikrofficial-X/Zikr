@@ -61,8 +61,8 @@ function removeAdvertisingElements() {
 }
 
 /**
- * Advertising integrations are website-only. Native Capacitor shells must not
- * request Monetag, Funding Choices, or GTM scripts that may inject ad tags.
+ * Advertising and Google Analytics integrations are website-only. Native
+ * Capacitor shells and non-canonical deployment aliases must not load tags.
  */
 export function WebAdvertisingRuntime() {
   const [canonicalWebRuntime, setCanonicalWebRuntime] = useState(false);

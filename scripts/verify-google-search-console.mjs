@@ -67,7 +67,7 @@ if (
   failures.push('يجب أن يسبق خروج Capacitor وفحص المضيف canonical كل حقن فعلي لإعلانات الويب وGA4 وGTM وFunding Choices.');
 }
 if (layout.includes('G-G9DPYTK78')) failures.push('المعرّف القديم G-G9DPYTK78 ما زال موجودًا في root layout.');
-if (!layout.includes('strategy="lazyOnload"')) failures.push('GA4 لا يستخدم lazyOnload في root layout.');
+if (!webAdvertisingRuntime.includes('strategy="lazyOnload"')) failures.push('GA4 لا يستخدم lazyOnload في web-only runtime.');
 if (/import\(.+analytics/.test(deferredAnalytics)) failures.push('تمت إعادة تحميل Analytics ديناميكيًا خارج root layout.');
 const frameSrc = nextConfig.match(/frame-src\s+([^;]+)/)?.[1] ?? '';
 if (!frameSrc.split(/\s+/).includes('https://www.googletagmanager.com')) failures.push('أصل GTM مفقود من CSP frame-src؛ قد يُحجب إطار noscript.');

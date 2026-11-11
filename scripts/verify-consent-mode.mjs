@@ -19,6 +19,9 @@ if (consentDefault < 0) {
     "Google Consent Mode must default to denied before loading Google tags",
   );
 }
+if (!layout.includes('id="google-consent-mode-default"') || !layout.includes('strategy="beforeInteractive"')) {
+  throw new Error("Google Consent Mode defaults must execute before interactive client runtimes can load GA4");
+}
 for (const token of [
   "ad_storage: 'denied'",
   "analytics_storage: 'denied'",
