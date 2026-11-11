@@ -51,10 +51,13 @@ assert.ok(
     productionSmoke.includes("com.zikr.app"),
   "Production smoke must verify iOS Universal Links and Android App Links association documents",
 );
+const isForceStaticRoute = (source) =>
+  /export\s+const\s+dynamic\s*=\s*(['"])force-static\1;/.test(source);
 assert.ok(
   aasaRoute.includes("IOS_ASSOCIATED_DOMAIN_APP_ID") &&
-    aasaRoute.includes("dynamic = \"force-static\"") &&
-    assetLinksRoute.includes("ANDROID_APP_LINKS_SHA256"),
+    isForceStaticRoute(aasaRoute) &&
+    assetLinksRoute.includes("ANDROID_APP_LINKS_SHA256") &&
+    isForceStaticRoute(assetLinksRoute),
   "App association endpoints must use the documented build-time iOS App ID and Android signing fingerprint",
 );
 const prayerWorkerSource = read("supabase/functions/prayer-notification-worker/index.ts");
