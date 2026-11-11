@@ -63,6 +63,18 @@ await assert.rejects(
 );
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
+const staleRecoveryStart = worker.indexOf("async function recoverStaleClaims");
+const staleRecoveryEnd = worker.indexOf("async function claimDueDeliveries", staleRecoveryStart);
+const staleRecovery = worker.slice(staleRecoveryStart, staleRecoveryEnd);
+assert.ok(staleRecoveryStart >= 0 && staleRecoveryEnd > staleRecoveryStart);
+assert.match(staleRecovery, /\.lt\("attempt_count", 3\)/,
+  "stale claims below the retry budget may be retried once the backoff expires");
+assert.match(staleRecovery, /\.gte\("attempt_count", 3\)/,
+  "stale claims at the retry budget must be selected for terminal handling");
+assert.match(staleRecovery, /status: "cancelled"/,
+  "stale claims that exhaust the retry budget must not cycle forever");
+assert.match(staleRecovery, /Stale worker claim exhausted retry budget; manual review required/);
+
 assert.match(worker, /forEachIdPage\(/);
 assert.match(worker, /canSchedulePrayerSubscription\(/);
 assert.match(worker, /preference\.notifications_enabled !== true/);
