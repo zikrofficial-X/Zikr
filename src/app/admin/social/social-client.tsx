@@ -597,7 +597,7 @@ export default function AdminSocialPage() {
     const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
     const confirmation = `تأكيد الحذف النهائي من ${targetText}؟
 
-سيتم حذف المنشور الفعلي من المنصة فقط. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.
+سيتم حذف المنشور الفعلي من المنصة فقط. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.`;
     if (!window.confirm(confirmation)) return;
 
     setBusy(true);
