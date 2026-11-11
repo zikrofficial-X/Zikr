@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { assertCloudinaryVideoUrl } from "../../src/features/videos/services/video-media-url";
+import {
+  assertCloudinaryVideoUrl,
+  isGeneratedCloudinaryVideoUrl,
+} from "../../src/features/videos/services/video-media-url";
 
 test("accepts HTTPS Cloudinary video delivery URLs", () => {
   const url = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
@@ -40,4 +43,18 @@ test("rejects YouTube watch and embed URLs as upload sources", () => {
     () => assertCloudinaryVideoUrl("https://www.youtube.com/watch?v=abc123", "YouTube"),
     /trusted Cloudinary/,
   );
+});
+
+
+test("protects generated Cloudinary MP4 references with transformation segments", () => {
+  const direct = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
+  const transformed = "https://res.cloudinary.com/zikr/video/upload/f_auto,q_auto/v123456/auto-episode.mp4";
+  const transformedWithoutVersion = "https://res.cloudinary.com/zikr/video/upload/q_auto/auto-episode.mp4";
+
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(transformed, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(transformedWithoutVersion, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct, "another-cloud"), false);
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct.replace(".mp4", ".jpg"), "zikr"), false);
+  assert.equal(isGeneratedCloudinaryVideoUrl("https://evil.example/video/upload/auto-episode.mp4", "zikr"), false);
 });
