@@ -69,6 +69,24 @@ assert.match(adminContent, /automationPublicationHold = true/, "an explicit arti
 assert.match(adminContent, /delete articleMetadata\.automationPublicationHold/, "an explicit admin republish must clear the automation publication hold");
 assert.match(adminContent, /table === "articles"[\s\S]*?id,updated_at,metadata/, "article publication updates must read metadata before preserving and updating the hold marker");
 
+const deleteStart = contentService.indexOf("export async function deleteManagedContent");
+const deleteQueueCancel = contentService.indexOf("status=in.(queued,processing)", deleteStart);
+const deleteOperation = contentService.indexOf('method: "DELETE"', deleteStart);
+assert.ok(deleteStart >= 0 && deleteQueueCancel > deleteStart && deleteQueueCancel < deleteOperation,
+  "deleting a draft must cancel queued and in-flight publication before removing the source row");
+
+assert.match(job, /async function rollbackScheduledContentPublication/,
+  "worker rollback must be isolated behind a version-checked helper");
+assert.ok(job.includes("updated_at=eq.${encodeURIComponent(publishedUpdatedAt)}"),
+  "worker rollback must match the exact updated_at written by that worker so a later admin republish is preserved");
+assert.ok(job.includes("contentPublishedUpdatedAt = new Date().toISOString()"),
+  "the worker must retain its exact publication-write timestamp for a safe rollback");
+assert.equal(
+  (job.match(/rollbackScheduledContentPublication\\(item, contentPublishedUpdatedAt\\)/g) ?? []).length,
+  2,
+  "both cancellation and error rollback paths must use the version-checked helper",
+);
+
 const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
 assert.match(adminActions, /table === "stories" \? "id,published,is_approved,user_id"/,
   "story scheduling must load its public-approval fields");
