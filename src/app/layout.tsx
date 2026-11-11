@@ -82,13 +82,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description,
     ...(keywords?.length ? { keywords } : {}),
-    alternates: { canonical: "/" },
+    // Canonicals and og:url are route-specific; setting either here would be
+    // inherited by child pages and incorrectly point them at the homepage.
     openGraph: {
       title: ogTitle,
       description: ogDescription,
       type: "website",
       locale: htmlLocale.replace("-", "_"),
-      url: siteConfig.url,
       siteName: siteConfig.shortName,
       images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
