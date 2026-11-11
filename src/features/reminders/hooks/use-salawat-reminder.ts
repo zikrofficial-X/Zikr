@@ -276,6 +276,7 @@ export function useSalawatReminder(
               quiet_hours_end: next.quietHours.enabled
                 ? next.quietHours.to
                 : null,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             }),
           }).catch(() => undefined);
         });
