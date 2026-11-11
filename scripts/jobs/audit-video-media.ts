@@ -1,6 +1,7 @@
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
 
 type JsonRecord = Record<string, unknown>;
 type VideoCatalogRow = {
@@ -216,6 +217,8 @@ async function main() {
       "/rest/v1/social_publish_queue?status=in.(published,partial)&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=2000",
     ),
   ]);
+  assertCompleteVideoMediaAuditInventory(videos?.length ?? 0, queue?.length ?? 0);
+
   const youtubePublicationsByRequest = new Map<string, { id: string; publishedAt: string | null }>();
   for (const row of queue ?? []) {
     if (!row.content_id) continue;
@@ -253,11 +256,13 @@ async function main() {
     return acc;
   }, {});
   console.log("[video-media-audit] " + JSON.stringify({ checked: rows.length, summary, at: now }));
-  for (const result of results) {
-    if (result.state === "conflict" || result.state === "error" || result.state === "unavailable" ||
-        (result.state === "cloudinary_missing" && !("youtubeFallback" in result && result.youtubeFallback))) {
-      console.error("[video-media-audit] attention:", JSON.stringify(result));
-    }
+  const blockingResults = results.filter(isBlockingVideoMediaAuditOutcome);
+  for (const result of blockingResults) {
+    console.error("[video-media-audit] attention:", JSON.stringify(result));
+  }
+  if (blockingResults.length > 0) {
+    console.error(`[video-media-audit] ${blockingResults.length} blocking result(s); marking the job failed.`);
+    process.exitCode = 1;
   }
 }
 
