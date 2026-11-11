@@ -203,7 +203,7 @@ assert.doesNotMatch(
 );
 assert.match(
   contentService,
-  /const filter = [\s\S]*?optimisticUpdatedAt[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\.length\)/,
+  /const encodedId = encodeURIComponent\(id\);[\s\S]*?id=eq\.\$\{encodedId\}&updated_at=eq\.\$\{encodeURIComponent\(String\(target\.updated_at\)\)\}[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\?\.length\)/,
   "content publish toggles must compare-and-set and verify the affected row",
 );
 assert.match(
