@@ -1,10 +1,10 @@
-# ZIKR file status matrix — refreshed 2026-11-10T22:45:00Z
+# ZIKR file status matrix — refreshed 2026-11-11T17:48:22Z
 
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (recursive snapshot of this exact main baseline; self-entry excluded; `docs` and `docs/audits` directory hashes are null because they contain the manifest)  
 **Inventory:** 2,154 tracked entries — 1,662 files and 492 directories; 139,748,929 file bytes; recursive GitHub tree response not truncated.  
 **Coverage:** automated inventory 1,662/1,662 main files (100%); minimum previously documented full source-content reads 129/1,662; 1,525 current-main rows remain `REVIEW_REQUIRED` (effective status applies the current-main delta over historical rows); modules closed 0. Inventory coverage is not manual review coverage.  
-**Current main CI:** CircleCI config-guard, source-verify, application-build-docs and Android release-draft all SUCCESS on this exact SHA.  
+**Current main CI:** On `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, CircleCI `config-guard`, `source-verify`, `application-build-docs`, `android-release-draft`, and Vercel are SUCCESS; the separately scheduled `english-content-sync` context is FAILURE. That scheduled workflow runs on `main` at 04:17 UTC, is not a PR #320 check, and was not triggered by this audit. Its job log was not accessible through the connected interface, so its exact failure and any partial sync side effects are unverified.  
 **Production:** Vercel production is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` at deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`; main and production are aligned. The existing manual `RELEASE` gate was not dispatched or changed.  
 **Supabase:** 418/418 migration versions match; 92/92 public tables have RLS; 211 public policies; 45 public triggers; 40 public functions; 9 buckets / 0 objects. Security warning: leaked-password protection disabled; Performance Advisor: 86 unused-index candidates; no schema/index/data change performed.  
 **Historical detail:** the original file-by-file table below records the earlier `035ea456` snapshot. The current-main delta at the end revalidates every changed blob and adds all five new files; prior statuses are not carried forward for changed blobs.
@@ -2011,7 +2011,7 @@ These entries are branch overlays, not part of the `main@c4560d9` manifest basel
 | `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql` | `3fc6d98a1107be2c64033f69b4bbcb8b059b6295` | 1138 | reviewed; exact-head CI pending |
 
 
-## Active audit PR #320 branch delta — 2026-11-11
+## Historical PR #320 branch delta checkpoint — 2026-11-10 (superseded by the latest checkpoint below)
 
 **Code checkpoint:** `audit/zikr-kids-daily-priority-20261110@2216e178348441c83745d19ac7489bedcc9a5b8e`  
 **Base:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
@@ -2101,3 +2101,58 @@ The 68 changed paths below were reviewed through their actual changed content, r
 - The recursive manifest in this PR is a snapshot of main@c4560d9, not the unmerged branch tree. Keep it pinned to that baseline and regenerate it only after merge against the new main tree.
 - This PR's 68-path delta is not a full review of all 1,662 files. The main-baseline matrix still has 1,525 REVIEW_REQUIRED rows and zero closed modules.
 - The documentation reconciliation commits d0c5694c8e4a7a10132c62f96cf77dd5d122148b and 4eee2c28af4969ebb6b6a8a5c1a6a69c386415a follow the verified code checkpoint; final CI must be checked on the final documentation head before any merge decision.
+
+
+## Latest audit continuation — 2026-11-11T17:48:22Z
+
+### Exact current inventory and PR delta
+
+- Verified code head before this documentation-only reconciliation: `7bf1ec5db8c9363983d336acf8714e3070a661b4`.
+- Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; branch compare is exactly aligned to this code head.
+- Commit delta: 590 commits ahead, 0 behind; 204 changed files (62 added, 142 modified, 0 removed).
+- Recursive tree: main 2,154 entries (1,662 blobs, 492 trees); branch 2,220 entries (1,724 blobs, 496 trees). Neither response was truncated.
+- The 68-path table above is historical and is not re-certified as a full review of the current 204-file delta. This checkpoint does not mark the entire PR delta complete.
+
+### Exact-head verification and external gates
+
+- GitHub Quality Gate #2508 / run `43071170876` / canonical job `130699107357`: SUCCESS. Job log confirms `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, and `QUALITY_GATE=PASSED_FULL`.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs`: SUCCESS at `7bf1ec5db8c9363983d336acf8714e3070a661b4`; config-validation run #904 / `43071171270`: SUCCESS.
+- Main `c4560d9` has a separate scheduled CircleCI `english-content-sync` FAILURE. The schedule is 04:17 UTC on main only. It is not a PR #320 check; its job log was inaccessible and possible partial Hadith-sync effects are unverified. No rerun was initiated.
+- Supabase remote migration history: 418 versions, latest `20261110170000`. Nine branch-only migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, and `20261111153000`. No production migration was applied.
+- Vercel production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from main `c4560d9`. The audit branch is not deployed; no deployment or post-deploy smoke test occurred.
+- PR #320 has zero submitted reviews and zero review threads. CODEOWNERS review remains a hard gate.
+
+### Targeted content review added at this checkpoint
+
+| Path | Branch blob SHA-1 | Status | Scope / evidence |
+|---|---|---|---|
+| `src/features/social/services/social-publishing.ts` | `755ad12796546be24eca6c550ee1e92ea3c209f5` | CONTENT_READ_PENDING_TRACE | Due-claim, stale-recovery, and in-flight paths inspected; stale recovery compare-and-set repaired; remaining provider consumers still require full trace. |
+| `src/features/social/services/social-publish-recovery-policy.ts` | `f915f966c3b61c5a5756c13a83805025aff5b553` | CONTENT_READ_PENDING_TRACE | In-flight/recovery metadata contract read; new stale-cutoff filter added; all metadata consumers remain to be traced. |
+| `src/features/social/services/social-queue-selection.ts` | `0682c0e3bdbdb2c72c663ec84cbff7e7004b5330` | CONTENT_READ_PENDING_TRACE | Candidate merging and due-time claim filter read; complete caller inventory remains open. |
+| `scripts/tests/social-queue-selection.test.ts` | `b9e488da6677f252086f8e5d6c6c9825c294dc12` | TESTED_PASS | Due-time and stale-recovery compare-and-set regression assertions ran under full `pnpm verify` at `7bf1ec5db8c9363983d336acf8714e3070a661b4`. |
+| `src/features/social/services/platform-availability.ts` | `0fc8de7b940948987e38841f3f75e16145234c89` | CONTENT_READ_PENDING_TRACE | Missing platform metadata fails closed in the deletion blocker; remaining callers still require trace. |
+| `scripts/tests/social-deletion.test.ts` | `023a4556f1b85249f117efe3bf34415c938e97ea` | TESTED_PASS | Missing-metadata deletion protection ran under full `pnpm verify`. |
+| `src/features/kids/services/kids-content-visibility.ts` | `2a0ecc791494b39e79096431e402982c7ff586f1` | CONTENT_READ_PENDING_TRACE | Fallback merge avoids resurrecting database slugs known to be inactive/unpublished; full consumer trace remains open. |
+| `src/features/kids/services/kids-content-validation.ts` | `56886ff5049f4fd527e10afbce480d03b5fea9f0` | CONTENT_READ_PENDING_TRACE | YouTube embed allowlist and Kids-content validation inspected; all write/read consumers remain to be traced. |
+| `src/features/kids/services/kids-content.ts` | `d31dfe298e05845bc3a756e89b5b40eca9ba25c1` | CONTENT_READ_PENDING_TRACE | Public query, visibility lookup, and fallback behavior inspected; all callers remain to be traced. |
+| `src/app/api/kids/content/route.ts` | `058d0d2f3802b51924d0b59d1eb9c4969153e60c` | CONTENT_READ_PENDING_TRACE | Public list route inspected; cache behavior and caller coverage remain open. |
+| `src/app/api/kids/content/[slug]/route.ts` | `1ef60bf34de0032082cd91ec59261b71853a6831` | CONTENT_READ_PENDING_TRACE | Public detail route inspected; caller coverage remains open. |
+| `src/app/kids/[slug]/page.tsx` | `68e08561d3511e5b32798ebba086752ac515aae2` | CONTENT_READ_PENDING_TRACE | Client fetch/render and safe video embed path inspected; physical-device acceptance remains open. |
+| `src/app/admin/kids/actions.ts` | `737ef306253bf0b96d6edf11a95d7b24c123c4a0` | CONTENT_READ_PENDING_TRACE | Kids manage/publish/step-up and media upload guards inspected; upload compensation and all callers remain open. |
+| `src/features/admin/services/permissions.ts` | `476bdb4b401b540558f0ac6cedc3ce007c1c5140` | CONTENT_READ_PENDING_TRACE | Role-to-permission mapping inspected; complete route/action permission matrix remains open. |
+| `src/app/api/admin/social/written/route.ts` | `084f03577b46de75bea7b0b4d3d0f5f2bbccb9e8` | CONTENT_READ_PENDING_TRACE | `social.manage` and step-up `social.publish` guards inspected; workflow dispatch was not executed. |
+| `scripts/jobs/written-content-automation.ts` | `df0b05867cf9fce75179147042087606e8b243e5` | CONTENT_READ_PENDING_TRACE | Daily Kids reservation and enqueue path inspected; GitHub workflow concurrency serializes the scheduled/dispatch entrypoint; no content generation ran. |
+| `supabase/functions/prayer-notification-worker/time-zone.ts` | `49751430c98f1afb1b1edbca273289a0f7dde2cf` | CONTENT_READ_PENDING_TRACE | Timezone conversion and quiet-hours helpers inspected; deployment/runtime acceptance remains open. |
+| `supabase/functions/prayer-notification-worker/pagination.ts` | `cb29782035ddac43ecd89ae6be38ea205eeb79d2` | CONTENT_READ_PENDING_TRACE | Monotonic ID cursor pagination inspected; complete worker call graph remains open. |
+| `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql` | `fc8f78f1952cda2b8e7d73ff19bdbcc3297681c7` | CONTENT_READ_PENDING_TRACE | Database type constraint aligned with Kids admin form; production application remains pending. |
+| `scripts/tests/background-reminder-schedule.integration.sql` | `03f9a1d4f3a6f908dbcc18a8a56d69a583d591b9` | TESTED_PASS | PostgreSQL 17 background-reminder integration check passed in Quality Gate #2508. |
+| `src/app/api/admin/video-purge/route.ts` | `0e3576413455a00a73a2b7bd3521311ae7700fe9` | REVIEW_REQUIRED | Destructive Cloudinary/Storage path has step-up, confirmation, lock, and active-work checks, but a complete cross-table reference scan is not evident before deletion. Do not execute pending safety review. |
+| `scripts/cleanup-supabase-storage.mjs` | `8e4cefb1db9a66622fb7df1b669b378a4457a12d` | CONTENT_READ_PENDING_TRACE | Bounded inventory/reference scan and dry-run safeguards inspected; complete table/consumer trace remains open. No cleanup was run. |
+
+### Open coverage and safety notes
+
+- The main-baseline matrix remains at 1,525 `REVIEW_REQUIRED` rows and 0 closed modules. This targeted checkpoint does not change those counts.
+- The main-baseline manifest remains pinned to `main@c4560d9`, excludes itself, and keeps `docs` / `docs/audits` directory hashes null. The stale ledger record was corrected to main blob `057c5b9ffb16691abfc6e245e583c908a0dbe73d`, size 93,248 bytes.
+- The independent scheduled `english-content-sync` failure requires owner diagnosis; no manual rerun or content generation was initiated.
+- No content generation, Gemini request, social publication, production database mutation, storage/media deletion, Android release, merge, or deployment was triggered by this audit.
+
