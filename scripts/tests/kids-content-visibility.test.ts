@@ -177,7 +177,8 @@ assert.match(kidsDetailLayout, /title:\s*item\.title_ar\s*\|\|\s*item\.title_en/
 assert.doesNotMatch(kidsDetailLayout, /item\.title(?!_)/, "Kids SEO metadata must not reference a non-existent generic title field");
 assert.ok(kidsDetailLayout.includes("robots: { index: false, follow: false }"), "hidden or unavailable Kids slugs must not be indexed as generic 200 pages");
 assert.ok(kidsDetailLayout.includes("if (!item) notFound()"), "hidden or unavailable Kids slugs must resolve as 404s before rendering the client page");
-assert.ok(kidsSitemap.includes("getKidsContent()"), "the sitemap must source Kids URLs through the visibility-aware content resolver");
+assert.ok(kidsSitemap.includes('getKidsContent("ar")'), "the sitemap must source Kids URLs through the visibility-aware resolver with a stable canonical locale");
+assert.equal(kidsSitemap.includes("getKidsContent()"), false, "the sitemap must not vary its Kids URL inventory by the requesting visitor locale");
 assert.ok(kidsSitemap.includes("`/kids/${item.slug}`"), "active published Kids content must have discoverable sitemap entries");
 assert.match(kidsContentData, /content_ar:\s*row\.content_ar\s*\?\?\s*row\.summary_ar/, "Kids metadata must map the live summary_ar field into the shared content model");
 assert.doesNotMatch(kidsDetailLayout, /supabaseServerAnonRequest/, "SEO metadata must not bypass database visibility checks");
