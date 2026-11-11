@@ -45,7 +45,7 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
     Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
-      `/rest/v1/kids_content?select=*&published=eq.true&is_active=eq.true&or=${encodeURIComponent("(type.neq.story,metadata->>age_appropriate.eq.true)")}&order=created_at.desc&limit=1000`,
+      `/rest/v1/kids_content?select=*&published=eq.true&is_active=eq.true&order=created_at.desc&limit=1000`,
       { timeoutMs: 10_000, retries: 1 },
     )),
     // Defer the service-role call so missing Preview credentials are captured
@@ -91,7 +91,7 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
 
   const [publicResult, visibilityResult] = await Promise.allSettled([
     Promise.resolve().then(() => supabaseServerAnonRequest<KidsDbRow[]>(
-      `/rest/v1/kids_content?select=*&slug=eq.${encodedSlug}&published=eq.true&is_active=eq.true&or=${encodeURIComponent("(type.neq.story,metadata->>age_appropriate.eq.true)")}&limit=1`,
+      `/rest/v1/kids_content?select=*&slug=eq.${encodedSlug}&published=eq.true&is_active=eq.true&limit=1`,
       { timeoutMs: 10_000, retries: 1 },
     )),
     Promise.resolve().then(() => supabaseServerAdminRequest<KidsVisibilityDbRow[]>(

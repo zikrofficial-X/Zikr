@@ -1,19 +1,17 @@
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : {};
-}
+import { isKidsContentType } from "@/features/kids/services/kids-content-validation";
 
 export function isKidsContentPubliclyVisible(item: { type?: unknown; metadata?: unknown }): boolean {
-  if (item.type !== "story") return true;
-  return asRecord(item.metadata).age_appropriate === true;
+  // Publication and active state are enforced by the database query/RLS policy.
+  // age_appropriate is a separate review signal for automated Kids distribution;
+  // it must not hide an already-published story from the public Kids library.
+  return isKidsContentType(item.type);
 }
 
 export function normalizeKidsContentSlug(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-export function mergeKidsContentWithFallback<T extends { slug: string }>(
+export function mergeKidsContentWithFallback<T extends { slug: string; type?: unknown; metadata?: unknown }>(
   databaseItems: readonly T[],
   fallbackItems: readonly T[],
   knownDatabaseSlugs: ReadonlySet<string>,
@@ -23,7 +21,7 @@ export function mergeKidsContentWithFallback<T extends { slug: string }>(
 
   for (const item of databaseItems) {
     const slug = normalizeKidsContentSlug(item.slug);
-    if (!slug || seen.has(slug)) continue;
+    if (!slug || seen.has(slug) || !isKidsContentPubliclyVisible(item)) continue;
     seen.add(slug);
     merged.push(item);
   }
@@ -39,7 +37,7 @@ export function mergeKidsContentWithFallback<T extends { slug: string }>(
   return merged;
 }
 
-export function getFallbackKidsContentBySlug<T extends { slug: string }>(
+export function getFallbackKidsContentBySlug<T extends { slug: string; type?: unknown; metadata?: unknown }>(
   slug: string,
   fallbackItems: readonly T[],
   knownDatabaseSlugs: ReadonlySet<string>,
