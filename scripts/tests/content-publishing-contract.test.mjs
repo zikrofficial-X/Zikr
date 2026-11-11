@@ -12,6 +12,19 @@ assert.ok(job.includes("Prefer: \"return=representation\""), "the content update
 assert.ok(missingRowGuard > contentUpdate, "a missing content row must be detected after the update");
 assert.ok(queuePublishedUpdate > missingRowGuard, "the queue must not be marked published before the content row is confirmed");
 assert.ok(job.includes("CONTENT_TABLES.has(item.content_table)"), "dynamic content table names must remain allowlisted");
+const publisherTableBlock = job.match(/const CONTENT_TABLES = new Set\\(\\[([\\s\\S]*?)\\]\\);/)?.[1] ?? "";
+assert.ok(publisherTableBlock.includes('"pinned_messages"'), "pinned messages must remain an approved scheduled content table");
+assert.ok(job.includes("`/rest/v1/${item.content_table}?"), "scheduled publication must update the allowlisted content table selected by the queue item");
+assert.match(
+  job,
+  /body:\\s*JSON\\.stringify\\(\\{\\s*published:\\s*true,\\s*updated_at:\\s*requestedContentUpdatedAt\\s*\\}\\)/,
+  "scheduled publication must set the canonical published column and update timestamp for every allowlisted content table",
+);
+assert.doesNotMatch(
+  job,
+  /item\\.content_table === ["']pinned_messages["']\\s*\\?\\s*["']is_active["']/,
+  "pinned messages must not use the retired is_active publication column",
+);
 assert.match(job, /inspectVideoQueueItemApproval/,
   "internal video site publication must revalidate the canonical generation request approval snapshot");
 assert.match(job, /metadata\.kidsVideoQaStatus === "passed" && automatedQa\.status === "passed"/,
