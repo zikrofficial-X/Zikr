@@ -130,7 +130,7 @@ assert.ok(
 assert.ok(route.includes("partialPurge: destructiveWorkStarted && !dataCleanupFinished"), "partial destructive failure must be explicitly reported");
 assert.ok(route.includes("metadata->>generator=eq.multi-provider-free-ai"), "purge must select only run records created by the internal video worker");
 assert.ok(!route.includes('deleteRows("video_automation_runs", "id=not.is.null")'), "purge must not delete unrelated or unclassified automation-run records");
-assert.ok(route.includes('body.scope === "files"') && route.includes('body.scope === "memory"') && route.includes('body.scope === "both"'), "the cleanup endpoint must expose distinct files, memory, and combined scopes");
+assert.ok(route.includes('scope !== "files"') && route.includes('scope !== "memory"') && route.includes('scope !== "both"'), "the cleanup endpoint must validate distinct files, memory, and combined scopes before cleanup");
 const scopeValidationPosition = route.indexOf('if (scope !== "files" && scope !== "memory" && scope !== "both")');
 const purgeLockPosition = route.indexOf("const lockToken = randomUUID()");
 assert.ok(
