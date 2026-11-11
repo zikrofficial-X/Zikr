@@ -49,10 +49,15 @@ async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
       "/rest/v1/profiles?select=id,display_name,email,role,avatar_url,created_at,updated_at&order=created_at.desc&limit=200",
       { cache: "no-store" }
     );
-    const assignments = await supabaseServerAdminRequest<Array<{ user_id: string; role: string }>>(
-      "/rest/v1/admin_role_assignments?select=user_id,role&limit=500",
-      { cache: "no-store" },
-    );
+    const userIds = (users ?? []).map((user) => user.id).filter(Boolean);
+    const assignments = userIds.length
+      ? await supabaseServerAdminRequest<Array<{ user_id: string; role: string }>>(
+          "/rest/v1/admin_role_assignments?select=user_id,role&user_id=in.(" +
+            userIds.map((id) => encodeURIComponent(id)).join(",") +
+            ")&limit=" + userIds.length,
+          { cache: "no-store" },
+        )
+      : [];
     const roleByUser = new Map(assignments.map((row) => [row.user_id, row.role]));
     return {
       rows: (users || []).map((user) => ({
