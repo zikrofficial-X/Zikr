@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { canSchedulePrayerSubscription } from "../../supabase/functions/prayer-notification-worker/eligibility";
-import { nextLocalDate } from "../../supabase/functions/prayer-notification-worker/time-zone";
+import { buildNotificationTopic, nextLocalDate } from "../../supabase/functions/prayer-notification-worker/time-zone";
 
 const source = Array.from({ length: 205 }, (_, index) => ({
   id: String(index + 1).padStart(4, "0"),
@@ -82,6 +82,29 @@ assert.equal(
   nextLocalDate(new Date("2026-03-08T08:00:00.000Z"), "America/Los_Angeles"),
   "2026-03-09",
   "local calendar advancement must remain correct across daylight-saving transitions",
+);
+
+const pushTopics = [
+  buildNotificationTopic({ notificationKind: "prayer", prayerName: "Fajr", scheduledAt: "2026-11-11T03:00:00.000Z" }),
+  buildNotificationTopic({ notificationKind: "prayer", prayerName: "Dhuhr", scheduledAt: "2026-11-11T10:00:00.000Z" }),
+  buildNotificationTopic({ notificationKind: "dhikr", prayerName: "", scheduledAt: "2026-11-11T09:00:00.000Z" }),
+  buildNotificationTopic({ notificationKind: "dhikr", prayerName: "", scheduledAt: "2026-11-11T09:30:00.000Z" }),
+  buildNotificationTopic({ notificationKind: "salawat", prayerName: "", scheduledAt: "2026-11-11T09:00:00.000Z" }),
+];
+assert.equal(new Set(pushTopics).size, pushTopics.length, "distinct prayer and interval reminders must not replace one another in the push service");
+assert.ok(pushTopics.every(topic => topic.length <= 32 && /^[A-Za-z0-9_-]+$/.test(topic)), "Web Push topics must satisfy the 32-character URL-safe limit");
+assert.notEqual(
+  buildNotificationTopic({ notificationKind: "prayer", prayerName: "Fajr", scheduledAt: "2026-11-11T03:00:00.000Z" }),
+  buildNotificationTopic({ notificationKind: "prayer", prayerName: "Fajr", scheduledAt: "2026-11-12T03:00:00.000Z" }),
+  "the same prayer on different dates must have distinct topics",
+);
+assert.throws(
+  () => buildNotificationTopic({ notificationKind: "prayer", prayerName: "", scheduledAt: "2026-11-11T03:00:00.000Z" }),
+  /prayer name is required/,
+);
+assert.throws(
+  () => buildNotificationTopic({ notificationKind: "dhikr", prayerName: "", scheduledAt: "invalid" }),
+  /valid scheduledAt/,
 );
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "configured, opted-in prayer notifications may be scheduled");
 assert.match(worker, /.order\("id", \{ ascending: true \}\)/);
