@@ -18,6 +18,7 @@ function extractQuoted(text, pattern) {
 
 const catalog = await read('src/lib/navigation/catalog.ts');
 const sitemap = await read('src/app/sitemap.ts');
+const rootLayout = await read('src/app/layout.tsx');
 const videosPage = await read('src/app/videos/page.tsx');
 const audioPage = await read('src/app/audio/page.tsx');
 const kidsLayout = await read('src/app/kids/layout.tsx');
@@ -48,6 +49,12 @@ if (!site.includes('path: "/library"') || !site.includes('path: "/audio"')) {
 }
 if (!sitemap.includes('siteConfigRoutes().map')) {
   failures.push('Sitemap must derive public static routes from the canonical site route catalog.');
+}
+if (rootLayout.includes('alternates: { canonical: "/" }')) {
+  failures.push('Root layout must not publish a homepage canonical inherited by unrelated child routes.');
+}
+if (/openGraph:\\s*\\{[^}]*url:\\s*siteConfig\\.url/.test(rootLayout)) {
+  failures.push('Root layout must not publish a homepage og:url inherited by unrelated child routes.');
 }
 if (!sitemap.includes('getKidsContent("ar")')) {
   failures.push('Sitemap Kids entries must use a stable Arabic locale, not the requesting visitor locale.');
