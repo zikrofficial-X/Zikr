@@ -35,8 +35,8 @@ function nextWithPathHeader(request: NextRequest) {
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Vercel exposes multiple aliases for the same production deployment. Keep
-  // the user-facing site and OAuth callback on the canonical public origin.
+  // Keep every production request on the canonical public origin so browser
+  // cookies, OAuth PKCE verifiers, and callbacks share one host.
   const rawRequestHost =
     request.headers.get("host") ??
     request.headers.get("x-forwarded-host") ??
