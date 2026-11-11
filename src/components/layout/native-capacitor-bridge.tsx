@@ -16,6 +16,7 @@ import { StatusBar } from "@capacitor/status-bar";
 import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
 import { syncQuranReminderFromAccount } from "@/features/notifications/services/quran-reminder";
 import { PRODUCTION_URL } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 type CapacitorPlugin = Record<
   string,
@@ -200,10 +201,7 @@ function installNativeFacade(
       window.location.assign(url);
     },
     async startGoogleOAuth(nextPath = "/profile") {
-      const safeNext =
-        nextPath.startsWith("/") && !nextPath.startsWith("//")
-          ? nextPath
-          : "/profile";
+      const safeNext = sanitizeInternalPath(nextPath);
       // Native OAuth always starts from the canonical production origin so a
       // deployment alias never remains open in the Android custom tab.
       const startUrl = new URL("/auth/google", PRODUCTION_URL);
