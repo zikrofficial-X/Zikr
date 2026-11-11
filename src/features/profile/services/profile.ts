@@ -6,6 +6,7 @@ import {
 } from "@/lib/supabase/server";
 import { resolveAdminRole } from "@/features/admin/services/permissions";
 import { buildAuthProfileSyncPayload } from "./profile-sync";
+import { normalizeIanaTimeZone } from "@/lib/timezone";
 
 export type ProfileFavorite = {
   id: string;
@@ -242,10 +243,12 @@ function parseProfileUpdate(
   }
 
   if (hasTimezone) {
-    if (typeof body.timezone !== "string" || body.timezone.length > 80) {
-      return { error: "timezone must be a valid string" };
-    }
-    parsed.timezone = body.timezone.trim() || "Africa/Cairo";
+    const candidate = typeof body.timezone === "string" && body.timezone.trim()
+      ? body.timezone
+      : "Africa/Cairo";
+    const timezone = normalizeIanaTimeZone(candidate);
+    if (!timezone) return { error: "timezone must be a valid IANA timezone" };
+    parsed.timezone = timezone;
   }
 
   return parsed;
