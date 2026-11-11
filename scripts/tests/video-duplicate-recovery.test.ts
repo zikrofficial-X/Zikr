@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import type { DuplicateVideoHashOwner } from "../../src/features/videos/services/duplicate-video-recovery";
+import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 
 const owner: DuplicateVideoHashOwner = {
@@ -126,6 +127,28 @@ reject({
   siteRecord: { published: false, metadata: { mediaState: "purged", videoUrl: "https://not-cloudinary.test/video.mp4" } },
 }, "a catalog record retaining a media URL must not be treated as purged");
 
+const quotaState = calculateDailyVideoQuotaState([
+  { status: "completed", automation_key: "quran:20607:0" },
+  { status: "pending", automation_key: "hadith:20607:1" },
+  { status: "cancelled", automation_key: "story:20607:2" },
+  { status: "failed", automation_key: "dua:20607:3" },
+  { status: "retry_wait", automation_key: "adhkar:20607:4" },
+  { status: "processing", automation_key: "kids:20607:5" },
+]);
+assert.deepEqual(
+  quotaState,
+  { reservedCount: 4, nextSlot: 6 },
+  "only active/retryable/completed requests satisfy the daily target while cancelled/failed slot keys remain unavailable",
+);
+assert.deepEqual(
+  calculateDailyVideoQuotaState([
+    { status: "cancelled", automation_key: "quran:20607:0" },
+    { status: "failed", automation_key: "hadith:20607:1" },
+  ]),
+  { reservedCount: 0, nextSlot: 2 },
+  "terminal duplicate/failure rows must be replaced using a fresh slot rather than consuming the daily quota",
+);
+
 const worker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
 
 const recoveredFailed = buildMissingMediaQueueRecoveryPatch({
@@ -223,6 +246,9 @@ assert.match(runner, /waveSkipped/);
 assert.match(runner, /skipped \+= waveSkipped/);
 assert.match(runner, /skipped: summary\.skipped/);
 
+assert.match(worker, /automation_key=like\.\*:\$\{day\}:\*&select=id,status,automation_key&limit=1000/);
+assert.match(worker, /calculateDailyVideoQuotaState\(todaysRows \?\? \[\]\)/);
+assert.match(worker, /const slot = dailyQuota\.nextSlot \+ i/);
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
 assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)"), "canonical recovery must compare-and-set the exact previously stored Cloudinary URL");
 assert.ok(worker.includes("&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}"), "canonical recovery must retain the completed-state guard while matching the exact media pointer");
