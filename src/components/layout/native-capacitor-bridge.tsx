@@ -348,8 +348,8 @@ export function NativeCapacitorBridge() {
     // flow so the PKCE verifier remains in the same WebView storage context.
 
     // Universal links for public content must navigate the existing WebView.
-    // OAuth callbacks are excluded from AASA and remain in the browser until the
-    // server exchanges the code and redirects through the custom scheme.
+    // OAuth callbacks are excluded from AASA; the HTTPS callback forwards the
+    // authorization code to the custom scheme, where this WebView exchanges it.
     void app?.addListener?.("appUrlOpen", (event: unknown) => {
       const incomingUrl = (event as { url?: string })?.url;
       if (!incomingUrl) return;

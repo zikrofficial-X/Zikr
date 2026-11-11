@@ -13,6 +13,15 @@ const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
+const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
+const iosPodfile = read("ios/App/Podfile");
+assert.equal(
+  capacitor.ios?.scheme ?? "App",
+  "App",
+  "Capacitor ios.scheme must name the existing Xcode App scheme, not the custom URL scheme",
+);
+assert.match(iosProject, /name = App;/, "The Xcode project must contain the App target");
+assert.match(iosPodfile, /target 'App' do/, "CocoaPods must target the same App scheme");
 const iosPlist = read("ios/App/App/Info.plist");
 const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
 const appBoundDomains = new Set(

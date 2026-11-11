@@ -30,7 +30,7 @@
     ]
   },
   "ios": {
-    "scheme": "ZIKR",
+    "scheme": "App",
     "contentInset": "automatic",
     "limitsNavigationsToAppBoundDomains": true
   },

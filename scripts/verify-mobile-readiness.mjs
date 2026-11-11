@@ -138,6 +138,14 @@ const entitlements = read("ios/App/App/App.entitlements");
 if (!entitlements.includes("applinks:zikrmediaofficial.vercel.app")) failures.push("iOS entitlements missing production associated domain");
 
 const pbxproj = read("ios/App/App.xcodeproj/project.pbxproj");
+const iosPodfile = read("ios/App/Podfile");
+const configuredIosScheme = capacitor.ios?.scheme ?? "App";
+if (configuredIosScheme !== "App") {
+  failures.push(`Capacitor iOS scheme must match the Xcode App target; received "${configuredIosScheme}".`);
+}
+if (!pbxproj.includes("name = App;") || !iosPodfile.includes("target 'App' do")) {
+  failures.push("The iOS Xcode target and CocoaPods target must remain aligned on App.");
+}
 for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;"]) {
   if (!pbxproj.includes(token)) failures.push(`iOS Xcode project missing ${token}`);
 }
