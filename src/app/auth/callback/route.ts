@@ -83,9 +83,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(missingSessionUrl);
       }
 
-      const profileSync = await syncAuthProfile(user);
-      if (!profileSync.ok) {
-        console.error('[auth/callback] Profile sync failed:', profileSync.error);
+      try {
+        const profileSync = await syncAuthProfile(user);
+        if (!profileSync.ok) {
+          console.error('[auth/callback] Profile sync failed:', profileSync.error);
+        }
+      } catch (profileErr) {
+        // Authentication must still complete when profile enrichment is unavailable.
+        console.error('[auth/callback] Profile sync exception:', profileErr);
       }
 
       return NextResponse.redirect(`${origin}${safePath}`);

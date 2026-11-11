@@ -5,6 +5,7 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 import { resolveAdminRole } from "@/features/admin/services/permissions";
+import { buildAuthProfileSyncPayload } from "./profile-sync";
 
 export type ProfileFavorite = {
   id: string;
@@ -334,7 +335,13 @@ export async function syncAuthProfile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!user.id.trim()) return { ok: false, error: "Invalid user" };
 
-  const adminClient = createAdminClient();
+  let adminClient;
+  try {
+    adminClient = createAdminClient();
+  } catch (error) {
+    console.error("[profile] auth sync client unavailable:", error);
+    return { ok: false, error: "profile_sync_unavailable" };
+  }
   const { data: existingProfile, error: readError } = await adminClient
     .from("profiles")
     .select("display_name, avatar_url")
@@ -346,7 +353,6 @@ export async function syncAuthProfile(
     return { ok: false, error: "profile_sync_read_failed" };
   }
 
-  const { buildAuthProfileSyncPayload } = await import("./profile-sync");
   const payload = buildAuthProfileSyncPayload(user, existingProfile, new Date().toISOString());
   const { error } = await adminClient.from("profiles").upsert(
     payload,
