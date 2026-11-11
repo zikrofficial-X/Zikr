@@ -218,6 +218,31 @@ jobs:
             TAFSIR_EXPECTED_COUNT=0,6236 bash scripts/reconcile-supabase-migration-history.sh
           )
 
+      - name: Apply pending production migrations before deployment
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
+          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
+        run: |
+          set -euo pipefail
+          python3 scripts/verify-supabase-db-url.py
+          supabase db push --db-url "${SUPABASE_DB_URL}" --yes
+
+      - name: Restore source-verified Quran tafsir corpus
+        shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
+          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
+        run: bash scripts/restore-quran-tafsir.sh
+
+      - name: Verify production schema after migration
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
+          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
+          TAFSIR_EXPECTED_COUNT: "6236"
+        run: bash scripts/reconcile-supabase-migration-history.sh
+
+
       - name: Pull production Vercel configuration
         shell: bash
         env:
@@ -257,36 +282,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Production deployment: $url"
 
-      - name: Smoke test deployed app before schema migration
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
-        run: pnpm production:smoke
-
-      - name: Apply pending production migrations after deployment
-        shell: bash
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
-          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-        run: |
-          set -euo pipefail
-          python3 scripts/verify-supabase-db-url.py
-          supabase db push --db-url "${SUPABASE_DB_URL}" --yes
-
-      - name: Restore source-verified Quran tafsir corpus
-        shell: bash
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
-          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-        run: bash scripts/restore-quran-tafsir.sh
-
-      - name: Verify production schema after migration
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING }}
-          EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-          TAFSIR_EXPECTED_COUNT: "6236"
-        run: bash scripts/reconcile-supabase-migration-history.sh
-
-      - name: Post-migration production smoke test
+      - name: Production smoke test after schema migration and deployment
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: pnpm production:smoke
