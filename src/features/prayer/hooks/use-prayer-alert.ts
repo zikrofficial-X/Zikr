@@ -363,7 +363,7 @@ export function usePrayerAlert(
       window.removeEventListener("zikr:native-resumed", syncPushContext);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [passive]);
+  }, [passive, syncExistingServerPush]);
 
   // Keep every hook instance synchronized with settings changes. The page
   // instance is passive, while the app-shell instance reacts by rescheduling
