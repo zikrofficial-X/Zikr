@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
+import { canSchedulePrayerSubscription } from "./eligibility.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -364,9 +365,9 @@ async function ensureSubscriptionBatchSchedules(
   const eligible = subscriptions.filter(
     subscription => {
       const preference = preferenceByUser.get(subscription.user_id);
-      return Boolean(
-        locationByUser.get(subscription.user_id) &&
-        preference?.notifications_enabled !== false
+      return canSchedulePrayerSubscription(
+        Boolean(locationByUser.get(subscription.user_id)),
+        preference,
       );
     }
   );
@@ -399,7 +400,8 @@ async function ensureSubscriptionBatchSchedules(
   for (const subscription of eligible) {
     const location = locationByUser.get(subscription.user_id)!;
     const timeZone = safeTimeZone(location.timezone);
-    const preference = preferenceByUser.get(subscription.user_id)!;
+    const preference = preferenceByUser.get(subscription.user_id);
+    if (!preference) continue;
     const method = preference.calculation_method ?? "umm-al-qura";
     const madhab = preference.madhab ?? "shafi";
     const reminders = preference.prayer_reminders ?? {};
