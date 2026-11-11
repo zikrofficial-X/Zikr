@@ -1,9 +1,14 @@
+function isSafeKidsSlug(value) {
+  const slug = typeof value === "string" ? value.trim() : "";
+  return /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug);
+}
+
 export function getPublishedKidsRoutes(currentRows) {
   const routes = new Set();
   for (const row of Array.isArray(currentRows) ? currentRows : []) {
     if (!row || (row.type === "story" && row.metadata?.age_appropriate !== true)) continue;
     const slug = typeof row.slug === "string" ? row.slug.trim() : "";
-    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) continue;
+    if (!isSafeKidsSlug(slug)) continue;
     routes.add(`/kids/${slug}`);
   }
   return [...routes].sort();
@@ -15,8 +20,8 @@ export function getBlockedKidsRoutes(previousRows, currentRows, previousRoutes =
   const visibleSlugs = new Set(
     rows
       .filter(row => row && (row.type !== "story" || row.metadata?.age_appropriate === true))
-      .map(row => row?.slug)
-      .filter(slug => typeof slug === "string" && slug.trim()),
+      .map(row => typeof row?.slug === "string" ? row.slug.trim() : "")
+      .filter(isSafeKidsSlug),
   );
   const blocked = new Set();
 
