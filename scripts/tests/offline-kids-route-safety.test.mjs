@@ -42,6 +42,9 @@ assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
 assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows, previous\.routes\)/);
 assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
+assert.match(exporter, /const stamp = generatedAt\.replace/);
+assert.match(exporter, /version: `\$\{stamp\.slice\(0, 8\)\}-\$\{stamp\}`/);
+
 const exportOrders = [...exporter.matchAll(/'order=([^']+)'/g)].map(match => match[1]);
 assert.ok(exportOrders.length >= 20, "offline exporter must retain the complete dataset inventory");
 for (const order of exportOrders) {
