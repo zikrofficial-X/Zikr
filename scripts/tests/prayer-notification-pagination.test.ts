@@ -148,6 +148,38 @@ const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-remin
 const supabaseTypes = readFileSync("src/lib/types/supabase.ts", "utf8");
 
 assert.match(reminderMigration, /add column if not exists timezone text not null default 'UTC'/);
+assert.match(
+  reminderMigration,
+  /date_trunc\('day',\s*now_at\s+at\s+time\s+zone\s+'UTC'\)\s+at\s+time\s+zone\s+'UTC'/i,
+  "background reminder slots must use a stable UTC day boundary regardless of session timezone",
+);
+assert.match(
+  reminderMigration,
+  /make_interval\(\s*mins\s*=>\s*\([\s\S]*floor\([\s\S]*now_at\s*-\s*day_start\.utc_day_start[\s\S]*\)\s*::integer\s*\+\s*1/i,
+  "the next interval must be calculated from elapsed minutes since midnight, not added to the current minute",
+);
+assert.doesNotMatch(
+  reminderMigration,
+  /date_trunc\('minute',\s*now_at\)\s*\+/i,
+  "the interval calculation must not double-count elapsed minutes by adding an elapsed-day offset to now_at",
+);
+const nextUtcInterval = (now: Date, intervalMinutes: number) => {
+  const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const elapsedMinutes = (now.getTime() - dayStart) / 60_000;
+  return new Date(
+    dayStart + (Math.floor(elapsedMinutes / intervalMinutes) + 1) * intervalMinutes * 60_000,
+  ).toISOString();
+};
+assert.equal(
+  nextUtcInterval(new Date("2026-11-11T07:37:35.000Z"), 15),
+  "2026-11-11T07:45:00.000Z",
+  "a 15-minute reminder at 09:37 Cairo time must be scheduled for the next 15-minute boundary",
+);
+assert.equal(
+  nextUtcInterval(new Date("2026-11-11T07:37:35.000Z"), 60),
+  "2026-11-11T08:00:00.000Z",
+  "a 60-minute reminder must be scheduled for the next hour boundary",
+);
 assert.match(reminderMigration, /left join pg_catalog\.pg_timezone_names/);
 assert.match(reminderMigration, /local_clock\.local_time < preferences\.quiet_hours_start/);
 assert.match(reminderMigration, /local_clock\.local_time >= preferences\.quiet_hours_end/);
