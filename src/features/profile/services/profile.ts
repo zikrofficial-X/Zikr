@@ -335,7 +335,7 @@ export async function syncAuthProfile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!user.id.trim()) return { ok: false, error: "Invalid user" };
 
-  let adminClient;
+  let adminClient: ReturnType<typeof createAdminClient>;
   try {
     adminClient = createAdminClient();
   } catch (error) {
@@ -353,7 +353,11 @@ export async function syncAuthProfile(
     return { ok: false, error: "profile_sync_read_failed" };
   }
 
-  const payload = buildAuthProfileSyncPayload(user, existingProfile, new Date().toISOString());
+  const payload = buildAuthProfileSyncPayload(
+    user,
+    existingProfile,
+    new Date().toISOString(),
+  );
   const { error } = await adminClient.from("profiles").upsert(
     payload,
     { onConflict: "id" },
