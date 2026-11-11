@@ -79,6 +79,11 @@ jobs:
         run: bash scripts/tests/background-reminder-schedule.integration.sh
         timeout-minutes: 5
 
+      - name: Verify prophet section public-read policy against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/prophet-sections-rls.integration.sh
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |
