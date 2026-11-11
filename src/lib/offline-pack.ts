@@ -1,6 +1,7 @@
 "use client";
 
 import { offlineDb } from "@/lib/offline-db";
+import { resolveSafeOfflineRoute } from "@/lib/offline-route-safety";
 
 type OfflineManifest = {
   version: string;
@@ -79,16 +80,11 @@ const OFFLINE_CONTENT_STORES = [
 ] as const;
 
 export function isCacheableOfflinePageRoute(route: string): boolean {
-  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) {
-    return false;
-  }
+  const origin = typeof window === "undefined" ? "https://zikr.invalid" : window.location.origin;
+  const url = resolveSafeOfflineRoute(route, origin);
+  if (!url) return false;
 
-  let pathname: string;
-  try {
-    pathname = new URL(route, typeof window === "undefined" ? "https://zikr.invalid" : window.location.origin).pathname;
-  } catch {
-    return false;
-  }
+  let pathname = url.pathname;
   pathname = pathname.replace(/\/+$/, "") || "/";
 
   const excludedFiles = new Set([
