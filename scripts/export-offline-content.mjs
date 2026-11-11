@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { getBlockedKidsRoutes } from './lib/offline-kids-route-safety.mjs';
 
 const root = process.cwd();
 const outputDir = path.join(root, 'public/offline-content/v1');
@@ -113,29 +114,12 @@ try {
   if (Array.isArray(previousKids)) previousKidsRows = previousKids;
 } catch { /* first export */ }
 
-const blockedKidsRoutes = new Set();
+let blockedKidsRoutes = new Set();
 const exported = [];
 for (const [dataset, table, ...filters] of datasets) {
   let rows = await fetchAll(table, filters);
   if (dataset === 'kids') {
-    const visibleSlugs = new Set(
-      rows
-        .filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true))
-        .map((row) => row.slug)
-        .filter((slug) => typeof slug === 'string' && slug.trim()),
-    );
-    for (const row of previousKidsRows) {
-      if (row?.type === 'story' && row?.metadata?.age_appropriate !== true &&
-          typeof row.slug === 'string' && !visibleSlugs.has(row.slug)) {
-        blockedKidsRoutes.add(`/kids/${row.slug}`);
-      }
-    }
-    for (const row of rows) {
-      if (row?.type === 'story' && row?.metadata?.age_appropriate !== true &&
-          typeof row.slug === 'string' && row.slug.trim()) {
-        blockedKidsRoutes.add(`/kids/${row.slug}`);
-      }
-    }
+    blockedKidsRoutes = getBlockedKidsRoutes(previousKidsRows, rows);
     rows = rows.filter((row) => row && (row.type !== 'story' || row.metadata?.age_appropriate === true));
   }
   const minimum = minimumRecords[dataset] ?? 0;
