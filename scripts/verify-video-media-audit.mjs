@@ -27,6 +27,11 @@ for (const token of [
 ]) {
   if (!audit.includes(token)) failures.push("Video media audit is missing required evidence/reconciliation behavior: " + token);
 }
+if (!audit.includes("assertCompleteVideoMediaAuditInventory") ||
+    !audit.includes("isBlockingVideoMediaAuditOutcome") ||
+    !audit.includes("process.exitCode = 1")) {
+  failures.push("Video media audit must reject truncated inventories and fail the job when a published item has a blocking media result");
+}
 if (!audit.includes("concurrency = Math.min(5")) failures.push("Cloudinary availability probing must use bounded concurrency");
 if (!audit.includes('status: "unknown"')) failures.push("Transient media probe failures must remain unknown and must not mark valid assets missing");
 if (!audit.includes("return null") || !audit.includes("unavailable")) failures.push("Video media audit must distinguish missing media from a valid YouTube fallback");
@@ -73,10 +78,12 @@ if (!retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk") ||
 const workflow = read(".github/workflows/audit-video-media.yml");
 if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("workflow_dispatch:") ||
+    !workflow.includes("inputs.confirmation == 'RUN_MEDIA_AUDIT'") ||
+    workflow.includes("\\n  push:") ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
     !workflow.includes("pnpm video:media:audit")) {
-  failures.push("Daily video media audit must run in the production environment with validated service-role credentials");
+  failures.push("Daily video media audit must be production-gated, manually confirmed, and must not auto-run on source pushes");
 }
 const migration = read("supabase/migrations/20261110025303_reconcile_published_youtube_ids_to_video_catalog.sql");
 for (const token of [
