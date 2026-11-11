@@ -94,7 +94,7 @@ begin
           and local_clock.local_time >= preferences.quiet_hours_end
       end
     )
-  on conflict (push_subscription_id, notification_kind, scheduled_at) do nothing;
+  on conflict (push_subscription_id, prayer_name, scheduled_at) do nothing;
 
   get diagnostics inserted_count = row_count;
   return inserted_count;
