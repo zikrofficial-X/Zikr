@@ -203,6 +203,11 @@ assert.equal(containsKidsPersonalDataSolicitation("اديني رقمك"), true, 
 assert.equal(containsKidsPersonalDataSolicitation("اكتبلي اسم مدرستك"), true, "colloquial requests for a child's school must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("ما عنوان بيتك؟"), true, "direct Arabic questions about a child's address must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("راسلني على واتساب"), true, "private-contact requests must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتلي على الخاص"), true, "Egyptian colloquial requests to move a child into private messages must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتيلي رسالة خاصة"), true, "feminine Egyptian colloquial private-message requests must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعثلي رسالة على واتساب"), true, "requests to move a child to WhatsApp must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("send me a DM"), true, "English requests to move a child into direct messages must be rejected");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتلي إجابة السؤال"), false, "ordinary educational requests must not be mistaken for private contact");
 assert.equal(containsKidsPersonalDataSolicitation("DM me your location"), true, "English personal-location requests must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("لا تشارك رقم هاتفك مع أي شخص"), false, "safety warnings must not be mistaken for personal-data solicitation");
 assert.equal(containsKidsPersonalDataSolicitation("ما الدرس الذي تعلمته من القصة؟"), false, "ordinary educational questions must remain allowed");
