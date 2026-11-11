@@ -33,6 +33,11 @@ assert.match(usersTable, /!canAssignFullAdminAccounts && \(effectiveRole === "ad
 assert.match(usersTable, /value !== "admin" && value !== "super_admin"/);
 assert.match(usersAction, /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/);
 assert.match(usersAction, /userId === admin\.id && roleValue !== admin\.role/, "the server action must block self-demotion even from super_admin to admin");
+const roleIntegrationSql = readFileSync("scripts/tests/admin-role-update.integration.sql", "utf8");
+assert.ok(
+  !roleIntegrationSql.split(/\r?\n/).some((line) => line === "DO $" || line === "$;"),
+  "anonymous PL/pgSQL blocks must use paired dollar-quote delimiters",
+);
 const roleIntegrationRunner = readFileSync("scripts/tests/admin-role-update.integration.sh", "utf8");
 assert.ok(
   roleIntegrationRunner.includes("20261111020000_admin_role_update_blocks_self_demotion.sql"),

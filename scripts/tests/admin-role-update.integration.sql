@@ -172,7 +172,7 @@ $$;
 
 -- A full administrator cannot demote or otherwise change their own role.
 SET ROLE service_role;
-DO $
+DO $$
 BEGIN
   BEGIN
     PERFORM public.admin_update_user_role(
@@ -196,10 +196,10 @@ BEGIN
     NULL;
   END;
 END;
-$;
+$$;
 RESET ROLE;
 
-DO $
+DO $$
 DECLARE
   v_profile_role text;
   v_assignment_role text;
@@ -213,5 +213,5 @@ BEGIN
     RAISE EXCEPTION 'self-role rejection did not preserve the super administrator assignment';
   END IF;
 END;
-$;
+$$;
 SELECT 'ADMIN_ROLE_UPDATE_INTEGRATION_PASSED' AS result;
