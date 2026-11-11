@@ -39,7 +39,7 @@ assert.match(selfRoleMigration, /self-role changes are not allowed/);
 const adminPredicateGrantMigration = readFileSync("supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql", "utf8");
 assert.match(
   adminPredicateGrantMigration,
-  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM anon;/,
+  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM\s+PUBLIC,\s*anon;/i,
   "anonymous clients must not retain EXECUTE on the public admin compatibility wrapper",
 );
 
