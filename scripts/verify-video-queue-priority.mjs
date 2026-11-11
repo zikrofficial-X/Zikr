@@ -4,6 +4,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const worker = readFileSync(join(root, "scripts/run-background-jobs.ts"), "utf8");
 const queue = readFileSync(join(root, "scripts/jobs/template-video-automation.ts"), "utf8");
+const claim = readFileSync(join(root, "src/features/videos/services/video-queue-claim.ts"), "utf8");
 
 function assert(condition, message) {
   if (!condition) {
@@ -61,6 +62,26 @@ assert(claimGuard >= 0 && claimedCounter > claimGuard, "processed count incremen
 assert(
   queue.includes("return { processed, succeeded, failed, skipped };"),
   "processed count reflects actual claimed rows rather than fetched candidates",
+);
+assert(
+  queue.includes("select=id,generation_attempts,updated_at"),
+  "stale recovery reads the exact row version before attempting a claim",
+);
+assert(
+  queue.includes("buildStaleVideoRequestRecoveryFilter(request.id, request.updated_at, staleBefore)"),
+  "stale recovery update is fenced by the selected updated_at value",
+);
+assert(
+  queue.includes("buildVideoRequestClaimFilter(request, claimNow)"),
+  "pending/retry claims recheck the selected row version and retry due time atomically",
+);
+assert(
+  queue.includes("buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt)"),
+  "pause-lock release cannot overwrite a request changed after the worker claim",
+);
+assert(
+  claim.includes("updated_at=eq.") && claim.includes("next_retry_at=lte."),
+  "video queue filters include optimistic row-version and retry-due predicates",
 );
 
 if (process.exitCode) {

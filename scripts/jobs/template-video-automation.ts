@@ -17,6 +17,7 @@ import { videoContentHash, sourceHash } from "../../src/features/videos/provider
 import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
+import { buildProcessingVideoRequestLeaseFilter, buildStaleVideoRequestRecoveryFilter, buildVideoRequestClaimFilter } from "../../src/features/videos/services/video-queue-claim";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -174,6 +175,7 @@ type GeneratedRequest = {
   video_url?: string | null;
   generation_attempts?: number | null;
   next_retry_at?: string | null;
+  updated_at?: string | null;
   duration?: number | null;
   source_hash?: string | null;
   content_hash?: string | null;
@@ -2115,31 +2117,35 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     return { processed: 0, succeeded: 0, failed: 0, skipped: 0 };
   }
   const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
-  const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null }>>(
-    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts&limit=50`,
+  const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null; updated_at?: string | null }>>(
+    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts,updated_at&limit=50`,
   );
   for (const request of stale ?? []) {
+    const recoveryFilter = buildStaleVideoRequestRecoveryFilter(request.id, request.updated_at, staleBefore);
+    if (!recoveryFilter) continue;
     const attempts = (request.generation_attempts ?? 0) + 1;
     const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
-    await supabaseServerAdminRequest(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
+    const recoveredAt = new Date().toISOString();
+    const recovered = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/video_generation_requests?${recoveryFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           status: terminalStatus,
           generation_attempts: attempts,
           next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null,
-          last_attempt_at: new Date().toISOString(),
+          last_attempt_at: recoveredAt,
           error_message: terminalStatus === "failed" ? "تجاوزت عملية الفيديو حد المحاولات بعد الاستعادة." : "تمت استعادة عملية فيديو عالقة تلقائيًا.",
           error_details: "The worker reclaimed a stale processing item and counted the recovery as an attempt.",
-          updated_at: new Date().toISOString(),
+          updated_at: recoveredAt,
         }),
       },
     );
+    if (!recovered?.[0]) continue;
   }
   const candidateLimit = Math.max(1, Math.min(10, limit));
-  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,error_message,error_details,generation_attempts,next_retry_at,duration&order=created_at.asc&limit=${candidateLimit}`;
+  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,error_message,error_details,generation_attempts,next_retry_at,updated_at,duration&order=created_at.asc&limit=${candidateLimit}`;
   let rows: GeneratedRequest[] = [];
 
   if (Number.isInteger(priorityDay)) {
@@ -2175,14 +2181,30 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       console.log("[template-video] generation lock activated before the next queue claim; stopping this batch.");
       break;
     }
-    const claimed = await supabaseServerAdminRequest<GeneratedRequest[]>(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=in.(pending,retry_wait)`,
-      { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", error_message: null, error_details: null, updated_at: new Date().toISOString() }) },
+    const claimNow = new Date().toISOString();
+    const claimFilter = buildVideoRequestClaimFilter(request, claimNow);
+    if (!claimFilter) continue;
+    const claimed = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
+      `/rest/v1/video_generation_requests?${claimFilter}&select=id,updated_at`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          status: "processing",
+          error_message: null,
+          error_details: null,
+          updated_at: claimNow,
+        }),
+      },
     );
     if (!claimed?.[0]) continue;
+    const claimUpdatedAt = claimed[0].updated_at?.trim();
+    if (!claimUpdatedAt) throw new Error(`Claimed video request ${request.id} did not return an updated_at lease.`);
     if (await isVideoGenerationPaused()) {
-      const restored = await supabaseServerAdminRequest<GeneratedRequest[]>(
-        `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
+      const releaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt);
+      if (!releaseFilter) throw new Error(`Could not build the release lease for video request ${request.id}.`);
+      const restored = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        `/rest/v1/video_generation_requests?${releaseFilter}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
