@@ -55,7 +55,7 @@ export function resolveVideoYoutubeId(row: Record<string, unknown>): string | nu
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
   if (
     metadata.generator === "zikr_internal_video_factory" &&
-    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState)
+    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState)
   ) {
     return getConfirmedYoutubeFallbackId(row);
   }
