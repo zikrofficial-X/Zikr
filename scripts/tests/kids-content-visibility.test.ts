@@ -140,6 +140,9 @@ const kidsSitemap = readFileSync("src/app/sitemap.ts", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 const kidsContentApi = readFileSync("src/app/api/kids/content/route.ts", "utf8");
 const kidsVideosApi = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+assert.match(kidsVideosApi, /metadata->>audience=eq\\.kids/, "the Kids video feed must never attach a general-audience social queue caption");
+assert.match(kidsVideosApi, /row\.content_type\.endsWith\("_video"\)/, "the Kids video feed must ignore non-video queue rows even when they share a source ID");
+
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
