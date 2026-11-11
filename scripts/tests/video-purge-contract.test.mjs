@@ -176,6 +176,32 @@ assert.ok(
 assert.match(route, /Invalid purge scope/);
 assert.doesNotMatch(route, /const scope = body\.scope ===[\s\S]*?:\s*"both"/, "an invalid scope must never silently widen to a combined destructive purge");
 
+const filePurgeGuardPosition = route.indexOf("if (includeFiles) {");
+const filePurgeGuardEnd = route.indexOf("const cloudinary = includeFiles ? cloudinaryConfig()", filePurgeGuardPosition);
+const purgeLockAfterGuard = route.indexOf("const lockToken = randomUUID()", filePurgeGuardPosition);
+assert.ok(
+  filePurgeGuardPosition > scopeValidationPosition &&
+    filePurgeGuardEnd > filePurgeGuardPosition &&
+    purgeLockAfterGuard > filePurgeGuardPosition &&
+    filePurgeGuardPosition < route.indexOf("const assets = includeFiles ? await listGeneratedVideos()") &&
+    filePurgeGuardPosition < route.indexOf("const cloudinaryErrors = includeFiles"),
+  "file purge must fail closed before Cloudinary configuration, lock acquisition, inventories, or destructive work",
+);
+const filePurgeGuard = route.slice(filePurgeGuardPosition, filePurgeGuardEnd);
+assert.ok(
+  filePurgeGuard.includes("complete cross-table reference inventory") &&
+    filePurgeGuard.includes("filesPurgeAvailable: false") &&
+    filePurgeGuard.includes("deletionStarted: false") &&
+    filePurgeGuard.includes("status: 409"),
+  "file purge must return a non-destructive conflict until every external and Storage reference can be proven safe",
+);
+assert.ok(
+  control.includes('<option value="files" disabled>') &&
+    control.includes('<option value="both" disabled>') &&
+    control.includes("حذف ملفات Cloudinary وSupabase Storage متوقف مؤقتًا"),
+  "the admin UI must not offer file or combined purge while the API is fail-closed",
+);
+
 assert.ok(route.includes("includeFiles") && route.includes("includeMemory"), "the cleanup endpoint must honor the selected scope");
 assert.ok(route.includes("automation_key=not.is.null"), "project-memory cleanup must only delete automated generation requests");
 assert.ok(socialWorker.includes("isVideoPurgeInProgress"));
