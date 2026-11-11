@@ -29,11 +29,7 @@ export async function readStoredYouTubeRefreshToken(): Promise<string | null> {
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
     const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
-    const readScopes = [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/yt-analytics.readonly",
-    ];
-    if (!readScopes.every((scope) => scopes.includes(scope))) return null;
+    if (!hasYouTubeReadScopes(scopes)) return null;
     const token = row?.refresh_token;
     return typeof token === "string" && token.trim() ? token.trim() : null;
   } catch {
@@ -61,16 +57,25 @@ export async function getYouTubeRefreshToken(
  * youtube.upload as well as channel/analytics read scopes. Analytics continues
  * using the read-only getter above; no video-delete scope is ever accepted.
  */
-const YOUTUBE_UPLOAD_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
+const YOUTUBE_READ_SCOPES = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/yt-analytics.readonly",
+] as const;
+
+const YOUTUBE_UPLOAD_SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  ...YOUTUBE_READ_SCOPES,
 ] as const;
 
 const YOUTUBE_DELETE_CAPABLE_SCOPES = new Set([
   "https://www.googleapis.com/auth/youtube",
   "https://www.googleapis.com/auth/youtube.force-ssl",
 ]);
+
+export function hasYouTubeReadScopes(scopes: readonly string[]): boolean {
+  return YOUTUBE_READ_SCOPES.every((scope) => scopes.includes(scope)) &&
+    !scopes.some((scope) => YOUTUBE_DELETE_CAPABLE_SCOPES.has(scope));
+}
 
 export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
   return YOUTUBE_UPLOAD_SCOPES.every((scope) => scopes.includes(scope)) &&

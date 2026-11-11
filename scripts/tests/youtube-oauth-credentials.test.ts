@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
-import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
+import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
 
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC999"), false, "a token for a different channel must fail closed");
@@ -56,6 +56,17 @@ const requiredUploadScopes = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ];
+assert.equal(hasYouTubeReadScopes(requiredUploadScopes.filter((scope) => scope !== "https://www.googleapis.com/auth/youtube.upload")), true, "analytics requires both read-only scopes");
+assert.equal(
+  hasYouTubeReadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtube"]),
+  false,
+  "analytics must reject a stored credential with full YouTube management scope",
+);
+assert.equal(
+  hasYouTubeReadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtube.force-ssl"]),
+  false,
+  "analytics must reject a stored credential with delete-capable force-SSL scope",
+);
 assert.equal(hasYouTubeUploadScopes(requiredUploadScopes), true, "publishing requires upload plus read and analytics scopes");
 assert.equal(
   hasYouTubeUploadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtube"]),
@@ -137,7 +148,8 @@ assert.equal(
   2,
   "analytics and publishing credential reads must load the provider channel ID",
 );
-assert.match(credentialSource, /YOUTUBE_DELETE_CAPABLE_SCOPES/, "upload credentials must explicitly reject delete-capable YouTube scopes");
+assert.match(credentialSource, /YOUTUBE_DELETE_CAPABLE_SCOPES/, "analytics and upload credentials must explicitly reject delete-capable YouTube scopes");
+assert.match(credentialSource, /if \(!hasYouTubeReadScopes\(scopes\)\) return null/, "the analytics token reader must reject an over-privileged stored credential");
 assert.match(credentialSource, /if \(!hasYouTubeUploadScopes\(credential\.grantedScopes\)\)/, "the credential store must reject over-privileged scopes before persistence");
 assert.match(credentialSource, /connectedBy: string/, "saving a YouTube OAuth credential must require an authenticated actor");
 assert.ok(credentialSource.includes("connected_by: connectedBy"), "the credential row must retain the authenticated actor ID");
