@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
 import { getCurrentPrayer, getNextPrayer, type PrayerTime } from "../../src/features/prayer/services/prayer-times";
+import { readFileSync } from "node:fs";
+import {
+  addCalendarDays,
+  formatDateInTimeZone,
+  getZonedDateTime,
+} from "../../src/features/prayer/services/prayer-notification-schedule";
 
 const timings: PrayerTime = {
   Fajr: "05:00",
@@ -57,14 +63,6 @@ assert.equal(
   "the current prayer must be calculated in the selected city's timezone",
 );
 
-console.log("Prayer-time next-prayer and timezone regression tests passed.");
-
-import { readFileSync } from "node:fs";
-import {
-  addCalendarDays,
-  formatDateInTimeZone,
-  getZonedDateTime,
-} from "../../src/features/prayer/services/prayer-notification-schedule";
 
 assert.equal(
   formatDateInTimeZone(new Date("2026-06-15T02:00:00.000Z"), "America/Los_Angeles"),
@@ -82,6 +80,8 @@ assert.equal(
   "2026-06-15T00:00:00.000Z",
 );
 assert.equal(getZonedDateTime("invalid", "UTC", "12:00"), null);
+assert.equal(getZonedDateTime("2026-02-31", "UTC", "12:00"), null);
+assert.equal(addCalendarDays("2026-02-31", 1), null);
 
 const prayerAlertHook = readFileSync("src/features/prayer/hooks/use-prayer-alert.ts", "utf8");
 const pushSubscription = readFileSync("src/lib/push-subscription.ts", "utf8");
@@ -94,4 +94,4 @@ assert.match(pushSubscription, /getSavedPrayerLocation/);
 assert.match(pushSubscription, /timezone:\s*location\.timezone/);
 assert.doesNotMatch(pushSubscription, /PRAYER_LOCATION_KEY/);
 
-console.log("Prayer-time timezone, native scheduling, and push-location contracts passed.");
+console.log("Prayer-time next-prayer, selected-location scheduling, and push-location contracts passed.");

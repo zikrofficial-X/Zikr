@@ -5,12 +5,15 @@ export type PushSubscriptionRegistrationResult =
   | { status: "unsupported" }
   | { status: "unavailable" };
 
+import {
+  getSavedPrayerLocation,
+  loadLocalPrayerLocation,
+} from "@/features/prayer/services/saved-prayer-location";
+
 type StoredSubscription = {
   endpoint: string;
   keys?: { p256dh?: string; auth?: string };
 };
-
-import { getSavedPrayerLocation } from "@/features/prayer/services/saved-prayer-location";
 
 const DEVICE_ID_KEY = "zikr_push_device_id";
 
@@ -57,7 +60,8 @@ async function getPublicKey(): Promise<string | null> {
 }
 
 async function getPrayerContext(enabledPrayers: Record<string, boolean>) {
-  const location = await getSavedPrayerLocation();
+  const location =
+    loadLocalPrayerLocation() ?? (await getSavedPrayerLocation());
   if (!location) {
     throw new Error("حدّد موقعك من صفحة مواقيت الصلاة قبل تفعيل التنبيهات.");
   }

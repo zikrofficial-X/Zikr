@@ -154,7 +154,7 @@ async function scheduleNativePrayerNotifications(
         dateKey,
       ).catch(() => null);
       dayTimings = response?.data?.timings
-        ? { ...response.data.timings }
+        ? ({ ...response.data.timings } as Record<string, string>)
         : null;
     }
     if (!dayTimings) continue;
@@ -250,7 +250,7 @@ export function usePrayerAlert(
         if (!disposed) {
           setCurrentTimings(
             response?.data?.timings
-              ? { ...response.data.timings }
+              ? ({ ...response.data.timings } as Record<string, string>)
               : null,
           );
         }

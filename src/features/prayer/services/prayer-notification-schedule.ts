@@ -41,9 +41,18 @@ export function addCalendarDays(
 ): string | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!match || !Number.isInteger(days)) return null;
-  const value = new Date(
-    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days, 12),
-  );
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const base = new Date(Date.UTC(year, month - 1, day));
+  if (
+    base.getUTCFullYear() !== year ||
+    base.getUTCMonth() + 1 !== month ||
+    base.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  const value = new Date(Date.UTC(year, month - 1, day + days, 12));
   if (Number.isNaN(value.getTime())) return null;
   return `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")}`;
 }
@@ -72,6 +81,15 @@ export function getZonedDateTime(
     hour > 23 ||
     minute < 0 ||
     minute > 59
+  ) {
+    return null;
+  }
+
+  const validDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    validDate.getUTCFullYear() !== year ||
+    validDate.getUTCMonth() + 1 !== month ||
+    validDate.getUTCDate() !== day
   ) {
     return null;
   }
