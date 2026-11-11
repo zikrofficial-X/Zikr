@@ -247,6 +247,17 @@ assert.match(runner, /skipped \+= waveSkipped/);
 assert.match(runner, /skipped: summary\.skipped/);
 
 assert.match(worker, /automation_key=like\.\*:\$\{day\}:\*&select=id,status,automation_key&limit=1000/);
+
+const dailyQuotaQueryPosition = worker.indexOf("automation_key=like.*:${day}:*&select=id,status,automation_key&limit=1000");
+const dailyQuotaCapPosition = worker.indexOf("if ((todaysRows ?? []).length >= 1000)");
+const dailyQuotaUsePosition = worker.indexOf("const dailyQuota = calculateDailyVideoQuotaState");
+assert.ok(
+  dailyQuotaQueryPosition >= 0 &&
+    dailyQuotaQueryPosition < dailyQuotaCapPosition &&
+    dailyQuotaCapPosition < dailyQuotaUsePosition,
+  "daily quota seeding must fail closed before counting or allocating slots from a truncated 1,000-row history",
+);
+
 assert.match(worker, /calculateDailyVideoQuotaState\(todaysRows \?\? \[\]\)/);
 assert.match(worker, /const slot = dailyQuota\.nextSlot \+ i/);
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
