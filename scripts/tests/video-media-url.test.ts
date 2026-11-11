@@ -112,6 +112,15 @@ test("missing internal masters use only publisher-confirmed YouTube fallbacks", 
   };
   assert.equal(resolveVideoMediaUrl(confirmed), "https://www.youtube.com/watch?v=abc123xyz_1");
   assert.equal(resolveVideoThumbnail(confirmed, "/branding/og-image.jpg"), "https://i.ytimg.com/vi/abc123xyz_1/hqdefault.jpg");
+  const youtubeOnlyWithoutConfirmation = {
+    ...unconfirmed,
+    metadata: {
+      ...unconfirmed.metadata,
+      mediaState: "youtube_only",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(youtubeOnlyWithoutConfirmation), null);
+  assert.equal(resolveVideoThumbnail(youtubeOnlyWithoutConfirmation, "/branding/og-image.jpg"), "/branding/og-image.jpg");
 });
 
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
