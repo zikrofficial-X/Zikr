@@ -82,7 +82,7 @@ assert.ok(job.includes("updated_at=eq.${encodeURIComponent(publishedUpdatedAt)}"
 assert.ok(job.includes("contentPublishedUpdatedAt = new Date().toISOString()"),
   "the worker must retain its exact publication-write timestamp for a safe rollback");
 assert.equal(
-  (job.match(/rollbackScheduledContentPublication\\(item, contentPublishedUpdatedAt\\)/g) ?? []).length,
+  (job.split("rollbackScheduledContentPublication(item, contentPublishedUpdatedAt)").length - 1),
   2,
   "both cancellation and error rollback paths must use the version-checked helper",
 );
