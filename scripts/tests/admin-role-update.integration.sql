@@ -215,3 +215,54 @@ BEGIN
 END;
 $$;
 SELECT 'ADMIN_ROLE_UPDATE_INTEGRATION_PASSED' AS result;
+
+
+-- Browser roles can read delegated role metadata but cannot bypass the audited RPC.
+DO $role_assignment_acl$
+BEGIN
+  IF NOT has_table_privilege('authenticated', 'public.admin_role_assignments', 'SELECT') THEN
+    RAISE EXCEPTION 'authenticated cannot read its delegated role assignment';
+  END IF;
+  IF has_table_privilege('authenticated', 'public.admin_role_assignments', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.admin_role_assignments', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.admin_role_assignments', 'DELETE') THEN
+    RAISE EXCEPTION 'authenticated retains direct role-assignment write privileges';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'INSERT')
+     OR NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'UPDATE')
+     OR NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'DELETE') THEN
+    RAISE EXCEPTION 'service_role lost the table access required by the audited RPC';
+  END IF;
+END;
+$role_assignment_acl$;
+
+SET ROLE authenticated;
+DO $blocked_direct_role_delete$
+BEGIN
+  BEGIN
+    DELETE FROM public.admin_role_assignments
+    WHERE user_id = '33333333-3333-4333-8333-333333333333';
+    RAISE EXCEPTION 'authenticated direct role deletion unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END;
+$blocked_direct_role_delete$;
+RESET ROLE;
+
+DO $role_assignment_preserved$
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles
+  WHERE id = '33333333-3333-4333-8333-333333333333';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments
+  WHERE user_id = '33333333-3333-4333-8333-333333333333';
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'content_manager' THEN
+    RAISE EXCEPTION 'blocked direct deletion changed or promoted the delegated administrator';
+  END IF;
+END;
+$role_assignment_preserved$;
