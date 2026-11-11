@@ -7,8 +7,8 @@ BEGIN
   IF (SELECT count(*) FROM public.kids_game_levels) <> 1 THEN
     RAISE EXCEPTION 'Anonymous clients must see only published levels of published games';
   END IF;
-  IF (SELECT count(*) FROM public.kids_game_questions) <> 1 THEN
-    RAISE EXCEPTION 'Anonymous clients must see only published questions whose level and game are published';
+  IF has_table_privilege('anon', 'public.kids_game_questions', 'SELECT') THEN
+    RAISE EXCEPTION 'Anonymous clients must not have direct SELECT privilege on question rows containing correct_index';
   END IF;
 END
 $anon$;
@@ -84,6 +84,16 @@ BEGIN
       AND policyname = 'admin_all_kids_game_questions_select'
   ) THEN
     RAISE EXCEPTION 'The duplicate Kids questions admin SELECT policy must not remain';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'kids_game_questions'
+      AND policyname = 'kids_game_questions_public_read'
+  ) THEN
+    RAISE EXCEPTION 'The answer-key table must not retain a public read policy';
   END IF;
 END
 $policy_contract$;
