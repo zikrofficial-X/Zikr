@@ -55,11 +55,17 @@ export async function processScheduledContent(limit = 20) {
       if (item.content_table === "videos") {
         await validateInternalVideoForPublication(item.content_id);
       }
-      await supabaseServerAdminRequest(`/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({ published: true, updated_at: now }),
-      });
+      const updatedContent = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ published: true, updated_at: now }),
+        },
+      );
+      if (!updatedContent?.some(row => row.id === item.content_id)) {
+        throw new Error("Scheduled content record was not found; the queue item was not marked published.");
+      }
       await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },

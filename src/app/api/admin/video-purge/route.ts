@@ -143,15 +143,22 @@ async function mapWithConcurrency<T>(
   return errors;
 }
 
+const MAX_AUTOMATED_STORAGE_OBJECTS = 5000;
+const STORAGE_INVENTORY_PAGE_SIZE = 1000;
+
 async function listAutomatedStorageObjects(): Promise<string[]> {
   const supabase = createAdminClient();
   const bucket = supabase.storage.from("videos");
   const paths: string[] = [];
 
   const walk = async (prefix: string): Promise<void> => {
-    for (let offset = 0; offset < 5000; offset += 1000) {
+    for (
+      let offset = 0;
+      offset < MAX_AUTOMATED_STORAGE_OBJECTS;
+      offset += STORAGE_INVENTORY_PAGE_SIZE
+    ) {
       const { data, error } = await bucket.list(prefix, {
-        limit: 1000,
+        limit: STORAGE_INVENTORY_PAGE_SIZE,
         offset,
         sortBy: { column: "name", order: "asc" },
       });
@@ -160,10 +167,23 @@ async function listAutomatedStorageObjects(): Promise<string[]> {
       for (const object of objects) {
         if (!object.name || object.name === "." || object.name === "..") continue;
         const path = `${prefix}/${object.name}`;
-        if (object.id || object.metadata) paths.push(path);
-        else await walk(path);
+        if (object.id || object.metadata) {
+          paths.push(path);
+          if (paths.length > MAX_AUTOMATED_STORAGE_OBJECTS) {
+            throw new Error(
+              "Automated video Storage inventory exceeded 5,000 objects; refusing to purge an incomplete listing.",
+            );
+          }
+        } else {
+          await walk(path);
+        }
       }
-      if (objects.length < 1000) break;
+      if (objects.length < STORAGE_INVENTORY_PAGE_SIZE) break;
+      if (offset + STORAGE_INVENTORY_PAGE_SIZE >= MAX_AUTOMATED_STORAGE_OBJECTS) {
+        throw new Error(
+          "Automated video Storage inventory reached the 5,000-object safety limit; refusing to purge an incomplete listing.",
+        );
+      }
     }
   };
 

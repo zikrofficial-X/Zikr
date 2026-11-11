@@ -71,6 +71,9 @@ assert.ok(
   "pending social media must be checked before the Cloudinary deletion inventory is processed.",
 );
 assert.ok(route.includes("const socialQueueRowsPreserved = true"), "historical social queue records must be explicitly preserved.");
+assert.ok(route.includes("MAX_AUTOMATED_STORAGE_OBJECTS = 5000"), "Storage inventory must have an explicit safe cap.");
+assert.ok(route.includes("offset + STORAGE_INVENTORY_PAGE_SIZE >= MAX_AUTOMATED_STORAGE_OBJECTS"), "a full final inventory page must abort before any deletion rather than silently truncate.");
+assert.ok(route.includes("refusing to purge an incomplete listing"), "truncated Storage inventory must fail closed.");
 assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active internal generation before deleting media.");
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
