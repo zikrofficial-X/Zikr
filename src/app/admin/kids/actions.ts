@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -35,7 +36,7 @@ export async function saveKidsContentAction(formData: FormData) {
   const ageGroup = value(formData, "age_group") ?? "6-8";
   const ageAppropriate = type === "story" && formData.get("age_appropriate") === "on";
   const published = formData.get("published") === "on";
-  if (published) await requireAdminPermission("content.publish");
+  if (published) await requireAdminStepUp("content.publish", "/admin/kids");
   const rawVideoUrl = value(formData, "video_url");
   if (rawVideoUrl && type !== "video") throw new Error("رابط الفيديو مسموح به لمحتوى الفيديو فقط.");
   const videoUrl = rawVideoUrl ? normalizeKidsVideoEmbedUrl(rawVideoUrl) : null;

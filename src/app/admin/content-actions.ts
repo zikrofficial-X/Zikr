@@ -29,7 +29,7 @@ function getTarget(formData: FormData) {
 }
 
 export async function safeTogglePublishAction(formData: FormData) {
-  const admin = await requireAdminPermission("content.publish");
+  const admin = await requireAdminStepUp("content.publish", "/admin/content");
   await enforceAdminRateLimit(admin, "content.publish", 30, 60);
   const { table, id, updatedAt } = getTarget(formData);
   const next = String(formData.get("next") ?? "false") === "true";
@@ -66,7 +66,7 @@ export async function safeDeleteContentAction(formData: FormData) {
 }
 
 export async function scheduleContentPublishAction(formData: FormData) {
-  const admin = await requireAdminPermission("content.publish");
+  const admin = await requireAdminStepUp("content.publish", "/admin/content");
   await enforceAdminRateLimit(admin, "content.publish", 30, 60);
   const { table, id } = getTarget(formData);
   const scheduledAt = String(formData.get("scheduledAt") ?? "").trim();

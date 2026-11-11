@@ -76,6 +76,13 @@ assert.match(adminActions, /target\.is_approved !== true \|\| target\.user_id !=
   "only approved, non-user-owned stories may be scheduled for public publication");
 assert.match(adminActions, /target\.published !== false/,
   "already-published content must not receive a duplicate schedule");
+assert.match(adminActions, /safeTogglePublishAction[\s\S]*?requireAdminStepUp\("content\.publish", "\/admin\/content"\)/,
+  "immediate article/story publishing must require destructive-action step-up MFA");
+assert.match(adminActions, /scheduleContentPublishAction[\s\S]*?requireAdminStepUp\("content\.publish", "\/admin\/content"\)/,
+  "scheduled article/story publishing must require destructive-action step-up MFA");
+const kidsActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
+assert.match(kidsActions, /if \(published\) await requireAdminStepUp\("content\.publish", "\/admin\/kids"\)/,
+  "publishing Kids content must require destructive-action step-up MFA");
 
 assert.match(job, /validateScheduledStoryForPublication/,
   "the worker must revalidate story approval at execution time");
