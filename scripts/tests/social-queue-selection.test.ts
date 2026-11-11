@@ -174,7 +174,7 @@ assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimSt
 assert.match(socialPublisher, /buildSocialPublishLeaseFilter\(item\.id, claimLease\.status, claimLease\.updatedAt\)/, "the provider in-flight marker must compare the exact initial worker lease");
 assert.match(socialPublisher, /const finalized = await markQueueItem\(item\.id, persistedStatus,[\s\S]*?\}, inFlightLease\);/, "provider results must only finalize while the same in-flight lease is current");
 assert.match(socialPublisher, /Provider result arrived after the worker lease was recovered/, "a stale provider result must leave the newer recovery state untouched");
-assert.match(socialPublisher, /expectedLease \? buildSocialPublishLeaseFilter\(itemId, expectedLease\.status, expectedLease\.updatedAt\)/, "status updates with a lease must use the versioned compare-and-set filter");
+assert.match(socialPublisher, /expectedLease\s*\?\s*buildSocialPublishLeaseFilter\(itemId, expectedLease\.status, expectedLease\.updatedAt\)/, "status updates with a lease must use the versioned compare-and-set filter");
 
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
