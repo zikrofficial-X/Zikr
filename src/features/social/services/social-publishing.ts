@@ -1116,12 +1116,12 @@ export async function processSocialPublishItem(
           : "",
         "Waiting for configured publishing channels: " + unavailablePlatforms.join(", "),
       ].filter(Boolean);
-      const updated = await markQueueItem(item.id, "queued", {
+      await markQueueItem(item.id, "queued", {
         scheduled_at: nextRetryAt,
         error_message: messages.join("; "),
         metadata: { ...previousMetadata, unavailablePlatforms, nextRetryAt },
       }, claimLease);
-      return updated ? "deferred" : "deferred";
+      return "deferred";
     }
     if (manualReconciliationPlatforms.length > 0) {
       const hasPriorSuccess = platforms.some(platform => {
