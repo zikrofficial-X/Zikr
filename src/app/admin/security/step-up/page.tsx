@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { AdminStepUp } from "@/features/admin/components/admin-step-up";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = { title: "تحقق إضافي | الأدمن" };
 
 export default async function AdminStepUpPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  await requireAdminPermission("security.manage");
+  await requireAdminPermission("admin.access");
   const params = await searchParams;
-  const nextPath = typeof params.next === "string" && params.next.startsWith("/admin") ? params.next : "/admin";
+  const candidate = sanitizeInternalPath(params.next);
+  const nextPath = candidate === "/admin" || candidate.startsWith("/admin/") ? candidate : "/admin";
 
   return (
     <Container className="py-16 max-w-xl" dir="rtl">

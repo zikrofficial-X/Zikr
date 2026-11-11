@@ -2,7 +2,8 @@ import "server-only";
 
 import { redirect } from "next/navigation";
 import { createClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminPermission, requireAdminPermissionApi } from "@/features/admin/services/admin";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 import type { AdminPermission } from "@/features/admin/services/permissions";
 
 async function destructiveMfaRequired() {
@@ -26,7 +27,44 @@ export async function requireAdminStepUp(permission: AdminPermission, nextPath =
   const supabase = await createClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (error || data.currentLevel !== "aal2") {
-    redirect(`/admin/security/step-up?next=${encodeURIComponent(nextPath)}`);
+    const candidate = sanitizeInternalPath(nextPath);
+  const safeNext = candidate === "/admin" || candidate.startsWith("/admin/") ? candidate : "/admin";
+  redirect(`/admin/security/step-up?next=${encodeURIComponent(safeNext)}`);
   }
   return profile;
+}
+
+
+export async function requireAdminStepUpApi(
+  permission: AdminPermission,
+  nextPath = "/admin",
+) {
+  const auth = await requireAdminPermissionApi(permission);
+  if (!auth.ok) return auth;
+  if (!(await destructiveMfaRequired())) return auth;
+
+  const candidate = sanitizeInternalPath(nextPath);
+  const safeNext = candidate === "/admin" || candidate.startsWith("/admin/") ? candidate : "/admin";
+  const stepUpPath = `/admin/security/step-up?next=${encodeURIComponent(safeNext)}`;
+
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) {
+      console.error("[admin-security] API step-up assurance check failed:", error.message);
+      return { ok: false as const, status: 503 as const, error: "تعذر التحقق من مستوى المصادقة الإضافي. أعد المحاولة." };
+    }
+    if (data.currentLevel !== "aal2") {
+      return {
+        ok: false as const,
+        status: 403 as const,
+        error: "step_up_required",
+        nextPath: stepUpPath,
+      };
+    }
+    return auth;
+  } catch (error) {
+    console.error("[admin-security] API step-up verification unavailable:", error);
+    return { ok: false as const, status: 503 as const, error: "تعذر التحقق من المصادقة الإضافية حاليًا." };
+  }
 }
