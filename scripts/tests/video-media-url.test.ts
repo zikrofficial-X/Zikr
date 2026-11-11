@@ -79,7 +79,10 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /JSON\.stringify\(comparableMediaAudit\(nextMetadata\.mediaAudit\)\)/);
   assert.match(auditScript, /const needsUpdate = mediaStateChanged \|\| mediaAuditChanged/);
   const auditOutcome = readFileSync("src/features/videos/services/video-media-audit-outcome.ts", "utf8");
-  assert.match(auditScript, /assertCompleteVideoMediaAuditInventory\(videos\?\.length \?\? 0, queue\?\.length \?\? 0\)/);
+  assert.match(auditScript, /supabaseServerAdminExactCount\("videos"\)/);
+  assert.match(auditScript, /supabaseServerAdminExactCount\("social_publish_queue"\)/);
+  assert.match(auditScript, /assertCompleteVideoMediaAuditInventory\(videoTableCount, socialQueueTableCount\)/);
+  assert.match(auditScript, /social_publish_queue[^\n]*limit=1000/);
   assert.match(auditScript, /const blockingResults = results\.filter\(isBlockingVideoMediaAuditOutcome\)/);
   assert.match(auditScript, /process\.exitCode = 1/);
   assert.match(auditOutcome, /result\.state === "unavailable"/);
