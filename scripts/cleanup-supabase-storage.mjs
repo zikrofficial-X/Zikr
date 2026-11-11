@@ -675,23 +675,34 @@ async function main() {
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
       .map((file) => [`${VIDEO_PREFIX}/${file.name}`, file]),
   );
-  const unexpectedReferences = await loadUnexpectedVideoReferences(client, [...filesByPath.keys()], supabaseUrl);
   const queueByUrl = new Map();
   for (const row of queueRows) {
     if (!row.video_url) continue;
     queueByUrl.set(row.video_url, (queueByUrl.get(row.video_url) ?? 0) + 1);
   }
 
-  const candidateBackupPaths = [...filesByPath.keys()];
+  const candidateBackupPaths = new Set(filesByPath.keys());
+  for (const row of queueRows) {
+    const request = requestById.get(row.content_id);
+    if (!request || row.status !== "published" || !row.published_at ||
+        !(Date.parse(row.published_at) < Date.parse(cutoffIso)) ||
+        !hasConfirmedPlatformResults(row.target_platforms, row.metadata)) continue;
+    const backupUrl = getSupabaseBackupUrl(row, request, supabaseUrl);
+    const path = extractManagedVideoPath(backupUrl, supabaseUrl);
+    if (path) candidateBackupPaths.add(path);
+  }
+
+  const candidatePaths = [...candidateBackupPaths];
+  const unexpectedReferences = await loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl);
   const queueBackupReferences = indexManagedBackupReferences(
     queueRows,
-    candidateBackupPaths,
+    candidatePaths,
     (row) => row.metadata,
     (row) => row.id,
   );
   const requestBackupReferences = indexManagedBackupReferences(
     requestRows,
-    candidateBackupPaths,
+    candidatePaths,
     (row) => row.content,
     (row) => row.id,
   );
