@@ -7,6 +7,7 @@ const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java"
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
+const authActions = read("src/features/auth/actions.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const iosPlist = read("ios/App/App/Info.plist");
 const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
@@ -34,6 +35,11 @@ assert.ok(button.includes("startBrowserGoogleOAuth("), "Native-compatible browse
 assert.ok(button.includes("browserFallbackAvailable"), "Native Google failure must expose a browser fallback");
 assert.ok(button.includes("المتابعة عبر المتصفح الآمن"), "Browser fallback must be visible to users");
 assert.ok(button.includes("buildNativeOAuthRedirect(safeNext)"), "Native browser fallback must return through the app HTTPS/deep-link bridge");
+assert.equal((button.match(/import\s*\{\s*sanitizeInternalPath\s*\}\s*from\s*["\']@\/lib\/safe-redirect["\'];/g) ?? []).length, 1, "Google button must import the redirect sanitizer exactly once");
+assert.equal((authActions.match(/import\s*\{\s*sanitizeInternalPath\s*\}\s*from\s*["\']@\/lib\/safe-redirect["\'];/g) ?? []).length, 1, "Auth actions must import the redirect sanitizer exactly once");
+assert.ok(button.includes('new URL("/auth/callback", PRODUCTION_URL)'), "Native browser fallback must use the canonical HTTPS callback origin");
+assert.ok(button.includes('url.searchParams.set("native", "1")'), "Native callback must opt into the deep-link handoff");
+assert.ok(button.includes('url.searchParams.set("next", nextPath)'), "Native callback must preserve only the sanitized in-app destination");
 assert.ok(button.includes("Android OAuth غير مطابق"), "Credential Manager configuration errors must be explained accurately");
 assert.ok(activity.includes("ModifiedMainActivityForSocialLoginPlugin"), "MainActivity must implement the required plugin marker interface");
 assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forward Google activity results");
