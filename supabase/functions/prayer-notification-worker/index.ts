@@ -669,7 +669,7 @@ async function deliverDue(
       const location = prayerLocationByUser.get(delivery.user_id);
       if (
         !preference ||
-        preference.notifications_enabled === false ||
+        preference.notifications_enabled !== true ||
         !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
         !location?.timezone
       ) {
