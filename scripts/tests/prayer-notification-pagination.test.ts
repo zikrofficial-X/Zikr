@@ -104,7 +104,7 @@ assert.match(reminderMigration, /local_clock\.local_time >= preferences\.quiet_h
 assert.match(reminderMigration, /preferences\.quiet_hours_start = preferences\.quiet_hours_end/);
 assert.match(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to service_role/i);
 assert.doesNotMatch(reminderMigration, /grant execute on function public\.plan_background_reminder_deliveries\(timestamptz\)\s+to (?:public|anon|authenticated)/i);
-assert.match(reminderService, /function normalizeTimeZone\(value: unknown\)/);
+assert.match(reminderService, /normalizeIanaTimeZone\(body\.timezone\)/);
 assert.match(reminderService, /Intl\.DateTimeFormat\("en-US",\s*\{\s*timeZone:/);
 assert.match(reminderService, /updates\.timezone = timezone/);
 assert.match(reminderService, /quiet_hours_end,timezone,updated_at/);
