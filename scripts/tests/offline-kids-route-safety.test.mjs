@@ -42,6 +42,10 @@ assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
 const serviceWorker = readFileSync("public/sw.js", "utf8");
 const offlinePack = readFileSync("src/lib/offline-pack.ts", "utf8");
+assert.ok(offlinePack.includes("resolveSafeOfflineRoute(route, origin)"), "client offline route filtering must use the same-origin validator");
+assert.ok(serviceWorker.includes('route.includes("\\\\")'), "service worker must reject raw backslashes before URL normalization");
+assert.ok(serviceWorker.includes("/%(?:2f|5c)/i.test(route)"), "service worker must reject encoded slash and backslash route separators");
+
 assert.match(
   offlinePack,
   /fetch\(definition\.path,\s*\{\s*cache:\s*"no-store"/,
