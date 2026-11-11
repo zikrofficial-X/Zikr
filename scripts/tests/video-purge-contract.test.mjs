@@ -199,7 +199,8 @@ const memoryPurgeGuardPosition = route.indexOf("if (includeMemory) {", filePurge
 const memoryPurgeLockPosition = route.indexOf("const lockToken = randomUUID()", memoryPurgeGuardPosition);
 const memoryPurgeGuard = route.slice(memoryPurgeGuardPosition, memoryPurgeLockPosition);
 assert.ok(
-  memoryPurgeGuardPosition > filePurgeGuardEnd &&
+  memoryPurgeGuardPosition > filePurgeGuardPosition &&
+    memoryPurgeGuardPosition < filePurgeGuardEnd &&
     memoryPurgeLockPosition > memoryPurgeGuardPosition &&
     memoryPurgeGuard.includes("video-catalog metadata") &&
     memoryPurgeGuard.includes("social-queue") &&
