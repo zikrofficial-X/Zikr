@@ -3,6 +3,24 @@ import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
+import { isAllowedPushEndpoint } from "../../src/features/notifications/services/push-endpoint";
+
+assert.equal(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/subscription-token"), true);
+assert.equal(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/subscription-token"), true);
+assert.equal(isAllowedPushEndpoint("https://web.push.apple.com/subscription-token"), true);
+assert.equal(isAllowedPushEndpoint("https://tenant.notify.windows.com/subscription-token"), true);
+for (const endpoint of [
+  "http://fcm.googleapis.com/fcm/send/token",
+  "https://example.com/push/token",
+  "https://fcm.googleapis.com.attacker.test/fcm/send/token",
+  "https://127.0.0.1/push/token",
+  "https://169.254.169.254/latest/meta-data",
+  "https://user:pass@fcm.googleapis.com/fcm/send/token",
+  "https://fcm.googleapis.com:8443/fcm/send/token",
+  "https://fcm.googleapis.com/",
+]) {
+  assert.equal(isAllowedPushEndpoint(endpoint), false, `untrusted push endpoint must be rejected: ${endpoint}`);
+}
 
 const source = Array.from({ length: 205 }, (_, index) => ({
   id: String(index + 1).padStart(4, "0"),
@@ -63,6 +81,9 @@ await assert.rejects(
 );
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
+const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
+assert.match(subscriptionRoute, /isAllowedPushEndpoint\(endpoint\)/, "subscription intake must reject arbitrary HTTPS endpoints");
+assert.match(worker, /isAllowedPushEndpoint\(subscription\.endpoint\)/, "the delivery worker must revalidate legacy endpoints before outbound requests");
 const staleRecoveryStart = worker.indexOf("async function recoverStaleClaims");
 const staleRecoveryEnd = worker.indexOf("async function getDueDeliveryCandidates", staleRecoveryStart);
 const staleRecovery = worker.slice(staleRecoveryStart, staleRecoveryEnd);
