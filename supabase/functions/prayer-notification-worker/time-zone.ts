@@ -67,3 +67,73 @@ export function buildNotificationTopic(input: {
   return topic;
 }
 
+
+/**
+ * Resolve a local wall-clock time in an IANA zone. Nonexistent times during
+ * a DST spring-forward gap return null rather than being shifted to a
+ * different prayer time.
+ */
+export function zonedDateTime(
+  dateString: string,
+  timeZone: string,
+  time: string,
+): Date | null {
+  const dateMatch = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(dateString);
+  const timeMatch = /^(\\d{1,2}):(\\d{2})/.exec(time.trim());
+  if (!dateMatch || !timeMatch) return null;
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+  if (
+    !Number.isInteger(year) ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) return null;
+
+  const validDate = new Date(Date.UTC(year, month - 1, day));
+  if (
+    validDate.getUTCFullYear() !== year ||
+    validDate.getUTCMonth() + 1 !== month ||
+    validDate.getUTCDate() !== day
+  ) return null;
+
+  const target = Date.UTC(year, month - 1, day, hour, minute);
+  let candidate = target;
+  try {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).formatToParts(new Date(candidate));
+      const value = (type: string) =>
+        Number(parts.find(part => part.type === type)?.value ?? 0);
+      const rendered = Date.UTC(
+        value("year"),
+        value("month") - 1,
+        value("day"),
+        value("hour"),
+        value("minute"),
+      );
+      const difference = target - rendered;
+      if (difference === 0) return new Date(candidate);
+      candidate += difference;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
