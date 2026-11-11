@@ -34,7 +34,7 @@ async function main() {
 
   await Promise.resolve();
   assert.deepEqual(events, ["first:start"], "the second native schedule must wait for the first cancellation/schedule operation");
-  assert.ok(releaseFirst, "the first queued task must start");
+  if (!releaseFirst) throw new Error("the first queued task did not start");
   releaseFirst();
   await Promise.all([first, second]);
   assert.deepEqual(events, ["first:start", "first:end", "second:start"], "queued schedule operations must run sequentially");
@@ -48,7 +48,7 @@ async function main() {
   await enqueue(async () => {
     events.push("after-failure");
   });
-  assert.equal(events.at(-1), "after-failure", "a failed task must not poison later schedule refreshes");
+  assert.equal(events[events.length - 1], "after-failure", "a failed task must not poison later schedule refreshes");
 
   console.log("Native reminder schedule serialization and Dhikr preference persistence contracts passed.");
 }
