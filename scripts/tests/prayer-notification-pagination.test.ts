@@ -71,6 +71,17 @@ assert.match(worker, /\.in\("user_id", userIds\)/);
 assert.match(worker, /\.in\("location_id", locationIds\)/);
 assert.match(worker, /scheduled \+= await ensureSubscriptionBatchSchedules/);
 
+assert.match(worker, /from\("prayer_preferences"\)/);
+assert.match(worker, /from\("prayer_locations"\)/);
+assert.match(worker, /from\("background_reminder_preferences"\)/);
+assert.match(worker, /enabled !== true/);
+assert.match(worker, /!Number\.isInteger\(preference\.prayer_reminders\?\.\[delivery\.prayer_name\]\)/);
+assert.match(worker, /inQuietHours\(\s*now,/);
+assert.match(worker, /status: "cancelled"/);
+assert.match(worker, /Background reminder is no longer enabled/);
+assert.match(worker, /Prayer reminder is no longer enabled or configured/);
+
+
 assert.match(worker, /inserts\.slice\(offset, offset \+ BATCH_SIZE\)/);
 
 
