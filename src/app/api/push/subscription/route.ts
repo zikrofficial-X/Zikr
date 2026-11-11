@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAllowedPushEndpoint } from "@/features/notifications/services/push-endpoint";
-import { normalizePushSubscriptionRequestBody, parsePushCoordinate } from "@/features/notifications/services/push-subscription-request";
+import {
+  normalizePushSubscriptionRequestBody,
+  parsePushCoordinate,
+} from "@/features/notifications/services/push-subscription-request";
 import { mergePrayerReminderPreferences } from "@/features/prayer/services/prayer-reminder-preferences";
 import {
   createAdminClient,
@@ -175,7 +178,9 @@ export async function POST(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = normalizePushSubscriptionRequestBody(await request.json().catch(() => null)) as SubscriptionBody;
+  const body = normalizePushSubscriptionRequestBody(
+    await request.json().catch(() => null)
+  ) as SubscriptionBody;
   const parsed = parseSubscription(body);
   const prayerContext = parsePrayerContext(body);
   if (!parsed || !prayerContext) {
@@ -233,7 +238,9 @@ export async function DELETE(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = normalizePushSubscriptionRequestBody(await request.json().catch(() => null));
+  const body = normalizePushSubscriptionRequestBody(
+    await request.json().catch(() => null)
+  );
   const endpoint = asBoundedString(body.endpoint, 4096);
   if (!endpoint)
     return NextResponse.json(
