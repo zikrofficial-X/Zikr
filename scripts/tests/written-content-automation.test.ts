@@ -47,6 +47,10 @@ assert.equal(validateWrittenPostDraft({...draft,hook:"قال رسول الله: 
 assert.equal(validateWrittenPostDraft({...draft,title:"حديث قدسي عن الأمل"}).ok,false,"unattributed religious claims in the title must be rejected");
 assert.equal(validateWrittenPostDraft({...draft,question:"رواه البخاري عن النبي؟"}).ok,false,"unattributed religious claims in the question must be rejected");
 assert.equal(validateWrittenPostDraft({...draft,eligible:false}).ok,false);
+assert.equal(validateWrittenPostDraft({...draft,eligible:"false" as unknown as boolean}).ok,false,"malformed AI eligibility flags must not bypass source eligibility");
+assert.equal(validateWrittenPostDraft({...draft,eligible:undefined as unknown as boolean}).ok,false,"AI drafts must explicitly mark the source eligible");
+assert.equal(validateWrittenPostDraft(null).ok,false,"a non-object AI response must fail validation without throwing");
+assert.equal(validateWrittenPostDraft([]).ok,false,"an array response must not be accepted as a draft");
 const post=buildWrittenPost(source,draft);assert.ok(post.body.includes(source.sourceText));assert.ok(post.body.includes(source.reference));assert.equal(post.publicPath,source.publicPath);
 assert.ok(buildWrittenPost({...source,kind:"story",quoteRequired:false},draft).body.includes(draft.reflection));
 const socialKey=createWrittenSocialAutomationKey(source.kind,source.id);
