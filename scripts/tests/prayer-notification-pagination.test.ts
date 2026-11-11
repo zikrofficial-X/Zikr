@@ -33,7 +33,7 @@ await assert.rejects(
   () => fetchAllIdPages(async () => [{ id: "a" }, { id: "b" }], 1),
   /more rows than requested/,
 );
-assert.throws(
+await assert.rejects(
   () => fetchAllIdPages(async () => [], 0),
   /pageSize/,
 );
