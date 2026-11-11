@@ -42,6 +42,8 @@ CREATE UNIQUE INDEX site_audio_assets_one_primary_per_kind
 GRANT USAGE ON SCHEMA public TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.admin_role_assignments TO service_role;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.admin_role_assignments TO authenticated;
 GRANT INSERT ON public.admin_audit_events TO service_role;
 GRANT SELECT, UPDATE, INSERT, DELETE ON public.site_audio_assets TO service_role;
 
