@@ -292,4 +292,7 @@ assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
 assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true[\s\S]*type\s*<>\s*'story'[\s\S]*metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "public Kids RLS must hide unpublished, inactive, and stories without a JSON boolean age approval");
 assert.match(migration, /kids_content\.type\s*<>\s*'story'[\s\S]*kids_content\.metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "the share counter must use the same age-approved story visibility contract");
 
+assert.match(migration, /security invoker\s+set search_path = ''/i, "the service-role share counter must use invoker privileges and an empty search path");
+assert.doesNotMatch(migration, /security definer/i, "public share-count code must not introduce a definer entry point");
+
 console.log("Kids content visibility and fallback contracts passed.");
