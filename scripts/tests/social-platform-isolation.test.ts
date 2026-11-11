@@ -226,7 +226,7 @@ const adminSocialClient = readFileSync(
   resolve(process.cwd(), "src/app/admin/social/social-client.tsx"),
   "utf8",
 );
-assert.match(adminSocialRoute, /deleteLocalMemory === true[\\s\\S]*?status: 400/, "the API must reject the unimplemented destructive local-memory flag");
+assert.match(adminSocialRoute, /deleteLocalMemory === true[\s\S]*?status: 400/, "the API must reject the unimplemented destructive local-memory flag");
 assert.doesNotMatch(adminSocialClient, /deleteLocalMemory|localMemoryDeleted|localMemoryFailed/, "the admin UI must not advertise or report local media deletion that the API does not perform");
 assert.match(adminSocialClient, /نسخة الفيديو داخل ZIKR لا تُحذف من هذا الإجراء/, "the admin UI must clearly state that only remote social posts are deleted");
 
