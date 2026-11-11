@@ -191,6 +191,13 @@ assert.ok(
     claimRestore > postClaimLockCheck && claimRestore < renderStart,
   "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
 );
+const socialQueueEnqueuePosition = videoQueueSource.indexOf("await queueSocialItems(request, rendered.videoUrl);");
+const completedRequestPatchPosition = videoQueueSource.lastIndexOf('status: "completed",\n          video_url: rendered.videoUrl');
+assert.ok(
+  socialQueueEnqueuePosition >= 0 &&
+    completedRequestPatchPosition > socialQueueEnqueuePosition,
+  "generated video requests must remain processing until any social queue row that references the media has been created, so purge preflight cannot miss the in-flight enqueue window.",
+);
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
 assert.ok(read("src/app/admin/media/media-client.tsx").includes("PurgeGeneratedVideosControl"));

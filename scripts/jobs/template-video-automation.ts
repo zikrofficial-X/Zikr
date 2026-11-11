@@ -2426,6 +2426,19 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
+      // Keep this request in "processing" until every optional social queue
+      // reference has been durably created. The purge preflight uses processing
+      // generation rows and unfinished social rows as media-retention guards;
+      // completing first would leave a race where purge deletes the asset before
+      // this worker inserts the queue row that references it.
+      try {
+        await queueSocialItems(request, rendered.videoUrl);
+      } catch (socialError) {
+        console.error(
+          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
+          socialError instanceof Error ? socialError.message : String(socialError),
+        );
+      }
       await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
@@ -2450,14 +2463,6 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           error_details: null,
         }),
       });
-      try {
-        await queueSocialItems(request, rendered.videoUrl);
-      } catch (socialError) {
-        console.error(
-          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
-          socialError instanceof Error ? socialError.message : String(socialError),
-        );
-      }
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {
