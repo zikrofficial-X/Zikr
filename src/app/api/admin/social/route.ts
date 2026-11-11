@@ -15,7 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "@/features/social/services/platform-availability";
+import { getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -140,8 +140,12 @@ function authBlockedPlatforms(
   return result;
 }
 
-function retryPlatforms(item: QueueItem, allowAmbiguous = false): string[] {
+function retryPlatforms(item: QueueItem, allowAmbiguous = false): SocialPlatform[] {
   return getRetryableSocialPlatforms(item.target_platforms, item.metadata, allowAmbiguous);
+}
+
+function isSocialDeletionPlatform(platform: string): platform is SocialDeletionPlatform {
+  return platform === "youtube" || platform === "facebook" || platform === "facebook_reels";
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -721,9 +725,11 @@ export async function POST(request: NextRequest) {
           continue;
         }
         const existingDeletions = asRecord(item.metadata?.platformDeletions) ?? {};
-        const deletionTargets = requestedPlatforms.length > 0
-          ? item.target_platforms.filter(platform => requestedPlatforms.includes(platform))
-          : item.target_platforms;
+        const deletionTargets = item.target_platforms.filter(
+          (platform): platform is SocialDeletionPlatform =>
+            isSocialDeletionPlatform(platform) &&
+            (requestedPlatforms.length === 0 || requestedPlatforms.includes(platform)),
+        );
         for (const platform of deletionTargets) {
           if (platform !== "youtube" && platform !== "facebook" && platform !== "facebook_reels") continue;
           const previousDeletion = asRecord(existingDeletions[platform]);
