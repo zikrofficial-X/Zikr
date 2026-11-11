@@ -106,6 +106,12 @@ assert(
   "a worker that loses its lease is skipped without rewriting the newer owner",
 );
 assert(
+  postClaimWorker.includes("withVideoRequestLeaseHeartbeat") &&
+    postClaimWorker.includes("getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes)") &&
+    postClaimWorker.includes("renew: () => patchProcessingRequestWithLease({})"),
+  "long-running provider renders renew the exact processing lease before stale recovery can requeue them",
+);
+assert(
   claim.includes("updated_at=eq.") && claim.includes("next_retry_at=lte."),
   "video queue filters include optimistic row-version and retry-due predicates",
 );

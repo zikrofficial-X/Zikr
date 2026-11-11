@@ -18,6 +18,7 @@ import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender 
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { buildProcessingVideoRequestLeaseFilter, buildStaleVideoRequestRecoveryFilter, buildVideoRequestClaimFilter } from "../../src/features/videos/services/video-queue-claim";
+import { getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -2256,7 +2257,15 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       return row;
     };
     try {
-      const rendered = await renderVideo(request);
+      const rendered = await withVideoRequestLeaseHeartbeat({
+        intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
+        renew: () => patchProcessingRequestWithLease({}),
+        isLeaseLost: (error) => error instanceof VideoRequestLeaseLostError,
+        onRenewalError: (error) => console.warn(
+          `[template-video] Processing lease heartbeat failed for ${request.id}; retrying before stale recovery:`,
+          error,
+        ),
+      }, () => renderVideo(request));
       const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
       const qaReviewedAt = new Date().toISOString();
       const qaApproval = createAutomatedVideoQaApproval({
