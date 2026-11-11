@@ -223,7 +223,7 @@ assert.match(
 );
 assert.match(
   socialRoute,
-  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminStepUpApi\("social\.publish"/,
   "social execution must require separate management and publishing permissions",
 );
 assert.match(
