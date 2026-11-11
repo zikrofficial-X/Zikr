@@ -33,6 +33,14 @@ export function buildOAuthRedirectUri(
  * aliases for the same deployment, but those aliases are not the public OAuth
  * origin for ZIKR. Localhost remains supported for development.
  */
+function isTrustedVercelPreviewHost(host: string): boolean {
+  if (process.env.VERCEL_ENV !== "preview") return false;
+  const allowedHosts = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
+    .map((value) => value?.trim().toLowerCase().replace(/^https?:\\/\\//, "").split(/[/:]/, 1)[0] ?? "")
+    .filter(Boolean);
+  return allowedHosts.includes(host);
+}
+
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
   if (!baseUrl) return PRODUCTION_URL;
 
@@ -44,7 +52,9 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
       return url.origin;
     }
 
-    if (isV0PreviewHost(host)) {
+    if (isV0PreviewHost(host) || isTrustedVercelPreviewHost(host)) {
+      // Preview OAuth must complete on the same deployment origin that created
+      // the PKCE verifier cookie; never exchange on preview then redirect to production.
       return url.origin;
     }
 
