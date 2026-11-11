@@ -19,7 +19,7 @@ export async function updateUserRoleAuditedAction(formData: FormData) {
   if (!userId) throw new Error("معرّف المستخدم مطلوب.");
   if (
     !isValidRole(roleValue) ||
-    (roleValue === "super_admin" && admin.role !== "super_admin")
+    (admin.role !== "super_admin" && (roleValue === "admin" || roleValue === "super_admin"))
   ) {
     throw new Error("الدور غير صالح أو غير مسموح لك تعيينه.");
   }
