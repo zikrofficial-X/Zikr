@@ -107,7 +107,7 @@ export function buildStaleSocialPublishRecoveryMetadata(
     inFlightStartedAt: _inFlightStartedAt,
     ...rest
   } = metadata;
-  const hasPriorSuccess = Object.values(results).some(isSuccessfulResult);
+  const hasPriorSuccess = targetPlatforms.some(platform => isSuccessfulResult(results[platform]));
 
   return {
     metadata: {
