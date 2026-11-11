@@ -4,7 +4,10 @@ import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
 import { isAllowedPushEndpoint } from "../../src/features/notifications/services/push-endpoint";
-import { normalizePushSubscriptionRequestBody, parsePushCoordinate } from "../../src/features/notifications/services/push-subscription-request";
+import {
+  normalizePushSubscriptionRequestBody,
+  parsePushCoordinate,
+} from "../../src/features/notifications/services/push-subscription-request";
 
 assert.equal(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/subscription-token"), true);
 assert.equal(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/subscription-token"), true);
@@ -38,14 +41,14 @@ for (const invalidCoordinate of [null, undefined, "", "0", NaN, Infinity, -90.01
   assert.equal(
     parsePushCoordinate(invalidCoordinate, -90, 90),
     null,
-    \`invalid latitude must be rejected: \${String(invalidCoordinate)}\`,
+    "invalid latitude must be rejected: " + String(invalidCoordinate),
   );
 }
 for (const invalidLongitude of [null, "", "0", -180.01, 180.01]) {
   assert.equal(
     parsePushCoordinate(invalidLongitude, -180, 180),
     null,
-    \`invalid longitude must be rejected: \${String(invalidLongitude)}\`,
+    "invalid longitude must be rejected: " + String(invalidLongitude),
   );
 }
 
