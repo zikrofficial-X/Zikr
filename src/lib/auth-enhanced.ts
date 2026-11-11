@@ -36,7 +36,15 @@ export function buildOAuthRedirectUri(
 function isTrustedVercelPreviewHost(host: string): boolean {
   if (process.env.VERCEL_ENV !== "preview") return false;
   const allowedHosts = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
-    .map((value) => value?.trim().toLowerCase().replace(/^https?:\\/\\//, "").split(/[/:]/, 1)[0] ?? "")
+    .map((value) => {
+      const candidate = value?.trim();
+      if (!candidate) return "";
+      try {
+        return new URL(candidate.includes("://") ? candidate : `https://${candidate}`).hostname.toLowerCase();
+      } catch {
+        return "";
+      }
+    })
     .filter(Boolean);
   return allowedHosts.includes(host);
 }
