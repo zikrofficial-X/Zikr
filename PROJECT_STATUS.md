@@ -1,5 +1,37 @@
 # ZIKR — Current Project Status
 
+## Current audit checkpoint — 2026-11-11
+
+**State: IN PROGRESS.** PR #320's reviewed code head passed its exact-head verification, but the PR is not merged or deployed and the repository-wide audit is not closed.
+
+- Repository: zikrofficial-X/Zikr. Active audit branch: audit/zikr-kids-daily-priority-20261110.
+- PR: https://github.com/zikrofficial-X/Zikr/pull/320. Base main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3. Verified code head: 2216e178348441c83745d19ac7489bedcc9a5b8e; 163 commits ahead, 0 behind, 68 changed paths.
+- Exact-head checks: GitHub Quality Gate run #2151 SUCCESS; canonical pnpm verify completed; CircleCI config-guard, source-verify, and application-build-docs SUCCESS. Logs include full tests, migration replay, Kids/video queue checks, SEO/information architecture, mobile readiness, mobile ads-free, security, lint, TypeScript, production build, and performance-index contract.
+- Additional fixes in this checkpoint: stable Arabic locale for Kids sitemap generation; Egyptian colloquial private-message and English DM screening; strict HTTPS YouTube embed allowlist plus sandboxed Kids iframe; corrected YouTube refresh-token environment documentation; documented the iOS App ID contract.
+- Production Vercel remains READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3. No preview deployment exists for this branch. The branch has not been deployed.
+- Read-only Supabase evidence: remote migrations end at 20261110170000; the three Kids migrations in this PR remain pending. The production Kids table has 65 published active rows and six approved stories. The current public policy still omits the is_active predicate, and anonymous execution of public.is_admin_user() remains granted. No hidden/inactive Kids rows were present at inspection time.
+- Read-only automation evidence: video automation settings are enabled with batch size 10, daily target 20, and auto-publish enabled. In the last 24 hours, 17 video requests completed and three duplicate requests were cancelled. The social queue had 16 published items and eight future-scheduled items; none of the queued items was due at query time. Three Kids written posts had already published on 2026-11-10 before this repair; the branch now reserves one approved Kids slot per UTC day.
+- The existing YouTube OAuth credential still has connected_by=NULL. This PR records the authenticated actor on future connections; no backfill or reconnection was performed.
+- Android App Links have a configured signing fingerprint. Vercel has no IOS_ASSOCIATED_DOMAIN_APP_ID, so the iOS AASA response has no app association until the real Apple Team ID and bundle ID are supplied and Vercel is redeployed.
+- YOUTUBE_REFRESH_TOKEN is legacy and ignored by the active publisher; the environment docs now state this. Android signing secrets and the legacy YouTube token remain in Vercel configuration; no secrets were removed.
+- CODEOWNERS assigns this PR's auth/API/admin, Supabase, CI, Android, iOS, and environment paths to @Zikrmediaofficial. No owner review is recorded, and the connected GitHub identity has no collaborator permission for that owner account. No review gate was bypassed.
+- The main-baseline manifest remains intentionally pinned to main@c4560d9 and is not rewritten from an unmerged branch. It must be regenerated against the post-merge main tree only after approval and merge.
+
+### Repository-wide coverage remains open
+
+The recursive main-baseline inventory is 2,154 tracked entries: 1,662 files and 492 directories. Automated inventory coverage is 100%, but the existing matrix records only 129 full source-content reads and 1,525 REVIEW_REQUIRED rows; modules closed remains 0. The 68-path PR delta was reviewed at the changed-code-path, consumer, and test level; this is not a claim that all 1,662 repository files have been manually audited.
+
+### Outstanding gates
+
+1. Obtain required CODEOWNERS owner review.
+2. Apply the three pending Supabase migrations through the approved production migration procedure; no production schema, policy, function, or data was mutated during this audit.
+3. Supply IOS_ASSOCIATED_DOMAIN_APP_ID and redeploy before iOS Universal Link acceptance.
+4. Complete authenticated admin/browser, native OAuth, physical Android/iOS, and release-signing acceptance with owner credentials and devices.
+5. After approval and the migration procedure, merge, deploy to Vercel, verify READY, and run production smoke checks.
+
+No content generation, Gemini request, social publication, production migration, storage/media deletion, Android release, merge, or deployment was triggered by this audit checkpoint.
+
+
 
 ## Current verified checkpoint — 2026-11-10T16:01:46.706Z
 
