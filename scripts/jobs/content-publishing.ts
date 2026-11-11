@@ -167,18 +167,23 @@ export async function processScheduledContent(limit = 20) {
         continue;
       }
 
-      contentPublishedUpdatedAt = new Date().toISOString();
-      const updatedContent = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id`,
+      const requestedContentUpdatedAt = new Date().toISOString();
+      const updatedContent = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
+        `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&select=id,updated_at`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ published: true, updated_at: contentPublishedUpdatedAt }),
+          body: JSON.stringify({ published: true, updated_at: requestedContentUpdatedAt }),
         },
       );
-      if (!updatedContent?.some(row => row.id === item.content_id)) {
-        throw new Error("Scheduled content record was not found; the queue item was not marked published.");
+      const updatedRow = updatedContent?.find(row => row.id === item.content_id);
+      if (!updatedRow || typeof updatedRow.updated_at !== "string" || !updatedRow.updated_at) {
+        throw new Error("Scheduled content update did not return its committed version; the queue item was not marked published.");
       }
+      // Stories have a BEFORE UPDATE trigger that replaces updated_at with
+      // transaction time. Use the returned database value, not the request
+      // timestamp, so a later cancellation can compare the exact committed row.
+      contentPublishedUpdatedAt = updatedRow.updated_at;
       contentPublished = true;
 
       const completed = await supabaseServerAdminRequest<Array<{ id: string }>>(
