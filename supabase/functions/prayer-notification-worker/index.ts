@@ -663,6 +663,7 @@ async function deliverDue(
   let failed = 0;
   let deactivated = 0;
   for (const delivery of deliveries) {
+    const scheduledAt = new Date(delivery.scheduled_at);
     let skipReason: string | null = null;
 
     if (delivery.notification_kind === "prayer") {
@@ -676,12 +677,18 @@ async function deliverDue(
       ) {
         skipReason = "Prayer reminder is no longer enabled or configured";
       } else if (
-        inQuietHours(
-          now,
+        (inQuietHours(
+          scheduledAt,
           safeTimeZone(location.timezone),
           preference.quiet_hours_start,
           preference.quiet_hours_end,
-        )
+        ) ||
+          inQuietHours(
+            now,
+            safeTimeZone(location.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ))
       ) {
         skipReason = "Skipped during quiet hours";
       }
@@ -694,12 +701,18 @@ async function deliverDue(
       if (!preference || enabled !== true) {
         skipReason = "Background reminder is no longer enabled";
       } else if (
-        inQuietHours(
-          now,
+        (inQuietHours(
+          scheduledAt,
           safeTimeZone(preference.timezone),
           preference.quiet_hours_start,
           preference.quiet_hours_end,
-        )
+        ) ||
+          inQuietHours(
+            now,
+            safeTimeZone(preference.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ))
       ) {
         skipReason = "Skipped during quiet hours";
       }
