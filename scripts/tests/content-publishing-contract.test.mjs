@@ -114,12 +114,32 @@ assert.match(adminActions, /safeTogglePublishAction[\s\S]*?requireAdminStepUp\("
   "immediate article/story publishing must require destructive-action step-up MFA");
 assert.match(adminActions, /scheduleContentPublishAction[\s\S]*?requireAdminStepUp\("content\.publish", "\/admin\/content"\)/,
   "scheduled article/story publishing must require destructive-action step-up MFA");
+assert.match(
+  adminActions,
+  /table === "articles"[\s\S]*?automationPublicationHold === true/,
+  "the admin scheduling action must reject articles that still carry an explicit unpublish hold",
+);
 const kidsActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 assert.match(kidsActions, /if \(published\) await requireAdminStepUp\("content\.publish", "\/admin\/kids"\)/,
   "publishing Kids content must require destructive-action step-up MFA");
 
 assert.match(job, /validateScheduledStoryForPublication/,
   "the worker must revalidate story approval at execution time");
+assert.match(
+  job,
+  /validateScheduledArticleForPublication[\s\S]*?automationPublicationHold === true/,
+  "scheduled article publication must honor an explicit unpublish hold",
+);
+assert.match(
+  job,
+  /validateScheduledContentForPublication\(item\)/,
+  "every scheduled content table must pass through current-state validation",
+);
+assert.match(
+  job,
+  /published=eq\.false&updated_at=eq\.\$\{encodeURIComponent\(validatedContentUpdatedAt\)\}/,
+  "the content write must compare-and-set against the exact version validated by the worker",
+);
 assert.match(job, /status=eq\.processing&select=id&limit=1/,
   "the worker must recheck its queue claim immediately before publishing");
 assert.match(job, /status=eq\.processing&select=id/,
