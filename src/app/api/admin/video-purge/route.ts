@@ -290,11 +290,19 @@ async function pauseVideoAutomation(): Promise<void> {
   );
 }
 
-async function getActiveVideoWork(): Promise<{ generation: number }> {
-  const generationRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
-  );
-  return { generation: generationRows?.length ?? 0 };
+async function getActiveVideoWork(): Promise<{ generation: number; publications: number }> {
+  const [generationRows, publicationRows] = await Promise.all([
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
+    ),
+    supabaseServerAdminRequest<Array<{ id: string }>>(
+      "/rest/v1/content_publish_queue?content_table=eq.videos&status=eq.processing&select=id&limit=100",
+    ),
+  ]);
+  return {
+    generation: generationRows?.length ?? 0,
+    publications: publicationRows?.length ?? 0,
+  };
 }
 
 async function deleteRows(table: string, filter: string): Promise<number> {
@@ -351,7 +359,7 @@ export async function POST(request: NextRequest) {
     await pauseVideoAutomation();
 
     const processing = await getActiveVideoWork();
-    if (processing.generation > 0) {
+    if (processing.generation > 0 || processing.publications > 0) {
       // No destructive work started; restore the prior setting and release our lock.
       await restoreVideoAutomation(automationWasEnabled);
       if (purgeLockToken) {
@@ -360,7 +368,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json(
         {
-          error: `يوجد ${processing.generation} طلب توليد قيد التنفيذ. لم يبدأ الحذف؛ استمر التشغيل التلقائي، وأعد المحاولة بعد انتهاء العامل الحالي.`,
+          error: `يوجد ${processing.generation} طلب توليد و${processing.publications} عملية نشر فيديو قيد التنفيذ. لم يبدأ الحذف؛ أعد المحاولة بعد انتهاء العامل الحالي.`,
           processing,
           paused: false,
           automationMustBeReenabled: false,
@@ -488,8 +496,10 @@ export async function POST(request: NextRequest) {
     const assets = includeFiles ? await listGeneratedVideos() : [];
     const storagePaths = includeFiles ? await listAutomatedStorageObjects() : [];
     const processingAfterPreflight = await getActiveVideoWork();
-    if (processingAfterPreflight.generation > 0) {
-      throw new Error(`Video generation became active during purge preflight (${processingAfterPreflight.generation} request(s)); no deletion started.`);
+    if (processingAfterPreflight.generation > 0 || processingAfterPreflight.publications > 0) {
+      throw new Error(
+        `Video generation or scheduled publication became active during purge preflight (${processingAfterPreflight.generation} generation request(s), ${processingAfterPreflight.publications} publication(s)); no deletion started.`,
+      );
     }
     if (includeFiles && assets.length > 0) destructiveWorkStarted = true;
     const cloudinaryErrors = includeFiles
