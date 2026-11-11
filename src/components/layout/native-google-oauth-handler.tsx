@@ -5,9 +5,10 @@ import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 function getSafeNextPath(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/profile";
+  return sanitizeInternalPath(next);
 }
 
 function isNativeGoogleCallback(rawUrl: string): boolean {
