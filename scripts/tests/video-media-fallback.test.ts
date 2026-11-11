@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
 import {
   getConfirmedYoutubeFallbackId,
   resolveVideoMediaUrl,
@@ -9,6 +10,28 @@ import {
   shouldRestorePurgedPublishedVideo,
   wasPublishedBeforeMediaPurge,
 } from "../../src/features/videos/services/video-media-contract";
+
+assert.doesNotThrow(
+  () => assertCompleteVideoMediaAuditInventory(79, 100),
+  "the current production inventory fits below both bounded audit limits",
+);
+assert.throws(
+  () => assertCompleteVideoMediaAuditInventory(1000, 100),
+  /refusing to report a partial audit/,
+  "an inventory that reaches the video query limit must fail before any catalog updates",
+);
+assert.throws(
+  () => assertCompleteVideoMediaAuditInventory(79, 2000),
+  /refusing to report a partial audit/,
+  "an inventory that reaches the social queue query limit must fail before any catalog updates",
+);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "conflict" }), true);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "error" }), true);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "unavailable" }), true);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_missing", youtubeFallback: false }), true);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_missing", youtubeFallback: true }), false);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "youtube_only" }), false);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_ready" }), false);
 
 const id = "5pob7O7rLnU";
 const confirmed = {
