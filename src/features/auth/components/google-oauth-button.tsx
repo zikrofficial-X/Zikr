@@ -27,12 +27,10 @@ function getCanonicalBrowserOrigin(): string {
       return window.location.origin;
     }
 
-    const canonicalHost = new URL(PRODUCTION_URL).hostname.toLowerCase();
-    // Production aliases are redirected by the server proxy. Preview builds
-    // must keep PKCE on their own origin instead of borrowing production cookies.
-    if (host.endsWith(".vercel.app") && host !== canonicalHost) {
-      return window.location.origin;
-    }
+    // Supabase's redirect allowlist is intentionally locked to the canonical
+    // production origin. Vercel deployment aliases are not independent OAuth
+    // callback hosts; only the explicitly configured v0 preview may stay local.
+
   }
   return PRODUCTION_URL;
 }
