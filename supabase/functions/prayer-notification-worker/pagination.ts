@@ -16,7 +16,7 @@ export async function fetchAllIdPages<T extends { id: string }>(
     }
     if (page.length === 0) return rows;
 
-    let nextCursor = cursor;
+    let nextCursor: string | null = cursor;
     for (const row of page) {
       const id = typeof row?.id === "string" ? row.id.trim() : "";
       if (!id || (nextCursor !== null && id <= nextCursor)) {

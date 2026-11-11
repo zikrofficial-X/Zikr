@@ -242,8 +242,17 @@ assert.match(adminManager, /name="published" type="checkbox" defaultChecked=\{fa
 const service = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
 const spiritualRetriever = readFileSync("src/features/spiritual-ai/services/retriever.ts", "utf8");
 const offlineExporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
-const offlineKidsSnapshot = JSON.parse(readFileSync("public/offline-content/v1/kids.json", "utf8"));
-const offlineManifest = JSON.parse(readFileSync("public/offline-content/v1/manifest.json", "utf8"));
+type OfflineKidsRow = {
+  type?: string;
+  slug?: string;
+  metadata?: { age_appropriate?: unknown };
+};
+type OfflineManifest = {
+  datasets?: { kids?: { count?: number } };
+  routes?: unknown[];
+};
+const offlineKidsSnapshot = JSON.parse(readFileSync("public/offline-content/v1/kids.json", "utf8")) as OfflineKidsRow[];
+const offlineManifest = JSON.parse(readFileSync("public/offline-content/v1/manifest.json", "utf8")) as OfflineManifest;
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
 assert.match(service, /metadata->>age_appropriate\.eq\.true/, "public Kids database reads must exclude stories without explicit age approval");
@@ -252,11 +261,11 @@ assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress t
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
 assert.match(service, /getFallbackKidsContentBySlug\(cleanSlug, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
-assert.equal(offlineKidsSnapshot.some((item) => item.type === "story" && item.metadata?.age_appropriate !== true), false, "the committed offline Kids corpus must not contain unapproved stories");
+assert.equal(offlineKidsSnapshot.some((item: OfflineKidsRow) => item.type === "story" && item.metadata?.age_appropriate !== true), false, "the committed offline Kids corpus must not contain unapproved stories");
 assert.equal(offlineManifest.datasets?.kids?.count, offlineKidsSnapshot.length, "the offline manifest must match the filtered Kids corpus count");
-assert.ok(offlineManifest.routes.every((route) => {
+assert.ok(offlineManifest.routes?.every((route: unknown) => {
   const match = typeof route === "string" ? route.match(/^\/kids\/([^/]+)$/) : null;
-  const item = match ? offlineKidsSnapshot.find((row) => row.slug === match[1]) : null;
+  const item = match ? offlineKidsSnapshot.find((row: OfflineKidsRow) => row.slug === match[1]) : null;
   return !item || item.type !== "story" || item.metadata?.age_appropriate === true;
 }), "offline route inventory must not include a path to an unapproved story still present in the corpus");
 assert.match(offlineExporter, /previousKidsRows[\s\S]*blockedKidsRoutes/, "offline refresh must remember previously exported unapproved story routes");
