@@ -1,4 +1,5 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { syncAuthProfile } from '@/features/profile/services/profile';
 import {
   extractNextPath,
   getTrustedAuthOrigin,
@@ -6,13 +7,6 @@ import {
 } from '@/lib/auth-enhanced';
 import { NextRequest, NextResponse } from 'next/server';
 
-function getOAuthProfileValue(metadata: Record<string, unknown>, ...keys: string[]) {
-  for (const key of keys) {
-    const value = metadata[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
-}
 
 function loginRedirect(origin: string, code: string, next?: string) {
   const url = new URL('/auth/login', origin);
@@ -89,34 +83,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(missingSessionUrl);
       }
 
-      try {
-        const metadata = user.user_metadata ?? {};
-        const displayName =
-          getOAuthProfileValue(metadata, 'full_name', 'name', 'display_name') ??
-          user.email?.split('@')[0] ??
-          null;
-        const avatarUrl = getOAuthProfileValue(metadata, 'avatar_url', 'picture');
-
-        // Use the service-role admin client to bypass RLS for the upsert.
-        // The anon-key client bound to the just-exchanged session may not yet
-        // have its cookies flushed to the response, so RLS checks can fail for
-        // brand-new users who have no row in `profiles` yet.
-        const adminClient = createAdminClient();
-        const { error: upsertError } = await adminClient.from('profiles').upsert(
-          {
-            id: user.id,
-            email: user.email ?? null,
-            display_name: displayName,
-            avatar_url: avatarUrl,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' },
-        );
-        if (upsertError) {
-          console.error('[auth/callback] Profile upsert error:', upsertError.message);
-        }
-      } catch (profileErr) {
-        console.error('[auth/callback] Profile upsert exception:', profileErr);
+      const profileSync = await syncAuthProfile(user);
+      if (!profileSync.ok) {
+        console.error('[auth/callback] Profile sync failed:', profileSync.error);
       }
 
       return NextResponse.redirect(`${origin}${safePath}`);

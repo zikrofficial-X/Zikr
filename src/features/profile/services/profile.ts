@@ -334,34 +334,22 @@ export async function syncAuthProfile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!user.id.trim()) return { ok: false, error: "Invalid user" };
 
-  const metadata =
-    user.user_metadata && typeof user.user_metadata === "object"
-      ? user.user_metadata
-      : {};
-
-  const displayName =
-    typeof metadata.full_name === "string"
-      ? metadata.full_name.trim()
-      : typeof metadata.name === "string"
-        ? metadata.name.trim()
-        : null;
-
-  const avatarUrl =
-    typeof metadata.avatar_url === "string"
-      ? metadata.avatar_url.trim()
-      : typeof metadata.picture === "string"
-        ? metadata.picture.trim()
-        : null;
-
   const adminClient = createAdminClient();
+  const { data: existingProfile, error: readError } = await adminClient
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (readError) {
+    console.error("[profile] auth sync read failed:", readError);
+    return { ok: false, error: "profile_sync_read_failed" };
+  }
+
+  const { buildAuthProfileSyncPayload } = await import("./profile-sync");
+  const payload = buildAuthProfileSyncPayload(user, existingProfile, new Date().toISOString());
   const { error } = await adminClient.from("profiles").upsert(
-    {
-      id: user.id,
-      email: user.email ?? null,
-      display_name: displayName || null,
-      avatar_url: avatarUrl || null,
-      updated_at: new Date().toISOString(),
-    },
+    payload,
     { onConflict: "id" },
   );
 
@@ -372,7 +360,6 @@ export async function syncAuthProfile(
 
   return { ok: true };
 }
-
 
 export async function updateCurrentProfileAvatar(
   avatarUrl: string,
