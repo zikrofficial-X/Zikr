@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { canSchedulePrayerSubscription } from "../../supabase/functions/prayer-notification-worker/eligibility";
-import { buildNotificationTopic, nextLocalDate } from "../../supabase/functions/prayer-notification-worker/time-zone";
+import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
 
 const source = Array.from({ length: 205 }, (_, index) => ({
   id: String(index + 1).padStart(4, "0"),
@@ -82,6 +82,22 @@ assert.equal(
   nextLocalDate(new Date("2026-03-08T08:00:00.000Z"), "America/Los_Angeles"),
   "2026-03-09",
   "local calendar advancement must remain correct across daylight-saving transitions",
+);
+
+assert.equal(
+  zonedDateTime("2026-03-08", "America/Los_Angeles", "01:30")?.toISOString(),
+  "2026-03-08T09:30:00.000Z",
+  "valid local times before a daylight-saving transition must resolve to the matching instant",
+);
+assert.equal(
+  zonedDateTime("2026-03-08", "America/Los_Angeles", "02:30"),
+  null,
+  "a nonexistent wall-clock time during spring-forward must not be shifted to a different prayer time",
+);
+assert.equal(
+  zonedDateTime("2026-03-08", "America/Los_Angeles", "03:30")?.toISOString(),
+  "2026-03-08T10:30:00.000Z",
+  "valid local times after a daylight-saving transition must resolve to the matching instant",
 );
 
 const pushTopics = [
