@@ -324,12 +324,21 @@ export function isKidsWrittenSourceReservation(value: unknown): boolean {
 }
 
 export function isKidsWrittenPostCandidate(
-  row: { content_type?: unknown; metadata?: unknown; automation_key?: unknown },
+  row: { content_type?: unknown; metadata?: unknown; automation_key?: unknown; status?: unknown },
 ): boolean {
   if (row.content_type !== "written_post") return false;
   const automationKey = typeof row.automation_key === "string" ? row.automation_key : "";
   return isKidsWrittenSourceReservation(row.metadata) ||
     automationKey.startsWith("written-social-v1:kids_story:");
+}
+
+export function isActiveKidsWrittenPostReservation(
+  row: { content_type?: unknown; metadata?: unknown; automation_key?: unknown; status?: unknown },
+): boolean {
+  if (!isKidsWrittenPostCandidate(row)) return false;
+  return ["queued", "processing", "published", "partial"].includes(
+    typeof row.status === "string" ? row.status : "",
+  );
 }
 
 export function isEligibleKidsWrittenPostForPublishing(

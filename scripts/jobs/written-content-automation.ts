@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenBackfillQueuePayload, countUniqueWrittenContentReservations, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, isKidsWrittenPostCandidate, isKidsWrittenSourceReservation, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenBackfillQueuePayload, countUniqueWrittenContentReservations, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, isActiveKidsWrittenPostReservation, isKidsWrittenSourceReservation, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -239,7 +239,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
   `(and(created_at.gte.${dayStartIso},created_at.lt.${dayEndIso}),and(scheduled_at.gte.${dayStartIso},scheduled_at.lt.${dayEndIso}),and(published_at.gte.${dayStartIso},published_at.lt.${dayEndIso}))`,
  );
  const todaysKidsPosts = await readRequired<Row>(
-  `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&select=id,content_type,automation_key,metadata&limit=1000`,
+  `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&status=in.(queued,processing,published,partial)&select=id,content_type,automation_key,metadata,status&limit=1000`,
  );
  const todaysKidsArticles = await readRequired<Row>(
   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata,published&limit=1000`,
@@ -247,7 +247,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
  if (todaysKidsPosts.length >= 1000 || todaysKidsArticles.length >= 1000) {
   throw new Error("Kids daily reservation scan reached its safe row limit; refusing to backfill without a complete check.");
  }
- let hasKidsPostToday = todaysKidsPosts.some(isKidsWrittenPostCandidate) ||
+ let hasKidsPostToday = todaysKidsPosts.some(isActiveKidsWrittenPostReservation) ||
   todaysKidsArticles.some((row) => isKidsWrittenSourceReservation(row.metadata));
  let created=0,slot=0,offset=0;
  while(created < maxNewRows){
@@ -349,14 +349,14 @@ export async function runWrittenContentAutomation(options:{category?:string;batc
  );
  const todaysKidsPosts = category === "auto" || category === "kids"
   ? await readRequired<Row>(
-   `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&select=id,content_type,automation_key,metadata&limit=1000`,
+   `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&status=in.(queued,processing,published,partial)&select=id,content_type,automation_key,metadata,status&limit=1000`,
   )
   : [];
  if (todaysKidsPosts.length >= 1000) {
   throw new Error("Kids daily reservation scan reached its safe row limit; refusing to generate without a complete check.");
  }
  let hasKidsPostToday = todays.some((row) => isKidsWrittenSourceReservation(row.metadata)) ||
-  todaysKidsPosts.some(isKidsWrittenPostCandidate);
+  todaysKidsPosts.some(isActiveKidsWrittenPostReservation);
  const groups = new Map<WrittenContentSource["kind"], WrittenContentSource[]>();
  for (const item of pool) groups.set(item.kind, [...(groups.get(item.kind) ?? []), item]);
  const ids:string[]=[];let duplicates=0,skipped=0;
