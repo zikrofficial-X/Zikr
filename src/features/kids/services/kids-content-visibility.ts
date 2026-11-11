@@ -29,6 +29,7 @@ export function mergeKidsContentWithFallback<T extends { slug: string }>(
   }
 
   for (const item of fallbackItems) {
+    if (!isKidsContentPubliclyVisible(item)) continue;
     const slug = normalizeKidsContentSlug(item.slug);
     if (!slug || seen.has(slug) || knownDatabaseSlugs.has(slug)) continue;
     seen.add(slug);
@@ -45,5 +46,8 @@ export function getFallbackKidsContentBySlug<T extends { slug: string }>(
 ): T | null {
   const normalizedSlug = normalizeKidsContentSlug(slug);
   if (!normalizedSlug || knownDatabaseSlugs.has(normalizedSlug)) return null;
-  return fallbackItems.find((item) => normalizeKidsContentSlug(item.slug) === normalizedSlug) ?? null;
+  return fallbackItems.find((item) =>
+    isKidsContentPubliclyVisible(item) &&
+    normalizeKidsContentSlug(item.slug) === normalizedSlug,
+  ) ?? null;
 }
