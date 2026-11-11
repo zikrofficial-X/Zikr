@@ -40,6 +40,17 @@ assert.deepEqual(
 assert.equal(blocked.has("/kids/current-approved-story"), false);
 assert.equal(blocked.has("/kids/current-game"), false);
 const exporter = readFileSync("scripts/export-offline-content.mjs", "utf8");
+const serviceWorker = readFileSync("public/sw.js", "utf8");
+const offlineContentStart = serviceWorker.indexOf('if (url.pathname.startsWith(OFFLINE_CONTENT_PREFIX))');
+const offlineContentEnd = serviceWorker.indexOf('if (url.pathname === "/api/prayer-times")', offlineContentStart);
+assert.ok(offlineContentStart >= 0 && offlineContentEnd > offlineContentStart, "service worker must define an offline-content handler");
+const offlineContentHandler = serviceWorker.slice(offlineContentStart, offlineContentEnd);
+assert.ok(
+  offlineContentHandler.indexOf('fetch(new Request(request, { cache: "no-store" }))') <
+    offlineContentHandler.indexOf("caches.match(request)"),
+  "offline datasets must refresh from the network before falling back to Cache Storage",
+);
+assert.match(offlineContentHandler, /cache\.put\(request, copy\)/);
 assert.match(exporter, /getBlockedKidsRoutes\(previousKidsRows, rows, previous\.routes\)/);
 assert.match(exporter, /blockedKidsRoutes\.has\(route\)/);
 assert.match(exporter, /const stamp = generatedAt\.replace/);
