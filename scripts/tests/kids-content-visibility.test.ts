@@ -46,21 +46,21 @@ for (const unsafeUrl of [
 }
 
 const databaseItems = [
-  { slug: "story-live", source: "database" },
+  { slug: "story-live", type: "story", source: "database" },
 ];
 const fallbackItems = [
-  { slug: "story-live", source: "fallback" },
-  { slug: "story-unpublished", source: "fallback" },
-  { slug: "story-inactive", source: "fallback" },
-  { slug: "story-static-only", source: "fallback" },
+  { slug: "story-live", type: "story", source: "fallback" },
+  { slug: "story-unpublished", type: "story", source: "fallback" },
+  { slug: "story-inactive", type: "story", source: "fallback" },
+  { slug: "story-static-only", type: "story", source: "fallback" },
 ];
 const knownDatabaseSlugs = new Set(["story-live", "story-unpublished", "story-inactive"]);
 
 assert.deepEqual(
   mergeKidsContentWithFallback(databaseItems, fallbackItems, knownDatabaseSlugs),
   [
-    { slug: "story-live", source: "database" },
-    { slug: "story-static-only", source: "fallback" },
+    { slug: "story-live", type: "story", source: "database" },
+    { slug: "story-static-only", type: "story", source: "fallback" },
   ],
   "database-backed unpublished or inactive slugs must not be resurrected by static fallback",
 );
