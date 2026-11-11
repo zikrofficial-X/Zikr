@@ -119,9 +119,18 @@ assert.ok(route.includes("getActiveVideoWork"), "purge must inspect active inter
 assert.ok(route.includes("processing.generation > 0"), "only active internal video generation must block the purge.");
 assert.ok(route.includes("processing.publications > 0"), "active scheduled video publication must also block destructive media cleanup.");
 assert.ok(
-  route.includes("/rest/v1/content_publish_queue?content_table=eq.videos&status=eq.processing&select=id&limit=100"),
+  route.includes("/rest/v1/content_publish_queue?content_table=eq.videos&status=in.(queued,processing)&select=id&limit=100"),
   "purge preflight must inventory in-flight scheduled video publications before deleting media",
 );
+
+const contentPublishingWorker = read("scripts/jobs/content-publishing.ts");
+assert.ok(contentPublishingWorker.includes('if (item.content_table === "videos" && await isVideoPurgeInProgress()) continue;'), "the content publisher must leave queued video publications untouched while purge is locked.");
+assert.ok(contentPublishingWorker.includes('if (item.content_table === "videos" && await isVideoPurgeInProgress()) {'), "the content publisher must recheck the purge lock after claiming a video publication.");
+const purgePostStart = route.indexOf("export async function POST(");
+const purgePost = purgePostStart >= 0 ? route.slice(purgePostStart) : "";
+assert.ok(purgePost.includes('requireAdminStepUpApi("video.delete", "/admin/media")'), "the destructive purge POST must enforce the configured MFA step-up policy.");
+assert.ok(purgePost.includes('nextPath: "nextPath" in auth ? auth.nextPath : undefined'), "the purge API must return the step-up redirect target to the admin UI.");
+assert.ok(control.includes('payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)'), "the purge UI must complete the server-enforced step-up flow.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
 assert.ok(
   route.includes("async function acquirePurgeLock(token: string)") &&

@@ -297,7 +297,7 @@ async function getActiveVideoWork(): Promise<{ generation: number; publications:
       "/rest/v1/video_generation_requests?status=eq.processing&select=id&limit=100",
     ),
     supabaseServerAdminRequest<Array<{ id: string }>>(
-      "/rest/v1/content_publish_queue?content_table=eq.videos&status=eq.processing&select=id&limit=100",
+      "/rest/v1/content_publish_queue?content_table=eq.videos&status=in.(queued,processing)&select=id&limit=100",
     ),
   ]);
   return {
@@ -369,7 +369,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json(
         {
-          error: `يوجد ${processing.generation} طلب توليد و${processing.publications} عملية نشر فيديو قيد التنفيذ. لم يبدأ الحذف؛ أعد المحاولة بعد انتهاء العامل الحالي.`,
+          error: `يوجد ${processing.generation} طلب توليد و${processing.publications} عملية نشر فيديو مجدولة أو قيد التنفيذ. لم يبدأ الحذف؛ أكمل النشر أو ألغِه ثم أعد المحاولة.`,
           processing,
           paused: false,
           automationMustBeReenabled: false,

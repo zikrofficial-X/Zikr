@@ -121,6 +121,13 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/youtube-facebook/upload-url/route.ts POST": ["media.manage"],
 };
 
+const videoPurgeSource = readFileSync(join(apiRoot, "video-purge/route.ts"), "utf8");
+const videoPurgePostStart = videoPurgeSource.indexOf("export async function POST(");
+const videoPurgePost = videoPurgePostStart >= 0 ? videoPurgeSource.slice(videoPurgePostStart) : "";
+if (!videoPurgePost.includes('requireAdminStepUpApi("video.delete",')) {
+  failures.push("video purge POST must enforce the configured destructive-action MFA step-up policy");
+}
+
 const socialRouteSource = readFileSync(join(apiRoot, "social/route.ts"), "utf8");
 const socialActionGateStart = socialRouteSource.indexOf("if ([");
 const socialActionGateEnd = socialRouteSource.indexOf("const ids", socialActionGateStart);
