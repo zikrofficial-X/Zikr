@@ -5,6 +5,7 @@ import { createClient, supabaseServerAdminRequest } from "@/lib/supabase/server"
 import { requireAdminPermission, requireAdminPermissionApi } from "@/features/admin/services/admin";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
 import type { AdminPermission } from "@/features/admin/services/permissions";
+import { resolveDestructiveMfaRequirement } from "@/features/admin/services/security-policy";
 
 async function destructiveMfaRequired() {
   try {
@@ -12,7 +13,7 @@ async function destructiveMfaRequired() {
       "/rest/v1/admin_settings?select=value&key=eq.require_mfa_for_destructive&limit=1",
       { method: "GET" },
     );
-    return rows[0]?.value === true;
+    return resolveDestructiveMfaRequirement(rows[0]?.value);
   } catch (error) {
     // Fail closed: if the policy cannot be read, destructive actions must still pass step-up MFA.
     console.error("[admin] could not read require_mfa_for_destructive; requiring step-up:", error);

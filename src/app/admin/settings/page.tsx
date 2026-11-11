@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { getAdminSettings } from "@/features/admin/services/platform";
 import { saveAdminSettingAction } from "@/app/admin/system-actions";
+import { resolveDestructiveMfaRequirement } from "@/features/admin/services/security-policy";
 
 export const metadata: Metadata = { title: "إعدادات الإدارة | الأدمن" };
 
@@ -30,7 +31,9 @@ export default async function AdminSettingsPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         {BOOLEAN_SETTINGS.map(([key, label, description]) => {
-          const enabled = values[key] === true;
+          const enabled = key === "require_mfa_for_destructive"
+            ? resolveDestructiveMfaRequirement(values[key])
+            : values[key] === true;
           return (
             <form key={key} action={saveAdminSettingAction} className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
               <input type="hidden" name="key" value={key} />

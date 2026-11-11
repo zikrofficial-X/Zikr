@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { hasAdminPermission, resolveAdminRole } from "../../src/features/admin/services/permissions";
+import { resolveDestructiveMfaRequirement } from "../../src/features/admin/services/security-policy";
 
 assert.equal(resolveAdminRole("admin", null), "admin", "a full admin without a delegated assignment remains a full admin");
 assert.equal(resolveAdminRole("admin", "content_manager"), "content_manager", "a valid delegated assignment must be respected");
@@ -17,6 +18,18 @@ assert.equal(hasAdminPermission("support", "users.roles"), false, "read-only sup
 assert.equal(hasAdminPermission("admin", "users.roles"), true);
 assert.equal(hasAdminPermission("admin", "audit.read"), true);
 assert.equal(hasAdminPermission("super_admin", "users.roles"), true);
+assert.equal(resolveDestructiveMfaRequirement(false), false, "an explicit false setting may disable optional step-up MFA");
+assert.equal(resolveDestructiveMfaRequirement(true), true);
+assert.equal(resolveDestructiveMfaRequirement(undefined), true, "a missing MFA setting must fail closed");
+assert.equal(resolveDestructiveMfaRequirement(null), true, "a null MFA setting must fail closed");
+assert.equal(resolveDestructiveMfaRequirement("false"), true, "a malformed string must not disable destructive-action MFA");
+
+const securityService = readFileSync("src/features/admin/services/security.ts", "utf8");
+const securityPage = readFileSync("src/app/admin/security/page.tsx", "utf8");
+const settingsPage = readFileSync("src/app/admin/settings/page.tsx", "utf8");
+assert.match(securityService, /resolveDestructiveMfaRequirement\(rows\[0\]\?\.value\)/, "runtime enforcement must fail closed when the setting row is absent");
+assert.match(securityPage, /resolveDestructiveMfaRequirement\(settings\.require_mfa_for_destructive\)/, "the security dashboard must display the same fail-closed effective policy");
+assert.match(settingsPage, /key === "require_mfa_for_destructive"[\s\S]*?resolveDestructiveMfaRequirement\(values\[key\]\)/, "the settings form must show MFA enabled when the setting is missing or malformed");
 
 const usersPage = readFileSync("src/app/admin/users/page.tsx", "utf8");
 const usersTable = readFileSync("src/features/admin/components/users-table.tsx", "utf8");
