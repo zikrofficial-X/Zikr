@@ -128,9 +128,10 @@ export async function getKidsContent(locale?: Locale): Promise<KidsItem[]> {
   const activeLocale = locale ?? await getRequestLocale();
   const database = await getDatabaseKidsContent();
   if (!database.configured) {
+    const fallback = FALLBACK_KIDS_CONTENT.filter(isKidsContentPubliclyVisible);
     return activeLocale === "en"
-      ? FALLBACK_KIDS_CONTENT.filter((item) => Boolean(item.content_en?.trim()))
-      : FALLBACK_KIDS_CONTENT;
+      ? fallback.filter((item) => Boolean(item.content_en?.trim()))
+      : fallback;
   }
 
   // If the visibility lookup fails, return only database-approved rows. Never
@@ -154,7 +155,8 @@ export async function getKidsContentBySlug(
   const database = await getDatabaseKidsContentBySlug(cleanSlug);
   if (!database.configured) {
     const fallback = getKidsItemBySlug(cleanSlug);
-    if (activeLocale === "en" && !fallback?.content_en?.trim()) return null;
+    if (!fallback || !isKidsContentPubliclyVisible(fallback)) return null;
+    if (activeLocale === "en" && !fallback.content_en?.trim()) return null;
     return fallback;
   }
 
