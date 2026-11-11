@@ -258,7 +258,7 @@ assert.ok(offlineManifest.routes.every((route) => {
 assert.match(offlineExporter, /previousKidsRows[\s\S]*blockedKidsRoutes/, "offline refresh must remember previously exported unapproved story routes");
 assert.match(offlineExporter, /rows = rows\.filter\(\(row\) => row && \(row\.type !== 'story' \|\| row\.metadata\?\.age_appropriate === true\)\)/, "offline refresh must filter unapproved stories even when a service-role key bypasses RLS");
 assert.match(offlineExporter, /routes: Array\.isArray\(previous\.routes\)[\s\S]*blockedKidsRoutes\.has\(route\)/, "offline refresh must remove routes for unapproved stories");
-assert.match(spiritualRetriever, /type=neq\.story&published=eq\.true&is_active=eq\.true/, "AI retrieval must only use active, published non-story Kids content");
+assert.match(spiritualRetriever, /published=eq\.true&is_active=eq\.true&type=neq\.story/, "AI retrieval must only use active, published non-story Kids content");
 assert.match(spiritualRetriever, /type=eq\.story&metadata->>age_appropriate=eq\.true/, "AI retrieval must only use age-approved Kids stories");
 
 const migration = readFileSync(
