@@ -8,11 +8,9 @@ build/
 *.dist
 
 # Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Environment files: ignore all local secrets while keeping the committed template.
+.env*
+!.env.example
 
 # IDE and editor files
 .vscode/
