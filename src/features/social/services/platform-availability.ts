@@ -286,6 +286,8 @@ export function buildMissingMediaQueueRecoveryPatch(input: {
   };
 }
 
+export const LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT = 50;
+
 export type LocalSocialQueueDeletionCandidate = {
   status: string;
   target_platforms: readonly string[] | null | undefined;
