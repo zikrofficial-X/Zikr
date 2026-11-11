@@ -10,48 +10,35 @@ import {
 } from "@/features/notifications/services/notifications";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
-export type SalawatInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled
-
-export interface QuietHours {
-  enabled: boolean;
-  from: string; // "HH:MM"
-  to: string; // "HH:MM"
-}
-
-export interface SalawatSettings {
-  enabled: boolean;
-  intervalMinutes: SalawatInterval;
-  quietHours: QuietHours;
-}
+export type { SalawatInterval, QuietHours, SalawatSettings } from "@/features/reminders/services/reminder-settings";
+import {
+  DEFAULT_SALAWAT_SETTINGS,
+  normalizeSalawatSettings,
+} from "@/features/reminders/services/reminder-settings";
+import type { SalawatInterval, QuietHours, SalawatSettings } from "@/features/reminders/services/reminder-settings";
 
 const SETTINGS_KEY = "zikr_salawat_settings";
 const SETTINGS_UPDATED_EVENT = "zikr:salawat-settings-updated";
 
-const DEFAULT_SETTINGS: SalawatSettings = {
-  enabled: false, // opt-in: user must explicitly enable
-  intervalMinutes: 60,
-  quietHours: { enabled: false, from: "22:00", to: "06:00" },
-};
+const DEFAULT_SETTINGS: SalawatSettings = DEFAULT_SALAWAT_SETTINGS;
 
 function loadSettings(): SalawatSettings {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  if (typeof window === "undefined") return normalizeSalawatSettings(null);
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw);
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      quietHours: { ...DEFAULT_SETTINGS.quietHours, ...parsed.quietHours },
-    };
+    return raw ? normalizeSalawatSettings(JSON.parse(raw)) : normalizeSalawatSettings(null);
   } catch {
-    return DEFAULT_SETTINGS;
+    return normalizeSalawatSettings(null);
   }
 }
 
 function saveSettings(s: SalawatSettings): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    // Storage may be unavailable in private or quota-limited browser contexts.
+  }
 }
 
 type NativeSalawatFacade = {
@@ -186,15 +173,15 @@ export function useSalawatReminder(
         if (!response.ok) return;
         const data = await response.json();
         if (cancelled) return;
-        const next: SalawatSettings = {
-          enabled: Boolean(data.salawat_enabled),
-          intervalMinutes: data.salawat_interval_minutes ?? 60,
+        const next = normalizeSalawatSettings({
+          enabled: data.salawat_enabled === true,
+          intervalMinutes: data.salawat_interval_minutes,
           quietHours: {
             enabled: Boolean(data.quiet_hours_start && data.quiet_hours_end),
-            from: data.quiet_hours_start?.slice(0, 5) ?? "22:00",
-            to: data.quiet_hours_end?.slice(0, 5) ?? "06:00",
+            from: data.quiet_hours_start?.slice(0, 5),
+            to: data.quiet_hours_end?.slice(0, 5),
           },
-        };
+        });
         saveSettings(next);
         setSettings(next);
       } catch {

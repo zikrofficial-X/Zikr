@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createAsyncSerialQueue } from "../../src/lib/async-serial-queue";
+import { normalizeSalawatSettings } from "../../src/features/reminders/services/reminder-settings";
+import { normalizeAzanSettings } from "../../src/features/prayer/services/prayer-alert-settings";
 
 async function main() {
   const prayerHook = readFileSync("src/features/prayer/hooks/use-prayer-alert.ts", "utf8");
@@ -10,6 +12,49 @@ async function main() {
   const serviceWorker = readFileSync("public/sw.js", "utf8");
   const pushWorker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 
+  assert.deepEqual(
+    normalizeSalawatSettings({
+      enabled: true,
+      intervalMinutes: "invalid",
+      quietHours: { enabled: true, from: "99:99", to: "06:00" },
+    }),
+    {
+      enabled: true,
+      intervalMinutes: 60,
+      quietHours: { enabled: true, from: "22:00", to: "06:00" },
+    },
+    "malformed persisted Salawat settings must never create a zero-delay reminder loop",
+  );
+  assert.deepEqual(
+    normalizeSalawatSettings({
+      enabled: "true",
+      intervalMinutes: 0,
+      quietHours: { enabled: "yes", from: "23:00", to: "07:00" },
+    }),
+    {
+      enabled: false,
+      intervalMinutes: 0,
+      quietHours: { enabled: false, from: "23:00", to: "07:00" },
+    },
+    "Salawat settings must validate booleans while preserving valid disabled intervals and clock values",
+  );
+  assert.deepEqual(
+    normalizeAzanSettings({ enabledPrayers: null, audioUnlocked: "yes" }),
+    {
+      enabledPrayers: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+      audioUnlocked: false,
+    },
+    "malformed prayer settings must not crash the prayer loop",
+  );
+  assert.deepEqual(
+    normalizeAzanSettings({ enabledPrayers: { Fajr: false, Isha: "invalid" }, audioUnlocked: true }),
+    {
+      enabledPrayers: { Fajr: false, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+      audioUnlocked: true,
+    },
+    "partial prayer settings must preserve explicit choices and fill missing keys safely",
+  );
+
   assert.match(prayerHook, /createAsyncSerialQueue/, "prayer schedule refreshes must be serialized");
   assert.match(prayerHook, /enqueueNativePrayerSchedule/, "prayer alarm cancellation and replacement must share one queue");
   assert.match(salawatHook, /createAsyncSerialQueue/, "salawat schedule refreshes must be serialized");
@@ -18,6 +63,10 @@ async function main() {
   assert.match(dhikrHook, /const SETTINGS_KEY = "zikr_dhikr_settings"/, "Dhikr preferences need a stable local storage key");
   assert.match(dhikrHook, /localStorage\.getItem\(SETTINGS_KEY\)/, "anonymous users must be able to restore local Dhikr preferences");
   assert.match(dhikrHook, /localStorage\.setItem\(SETTINGS_KEY/, "Dhikr changes must persist for anonymous users");
+  assert.match(salawatHook, /function saveSettings[\s\S]*?try\s*\{[\s\S]*?localStorage\.setItem/, "Salawat storage failures must not crash reminder settings updates");
+  assert.match(prayerHook, /function saveSettings[\s\S]*?try\s*\{[\s\S]*?localStorage\.setItem/, "prayer storage failures must not crash prayer settings updates");
+  assert.match(prayerHook, /try\s*\{\s*return sessionStorage\.getItem/, "blocked session storage must not interrupt prayer notification checks");
+  assert.match(prayerHook, /try\s*\{\s*sessionStorage\.setItem/, "blocked session storage must not interrupt prayer notification deduplication");
   assert.match(dhikrHook, /setSettings\(loadSettings\(\)\)/, "local settings must load before authenticated server reconciliation");
   assert.match(dhikrHook, /saveSettings\(next\)/, "server preference reconciliation must refresh the local copy");
   assert.match(notificationService, /const tag = "dhikr-reminder"/, "foreground Dhikr notifications must use the shared deduplication tag");

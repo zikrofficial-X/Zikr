@@ -28,12 +28,12 @@ import {
   getZonedDateTime,
 } from "@/features/prayer/services/prayer-notification-schedule";
 
-export type PrayerKey = "Fajr" | "Dhuhr" | "Asr" | "Maghrib" | "Isha";
-
-export interface AzanSettings {
-  enabledPrayers: Record<PrayerKey, boolean>;
-  audioUnlocked: boolean;
-}
+export type { PrayerKey, AzanSettings } from "@/features/prayer/services/prayer-alert-settings";
+import {
+  DEFAULT_AZAN_SETTINGS,
+  normalizeAzanSettings,
+} from "@/features/prayer/services/prayer-alert-settings";
+import type { PrayerKey, AzanSettings } from "@/features/prayer/services/prayer-alert-settings";
 
 const PRAYERS: PrayerKey[] = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 const PRAYER_NAMES_AR: Record<PrayerKey, string> = {
@@ -50,31 +50,25 @@ const SETTINGS_UPDATED_EVENT = "zikr:prayer-settings-updated";
 let nativePrayerScheduleGeneration = 0;
 const enqueueNativePrayerSchedule = createAsyncSerialQueue();
 
-const DEFAULT_SETTINGS: AzanSettings = {
-  enabledPrayers: {
-    Fajr: true,
-    Dhuhr: true,
-    Asr: true,
-    Maghrib: true,
-    Isha: true,
-  },
-  audioUnlocked: false,
-};
+const DEFAULT_SETTINGS: AzanSettings = DEFAULT_AZAN_SETTINGS;
 
 function loadSettings(): AzanSettings {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  if (typeof window === "undefined") return normalizeAzanSettings(null);
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    return raw ? normalizeAzanSettings(JSON.parse(raw)) : normalizeAzanSettings(null);
   } catch {
-    return DEFAULT_SETTINGS;
+    return normalizeAzanSettings(null);
   }
 }
 
 function saveSettings(s: AzanSettings): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    // Storage may be unavailable in private or quota-limited browser contexts.
+  }
 }
 
 function formatLocalDate(date: Date): string {
@@ -103,12 +97,20 @@ function getAlertKey(prayer: PrayerKey, timeZone?: string): string {
 
 function alreadyFired(prayer: PrayerKey, timeZone?: string): boolean {
   if (typeof window === "undefined") return false;
-  return sessionStorage.getItem(getAlertKey(prayer, timeZone)) === "1";
+  try {
+    return sessionStorage.getItem(getAlertKey(prayer, timeZone)) === "1";
+  } catch {
+    return false;
+  }
 }
 
 function markFired(prayer: PrayerKey, timeZone?: string): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(getAlertKey(prayer, timeZone), "1");
+  try {
+    sessionStorage.setItem(getAlertKey(prayer, timeZone), "1");
+  } catch {
+    // Notification delivery must remain available when session storage is blocked.
+  }
 }
 
 async function scheduleNativePrayerNotifications(
