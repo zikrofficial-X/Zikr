@@ -355,6 +355,27 @@ export async function deleteManagedContent(
     );
   }
 
+  // A draft may still have a queued or in-flight publication. Cancel it before
+  // deleting the source row so the worker's final claim check cannot publish
+  // content after an administrator has removed it.
+  try {
+    await supabaseServerAdminRequest(
+      `/rest/v1/content_publish_queue?content_table=eq.${table}&content_id=eq.${encodeURIComponent(id)}&status=in.(queued,processing)`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "cancelled",
+          error_message: "Cancelled because the scheduled content was deleted by an administrator.",
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  } catch (error) {
+    console.error("[admin/content] failed to cancel schedule before deletion:", error);
+    throw new Error("تعذر إلغاء موعد النشر المجدول؛ لم يتم حذف المحتوى. أعد المحاولة.");
+  }
+
   const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(
     `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(String(current[0].updated_at))}`,
     {
