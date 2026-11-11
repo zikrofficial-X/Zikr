@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 type GoogleOAuthButtonProps = {
   next?: string;
