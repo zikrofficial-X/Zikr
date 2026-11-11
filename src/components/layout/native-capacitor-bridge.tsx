@@ -359,7 +359,7 @@ export function NativeCapacitorBridge() {
         if (target.origin !== PRODUCTION_URL) return;
         if (target.pathname.startsWith("/auth/callback")) return;
 
-        const path = target.pathname + target.search + target.hash;
+        const path = sanitizeInternalPath(target.pathname + target.search + target.hash);
         window.location.assign(path);
       } catch (error) {
         console.warn("[native-bridge] Ignored invalid universal link", error);

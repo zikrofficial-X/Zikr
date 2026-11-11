@@ -11,6 +11,7 @@ const authActions = read("src/features/auth/actions.ts");
 const googleOAuth = read("src/features/auth/integrations/google-oauth.ts");
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
+const authCallback = read("src/app/auth/callback/route.ts");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
@@ -85,7 +86,11 @@ assert.ok(googleOAuth.includes('response.headers.set("Cache-Control", "private, 
 assert.match(nativeBridge, /addListener\?\.\("appUrlOpen"/);
 assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
 assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/);
+assert.match(nativeBridge, /sanitizeInternalPath\(target\.pathname \+ target\.search \+ target\.hash\)/, "Universal-link paths must be sanitized before in-app navigation");
 assert.match(nativeBridge, /window\.location\.assign\(path\)/);
+assert.match(authCallback, /return redirectNoStore\(nativeUrl\)/, "native OAuth authorization codes must be handed off through a no-store redirect");
+assert.match(authCallback, /Cache-Control.*private, no-store, max-age=0/, "all OAuth callback redirects must be private and non-cacheable");
+assert.equal((authCallback.match(/NextResponse\.redirect\(/g) ?? []).length, 1, "only the no-store redirect helper may create callback redirects");
 assert.match(androidManifest, /android:scheme="com\.zikr\.app"/);
 assert.match(androidManifest, /<intent-filter android:autoVerify="true">[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"/);
 for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {

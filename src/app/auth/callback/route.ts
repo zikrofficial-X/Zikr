@@ -8,11 +8,17 @@ import {
 import { NextRequest, NextResponse } from 'next/server';
 
 
+function redirectNoStore(destination: string | URL) {
+  const response = NextResponse.redirect(destination);
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return response;
+}
+
 function loginRedirect(origin: string, code: string, next?: string) {
   const url = new URL('/auth/login', origin);
   url.searchParams.set('error', code);
   if (next) url.searchParams.set('next', next);
-  return NextResponse.redirect(url);
+  return redirectNoStore(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -44,7 +50,7 @@ export async function GET(request: NextRequest) {
       nativeUrl.searchParams.set('error', 'auth_callback_failed');
     }
 
-    return NextResponse.redirect(nativeUrl);
+    return redirectNoStore(nativeUrl);
   }
 
   // Supabase may forward OAuth errors directly to the callback
@@ -80,7 +86,7 @@ export async function GET(request: NextRequest) {
         const missingSessionUrl = new URL('/auth/login', origin);
         missingSessionUrl.searchParams.set('error', 'auth_session_missing');
         missingSessionUrl.searchParams.set('next', safePath);
-        return NextResponse.redirect(missingSessionUrl);
+        return redirectNoStore(missingSessionUrl);
       }
 
       try {
@@ -93,7 +99,7 @@ export async function GET(request: NextRequest) {
         console.error('[auth/callback] Profile sync exception:', profileErr);
       }
 
-      return NextResponse.redirect(`${origin}${safePath}`);
+      return redirectNoStore(`${origin}${safePath}`);
     } catch (err) {
       console.error('[auth/callback] Unexpected error:', err);
       return loginRedirect(origin, 'google_oauth_failed', safePath);
