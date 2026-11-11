@@ -19,6 +19,31 @@ export function isKidsContentType(value: unknown): value is KidsContentType {
   return typeof value === "string" && KIDS_CONTENT_TYPES.includes(value as KidsContentType);
 }
 
+export function normalizeKidsVideoEmbedUrl(value: unknown): string | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+
+  try {
+    const url = new URL(value.trim());
+    const trustedHost = url.hostname === "www.youtube.com" || url.hostname === "www.youtube-nocookie.com";
+    const validVideoPath = /^\/embed\/[A-Za-z0-9_-]{11}$/.test(url.pathname);
+    if (
+      url.protocol !== "https:" ||
+      !trustedHost ||
+      !validVideoPath ||
+      url.username ||
+      url.password ||
+      url.port ||
+      url.search ||
+      url.hash
+    ) {
+      return null;
+    }
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return null;
+  }
+}
+
 export type KidsQuizData = { questions: KidsQuizQuestion[] };
 
 function invalidQuiz(): never {
