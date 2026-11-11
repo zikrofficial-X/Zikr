@@ -4,6 +4,7 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { saveFacebookPageCredential, saveFacebookPublicProfile, unblockFacebookAuthBlockedQueue } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
+import { hasFacebookPagePublishingTask } from "@/features/social/services/facebook-oauth-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -152,7 +153,7 @@ export async function GET(request: NextRequest) {
       return redirectResult("page_not_found");
     }
     if (!selectedPage.id || !selectedPage.access_token) return redirectResult("page_validation_failed");
-    if (Array.isArray(selectedPage.tasks) && !selectedPage.tasks.includes("CREATE_CONTENT")) {
+    if (!hasFacebookPagePublishingTask(selectedPage.tasks)) {
       return redirectResult("permission_missing");
     }
 

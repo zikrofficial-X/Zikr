@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
+import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
@@ -17,6 +18,16 @@ assert.equal(parseRequestedSocialPlatforms(["youtube", null]).ok, false, "mixed 
 const facebookOnly = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "false" });
 assert.deepEqual(facebookOnly, ["facebook", "facebook_reels"]);
 assert.deepEqual(getUnavailableSocialPlatforms(["facebook", "youtube"], facebookOnly), ["youtube"]);
+
+assert.equal(hasFacebookPagePublishingTask(undefined), false, "missing Meta Page task data must fail closed");
+assert.equal(hasFacebookPagePublishingTask(null), false, "null Meta Page task data must fail closed");
+assert.equal(hasFacebookPagePublishingTask([]), false, "an empty Meta Page task list must not authorize publishing");
+assert.equal(hasFacebookPagePublishingTask(["ANALYZE", "MODERATE"]), false, "read/analytics-only Page tasks must not authorize publishing");
+assert.equal(hasFacebookPagePublishingTask(["CREATE_CONTENT"]), true, "classic Page roles with CREATE_CONTENT may publish");
+assert.equal(hasFacebookPagePublishingTask(["PROFILE_PLUS_CREATE_CONTENT"]), true, "New Pages Experience PROFILE_PLUS_CREATE_CONTENT may publish");
+assert.equal(hasFacebookPagePublishingTask(["PROFILE_PLUS_FULL_CONTROL"]), true, "New Pages Experience full-control roles may publish");
+assert.equal(hasFacebookPagePublishingTask(["MANAGE"]), false, "task-management access alone must not be treated as content publishing access");
+
 
 const youtubeOnly = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "false", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(youtubeOnly, ["youtube"]);
@@ -273,6 +284,9 @@ assert.equal(
   true,
   "a Facebook-only block must not prevent an independent YouTube target",
 );
+
+const facebookOAuthCallbackSource = readFileSync(resolve(process.cwd(), "src/app/api/admin/social/facebook/callback/route.ts"), "utf8");
+assert.match(facebookOAuthCallbackSource, /hasFacebookPagePublishingTask\(selectedPage\.tasks\)/, "OAuth must validate a publish-capable Page task before storing credentials");
 
 const adminSocialRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
