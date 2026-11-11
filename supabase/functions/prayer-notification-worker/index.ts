@@ -482,18 +482,38 @@ async function ensureSchedules(now: Date): Promise<number> {
 
 async function recoverStaleClaims(now: Date) {
   const staleBefore = new Date(now.getTime() - 10 * 60_000).toISOString();
-  const { error } = await supabase
+  const retryAfter = new Date(now.getTime() + 60_000).toISOString();
+
+  // Match the normal delivery retry budget. A repeatedly interrupted claim
+  // must not cycle forever through processing -> failed -> processing.
+  const { error: retryError } = await supabase
     .from("prayer_notification_deliveries")
     .update({
       status: "failed",
       failed_at: now.toISOString(),
-      retry_after: new Date(now.getTime() + 60_000).toISOString(),
-      error_message: "Recovered stale worker claim",
+      retry_after: retryAfter,
+      error_message: "Recovered stale worker claim; retry scheduled",
       updated_at: now.toISOString(),
     })
     .eq("status", "processing")
-    .lt("processing_at", staleBefore);
-  if (error) throw error;
+    .lt("processing_at", staleBefore)
+    .lt("attempt_count", 3);
+  if (retryError) throw retryError;
+
+  const { error: exhaustedError } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      status: "cancelled",
+      failed_at: now.toISOString(),
+      processed_at: now.toISOString(),
+      retry_after: null,
+      error_message: "Stale worker claim exhausted retry budget; manual review required",
+      updated_at: now.toISOString(),
+    })
+    .eq("status", "processing")
+    .lt("processing_at", staleBefore)
+    .gte("attempt_count", 3);
+  if (exhaustedError) throw exhaustedError;
 }
 
 async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
