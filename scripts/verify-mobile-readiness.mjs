@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
   "capacitor.config.json",
+  "mobile-shell/index.html",
   "android/app/src/main/AndroidManifest.xml",
   "android/gradle/wrapper/gradle-wrapper.properties",
   "android/app/src/main/java/com/zikr/app/MainActivity.java",
@@ -53,6 +54,10 @@ try {
 const packageDependencies = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 if (!packageDependencies["@capgo/capacitor-social-login"]) failures.push("package.json is missing @capgo/capacitor-social-login required for Android native Google login");
 
+const mobileWebDir = typeof capacitor.webDir === "string" ? capacitor.webDir.trim().replace(/\\/+$/, "") : "";
+if (!mobileWebDir || !existsSync(`${mobileWebDir}/index.html`)) {
+  failures.push("Capacitor webDir must resolve to a directory containing a root index.html entry point.");
+}
 if (capacitor.appId !== "com.zikr.app") failures.push("Capacitor appId must be com.zikr.app");
 if (capacitor.appName !== "ZIKR | ذِكرٌ") failures.push("Capacitor appName must be ZIKR | ذِكرٌ");
 if (capacitor.server?.url !== "https://zikrmediaofficial.vercel.app") failures.push("Capacitor server.url must point at the production SSR origin");

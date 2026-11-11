@@ -41,6 +41,8 @@ The root `package.json` includes the Capacitor 7 runtime/platform/plugin package
 
 ## Build sequence
 
+The Capacitor CLI requires `webDir` to contain a root `index.html`. The repository uses Next.js SSR and loads the live canonical origin inside native shells, so `mobile-shell/index.html` is a minimal local fallback entry point—not a static export of the Next.js application. Keep `capacitor.config.json` pointed at this directory; do not point it at `.next`, which is a server build output rather than a Capacitor web-asset bundle.
+
 ```bash
 pnpm install --frozen-lockfile
 pnpm build
