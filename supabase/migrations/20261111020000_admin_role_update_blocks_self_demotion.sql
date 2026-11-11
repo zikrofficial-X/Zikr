@@ -100,7 +100,6 @@ BEGIN
     VALUES (p_user_id, p_role, p_actor_user_id, v_now)
     ON CONFLICT (user_id) DO UPDATE
       SET role = EXCLUDED.role,
-          created_by = EXCLUDED.created_by,
           updated_at = EXCLUDED.updated_at;
   END IF;
 
