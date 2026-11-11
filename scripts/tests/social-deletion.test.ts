@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { deleteSocialPlatformPost } from "../../src/features/social/services/social-deletion";
+import { canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
 
 const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
@@ -149,3 +150,106 @@ await assert.rejects(
 );
 
 console.log("Social remote deletion tests passed.");
+
+const safeFailedQueueItem = {
+  status: "failed",
+  target_platforms: ["facebook", "youtube"],
+  error_message: "The providers rejected the requests.",
+  metadata: {
+    platformResults: {
+      facebook: { ok: false, error: "Facebook rejected the post (HTTP 400)." },
+      youtube: { ok: false, error: "YouTube rejected the video (HTTP 422)." },
+    },
+  },
+};
+assert.equal(
+  canDeleteLocalSocialQueueItem(safeFailedQueueItem),
+  true,
+  "a wholly failed row with an explicit non-ambiguous failure for every target can be removed from the local queue",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { unavailablePlatforms: ["youtube"], platformResults: {} },
+  }),
+  true,
+  "a target explicitly marked unavailable was never sent to a provider and may be cleaned up",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "partial",
+    target_platforms: ["facebook", "youtube"],
+    error_message: "One provider failed.",
+    metadata: {
+      platformResults: {
+        facebook: { ok: true, remoteId: "1234567890123456" },
+        youtube: { ok: false, error: "HTTP 422 rejected." },
+      },
+    },
+  }),
+  false,
+  "partial rows must retain their queue IDs even when one provider result failed",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { platformResults: { youtube: { ok: true, remoteId: "FKQ4tsQOtTs" } } },
+  }),
+  false,
+  "a recorded successful remote post must never be orphaned by local queue cleanup",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: "fetch failed",
+    metadata: { platformResults: { youtube: { ok: false, error: "fetch failed", requiresReconciliation: true } } },
+  }),
+  false,
+  "ambiguous provider outcomes must remain available for manual reconciliation",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube", "facebook"],
+    error_message: null,
+    metadata: { platformResults: { youtube: { ok: false, error: "HTTP 422 rejected." } } },
+  }),
+  false,
+  "missing per-platform outcomes must fail closed instead of deleting an incomplete audit record",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { sourceMediaMissing: true, platformResults: { youtube: { ok: false, error: "HTTP 422 rejected." } } },
+  }),
+  false,
+  "missing source media requires a separate reconciliation path and cannot be erased by queue cleanup",
+);
+
+const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
+assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
+assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
+assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(item\.updated_at\?\.trim\(\) \?\? ""\)\}/);
+assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
+assert.match(
+  socialAdminRoute,
+  /retry_all_failed[\s\S]*?id=in\.\(.*?ids\.map\(encodeURIComponent\)/,
+  "bulk retry must be scoped to the IDs shown in the admin queue",
+);
+assert.doesNotMatch(
+  socialAdminRoute,
+  /social_publish_queue\?status=in\.\(failed,partial\)&select=id[\s\S]*?method: "DELETE"/,
+  "the API must not expose an unbounded failed/partial queue delete",
+);
+const socialAdminClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
+assert.match(socialAdminClient, /localDeletable\.map\(item => item\.id\)/);
+assert.match(socialAdminClient, /حذف الفاشلة الآمنة/);
+assert.match(socialAdminClient, /confirmedNoRemotePublication = true/);
+
