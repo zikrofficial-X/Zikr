@@ -90,7 +90,7 @@ assert.equal(
   "analytics and publishing credential reads must load the provider channel ID",
 );
 assert.match(credentialSource, /connectedBy: string/, "saving a YouTube OAuth credential must require an authenticated actor");
-assert.match(credentialSource, /connected_by:\\s*connectedBy/, "the credential row must retain the authenticated actor ID");
+assert.ok(credentialSource.includes("connected_by: connectedBy"), "the credential row must retain the authenticated actor ID");
 const youtubeCallbackSource = readFileSync(
   new URL("../../src/app/api/admin/social/youtube/callback/route.ts", import.meta.url),
   "utf8",
