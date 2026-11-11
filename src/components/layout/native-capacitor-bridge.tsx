@@ -347,6 +347,25 @@ export function NativeCapacitorBridge() {
     // NativeGoogleOAuthHandler is the single owner of the com.zikr.app://auth/callback
     // flow so the PKCE verifier remains in the same WebView storage context.
 
+    // Universal links for public content must navigate the existing WebView.
+    // OAuth callbacks are excluded from AASA and remain in the browser until the
+    // server exchanges the code and redirects through the custom scheme.
+    void app?.addListener?.("appUrlOpen", (event: unknown) => {
+      const incomingUrl = (event as { url?: string })?.url;
+      if (!incomingUrl) return;
+
+      try {
+        const target = new URL(incomingUrl);
+        if (target.origin !== PRODUCTION_URL) return;
+        if (target.pathname.startsWith("/auth/callback")) return;
+
+        const path = target.pathname + target.search + target.hash;
+        window.location.assign(path);
+      } catch (error) {
+        console.warn("[native-bridge] Ignored invalid universal link", error);
+      }
+    });
+
     void app?.addListener?.("appStateChange", (state: unknown) => {
       const isActive = (state as { isActive?: boolean })?.isActive === true;
       if (isActive) {
