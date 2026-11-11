@@ -378,6 +378,40 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
   return { ok: true, reason: "GitHub Release assets, stored checksums, and actual Supabase APK/AAB bytes match." };
 }
 
+const REFERENCE_ORDER_COLUMNS = Object.freeze({
+  kids_content: "id",
+  media_assets: "id",
+  social_sync_jobs: "id",
+  quran_audio: "id",
+  site_audio_assets: "id",
+  video_generation_requests: "id",
+  videos: "id",
+  youtube_feed_cache: "video_id",
+  content_agent_queue: "id",
+  content_sources: "id",
+  social_publish_queue: "id",
+  content_library: "id",
+  articles: "id",
+  battles: "id",
+  companions: "id",
+  conquests: "id",
+  prophets: "id",
+  kids_games: "id",
+  profiles: "id",
+  quran_ayahs: "id",
+  quran_reciters: "id",
+  scholars: "id",
+  social_platform_profiles: "platform",
+  tawasheeh: "id",
+});
+
+export function getReferenceOrderColumn(table) {
+  if (!Object.hasOwn(REFERENCE_ORDER_COLUMNS, table)) {
+    throw new Error(`No deterministic primary-key order is configured for Storage reference table ${table}.`);
+  }
+  return REFERENCE_ORDER_COLUMNS[table];
+}
+
 async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl) {
   const patterns = [
     {
@@ -641,8 +675,9 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
   const results = await Promise.all(patterns.map(async (pattern) => {
     const rows = [];
     for (let offset = 0; offset < 5000; offset += 1000) {
+      const orderColumn = getReferenceOrderColumn(pattern.table);
       let query = client.from(pattern.table).select(pattern.column);
-      query = pattern.filter(query);
+      query = pattern.filter(query).order(orderColumn, { ascending: true });
       const { data, error } = await query.range(offset, offset + 999);
       if (error) {
         throw new Error(`Reference inventory failed for ${pattern.table}.${pattern.column}: ${error.message}`);
@@ -663,6 +698,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       .from("content_library")
       .select("media")
       .not("media", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + 999);
     if (error) throw new Error(`Reference inventory failed for content_library.media: ${error.message}`);
     libraryRows.push(...(data ?? []));
