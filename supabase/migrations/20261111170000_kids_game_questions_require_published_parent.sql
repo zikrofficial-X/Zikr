@@ -2,28 +2,16 @@ BEGIN;
 
 ALTER TABLE public.kids_game_questions ENABLE ROW LEVEL SECURITY;
 
+-- Question rows contain correct_index. Do not expose the base table to public
+-- clients: a published-parent filter does not protect answer keys. Public
+-- gameplay must use a separately reviewed projection that omits correct_index.
 DROP POLICY IF EXISTS kids_game_questions_public_read
   ON public.kids_game_questions;
 
-CREATE POLICY kids_game_questions_public_read
-  ON public.kids_game_questions
-  FOR SELECT
-  TO anon
-  USING (
-    published IS TRUE
-    AND EXISTS (
-      SELECT 1
-      FROM public.kids_game_levels AS level
-      JOIN public.kids_games AS game
-        ON game.id = level.game_id
-      WHERE level.id = kids_game_questions.level_id
-        AND level.published IS TRUE
-        AND game.published IS TRUE
-    )
-  );
+REVOKE SELECT ON TABLE public.kids_game_questions FROM PUBLIC, anon;
+GRANT SELECT ON TABLE public.kids_game_questions TO authenticated;
 
-COMMENT ON POLICY kids_game_questions_public_read
-  ON public.kids_game_questions
-  IS 'Anonymous clients can read only published questions belonging to a published level and published Kids game.';
+COMMENT ON TABLE public.kids_game_questions
+  IS 'Contains quiz answer keys. Direct SELECT is restricted to authenticated administrators; public gameplay must use a reviewed projection that omits correct_index.';
 
 COMMIT;
