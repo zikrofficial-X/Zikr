@@ -6,11 +6,12 @@
 - PR: [#320](https://github.com/zikrofficial-X/Zikr/pull/320)
 - Branch: `audit/zikr-kids-daily-priority-20261110`
 - Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
-- Source snapshot head: `8af9476d57bb1b6c355026948f7169c0c67e09ee` (documentation reconciliation commit; the last code-bearing head is `481c37384f118fd60dddc8243bd73c97f54375a5`).
-- PR comparison at this snapshot: 730 commits ahead, 0 behind; 233 changed files (77 added, 155 modified, 0 removed).
-- Recursive source-snapshot tree: 2236 entries (1740 files, 496 directories, 140,432,019 file bytes); complete, not truncated.
-- Last code-bearing exact-head verification: GitHub Quality Gate #2630 / run `43117114041` / job `130847826438` passed full on `481c37384f118fd60dddc8243bd73c97f54375a5`; CircleCI `config-guard`, `source-verify`, and `application-build-docs` also passed on that code head. The documentation-only snapshot commits are not a substitute for the required final exact-head rerun.
-- This overlay contains 232 changed-file rows. It excludes its own file because that artifact is created in a subsequent documentation-only commit.
+- Source snapshot head: `31761c94adf9072b74ab37febd7dd7c9b62904a4` (documentation reconciliation snapshot; last code-bearing head is `481c37384f118fd60dddc8243bd73c97f54375a5`).
+- Full PR comparison: 732 commits ahead, 0 behind; 233 changed files (78 added, 155 modified, 0 removed).
+- This overlay contains 232 rows because it excludes its own file (one of the 78 added paths); its table delta is 77 added and 155 modified rows.
+- Recursive source-snapshot tree: 2236 entries (1740 files, 496 directories, 140,439,359 file bytes); complete, not truncated.
+- Last code-bearing exact-head verification: GitHub Quality Gate #2630 / run `43117114041` / job `130847826438` passed full on `481c37384f118fd60dddc8243bd73c97f54375a5`; CircleCI `config-guard`, `source-verify`, and `application-build-docs` also passed on that code head. The following documentation-only snapshot commits are not a substitute for the required final exact-head rerun.
+- Status counts in this overlay: `REVIEW_REQUIRED` 207; `CONTENT_READ_PENDING_TRACE` 1; `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` 2; `CONTENT_READ_TESTED_PASS` 12; `FIXED_TESTED_PENDING_LIVE_APPLY` 10.
 - Status semantics: `REVIEW_REQUIRED` means full source/import/consumer/runtime trace is still open. `CONTENT_READ_TESTED_PASS` means the listed file was read and its focused test ran in the full gate. `FIXED_TESTED_PENDING_LIVE_APPLY` means migration SQL and its test contract passed locally/CI but production application remains owner-gated. `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` means code/test checks passed but a production or device acceptance gate remains. `CONTENT_READ_PENDING_TRACE` means the file was read in this pass but its complete consumer trace remains open.
 
 ## Changed-file inventory
@@ -26,7 +27,7 @@
 | `.gitignore` | MODIFIED | `12594eba3cb52a5de9723fee782804cba9a023d9` | 1632 | REVIEW_REQUIRED |
 | `android/app/src/main/AndroidManifest.xml` | MODIFIED | `4090657e7b7de1b16c0d653a0663e50d6846bcbb` | 3457 | REVIEW_REQUIRED |
 | `capacitor.config.json` | MODIFIED | `a7e77c6caf9a31a90a590c78b0a4ad99a846db0f` | 2029 | REVIEW_REQUIRED |
-| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `36e8b8d7bdb0fd988ec634ffe72cde2ef3f3307e` | 160707 | REVIEW_REQUIRED |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `ea0510b28772d3f2e5c8a930e58aa4c627ad7cf9` | 160854 | REVIEW_REQUIRED |
 | `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `ec18d8ac8d38e77e49af1a2add71e4b1f55e57f7` | 666724 | REVIEW_REQUIRED |
 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | MODIFIED | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | CONTENT_READ_TESTED_PASS |
 | `docs/background-jobs.md` | MODIFIED | `a03f31cd2498a8adf3eeef89574b72a1bca97a52` | 11119 | REVIEW_REQUIRED |
@@ -40,7 +41,7 @@
 | `mobile-shell/index.html` | ADDED | `2ebf7ae7b16b2d971cc009878b44be9d4b1b91ae` | 1199 | REVIEW_REQUIRED |
 | `mobile/README.md` | MODIFIED | `fc3584fbb947a09a8c5ae9ef0e34363a1a2e8fa2` | 3561 | REVIEW_REQUIRED |
 | `package.json` | MODIFIED | `9a6a95e9b5bb0479df3636845c516f7da4e8c54f` | 16808 | REVIEW_REQUIRED |
-| `PROJECT_STATUS.md` | MODIFIED | `06f8a1a718478a447a265e4344f81a89ae133e62` | 115789 | REVIEW_REQUIRED |
+| `PROJECT_STATUS.md` | MODIFIED | `9eb47d345860123a951454d8bddb7e3dc8b00c1a` | 115936 | REVIEW_REQUIRED |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | `ef1cad9d7db75ee6677edc9dba3387debb95695a` | 30421 | REVIEW_REQUIRED |
 | `public/offline-content/v1/kids.json` | MODIFIED | `dc32c0bdbd722f0f920d7db2a690074de0194fcc` | 52752 | REVIEW_REQUIRED |
 | `public/offline-content/v1/manifest.json` | MODIFIED | `9d95f4df6b9e85227aed64e171a207a89da787ad` | 8419 | REVIEW_REQUIRED |
