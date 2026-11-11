@@ -243,9 +243,10 @@ function parseProfileUpdate(
   }
 
   if (hasTimezone) {
-    const candidate = typeof body.timezone === "string" && body.timezone.trim()
-      ? body.timezone
-      : "Africa/Cairo";
+    if (typeof body.timezone !== "string" || body.timezone.length > 80) {
+      return { error: "timezone must be a valid string" };
+    }
+    const candidate = body.timezone.trim() || "Africa/Cairo";
     const timezone = normalizeIanaTimeZone(candidate);
     if (!timezone) return { error: "timezone must be a valid IANA timezone" };
     parsed.timezone = timezone;
