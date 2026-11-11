@@ -12,10 +12,12 @@ export type SocialQueueSelectionCandidate = {
 };
 
 /** Merge bounded query pages while preserving priority and removing duplicate queue IDs. */
-export function mergeUniqueSocialPublishCandidates<T extends { id: string }>(
-  ...batches: readonly (readonly T[])[]
-): T[] {
-  const byId = new Map<string, T>();
+export function mergeUniqueSocialPublishCandidates<
+  const Batches extends readonly (readonly { id: string }[])[]
+>(
+  ...batches: Batches
+): Array<Batches[number][number]> {
+  const byId = new Map<string, Batches[number][number]>();
   for (const batch of batches) {
     for (const item of batch) {
       if (item && typeof item.id === "string" && item.id.trim()) byId.set(item.id, item);
