@@ -726,10 +726,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
     throw new Error("content_library.media exceeded the safe scan limit; refusing cleanup.");
   }
   for (const row of libraryRows) {
-    const serialized = JSON.stringify(row.media ?? {});
-    for (const path of candidatePaths) {
-      if (serialized.includes(path)) referenceSet.add(path);
-    }
+    recordReference(row.media ?? {});
   }
   return referenceSet;
 }
