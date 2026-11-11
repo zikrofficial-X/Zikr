@@ -7,14 +7,26 @@ import {
 } from "../../src/features/videos/services/video-media-url";
 import { resolveVideoMediaUrl } from "../../src/features/videos/services/video-media-contract";
 
+const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
+  assertCloudinaryVideoUrl(url, target, "zikr");
+
 test("accepts HTTPS Cloudinary video delivery URLs", () => {
   const url = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
-  assert.equal(assertCloudinaryVideoUrl(url, "YouTube"), url);
+  assert.equal(assertForZikrCloudinaryVideoUrl(url, "YouTube"), url);
+});
+
+test("rejects Cloudinary assets from a different tenant or missing configured cloud", () => {
+  const url = "https://res.cloudinary.com/other-cloud/video/upload/v123/auto-episode.mp4";
+  assert.throws(() => assertCloudinaryVideoUrl(url, "YouTube", "zikr"), /configured Cloudinary cloud/);
+  assert.throws(
+    () => assertCloudinaryVideoUrl("https://res.cloudinary.com/zikr/video/upload/v123/auto-episode.mp4", "YouTube", ""),
+    /configured Cloudinary cloud/,
+  );
 });
 
 test("rejects non-HTTPS Cloudinary media URLs", () => {
   assert.throws(
-    () => assertCloudinaryVideoUrl("http://res.cloudinary.com/zikr/video/upload/v123/episode.mp4", "YouTube"),
+    () => assertForZikrCloudinaryVideoUrl("http://res.cloudinary.com/zikr/video/upload/v123/episode.mp4", "YouTube"),
     /requires HTTPS/,
   );
 });
@@ -29,20 +41,20 @@ test("rejects arbitrary external hosts and SSRF targets", () => {
     "https://res.cloudinary.com.evil.test/zikr/video/upload/episode.mp4",
     "https://user:pass@res.cloudinary.com/zikr/video/upload/episode.mp4",
   ]) {
-    assert.throws(() => assertCloudinaryVideoUrl(url, "Facebook"), /Cloudinary|HTTPS/);
+    assert.throws(() => assertForZikrCloudinaryVideoUrl(url, "Facebook"), /Cloudinary|HTTPS/);
   }
 });
 
 test("rejects Cloudinary images and non-video delivery paths", () => {
   assert.throws(
-    () => assertCloudinaryVideoUrl("https://res.cloudinary.com/zikr/image/upload/cover.jpg", "Facebook"),
+    () => assertForZikrCloudinaryVideoUrl("https://res.cloudinary.com/zikr/image/upload/cover.jpg", "Facebook"),
     /video\/upload/,
   );
 });
 
 test("rejects YouTube watch and embed URLs as upload sources", () => {
   assert.throws(
-    () => assertCloudinaryVideoUrl("https://www.youtube.com/watch?v=abc123", "YouTube"),
+    () => assertForZikrCloudinaryVideoUrl("https://www.youtube.com/watch?v=abc123", "YouTube"),
     /trusted Cloudinary/,
   );
 });
