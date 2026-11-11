@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { canSchedulePrayerSubscription } from "../../supabase/functions/prayer-notification-worker/eligibility";
+import { nextLocalDate } from "../../supabase/functions/prayer-notification-worker/time-zone";
 
 const source = Array.from({ length: 205 }, (_, index) => ({
   id: String(index + 1).padStart(4, "0"),
@@ -68,6 +69,19 @@ assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing p
 assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(false, { notifications_enabled: true }), false, "a subscription without a default location must not be scheduled");
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: false }), false, "disabled prayer notifications must be skipped");
+assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: null }), false, "a null opt-in flag must fail closed");
+assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "only an explicit opt-in may schedule notifications");
+
+assert.equal(
+  nextLocalDate(new Date("2026-11-11T12:00:00.000Z"), "Pacific/Kiritimati"),
+  "2026-11-13",
+  "UTC+14 local calendar advancement must not skip the next day",
+);
+assert.equal(
+  nextLocalDate(new Date("2026-03-08T08:00:00.000Z"), "America/Los_Angeles"),
+  "2026-03-09",
+  "local calendar advancement must remain correct across daylight-saving transitions",
+);
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "configured, opted-in prayer notifications may be scheduled");
 assert.match(worker, /.order\("id", \{ ascending: true \}\)/);
 assert.match(worker, /query\.gt\("id", afterId\)/);
