@@ -245,6 +245,17 @@ assert.match(worker, /skipped invalid written-post backfill/, "one malformed or 
 assert.match(worker, /createWrittenSocialAutomationKey/);
 assert.match(worker, /enqueueExistingWrittenArticlesForFacebook/);
 assert.match(worker, /\/rest\/v1\/kids_content/);
+assert.match(
+  worker,
+  /\/rest\/v1\/stories\?select=id,title,summary,content,slug&published=eq\.true&is_approved=eq\.true&user_id=is\.null/,
+  "social source generation must exclude user-owned stories exactly as the public stories service does",
+);
+const publicStoriesService = readFileSync("src/features/stories/services/stories.ts", "utf8");
+assert.match(
+  publicStoriesService,
+  /published=eq\.true&is_approved=eq\.true&user_id=is\.null/,
+  "the public story visibility contract must remain aligned with generated social sources",
+);
 assert.match(worker, /metadata\.age_appropriate!==true/);
 assert.match(worker, /readRequired<Row>\(\s*"\/rest\/v1\/kids_content\?/, "Kids source lookup must fail closed instead of silently bypassing daily prioritization");
 assert.match(worker, /select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published,metadata&published=eq\.true/, "the source loader must read article metadata so it can exclude its own generated output");

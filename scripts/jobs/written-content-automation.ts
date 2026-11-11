@@ -24,7 +24,7 @@ async function loadSources():Promise<WrittenContentSource[]>{
   read<Row>("/rest/v1/hadiths?select=id,text_ar,narrator_ar,grade_ar,ref,hadith_number,book_id&published=eq.true&grade_ar=not.is.null&order=created_at.desc&limit=150&offset="+hadithOffset),
   read<Row>("/rest/v1/hadith_books?select=id,name_ar&limit=150"),
   read<Row>("/rest/v1/duas?select=id,title_ar,text_ar,source_ar,slug&published=eq.true&limit=150"),
-  read<Row>("/rest/v1/stories?select=id,title,summary,content,slug&published=eq.true&is_approved=eq.true&limit=100"),
+  read<Row>("/rest/v1/stories?select=id,title,summary,content,slug&published=eq.true&is_approved=eq.true&user_id=is.null&limit=100"),
   read<Row>("/rest/v1/prophet_sections?select=id,prophet_id,title_ar,content_ar,order_num&order=order_num.asc&limit=120"),
   read<Row>("/rest/v1/prophets?select=id,name_ar,slug,published&published=eq.true&limit=50"),
   read<Row>("/rest/v1/content_library?select=id,title_ar,summary_ar,body_ar,category,slug,review_status,author_name&published=eq.true&review_status=eq.approved&limit=200"),
