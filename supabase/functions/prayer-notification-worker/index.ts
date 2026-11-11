@@ -60,11 +60,12 @@ type Delivery = {
   notification_text: string | null;
   scheduled_at: string;
   attempt_count: number;
+  processing_at: string;
+  updated_at: string;
 };
 
-type DueDeliveryCandidate = Delivery & {
+type DueDeliveryCandidate = Omit<Delivery, "processing_at"> & {
   retry_after: string | null;
-  updated_at: string;
 };
 
 type VapidBundle = {
@@ -522,7 +523,7 @@ async function recoverStaleClaims(now: Date) {
   if (exhaustedError) throw exhaustedError;
 }
 
-async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
+async function getDueDeliveryCandidates(now: Date): Promise<DueDeliveryCandidate[]> {
   const { data: rows, error } = await supabase
     .from("prayer_notification_deliveries")
     .select(
@@ -534,31 +535,60 @@ async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
     .order("scheduled_at", { ascending: true })
     .limit(BATCH_SIZE);
   if (error) throw error;
+  return (rows ?? []) as DueDeliveryCandidate[];
+}
 
-  const claimed: Delivery[] = [];
-  for (const row of (rows ?? []) as DueDeliveryCandidate[]) {
-    const { data: updated, error: claimError } = await supabase
-      .from("prayer_notification_deliveries")
-      .update({
-        status: "processing",
-        processing_at: now.toISOString(),
-        attempt_count: row.attempt_count + 1,
-        error_message: null,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", row.id)
-      .in("status", ["pending", "failed"])
-      .lte("scheduled_at", now.toISOString())
-      .or(`retry_after.is.null,retry_after.lte.${now.toISOString()}`)
-      .eq("updated_at", row.updated_at)
-      .select(
-        "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count"
-      )
-      .maybeSingle();
-    if (claimError) throw claimError;
-    if (updated) claimed.push(updated as Delivery);
-  }
-  return claimed;
+/**
+ * Claim one delivery immediately before processing it. The previous worker
+ * claimed an entire 100-row batch, then sent sequentially; later rows could
+ * become stale while waiting behind a slow push request and be sent twice.
+ */
+async function claimDueDelivery(
+  candidate: DueDeliveryCandidate,
+  now: Date,
+): Promise<Delivery | null> {
+  const claimAt = now.toISOString();
+  const { data: updated, error } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      status: "processing",
+      processing_at: claimAt,
+      attempt_count: candidate.attempt_count + 1,
+      error_message: null,
+      updated_at: claimAt,
+    })
+    .eq("id", candidate.id)
+    .in("status", ["pending", "failed"])
+    .lte("scheduled_at", claimAt)
+    .or(`retry_after.is.null,retry_after.lte.${claimAt}`)
+    .eq("updated_at", candidate.updated_at)
+    .select(
+      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count, processing_at, updated_at"
+    )
+    .maybeSingle();
+  if (error) throw error;
+  return (updated as Delivery | null) ?? null;
+}
+
+/** Finalize only while this exact worker still owns the processing lease. */
+async function updateDeliveryIfLease(
+  delivery: Delivery,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      ...patch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", delivery.id)
+    .eq("status", "processing")
+    .eq("processing_at", delivery.processing_at)
+    .eq("updated_at", delivery.updated_at)
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data?.id);
 }
 
 async function deliverDue(
@@ -566,11 +596,11 @@ async function deliverDue(
   now: Date
 ): Promise<{ sent: number; failed: number; deactivated: number }> {
   await recoverStaleClaims(now);
-  const deliveries = await claimDueDeliveries(now);
-  if (!deliveries.length) return { sent: 0, failed: 0, deactivated: 0 };
+  const candidates = await getDueDeliveryCandidates(now);
+  if (!candidates.length) return { sent: 0, failed: 0, deactivated: 0 };
 
   const subscriptionIds = [
-    ...new Set(deliveries.map(delivery => delivery.push_subscription_id)),
+    ...new Set(candidates.map(delivery => delivery.push_subscription_id)),
   ];
   const { data: rows, error } = await supabase
     .from("push_subscriptions")
@@ -584,14 +614,14 @@ async function deliverDue(
 
   const prayerUserIds = [
     ...new Set(
-      deliveries
+      candidates
         .filter(delivery => delivery.notification_kind === "prayer")
         .map(delivery => delivery.user_id),
     ),
   ];
   const backgroundUserIds = [
     ...new Set(
-      deliveries
+      candidates
         .filter(delivery => delivery.notification_kind !== "prayer")
         .map(delivery => delivery.user_id),
     ),
@@ -648,7 +678,12 @@ async function deliverDue(
   let sent = 0;
   let failed = 0;
   let deactivated = 0;
-  for (const delivery of deliveries) {
+  for (const candidate of candidates) {
+    // Do not hold a whole batch in "processing" while earlier pushes are sent.
+    const deliveryNow = new Date();
+    const delivery = await claimDueDelivery(candidate, deliveryNow);
+    if (!delivery) continue;
+
     const scheduledAt = new Date(delivery.scheduled_at);
     let skipReason: string | null = null;
 
@@ -663,18 +698,18 @@ async function deliverDue(
       ) {
         skipReason = "Prayer reminder is no longer enabled or configured";
       } else if (
-        (inQuietHours(
+        inQuietHours(
           scheduledAt,
           safeTimeZone(location.timezone),
           preference.quiet_hours_start,
           preference.quiet_hours_end,
         ) ||
-          inQuietHours(
-            now,
-            safeTimeZone(location.timezone),
-            preference.quiet_hours_start,
-            preference.quiet_hours_end,
-          ))
+        inQuietHours(
+          deliveryNow,
+          safeTimeZone(location.timezone),
+          preference.quiet_hours_start,
+          preference.quiet_hours_end,
+        )
       ) {
         skipReason = "Skipped during quiet hours";
       }
@@ -687,52 +722,43 @@ async function deliverDue(
       if (!preference || enabled !== true) {
         skipReason = "Background reminder is no longer enabled";
       } else if (
-        (inQuietHours(
+        inQuietHours(
           scheduledAt,
           safeTimeZone(preference.timezone),
           preference.quiet_hours_start,
           preference.quiet_hours_end,
         ) ||
-          inQuietHours(
-            now,
-            safeTimeZone(preference.timezone),
-            preference.quiet_hours_start,
-            preference.quiet_hours_end,
-          ))
+        inQuietHours(
+          deliveryNow,
+          safeTimeZone(preference.timezone),
+          preference.quiet_hours_start,
+          preference.quiet_hours_end,
+        )
       ) {
         skipReason = "Skipped during quiet hours";
       }
     }
 
     if (skipReason) {
-      const { error: skipError } = await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: "cancelled",
-          processed_at: now.toISOString(),
-          retry_after: null,
-          error_message: skipReason,
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
-      if (skipError) throw skipError;
+      await updateDeliveryIfLease(delivery, {
+        status: "cancelled",
+        processed_at: deliveryNow.toISOString(),
+        retry_after: null,
+        error_message: skipReason,
+      });
       continue;
     }
 
     const subscription = subscriptions.get(delivery.push_subscription_id);
     if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
-      const { error: cancelError } = await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: "cancelled",
-          processed_at: now.toISOString(),
-          error_message: subscription
-            ? "Subscription owner does not match delivery owner"
-            : "Subscription is no longer active",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
-      if (cancelError) throw cancelError;
+      await updateDeliveryIfLease(delivery, {
+        status: "cancelled",
+        processed_at: deliveryNow.toISOString(),
+        retry_after: null,
+        error_message: subscription
+          ? "Subscription owner does not match delivery owner"
+          : "Subscription is no longer active",
+      });
       continue;
     }
 
@@ -765,56 +791,63 @@ async function deliverDue(
           { urgency: Urgency.High, ttl: 300, topic }
         );
 
-      await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: "sent",
-          sent_at: now.toISOString(),
-          processed_at: now.toISOString(),
-          retry_after: null,
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
-      await supabase
+      const finalized = await updateDeliveryIfLease(delivery, {
+        status: "sent",
+        sent_at: deliveryNow.toISOString(),
+        processed_at: deliveryNow.toISOString(),
+        retry_after: null,
+      });
+      if (!finalized) {
+        console.warn("[prayer-notification-worker] Push succeeded after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        continue;
+      }
+      const { error: lastUsedError } = await supabase
         .from("push_subscriptions")
         .update({
-          last_used_at: now.toISOString(),
-          updated_at: now.toISOString(),
+          last_used_at: deliveryNow.toISOString(),
+          updated_at: deliveryNow.toISOString(),
         })
-        .eq("id", subscription.id);
+        .eq("id", subscription.id)
+        .eq("user_id", delivery.user_id)
+        .eq("is_active", true);
+      if (lastUsedError) console.error("[prayer-notification-worker] subscription last-used update failed:", lastUsedError.message);
       sent += 1;
     } catch (error) {
       const status =
         error instanceof PushMessageError ? error.response.status : null;
       const invalid = status === 404 || status === 410;
-      if (invalid) {
-        await supabase
-          .from("push_subscriptions")
-          .update({ is_active: false, updated_at: now.toISOString() })
-          .eq("id", subscription.id);
-        deactivated += 1;
-      }
-
       const retryable = !invalid && delivery.attempt_count < 3;
       const retryAfter = retryable
         ? new Date(
-            now.getTime() +
+            deliveryNow.getTime() +
               Math.min(15 * 60_000, 60_000 * 2 ** delivery.attempt_count)
           ).toISOString()
         : null;
-      await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: retryable ? "failed" : "cancelled",
-          failed_at: now.toISOString(),
-          processed_at: now.toISOString(),
-          retry_after: retryAfter,
-          error_message: status
-            ? `Push service returned HTTP ${status}`
-            : "Push delivery failed",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
+      const finalized = await updateDeliveryIfLease(delivery, {
+        status: retryable ? "failed" : "cancelled",
+        failed_at: deliveryNow.toISOString(),
+        processed_at: deliveryNow.toISOString(),
+        retry_after: retryAfter,
+        error_message: status
+          ? `Push service returned HTTP ${status}`
+          : "Push delivery failed",
+      });
+      if (!finalized) {
+        console.warn("[prayer-notification-worker] Failed push result arrived after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        continue;
+      }
+      if (invalid) {
+        const { error: deactivateError } = await supabase
+          .from("push_subscriptions")
+          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+          .eq("id", subscription.id)
+          .eq("user_id", delivery.user_id);
+        if (deactivateError) {
+          console.error("[prayer-notification-worker] subscription deactivation failed:", deactivateError.message);
+        } else {
+          deactivated += 1;
+        }
+      }
       failed += 1;
     }
   }
