@@ -7,6 +7,7 @@ import { getServerEnv } from '@/lib/env';
 import { getCanonicalAuthBaseUrl } from '@/lib/auth-enhanced';
 import { isPwnedPassword } from '@/lib/security/pwned-password';
 import { updateCurrentProfile } from '@/features/profile/services/profile';
+import { sanitizeInternalPath } from '@/lib/safe-redirect';
 
 type AuthActionResult =
   | { ok: true; next?: string; message?: string }
@@ -29,8 +30,7 @@ function isValidEmail(email: string): boolean {
 }
 
 function safeNext(value: FormDataEntryValue | null): string {
-  const next = String(value || '/profile');
-  return next.startsWith('/') && !next.startsWith('//') ? next : '/profile';
+  return sanitizeInternalPath(String(value || '/profile'));
 }
 
 function loginErrorMessage(message: string): string {
