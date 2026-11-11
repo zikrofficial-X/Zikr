@@ -27,8 +27,9 @@ for (const type of KIDS_CONTENT_TYPES) {
 }
 assert.equal(isKidsContentType("unsupported"), false, "unknown Kids content types must fail validation");
 assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: { age_appropriate: true } }), true, "age-approved Kids stories remain publicly visible");
-assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: { age_appropriate: false } }), false, "unapproved Kids stories must be hidden from public content");
-assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: {} }), false, "missing age approval must fail closed for Kids stories");
+assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: { age_appropriate: false } }), true, "automation eligibility must not hide an already-published story from public content");
+assert.equal(isKidsContentPubliclyVisible({ type: "story", metadata: {} }), true, "legacy published stories without an automation flag remain publicly visible");
+assert.equal(isKidsContentPubliclyVisible({ type: "unknown", metadata: {} }), false, "unsupported content types must not be exposed through the public Kids resolver");
 assert.equal(isKidsContentPubliclyVisible({ type: "game", metadata: {} }), true, "non-story Kids content keeps its existing publication contract");
 assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube.com/embed/dQw4w9WgXcQ"), "https://www.youtube.com/embed/dQw4w9WgXcQ", "standard HTTPS YouTube embed URLs must remain supported");
 assert.equal(normalizeKidsVideoEmbedUrl("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ", "privacy-enhanced YouTube embeds must remain supported");
@@ -79,28 +80,27 @@ assert.equal(
   "curated static-only content remains available when no database row owns the slug",
 );
 
-const approvalAwareFallbackItems = [
+const publicFallbackItems = [
   { slug: "approved-story", type: "story", metadata: { age_appropriate: true } },
   { slug: "unapproved-story", type: "story", metadata: { age_appropriate: false } },
   { slug: "legacy-story", type: "story", metadata: {} },
   { slug: "public-game", type: "game", metadata: {} },
 ];
 assert.deepEqual(
-  mergeKidsContentWithFallback([], approvalAwareFallbackItems, new Set()),
-  [approvalAwareFallbackItems[0], approvalAwareFallbackItems[3]],
-  "static fallback stories must require explicit age approval even when no database row owns their slug",
+  mergeKidsContentWithFallback([], publicFallbackItems, new Set()),
+  publicFallbackItems,
+  "curated static fallback stories remain public regardless of their separate automation eligibility flag",
 );
 assert.equal(
-  getFallbackKidsContentBySlug("unapproved-story", approvalAwareFallbackItems, new Set()),
-  null,
-  "static fallback detail lookup must not expose a story without explicit age approval",
+  getFallbackKidsContentBySlug("unapproved-story", publicFallbackItems, new Set())?.slug,
+  "unapproved-story",
+  "public fallback detail lookup must not confuse automation eligibility with publication visibility",
 );
 assert.equal(
-  getFallbackKidsContentBySlug("approved-story", approvalAwareFallbackItems, new Set())?.slug,
-  "approved-story",
-  "explicitly approved static fallback stories remain available",
+  getFallbackKidsContentBySlug("legacy-story", publicFallbackItems, new Set())?.slug,
+  "legacy-story",
+  "legacy static stories without an automation flag remain publicly visible",
 );
-
 assert.deepEqual(
   parseKidsQuizData("{\"questions\":[{\"text\":\"من ربك؟\",\"options\":[\"الله\",\"غير ذلك\"],\"correctAnswer\":0}]}"),
   { questions: [{ text: "من ربك؟", options: ["الله", "غير ذلك"], correctAnswer: 0 }] },
@@ -292,10 +292,10 @@ const offlineKidsSnapshot = JSON.parse(readFileSync("public/offline-content/v1/k
 const offlineManifest = JSON.parse(readFileSync("public/offline-content/v1/manifest.json", "utf8")) as OfflineManifest;
 assert.match(service, /published=eq\.true&is_active=eq\.true/, "public Kids queries must include active state");
 assert.match(service, /select=\*&published=eq\.true&is_active=eq\.true/, "the Kids page must preserve every active published content type");
-assert.match(service, /metadata->>age_appropriate\.eq\.true/, "public Kids database reads must exclude stories without explicit age approval");
-assert.match(service, /isKidsContentPubliclyVisible/, "public Kids services must enforce age approval for stories even when the database RLS policy is unavailable");
-assert.match(service, /FALLBACK_KIDS_CONTENT\.filter\(isKidsContentPubliclyVisible\)/, "static fallback lists must apply the same explicit story age-approval gate");
-assert.match(service, /if \(!fallback \|\| !isKidsContentPubliclyVisible\(fallback\)\) return null/, "static fallback detail routes must not bypass story age approval");
+assert.doesNotMatch(service, /metadata->>age_appropriate\.eq\.true/, "public Kids database reads must not use the automation eligibility flag as a visibility gate");
+assert.match(service, /isKidsContentPubliclyVisible/, "public Kids services must reject unsupported types even when the database RLS policy is unavailable");
+assert.match(service, /FALLBACK_KIDS_CONTENT\.filter\(isKidsContentPubliclyVisible\)/, "static fallback lists must apply the same supported-type visibility gate");
+assert.match(service, /if \(!fallback \|\| !isKidsContentPubliclyVisible\(fallback\)\) return null/, "static fallback detail routes must not bypass supported-type visibility");
 assert.doesNotMatch(service, /type=eq\.story/, "the Kids page must not regress to a story-only database feed");
 assert.match(service, /supabaseServerAdminRequest[\s\S]*?select=slug/, "fallback visibility must consult database-owned slugs");
 assert.match(service, /mergeKidsContentWithFallback\(database\.items, FALLBACK_KIDS_CONTENT, database\.knownSlugs\)/);
@@ -319,8 +319,9 @@ const migration = readFileSync(
   "utf8",
 );
 assert.match(migration, /drop policy if exists "kids_content_public_read"/i);
-assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true[\s\S]*type\s*<>\s*'story'[\s\S]*metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "public Kids RLS must hide unpublished, inactive, and stories without a JSON boolean age approval");
-assert.match(migration, /kids_content\.type\s*<>\s*'story'[\s\S]*kids_content\.metadata->'age_appropriate'\s*=\s*'true'::jsonb/i, "the share counter must use the same age-approved story visibility contract");
+assert.match(migration, /published\s+is\s+true[\s\S]*is_active\s+is\s+true/i, "public Kids RLS must require published and active content");
+assert.match(migration, /kids_content\.published\s+is\s+true[\s\S]*kids_content\.is_active\s+is\s+true/i, "the share counter must use the same published and active visibility contract");
+assert.doesNotMatch(migration, /age_appropriate/i, "the automation eligibility flag must not restrict public Kids visibility or sharing");
 
 assert.match(migration, /security invoker\s+set search_path = ''/i, "the service-role share counter must use invoker privileges and an empty search path");
 assert.doesNotMatch(migration, /security definer/i, "public share-count code must not introduce a definer entry point");
