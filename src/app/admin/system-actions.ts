@@ -59,6 +59,15 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
 
+  if (key === "video_automation_enabled") {
+    const purgeRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
+    );
+    if (purgeRows?.[0]?.value === true) {
+      throw new Error("لا يمكن تغيير تشغيل أتمتة الفيديو أثناء تنظيف ملفات التوليد.");
+    }
+  }
+
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
   let value: unknown = rawValue;

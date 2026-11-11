@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/video-purge/route.ts");
+const adminSystemActions = read("src/app/admin/system-actions.ts");
 const videoMediaContract = read("src/features/videos/services/video-media-contract.ts");
 const cloudinaryMediaUrl = read("src/features/videos/services/video-media-url.ts");
 const videosService = read("src/features/videos/services/videos.ts");
@@ -132,6 +133,11 @@ assert.ok(purgePost.includes('requireAdminStepUpApi("video.delete", "/admin/medi
 assert.ok(purgePost.includes('nextPath: "nextPath" in auth ? auth.nextPath : undefined'), "the purge API must return the step-up redirect target to the admin UI.");
 assert.ok(control.includes('payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)'), "the purge UI must complete the server-enforced step-up flow.");
 assert.ok(route.includes("getVideoAutomationEnabled") && route.includes("restoreVideoAutomation(automationWasEnabled)"), "cleanup must restore the previous automation state after the temporary lock");
+const automationSettingActionStart = adminSystemActions.indexOf("export async function saveVideoAutomationSettingAction");
+const automationSettingActionEnd = adminSystemActions.indexOf("export async function requestVideoAutomationRunAction", automationSettingActionStart);
+const automationSettingAction = adminSystemActions.slice(automationSettingActionStart, automationSettingActionEnd);
+assert.ok(automationSettingActionStart >= 0 && automationSettingActionEnd > automationSettingActionStart, "the guarded automation settings action must remain present");
+assert.match(automationSettingAction, /key === "video_automation_enabled"[\s\S]*?video_purge_in_progress[\s\S]*?value === true[\s\S]*?throw new Error/, "admin settings must not overwrite the purge route's saved automation state while the purge lock is active");
 assert.ok(
   route.includes("async function acquirePurgeLock(token: string)") &&
     route.includes("async function releasePurgeLock(token: string)") &&
