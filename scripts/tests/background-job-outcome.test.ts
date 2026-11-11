@@ -143,3 +143,15 @@ assert.equal(
   3,
   "success, scheduled-worker fallback, and failure updates must all compare-and-set the original request",
 );
+const contentPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/content-publishing.ts"), "utf8");
+assert.match(contentPublishingSource, /async function recoverStaleContentPublishingClaims/);
+assert.match(contentPublishingSource, /status=eq\.processing&updated_at=lt\./, "stale content claims must be bounded by the last row update");
+assert.match(contentPublishingSource, /updated_at=eq\.\$\{encodeURIComponent\(row\.updated_at\)\}/, "stale recovery must compare the exact candidate version");
+assert.match(contentPublishingSource, /updated_at=eq\.\$\{encodeURIComponent\(item\.updated_at\)\}/, "the content queue claim must compare the exact candidate snapshot");
+assert.match(contentPublishingSource, /updated_at=eq\.\$\{encodeURIComponent\(claimUpdatedAt\)\}/, "defer, completion, and failure transitions must retain the exact processing lease");
+assert.match(contentPublishingSource, /const stillProcessing = await supabaseServerAdminRequest[\s\S]*?updated_at=eq\.\$\{encodeURIComponent\(claimUpdatedAt\)\}/, "content must not be published after a newer queue edit or cancellation");
+assert.ok(
+  contentPublishingSource.indexOf("recoverStaleContentPublishingClaims(now)") <
+    contentPublishingSource.indexOf("status=eq.queued&scheduled_at=lte."),
+  "stale content queue claims must be reconciled before new work is selected",
+);
