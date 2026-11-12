@@ -127,22 +127,46 @@ export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
 
     const clean = asString(entry);
     if (!clean) return;
-    if (candidates.has(clean)) {
-      references.add(clean);
-      return;
+
+    // Storage URLs can be percent-encoded by clients before being embedded in
+    // content/JSON, and then encoded again by an outer serializer. Decode a
+    // bounded number of layers so the database prefilter and exact matcher
+    // protect the same candidate references.
+    const variants = new Set([clean]);
+    let decoded = clean;
+    for (let pass = 0; pass < 5; pass += 1) {
+      try {
+        const next = decodeURIComponent(decoded);
+        if (next === decoded) break;
+        variants.add(next);
+        decoded = next;
+      } catch {
+        break;
+      }
     }
 
-    const managedPath = extractManagedVideoPath(clean, supabaseUrl);
-    if (managedPath && candidates.has(managedPath)) {
-      references.add(managedPath);
-      return;
-    }
+    for (const candidateValue of variants) {
+      if (candidates.has(candidateValue)) {
+        references.add(candidateValue);
+        continue;
+      }
 
-    for (const path of candidates) {
-      const segmentEncodedPath = path.split("/").map(encodeURIComponent).join("/");
-      const fullyEncodedPath = encodeURIComponent(path);
-      if (clean.includes(path) || clean.includes(segmentEncodedPath) || clean.includes(fullyEncodedPath)) {
-        references.add(path);
+      const managedPath = extractManagedVideoPath(candidateValue, supabaseUrl);
+      if (managedPath && candidates.has(managedPath)) {
+        references.add(managedPath);
+        continue;
+      }
+
+      for (const path of candidates) {
+        const segmentEncodedPath = path.split("/").map(encodeURIComponent).join("/");
+        const fullyEncodedPath = encodeURIComponent(path);
+        if (
+          candidateValue.includes(path) ||
+          candidateValue.includes(segmentEncodedPath) ||
+          candidateValue.includes(fullyEncodedPath)
+        ) {
+          references.add(path);
+        }
       }
     }
   };
@@ -501,16 +525,22 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
 });
 
 const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
-  "%/storage/v1/object/public/videos/automated/%",
-  "%2Fstorage%2Fv1%2Fobject%2Fpublic%2Fvideos%2Fautomated%2F%",
+  "%storage%v1%object%public%videos%automated%",
 ]);
 
-function textReferencePatterns(table, column) {
+export function textReferencePatterns(table, column) {
   return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
     table,
     column,
     filter: (query) => query.ilike(column, pattern),
   }));
+}
+
+export function storagePathReferencePatterns(table, column) {
+  return [
+    { table, column, filter: (query) => query.like(column, "automated/%") },
+    { table, column, filter: (query) => query.ilike(column, "%automated%2F%") },
+  ];
 }
 
 function jsonReferencePattern(table, column) {
@@ -530,231 +560,55 @@ export function getReferenceOrderColumn(table) {
 
 async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl) {
   const patterns = [
-    {
-      table: "kids_content",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_content",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "media_assets",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "media_assets",
-      column: "url",
-      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_sync_jobs",
-      column: "source_media_path",
-      filter: (query) => query.like("source_media_path", "automated/%"),
-    },
-    {
-      table: "social_sync_jobs",
-      column: "source_media_url",
-      filter: (query) => query.ilike("source_media_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "site_audio_assets",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "video_generation_requests",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "video_generation_requests",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "videos",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
+    ...textReferencePatterns("kids_content", "video_url"),
+    ...textReferencePatterns("kids_content", "featured_image_url"),
+    ...storagePathReferencePatterns("media_assets", "storage_path"),
+    ...textReferencePatterns("media_assets", "url"),
+    ...storagePathReferencePatterns("social_sync_jobs", "source_media_path"),
+    ...textReferencePatterns("social_sync_jobs", "source_media_url"),
+    ...storagePathReferencePatterns("quran_audio", "storage_path"),
+    ...storagePathReferencePatterns("site_audio_assets", "storage_path"),
+    ...textReferencePatterns("video_generation_requests", "video_url"),
+    ...textReferencePatterns("video_generation_requests", "thumbnail_url"),
+    ...textReferencePatterns("videos", "thumbnail_url"),
     {
       table: "videos",
       column: "metadata",
       filter: (query) => query.not("metadata", "is", null),
     },
-    {
-      table: "social_sync_jobs",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "youtube_feed_cache",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "youtube_feed_cache",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_agent_queue",
-      column: "source_url",
-      filter: (query) => query.ilike("source_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_sources",
-      column: "url",
-      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_publish_queue",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_publish_queue",
-      column: "image_url",
-      filter: (query) => query.ilike("image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_library",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "articles",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "battles",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "battles",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "companions",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "companions",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "conquests",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "conquests",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "prophets",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "prophets",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_games",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_games",
-      column: "icon_url",
-      filter: (query) => query.ilike("icon_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "profiles",
-      column: "avatar_url",
-      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "storage_url",
-      filter: (query) => query.ilike("storage_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_ayahs",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_reciters",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_reciters",
-      column: "base_url_template",
-      filter: (query) => query.ilike("base_url_template", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "website_url",
-      filter: (query) => query.ilike("website_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "youtube_url",
-      filter: (query) => query.ilike("youtube_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "avatar_url",
-      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "page_url",
-      filter: (query) => query.ilike("page_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "tawasheeh",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "tawasheeh",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
+    ...textReferencePatterns("social_sync_jobs", "thumbnail_url"),
+    ...textReferencePatterns("youtube_feed_cache", "video_url"),
+    ...textReferencePatterns("youtube_feed_cache", "thumbnail_url"),
+    ...textReferencePatterns("content_agent_queue", "source_url"),
+    ...textReferencePatterns("content_sources", "url"),
+    ...textReferencePatterns("social_publish_queue", "video_url"),
+    ...textReferencePatterns("social_publish_queue", "image_url"),
+    ...textReferencePatterns("content_library", "cover_url"),
+    ...textReferencePatterns("articles", "featured_image_url"),
+    ...textReferencePatterns("battles", "featured_image_url"),
+    ...textReferencePatterns("battles", "thumbnail_url"),
+    ...textReferencePatterns("companions", "featured_image_url"),
+    ...textReferencePatterns("companions", "thumbnail_url"),
+    ...textReferencePatterns("conquests", "featured_image_url"),
+    ...textReferencePatterns("conquests", "thumbnail_url"),
+    ...textReferencePatterns("prophets", "featured_image_url"),
+    ...textReferencePatterns("prophets", "thumbnail_url"),
+    ...textReferencePatterns("kids_games", "cover_url"),
+    ...textReferencePatterns("kids_games", "icon_url"),
+    ...textReferencePatterns("profiles", "avatar_url"),
+    ...textReferencePatterns("quran_audio", "audio_url"),
+    ...textReferencePatterns("quran_audio", "storage_url"),
+    ...textReferencePatterns("quran_ayahs", "audio_url"),
+    ...textReferencePatterns("quran_reciters", "thumbnail_url"),
+    ...textReferencePatterns("quran_reciters", "base_url_template"),
+    ...textReferencePatterns("scholars", "thumbnail_url"),
+    ...textReferencePatterns("scholars", "website_url"),
+    ...textReferencePatterns("scholars", "youtube_url"),
+    ...textReferencePatterns("social_platform_profiles", "avatar_url"),
+    ...textReferencePatterns("social_platform_profiles", "cover_url"),
+    ...textReferencePatterns("social_platform_profiles", "page_url"),
+    ...textReferencePatterns("tawasheeh", "audio_url"),
+    ...textReferencePatterns("tawasheeh", "thumbnail_url"),
     ...jsonReferencePattern("admin_audit_events", "metadata"),
     ...jsonReferencePattern("admin_queue_alert_deliveries", "payload"),
     ...jsonReferencePattern("admin_settings", "value"),

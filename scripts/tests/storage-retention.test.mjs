@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   compareSemverTags,
   getReferenceOrderColumn,
+  textReferencePatterns,
+  storagePathReferencePatterns,
   assertExpectedSupabaseProject,
   assertRetentionApplyConfirmation,
   probeCloudinaryPlayback,
@@ -64,6 +66,12 @@ assert.deepEqual(
   [...findManagedVideoReferences({ nested: { sourceUrl: fullyEncodedReferenceUrl } }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],
   "fully encoded Storage object paths must remain visible to the reference inventory",
+);
+const doubleEncodedReferenceUrl = encodeURIComponent(fullyEncodedReferenceUrl);
+assert.deepEqual(
+  [...findManagedVideoReferences({ nested: { sourceUrl: doubleEncodedReferenceUrl } }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "double-encoded Storage object URLs must remain visible to the reference inventory",
 );
 assert.deepEqual(
   [...findManagedVideoReferences({ note: `legacy source ${publicUrl}` }, encodedReferenceCandidates, supabaseUrl)],
@@ -305,6 +313,50 @@ assert.equal(
 );
 
 const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage.mjs", import.meta.url), "utf8");
+const capturePatternCalls = (descriptors) => {
+  const calls = [];
+  for (const descriptor of descriptors) {
+    const query = {
+      ilike(column, pattern) { calls.push({ method: "ilike", column, pattern }); return query; },
+      like(column, pattern) { calls.push({ method: "like", column, pattern }); return query; },
+    };
+    descriptor.filter(query);
+  }
+  return calls;
+};
+const sqlLikeMatches = (value, pattern) => {
+  const expression = pattern.replace(/%/g, ".*").replace(/_/g, ".");
+  return new RegExp("^" + expression + "$", "i").test(value);
+};
+const rawReferenceUrl = supabaseUrl + "/storage/v1/object/public/videos/" + encodedReferencePath;
+const fullyEncodedReferenceUrlForQuery = encodeURIComponent(rawReferenceUrl);
+const doubleEncodedReferenceUrlForQuery = encodeURIComponent(fullyEncodedReferenceUrlForQuery);
+const textReferenceCalls = capturePatternCalls(textReferencePatterns("articles", "content"));
+assert.equal(textReferenceCalls.length, 1, "text references should use one conservative raw/encoded database filter");
+for (const value of [rawReferenceUrl, fullyEncodedReferenceUrlForQuery, doubleEncodedReferenceUrlForQuery]) {
+  assert.ok(textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
+    "the database text-column filter must select raw, fully encoded, and double-encoded Storage URLs before recursive reference matching");
+}
+const fullyEncodedStoragePath = encodeURIComponent(encodedReferencePath);
+const doubleEncodedStoragePath = encodeURIComponent(fullyEncodedStoragePath);
+const storagePathCalls = capturePatternCalls(storagePathReferencePatterns("media_assets", "storage_path"));
+for (const value of [encodedReferencePath, fullyEncodedStoragePath, doubleEncodedStoragePath]) {
+  assert.ok(storagePathCalls.some((call) => sqlLikeMatches(value, call.pattern)),
+    "plain Storage path filters must select raw, fully encoded, and double-encoded paths");
+}
+const unexpectedPatternsStart = storageRetentionSource.indexOf("  const patterns = [", storageRetentionSource.indexOf("async function loadUnexpectedVideoReferences"));
+const unexpectedPatternsEnd = storageRetentionSource.indexOf("  ];", unexpectedPatternsStart);
+const unexpectedPatternsSource = storageRetentionSource.slice(unexpectedPatternsStart, unexpectedPatternsEnd);
+assert.equal(/filter: \(query\) => query\.(?:ilike|like)/.test(unexpectedPatternsSource), false,
+  "every direct URL/path reference column must use the shared raw+encoded pattern helpers");
+for (const [table, column] of [["kids_content","video_url"],["kids_content","featured_image_url"],["media_assets","url"],["social_sync_jobs","source_media_url"],["video_generation_requests","video_url"],["video_generation_requests","thumbnail_url"],["videos","thumbnail_url"],["social_sync_jobs","thumbnail_url"],["youtube_feed_cache","video_url"],["youtube_feed_cache","thumbnail_url"],["content_agent_queue","source_url"],["content_sources","url"],["social_publish_queue","video_url"],["social_publish_queue","image_url"],["content_library","cover_url"],["articles","featured_image_url"],["battles","featured_image_url"],["battles","thumbnail_url"],["companions","featured_image_url"],["companions","thumbnail_url"],["conquests","featured_image_url"],["conquests","thumbnail_url"],["prophets","featured_image_url"],["prophets","thumbnail_url"],["kids_games","cover_url"],["kids_games","icon_url"],["profiles","avatar_url"],["quran_audio","audio_url"],["quran_audio","storage_url"],["quran_ayahs","audio_url"],["quran_reciters","thumbnail_url"],["quran_reciters","base_url_template"],["scholars","thumbnail_url"],["scholars","website_url"],["scholars","youtube_url"],["social_platform_profiles","avatar_url"],["social_platform_profiles","cover_url"],["social_platform_profiles","page_url"],["tawasheeh","audio_url"],["tawasheeh","thumbnail_url"]]) {
+  assert.ok(unexpectedPatternsSource.includes('...textReferencePatterns("' + table + '", "' + column + '")'),
+    "unexpected-reference inventory must query raw and encoded forms of " + table + "." + column);
+}
+for (const [table, column] of [["media_assets","storage_path"],["social_sync_jobs","source_media_path"],["quran_audio","storage_path"],["site_audio_assets","storage_path"]]) {
+  assert.ok(unexpectedPatternsSource.includes('...storagePathReferencePatterns("' + table + '", "' + column + '")'),
+    "unexpected-reference inventory must query raw and encoded path forms of " + table + "." + column);
+}
 const videoRemoveIndex = storageRetentionSource.indexOf('.storage.from(VIDEO_BUCKET).remove(pathsToRemove)');
 const videoVerifyIndex = storageRetentionSource.indexOf('verifyStoragePathsAbsent(\n        pathsToRemove', videoRemoveIndex);
 const videoFinalizeIndex = storageRetentionSource.indexOf('state: "purged"', videoVerifyIndex);
