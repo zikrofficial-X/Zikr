@@ -1087,3 +1087,47 @@ No content generation, Gemini request, social publication, production database m
 4. Only after owner review and migration approval: merge safely, deploy to Vercel, verify READY, and run production smoke checks against the deployed SHA.
 
 No content generation, Gemini request, social publication, production database mutation, migration application, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was performed. The audit remains open.
+
+## 2026-11-12T16:24Z — PR #320 exact-head continuation and production ACL finding
+
+### Exact repository and CI checkpoint
+
+- Repository: `zikrofficial-X/Zikr`; PR #320; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Exact code head reviewed: `94b15fdc310efc35d68862752e0234c0e656d252`. GitHub comparison: 918 commits ahead, 0 behind; 284 changed paths (98 added, 186 modified, 0 removed). Derived branch inventory: 2,256 entries (1,760 files, 496 directories); no tracked path removals.
+- Exact-head GitHub Quality Gate run `43254527275`, job `131309034626`: SUCCESS. The log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all report SUCCESS at the same code head.
+- Documentation-only commits created after that code checkpoint: `9a5719babe647fc073da9c66b7e496db13299a65` (PROJECT_STATUS) and `305bdc91abf03864dbc940ee3cff6c12ea56fa61` (FILE_STATUS_MATRIX). They do not have an exact-head CI result yet; the final overlay/ledger documentation batch must receive its own full gate.
+
+### Source-path continuation: video-to-social handoff
+
+- Re-read the current worker handoff/recovery path, the social worker entrypoint, the queue-claim helpers, the regression tests, and the live queue's unique index.
+- The previously recorded failure mode at `fd60203` is superseded. The current worker persists `socialQueueEnqueueStatus: "pending"` when `queueSocialItems` fails, then `continue`s before the completed transition. `recoverPendingVideoSocialQueueEnqueues` selects pending or stale-processing handoffs using exact row-version, media URL, and marker filters. The independent social worker invokes this recovery after the purge guard and before queue claims, and it is not gated by the new-video generation toggle.
+- The live database has partial unique index `idx_social_publish_queue_automation_key` on `automation_key WHERE automation_key IS NOT NULL`, supporting idempotent enqueue reconciliation. Tests cover failed enqueue recovery, independent social-worker recovery, lease heartbeat/abort, stale-worker fencing, and queue expansion. The exact code-head full gate passed.
+- No new code repair was necessary for this previously open finding. The worker and provider-consumer modules remain open for full file-by-file review; the targeted path is not a module-wide closeout.
+
+### Production Supabase non-DML privilege finding
+
+- Read-only project migration listing: 418 applied versions, latest `20261110170000`. Eleven PR-branch migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, and `20261112103200`.
+- Read-only PostgreSQL version: 17.11. ACL counts over public tables: `anon` has MAINTAIN on 46 tables; `authenticated` has TRUNCATE on 74, REFERENCES on 74, TRIGGER on 74, and MAINTAIN on 75; `service_role` has TRUNCATE on 92 tables. The service-role grant is intentionally not revoked.
+- Branch migration `20261112103200_revoke_client_non_dml_table_privileges.sql` revokes TRUNCATE/REFERENCES/TRIGGER/MAINTAIN from PUBLIC, anon, and authenticated on existing public tables, and from future tables created by postgres and supabase_admin. `scripts/validate-migrations.mjs` seeds the production-like pre-migration grants for both owner roles, replays the migration chain, and fails if browser roles retain table/default non-DML privileges. `scripts/verify-security-hardening.mjs` checks that the migration preserves ordinary DML and service-role access and contains no data/table deletion. The exact-head full gate passed.
+- Status: `FIXED_TESTED_PENDING_LIVE_APPLY`. The production privilege gap remains live until the owner-approved migration is applied. No production SQL mutation or migration application occurred.
+
+### Manifest and inventory reconciliation
+
+- Main baseline remains `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`: 2,154 tracked entries (1,662 files, 492 directories). The manifest has 2,153 records because it excludes itself.
+- The PR branch manifest blob `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` and main manifest blob `ca147f925347d22f48f333c435822de0e2cb8daa` have the same 2,153 path set. Their only three record-value differences are: `docs` and `docs/audits` tree SHA values are null in the branch copy to avoid self-referential directory hashes; the branch copy corrects the main-tree `CONTINUOUS_CLOSEOUT_LEDGER.md` row to blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` / 99,259 bytes. The checked-in main manifest still records the older ledger blob `057c5b9ffb16691abfc6e245e583c908a0dbe73d` / 93,248 bytes. The corrected manifest remains on the PR branch; main was not modified.
+- The main-baseline matrix remains 1,525 `REVIEW_REQUIRED` rows, 129/1,662 minimum documented full-content reads, and zero closed modules. The PR overlay is separate and must not be treated as repository-wide completion.
+
+### Production runtime, mobile, and governance
+
+- Vercel production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` is READY on `main@c4560d9`. No audit Preview deployment exists; automatic Git deployments are disabled and release deployment is manual.
+- Runtime error groups in the last 24 hours: two socket-level `TypeError: fetch failed` events on home/Quran routes (last 2026-11-12T11:41:38Z) and one React streaming-boundary error on an article route (last 2026-11-11T16:51:37Z). The latest 30-minute log window returned no matching errors; 24-hour runtime logs are unavailable on the Hobby retention tier. These are not yet attributed to a code defect.
+- Vercel variable metadata was read without decrypting values. Android keystore base64/password/alias variables exist for development, preview, and production. `IOS_ASSOCIATED_DOMAIN_APP_ID` and `APPLE_TEAM_ID` are absent, so iOS Universal Link/OAuth return-to-app acceptance remains owner/device blocked.
+- `.github/CODEOWNERS` assigns all paths to `@Zikrmediaofficial`. PR #320 has zero submitted reviews and zero review threads; the connected identity's collaborator permission is null. Required owner review remains unavailable.
+- Main's separate scheduled `ci/circleci: english-content-sync` context remains FAILURE on `main@c4560d9`; it was not rerun because it may sync/generate content.
+
+### Safety and remaining work
+
+- No content generation, Gemini request, social publishing, push notification, production SQL write, migration application, Storage/media deletion, secret decryption/rotation, Android/iOS release, merge, or deployment occurred.
+- Continue the unreviewed paths in the refreshed overlay, including the remaining admin/API/RLS/auth/OAuth/Kids/media/mobile/SEO/CI/CD consumers. Keep all unread files `REVIEW_REQUIRED`.
+- Obtain CODEOWNERS approval; have the owner review the 11 pending migrations and apply them through the approved migration procedure; supply Apple identifiers and complete device acceptance; investigate the main-only content-sync failure and the historical runtime-error clusters.
+- Only after those gates are satisfied: merge safely, deploy through the manual Vercel release workflow, verify READY on the merged SHA, and run production smoke checks against that deployed SHA. The audit remains OPEN.
