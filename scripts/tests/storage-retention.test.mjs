@@ -332,7 +332,7 @@ const rawReferenceUrl = supabaseUrl + "/storage/v1/object/public/videos/" + enco
 const fullyEncodedReferenceUrlForQuery = encodeURIComponent(rawReferenceUrl);
 const doubleEncodedReferenceUrlForQuery = encodeURIComponent(fullyEncodedReferenceUrlForQuery);
 const textReferenceCalls = capturePatternCalls(textReferencePatterns("articles", "content"));
-assert.equal(textReferenceCalls.length, 1, "text references should use one conservative raw/encoded database filter");
+assert.equal(textReferenceCalls.length, 2, "text references must be queried in raw and percent-encoded path forms");
 for (const value of [rawReferenceUrl, fullyEncodedReferenceUrlForQuery, doubleEncodedReferenceUrlForQuery]) {
   assert.ok(textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
     "the database text-column filter must select raw, fully encoded, and double-encoded Storage URLs before recursive reference matching");

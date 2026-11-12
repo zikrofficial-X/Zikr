@@ -81,8 +81,26 @@ if (!disposal.includes("stagingCleanupEligibleAt") || disposal.includes("deleteM
 }
 
 const retention = read("scripts/cleanup-supabase-storage.mjs");
-for (const token of ["probeCloudinaryPlayback", "assertExpectedSupabaseProject", "assertRetentionApplyConfirmation", 'column: "video_url"', "MAX_CLOUDINARY_PROBES"]) {
+for (const token of ["probeCloudinaryPlayback", "assertExpectedSupabaseProject", "assertRetentionApplyConfirmation", "textReferencePatterns", "storagePathReferencePatterns", "MAX_CLOUDINARY_PROBES"]) {
   if (!retention.includes(token)) failures.push("Storage retention is missing a fail-closed safety contract: " + token);
+}
+const referenceScanStart = retention.indexOf("async function loadUnexpectedVideoReferences");
+const referenceScanEnd = retention.indexOf("  ];", referenceScanStart);
+const referenceScan = referenceScanStart >= 0 && referenceScanEnd > referenceScanStart
+  ? retention.slice(referenceScanStart, referenceScanEnd)
+  : "";
+for (const token of [
+  '...textReferencePatterns("social_publish_queue", "video_url")',
+  '...textReferencePatterns("video_generation_requests", "video_url")',
+  '...storagePathReferencePatterns("media_assets", "storage_path")',
+  '"%automated/%"',
+  '"%automated%2F%"',
+  "for (let pass = 0; pass < 5; pass += 1)",
+]) {
+  if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded reference protection: " + token);
+}
+if (/filter: \\(query\\) => query\\.(?:ilike|like)/.test(referenceScan)) {
+  failures.push("Storage retention reference columns must use the shared raw/encoded filters instead of raw-only query predicates");
 }
 const retentionWorkflow = read(".github/workflows/storage-retention.yml");
 if (!retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk") ||

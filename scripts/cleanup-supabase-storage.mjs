@@ -524,8 +524,12 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
   tawasheeh: "id",
 });
 
+// Every managed video object is stored under automated/. These patterns cover
+// raw paths and percent-encoded slash separators, including encoded URL values.
+// They deliberately over-select; exact recursive matching filters false positives.
 const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
-  "%storage%v1%object%public%videos%automated%",
+  "%automated/%",
+  "%automated%2F%",
 ]);
 
 export function textReferencePatterns(table, column) {
@@ -538,7 +542,7 @@ export function textReferencePatterns(table, column) {
 
 export function storagePathReferencePatterns(table, column) {
   return [
-    { table, column, filter: (query) => query.like(column, "automated/%") },
+    { table, column, filter: (query) => query.ilike(column, "%automated/%") },
     { table, column, filter: (query) => query.ilike(column, "%automated%2F%") },
   ];
 }
