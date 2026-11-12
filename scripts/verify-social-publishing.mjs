@@ -267,6 +267,18 @@ if (socialWorkflow.includes("YOUTUBE_REFRESH_TOKEN") ||
     socialWorkflow.includes("SOCIAL_PUBLISH_BATCH_SIZE: \"10\"")) {
   failures.push("GitHub workflow must not inject a refresh token or run unbounded social batches");
 }
+for (const requiredCredentialFilter of [
+  "page_access_token=not.is.null",
+  "page_access_token=neq.",
+  "refresh_token=not.is.null",
+  "refresh_token=neq.",
+  "channel_id=not.is.null",
+  "channel_id=neq.",
+]) {
+  if (!socialWorkflow.includes(requiredCredentialFilter)) {
+    failures.push("social workflow readiness must require non-empty stored provider tokens and the YouTube channel ID without selecting token values: " + requiredCredentialFilter);
+  }
+}
 for (const deleteCapableScope of [
   "https://www.googleapis.com/auth/youtube",
   "https://www.googleapis.com/auth/youtube.force-ssl",
