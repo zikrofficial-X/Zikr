@@ -3,6 +3,7 @@ import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { syncFacebookReelsInsights } from "../../src/features/social/services/facebook-reels-insights";
 import { getFacebookPageProfile } from "../../src/features/social/integrations/facebook";
 import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { getFacebookProfileSyncFailureCount } from "../../src/features/social/services/social-insights-sync-status";
 import { recoverPendingVideoSocialQueueEnqueues } from "./template-video-automation";
 import {
   claimPendingSocialPublishItems,
@@ -23,7 +24,9 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
 }
 
 export async function syncSocialInsights() {
+  let facebookProfileLookupFailed = false;
   const facebookProfile = await getFacebookPageProfile().catch((error: unknown) => {
+    facebookProfileLookupFailed = true;
     console.error(
       "[social-worker] Facebook Page profile refresh unavailable:",
       error instanceof Error ? error.message : "Unknown Facebook profile error",
@@ -63,7 +66,11 @@ export async function syncSocialInsights() {
     console.log("[social-worker] YouTube public post statistics synced:", JSON.stringify(insights));
   }
 
-  const facebookProfileFailed = facebookProfileSync.configured && facebookProfileSync.stale ? 1 : 0;
+  const facebookProfileFailed = getFacebookProfileSyncFailureCount({
+    configured: facebookProfileSync.configured,
+    stale: facebookProfileSync.stale,
+    lookupFailed: facebookProfileLookupFailed,
+  });
   return {
     facebookProfileSync,
     facebookInsights,
