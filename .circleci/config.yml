@@ -273,7 +273,12 @@ jobs:
 
             if [[ -n "${GEMINI_API_KEY:-}" ]]; then
               echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
-              pnpm translate:articles:en || article_status=$?
+              if ! command -v timeout >/dev/null 2>&1; then
+                echo "GNU timeout is required to keep the translation worker below its 60-minute lease." >&2
+                article_status=127
+              else
+                timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
+              fi
             else
               echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
               article_status=1
