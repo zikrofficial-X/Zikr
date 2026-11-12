@@ -70,6 +70,7 @@ const YOUTUBE_UPLOAD_SCOPES = [
 const YOUTUBE_DELETE_CAPABLE_SCOPES = new Set([
   "https://www.googleapis.com/auth/youtube",
   "https://www.googleapis.com/auth/youtube.force-ssl",
+  "https://www.googleapis.com/auth/youtubepartner",
 ]);
 
 export function hasYouTubeReadScopes(scopes: readonly string[]): boolean {

@@ -208,6 +208,15 @@ if (socialWorkflow.includes("YOUTUBE_REFRESH_TOKEN") ||
     socialWorkflow.includes("SOCIAL_PUBLISH_BATCH_SIZE: \"10\"")) {
   failures.push("GitHub workflow must not inject a refresh token or run unbounded social batches");
 }
+for (const deleteCapableScope of [
+  "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+  "https://www.googleapis.com/auth/youtubepartner",
+]) {
+  if (!youtubeCredentials.includes(deleteCapableScope) || !socialWorkflow.includes(deleteCapableScope)) {
+    failures.push("YouTube credential validation and workflow readiness must reject every delete-capable OAuth scope");
+  }
+}
 if (!youtubeCredentials.includes("getYouTubeUploadRefreshToken") ||
     !youtubeCredentials.includes("https://www.googleapis.com/auth/youtube.upload") ||
     !youtubeCredentials.includes("https://www.googleapis.com/auth/youtube.readonly") ||
@@ -257,7 +266,8 @@ if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("canUpload") ||
     !youtubeCallback.includes("flags.canUpload") ||
     !youtubeCallback.includes('permission: "social.manage"') ||
-    youtubeCallback.includes("youtube.force-ssl")) {
+    youtubeCallback.includes("youtube.force-ssl") ||
+    youtubeCallback.includes("youtubepartner")) {
   failures.push("YouTube callback must verify upload scope and never request channel-delete capability");
 }
 if (!videoAutomation.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||

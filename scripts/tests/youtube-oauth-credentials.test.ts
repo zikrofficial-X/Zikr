@@ -78,6 +78,16 @@ assert.equal(
   false,
   "the delete-capable YouTube force-SSL scope must never be accepted for publishing",
 );
+assert.equal(
+  hasYouTubeReadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtubepartner"]),
+  false,
+  "analytics must reject the YouTube partner scope because it carries delete-capable privileges",
+);
+assert.equal(
+  hasYouTubeUploadScopes([...requiredUploadScopes, "https://www.googleapis.com/auth/youtubepartner"]),
+  false,
+  "upload credentials must reject the YouTube partner scope because it carries delete-capable privileges",
+);
 assert.deepEqual(
   resolveYouTubeVideoDisclosure({
     content: { audience: "kids", aiProvider: "template" },

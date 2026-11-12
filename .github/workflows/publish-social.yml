@@ -134,7 +134,15 @@ jobs:
                 "https://www.googleapis.com/auth/youtube.readonly",
                 "https://www.googleapis.com/auth/yt-analytics.readonly"
               ];
-              process.stdout.write(String(required.every(scope => scopes.includes(scope))));
+              const deleteCapable = [
+                "https://www.googleapis.com/auth/youtube",
+                "https://www.googleapis.com/auth/youtube.force-ssl",
+                "https://www.googleapis.com/auth/youtubepartner"
+              ];
+              process.stdout.write(String(
+                required.every(scope => scopes.includes(scope)) &&
+                !scopes.some(scope => deleteCapable.includes(scope))
+              ));
             ' "$youtube_json")"
           fi
           echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_ready" >> "$GITHUB_ENV"
