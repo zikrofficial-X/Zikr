@@ -174,7 +174,7 @@ test("a lost processing lease prevents a completed render from advancing to publ
 });
 
 test("the video worker wraps rendering in the lease heartbeat before claiming the content hash", () => {
-  const renderPosition = videoWorkerSource.indexOf("const rendered = await withLeaseHeartbeat(() => renderVideo(request));");
+  const renderPosition = videoWorkerSource.indexOf("const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));");
   const hashClaimPosition = videoWorkerSource.indexOf(
     "await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });",
   );
@@ -184,17 +184,17 @@ test("the video worker wraps rendering in the lease heartbeat before claiming th
 });
 
 test("post-render catalog and social queue work renews the processing lease", () => {
-  assert.ok(videoWorkerSource.includes("const withLeaseHeartbeat = <T>(operation: () => Promise<T>)"));
+  assert.ok(videoWorkerSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)"));
   assert.ok(videoWorkerSource.includes("renew: () => patchProcessingRequestWithLease({})"));
 
-  const siteRegistrationCall = "await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(";
+  const siteRegistrationCall = "await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(");
   assert.equal(
     videoWorkerSource.split(siteRegistrationCall).length - 1,
     2,
     "both canonical recovery and normal site registration must keep the lease alive",
   );
   assert.ok(
-    videoWorkerSource.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))"),
+    videoWorkerSource.includes("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal))"),
     "social queue insertion must keep the processing lease alive until durable",
   );
   const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(");
