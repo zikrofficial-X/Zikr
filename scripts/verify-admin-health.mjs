@@ -97,10 +97,11 @@ if (!page.includes("إدراج منشورات الفيديو في طابور ا�
 if (!page.includes("slice(0, 12)")) {
   throw new Error("Admin health must display enough latest-per-workflow results to cover the monitored production jobs");
 }
-if (!page.includes("النشر داخل الموقع") || !page.includes("النشر الاجتماعي الخارجي") ||
-    !page.includes("فحوص الجودة الآلية") || !page.includes("صلاحيات القنوات") ||
-    !page.includes("لا توجد خطوة موافقة بشرية") || page.includes("موافقة مسؤول الفيديو")) {
-  throw new Error("Admin health must explain automatic publishing after source-locked QA without manual approval");
+if (!page.includes("النشر داخل الموقع") || !page.includes("إدراج منشورات الفيديو في طابور النشر") ||
+    !page.includes("فحوص الجودة الآلية") || !page.includes("اعتماد OAuth") ||
+    !page.includes("دون خطوة موافقة بشرية") || page.includes("موافقة مسؤول الفيديو") ||
+    page.includes("النشر الاجتماعي الخارجي</p>")) {
+  throw new Error("Admin health must distinguish queued video posts from the external publisher and explain QA/authorization requirements");
 }
 if (page.includes("getVideoEngineConfig()") || page.includes("engine.autoPublishEnabled")) {
   throw new Error("Admin health must not infer GitHub worker state from the Vercel process environment");
