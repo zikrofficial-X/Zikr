@@ -15,6 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
+import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
@@ -876,14 +877,21 @@ export async function POST(request: NextRequest) {
             results.push({ id: item.id, title: item.title, platform, status: "missing_remote_id", error: "معرّف المنشور الناجح غير محفوظ؛ لم يتم تخمينه أو إرسال طلب حذف." });
             missingRemoteId += 1;
             existingDeletions[platform] = { status: "missing_remote_id", attemptedAt: new Date().toISOString() };
-            await supabaseServerAdminRequest(
-              "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id),
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-                body: JSON.stringify({ metadata: { ...(item.metadata ?? {}), platformDeletions: existingDeletions }, updated_at: new Date().toISOString() }),
-              },
-            );
+            const persisted = await patchSocialQueueMetadataWithCas({
+              id: item.id,
+              expectedStatus: "published",
+              expectedVideoUrl: item.video_url,
+              patch: { platformDeletions: { [platform]: existingDeletions[platform] } },
+            }).catch((error) => {
+              console.error("[api/admin/social] Could not persist missing-remote-ID state:", item.id, platform, error);
+              return false;
+            });
+            if (!persisted) {
+              const lastResult = results[results.length - 1];
+              if (lastResult?.id === item.id && lastResult.platform === platform) {
+                lastResult.error = [lastResult.error, "The queue row changed concurrently; the missing-remote-ID audit state could not be saved."].filter(Boolean).join(" ");
+              }
+            }
             continue;
           }
 
@@ -901,14 +909,21 @@ export async function POST(request: NextRequest) {
 
           // Persist after each platform so a partial delete never causes a second
           // provider delete for a channel that already confirmed success.
-          await supabaseServerAdminRequest(
-            "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id),
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-              body: JSON.stringify({ metadata: { ...(item.metadata ?? {}), platformDeletions: existingDeletions }, updated_at: new Date().toISOString() }),
-            },
-          );
+          const persisted = await patchSocialQueueMetadataWithCas({
+            id: item.id,
+            expectedStatus: "published",
+            expectedVideoUrl: item.video_url,
+            patch: { platformDeletions: { [platform]: existingDeletions[platform] } },
+          }).catch((error) => {
+            console.error("[api/admin/social] Could not persist provider deletion result:", item.id, platform, error);
+            return false;
+          });
+          if (!persisted) {
+            const lastResult = results[results.length - 1];
+            if (lastResult?.id === item.id && lastResult.platform === platform) {
+              lastResult.error = [lastResult.error, "The provider result could not be saved because the queue row changed concurrently; manual reconciliation is required."].filter(Boolean).join(" ");
+            }
+          }
         }
       }
 

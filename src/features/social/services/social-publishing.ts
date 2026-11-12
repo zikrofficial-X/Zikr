@@ -17,6 +17,7 @@ import {
   selectEligibleSocialPublishItems,
 } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
+import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
@@ -804,39 +805,71 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
   // Social delivery is not permission to delete either the public playback master
   // or its staging backup. The public catalog depends on the master, while the
   // retention worker owns the staging copy after the 48-hour grace period.
-  const requestRows = await supabaseServerAdminRequest<Array<{ content: Record<string, unknown> | null }>>(
-    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) + "&select=content&limit=1",
+  // Re-read and compare the completed generation row so a concurrent render/admin
+  // update cannot have its content metadata replaced by this retention marker.
+  const requestRows = await supabaseServerAdminRequest<Array<{
+    status: string;
+    video_url: string | null;
+    content: Record<string, unknown> | null;
+    updated_at: string | null;
+  }>>(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) +
+      "&select=status,video_url,content,updated_at&limit=2",
   );
-  const existingContent = requestRows?.[0]?.content ?? {};
-  // Start the grace period when every requested platform has confirmed
-  // publication, not when an earlier partial attempt first succeeded.
-  const fullyPublishedAt = new Date().toISOString();
-  const stagingCleanupEligibleAt = getPublishedVideoStagingCleanupEligibleAt(fullyPublishedAt);
+  if (!Array.isArray(requestRows) || requestRows.length !== 1) return false;
+  const request = requestRows[0];
+  if (
+    request.status !== "completed" ||
+    request.video_url !== item.video_url ||
+    typeof request.updated_at !== "string" ||
+    !Number.isFinite(Date.parse(request.updated_at)) ||
+    (request.content !== null && (typeof request.content !== "object" || Array.isArray(request.content)))
+  ) {
+    return false;
+  }
 
-  await supabaseServerAdminRequest(
-    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id),
+  const existingContent = request.content ?? {};
+  const existingEligibleAt = existingContent.stagingCleanupDeferred === true &&
+    typeof existingContent.stagingCleanupEligibleAt === "string" &&
+    Number.isFinite(Date.parse(existingContent.stagingCleanupEligibleAt))
+    ? existingContent.stagingCleanupEligibleAt
+    : null;
+  // Start the grace period when every requested social target has confirmed
+  // publication, not when an earlier partial attempt first succeeded. Retries
+  // preserve the first confirmed deadline instead of extending it indefinitely.
+  const fullyPublishedAt = new Date().toISOString();
+  const stagingCleanupEligibleAt = existingEligibleAt ??
+    getPublishedVideoStagingCleanupEligibleAt(fullyPublishedAt);
+  const requestUpdatedAt = new Date().toISOString();
+  const updatedRequest = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) +
+      "&status=eq.completed&video_url=eq." + encodeURIComponent(item.video_url) +
+      "&updated_at=eq." + encodeURIComponent(request.updated_at),
     {
       method: "PATCH",
-      headers: { Prefer: "return=minimal" },
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
       body: JSON.stringify({
         content: { ...existingContent, stagingCleanupDeferred: true, stagingCleanupEligibleAt },
-        updated_at: new Date().toISOString(),
+        updated_at: requestUpdatedAt,
       }),
     },
   );
+  if (!Array.isArray(updatedRequest) || !updatedRequest[0]) return false;
 
-  await markQueueItem(item.id, "published", {
-    metadata: {
-      ...(item.metadata ?? {}),
+  // Merge into the latest published queue metadata with an exact row-version
+  // CAS; do not overwrite platform deletion or insights written concurrently.
+  return patchSocialQueueMetadataWithCas({
+    id: item.id,
+    expectedStatus: "published",
+    expectedVideoUrl: item.video_url,
+    patch: {
       stagingCleanupDeferred: true,
       stagingCleanupEligibleAt,
       videoCleanupPending: false,
       videoCleanupErrors: [],
     },
   });
-  return true;
 }
-
 export async function resetQueuedSocialVideoMedia(limit = 100): Promise<{ attempted: number; cleaned: number; pending: number }> {
   const maxItems = Math.max(1, Math.min(100, Math.floor(limit)));
   const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");

@@ -152,6 +152,27 @@ if (!mediaDisposal.includes("stagingCleanupEligibleAt") ||
     mediaDisposal.includes("video_url: null")) {
   failures.push("social publishing must preserve both media pointers and defer staging-copy deletion to the 48-hour retention worker");
 }
+const publishedDeleteStart = socialApi.indexOf('if (action === "delete_published")');
+const publishedDeleteEnd = socialApi.indexOf('return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });', publishedDeleteStart);
+const publishedDeleteBody = publishedDeleteStart >= 0 && publishedDeleteEnd > publishedDeleteStart
+  ? socialApi.slice(publishedDeleteStart, publishedDeleteEnd)
+  : "";
+if (!socialPublishingService.includes("patchSocialQueueMetadataWithCas") ||
+    !mediaDisposal.includes('expectedStatus: "published"') ||
+    !mediaDisposal.includes("expectedVideoUrl: item.video_url") ||
+    !mediaDisposal.includes("status=eq.completed") ||
+    !mediaDisposal.includes("updated_at=eq.")) {
+  failures.push("published-video retention markers must use completed-request and published-queue compare-and-set updates");
+}
+if (!publishedDeleteBody.includes("patchSocialQueueMetadataWithCas") ||
+    publishedDeleteBody.includes('method: "PATCH"')) {
+  failures.push("published-post deletion metadata must use the shared CAS merge helper rather than replacing a stale queue snapshot");
+}
+if (!socialQueueMetadataService.includes("updated_at=eq.") ||
+    !socialQueueMetadataService.includes("mergeSocialQueueMetadata") ||
+    !socialQueueMetadataService.includes("for (let attempt = 0; attempt < maxAttempts; attempt += 1)")) {
+  failures.push("social queue metadata updates must retry exact-row-version conflicts and merge nested platform deletion state");
+}
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     (socialPublishingService.match(/resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/g) ?? []).length < 2) {
   failures.push("social queue reads and stale recovery must share the validated explicit post-launch cutoff");
