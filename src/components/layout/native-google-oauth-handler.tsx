@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
+import { PRODUCTION_URL } from "@/lib/site";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
@@ -14,14 +15,20 @@ function getSafeNextPath(next: string | null): string {
 function isNativeGoogleCallback(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
+    const hasNativeFlowMarker = url.searchParams.get("native") === "1";
     const isAppDeepLink =
       url.protocol === "com.zikr.app:" &&
       url.hostname === "auth" &&
-      url.pathname === "/callback";
+      url.pathname === "/callback" &&
+      hasNativeFlowMarker &&
+      url.username === "" &&
+      url.password === "" &&
+      url.port === "";
     const isHttpsBridge =
       url.protocol === "https:" &&
-      url.hostname === "zikrmediaofficial.vercel.app" &&
-      url.pathname === "/auth/callback";
+      url.origin === new URL(PRODUCTION_URL).origin &&
+      url.pathname === "/auth/callback" &&
+      hasNativeFlowMarker;
     return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;

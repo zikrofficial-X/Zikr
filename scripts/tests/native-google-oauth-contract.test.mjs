@@ -11,6 +11,13 @@ const authActions = read("src/features/auth/actions.ts");
 const googleOAuth = read("src/features/auth/integrations/google-oauth.ts");
 const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
+const nativeHandler = read("src/components/layout/native-google-oauth-handler.tsx");
+assert.ok(nativeHandler.includes('import { PRODUCTION_URL } from "@/lib/site"'), "native callback validation must use the canonical production origin");
+assert.ok(nativeHandler.includes("url.origin === new URL(PRODUCTION_URL).origin"), "HTTPS callback URLs must match the exact canonical origin, including port");
+assert.ok(!nativeHandler.includes('url.hostname === "zikrmediaofficial.vercel.app"'), "native callback validation must not hardcode a stale production hostname");
+assert.ok(nativeHandler.includes('url.searchParams.get("native") === "1"'), "native callback URLs must carry the explicit native-flow marker");
+assert.ok(nativeHandler.includes('url.username === ""') && nativeHandler.includes('url.password === ""') && nativeHandler.includes('url.port === ""'), "custom-scheme callbacks must reject credentials and non-default ports");
+
 const authCallback = read("src/app/auth/callback/route.ts");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const projectIntegrity = read("scripts/verify-project-integrity.mjs");
