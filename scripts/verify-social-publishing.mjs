@@ -19,6 +19,7 @@ const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const facebookProfileIntegration = read("src/features/social/integrations/facebook.ts");
+const facebookProfileSyncPolicy = read("src/features/social/services/social-insights-sync-status.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
@@ -83,7 +84,8 @@ const insightsEnd = socialWorker.indexOf("export async function processSocialPub
 const insightsWorker = socialWorker.slice(insightsStart, insightsEnd);
 if (!insightsWorker.includes("getFacebookPageProfile()") ||
     !insightsWorker.includes("facebookProfileSync") ||
-    !insightsWorker.includes("facebookProfileSync.configured && facebookProfileSync.stale") ||
+    !insightsWorker.includes("getFacebookProfileSyncFailureCount({") ||
+    !facebookProfileSyncPolicy.includes("input.lookupFailed || (input.configured && input.stale)") ||
     !facebookProfileIntegration.includes("supabaseServerAdminRequest") ||
     facebookProfileIntegration.includes("createAdminClient")) {
   failures.push("analytics-only worker must refresh Facebook Page profile metrics through the Node-safe admin REST client and report stale profile data");

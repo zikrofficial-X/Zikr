@@ -27,4 +27,9 @@ const worker = readFileSync("scripts/jobs/social-publishing.ts", "utf8");
 assert.match(worker, /facebookProfileLookupFailed\s*=\s*true/, "the worker must preserve the lookup exception outcome");
 assert.match(worker, /getFacebookProfileSyncFailureCount\(/, "the worker must include lookup failures in its reported result");
 
+const verifier = readFileSync("scripts/verify-social-publishing.mjs", "utf8");
+assert.match(verifier, /social-insights-sync-status\.ts/, "the architecture verifier must inspect the extracted profile-sync policy");
+assert.match(verifier, /getFacebookProfileSyncFailureCount/, "the architecture verifier must follow the worker's policy helper");
+assert.match(verifier, /input\.lookupFailed \|\| \(input\.configured && input\.stale\)/, "the architecture verifier must enforce both lookup-failure and stale-profile handling");
+
 console.log("Facebook profile sync failure accounting contracts passed.");
