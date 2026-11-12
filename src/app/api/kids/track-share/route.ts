@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { consumeKidsShareRateLimit } from '@/features/kids/services/share-rate-limit';
 import { getTrustedClientAddress } from '@/features/kids/services/client-address';
+import { MAX_REQUEST_BODY_BYTES, readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 const VALID_PLATFORMS = new Set([
   'facebook',
@@ -40,16 +41,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: ShareRequest;
-  try {
-    const parsed = await request.json();
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
-    }
-    body = parsed as ShareRequest;
-  } catch {
-    return NextResponse.json({ error: 'Malformed JSON request body' }, { status: 400 });
+  const parsedBody = await readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      {
+        status: parsedBody.status,
+        headers: { 'Cache-Control': 'no-store' },
+      },
+    );
   }
+  if (!parsedBody.value || typeof parsedBody.value !== 'object' || Array.isArray(parsedBody.value)) {
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  const body = parsedBody.value as ShareRequest;
 
   try {
     const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
