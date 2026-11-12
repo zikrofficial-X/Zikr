@@ -98,6 +98,15 @@ assert.match(
 );
 const webAdsRuntime = readFileSync("src/components/layout/web-advertising-runtime.tsx", "utf8");
 const adsenseSlot = readFileSync("src/components/layout/adsense-slot.tsx", "utf8");
+const searchConsoleVerifier = readFileSync("scripts/verify-google-search-console.mjs", "utf8");
+assert.ok(
+  searchConsoleVerifier.includes("if (!isCanonicalProductionOrigin())"),
+  "Search Console verification must enforce the exact canonical origin before publisher-script injection",
+);
+assert.ok(
+  !searchConsoleVerifier.includes("isCanonicalProductionHost"),
+  "Search Console verification must not regress to hostname-only advertising checks",
+);
 const runtimeEffects = readFileSync("src/components/layout/runtime-effects.tsx", "utf8");
 assert.ok(
   runtimeEffects.includes("window.location.origin === new URL(PRODUCTION_URL).origin"),
