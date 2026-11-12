@@ -76,7 +76,12 @@ assert.ok(
   "article translation must validate Gemini before stale-queue recovery or claims can mutate production rows",
 );
 
+const geminiGuardIndex = articleSync.indexOf("if (!geminiApiKey) {");
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
+assert.ok(
+  geminiGuardIndex >= 0 && geminiGuardIndex < recoveryCallIndex,
+  "missing Gemini credentials must fail before stale translation queue recovery can write to production",
+);
 const articleCandidateIndex = articleSync.indexOf('const rows = await supabase<ArticleRow[]>(');
 assert.ok(
   recoveryCallIndex >= 0 && recoveryCallIndex < articleCandidateIndex,
@@ -104,10 +109,12 @@ assert.ok(
   credentialValidationStart >= 0 && boundedSyncStart > credentialValidationStart,
   "Supabase credentials shared by both content-sync workers must be validated before the bounded worker step",
 );
-assert.match(
-  boundedSyncCommand,
-  /if \[\[ -n "${GEMINI_API_KEY:-}" \]\][\s\S]*?pnpm translate:articles:en[\s\S]*?else[\s\S]*?article_status=1[\s\S]*?fi[\s\S]*?pnpm sync:hadith:en/,
-  "Hadith sync must remain independent when Gemini is missing or article translation fails",
+const geminiBranchStart = boundedSyncCommand.indexOf('if [[ -n "${GEMINI_API_KEY:-}" ]]');
+const geminiBranchEnd = boundedSyncCommand.indexOf("\n              fi\n\n              echo \"Synchronizing", geminiBranchStart);
+const hadithCommandPosition = boundedSyncCommand.indexOf("pnpm sync:hadith:en");
+assert.ok(
+  geminiBranchStart >= 0 && geminiBranchEnd > geminiBranchStart && hadithCommandPosition > geminiBranchEnd,
+  "Hadith sync must remain outside the optional Gemini article branch so it runs even when article translation is unavailable",
 );
 
 assert.ok(
