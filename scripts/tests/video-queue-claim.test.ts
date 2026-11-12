@@ -309,7 +309,7 @@ test("failed social enqueue remains recoverable and cannot complete the video re
   const pendingMarker = videoWorkerSource.indexOf('socialQueueEnqueueStatus: "pending"', failureHandler);
   const continuePosition = videoWorkerSource.indexOf("continue;", pendingMarker);
   const completionPosition = videoWorkerSource.indexOf(
-    'await patchProcessingRequestWithLease({\n        status: "completed"',
+    'status: "completed"',
     continuePosition,
   );
   assert.ok(queueCall >= 0 && failureHandler > queueCall);
