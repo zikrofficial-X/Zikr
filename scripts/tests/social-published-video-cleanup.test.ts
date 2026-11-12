@@ -6,6 +6,7 @@ import {
   shouldRetryPublishedVideoCleanup,
 } from "../../src/features/social/services/published-video-cleanup";
 import {
+  buildNextSocialQueueMetadataUpdatedAt,
   buildSocialQueueMetadataCasFilter,
   mergeSocialQueueMetadata,
   patchSocialQueueMetadataWithCas,
@@ -36,6 +37,31 @@ assert.throws(
 assert.throws(
   () => buildSocialQueueMetadataCasFilter("queue-1", "published", "not-a-date"),
   /valid updated_at timestamp/,
+);
+const sameMillisecond = new Date("2026-11-12T18:00:00.000Z");
+assert.equal(
+  buildNextSocialQueueMetadataUpdatedAt("2026-11-12T18:00:00.000Z", sameMillisecond),
+  "2026-11-12T18:00:00.001Z",
+  "metadata CAS revisions must advance even when two writes share the same millisecond",
+);
+assert.equal(
+  buildNextSocialQueueMetadataUpdatedAt("2026-11-12T18:00:00.001Z", sameMillisecond),
+  "2026-11-12T18:00:00.002Z",
+  "a stale clock must still produce a revision newer than the observed row",
+);
+assert.equal(
+  buildNextSocialQueueMetadataUpdatedAt("2026-11-12T17:59:59.999Z", sameMillisecond),
+  "2026-11-12T18:00:00.000Z",
+  "a later wall clock may advance the revision normally",
+);
+assert.equal(
+  buildNextSocialQueueMetadataUpdatedAt(null, sameMillisecond),
+  "2026-11-12T18:00:00.000Z",
+  "new rows without a previous revision use the current timestamp",
+);
+assert.throws(
+  () => buildNextSocialQueueMetadataUpdatedAt("not-a-date", sameMillisecond),
+  /valid previous updated_at timestamp/,
 );
 assert.deepEqual(
   mergeSocialQueueMetadata(

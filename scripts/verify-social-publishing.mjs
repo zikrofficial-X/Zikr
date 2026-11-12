@@ -172,8 +172,9 @@ if (!publishedDeleteBody.includes("patchSocialQueueMetadataWithCas") ||
 }
 if (!socialQueueMetadataService.includes("updated_at=eq.") ||
     !socialQueueMetadataService.includes("mergeSocialQueueMetadata") ||
-    !socialQueueMetadataService.includes("for (let attempt = 0; attempt < maxAttempts; attempt += 1)")) {
-  failures.push("social queue metadata updates must retry exact-row-version conflicts and merge nested platform deletion state");
+    !socialQueueMetadataService.includes("for (let attempt = 0; attempt < maxAttempts; attempt += 1)") ||
+    !socialQueueMetadataService.includes("updated_at: buildNextSocialQueueMetadataUpdatedAt(row.updated_at)")) {
+  failures.push("social queue metadata updates must retry exact-row-version conflicts, merge nested state and advance the row revision monotonically");
 }
 if (!socialPublishingService.includes("requireSocialQueueRows") ||
     socialPublishingService.includes("Array.isArray(batch) ? batch : []") ||
