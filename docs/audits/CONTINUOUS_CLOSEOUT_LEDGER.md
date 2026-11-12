@@ -1,6 +1,40 @@
 # ZIKR Continuous Closeout Ledger
 
-## Latest verified audit checkpoint — 2026-11-11T23:21:12Z
+## Latest verified audit checkpoint — 2026-11-12
+
+**State: IN PROGRESS.** PR #320 remains open and unmerged. The audit branch has not been deployed.
+
+- **Repository / PR:** `zikrofficial-X/Zikr`, [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320).
+- **Branch / base:** `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Verified source-code head:** `9b887bc7b092ff2d0a0881853adc0088fdb412a6`; 846 commits ahead, 0 behind; 268 changed files (90 added, 178 modified, 0 removed). Recursive inventories: main 2,154 entries (1,662 files, 492 directories); branch 2,248 entries (1,752 files, 496 directories). Both trees complete and not truncated; no deleted paths.
+- **Exact-head CI:** GitHub ZIKR Quality Gate run `43183750447` / job `131065763256` SUCCESS on the exact source head; full-scope log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS. A subsequent docs-only reconciliation commit requires its own gate.
+- **Repair evidence since source checkpoint `fd60203db57afc4b5168d3643d95eeffe5a90a2e`:** 40 commits changed 44 paths. Durable social queue handoff recovery: `9857141b5f7491992b343792d8632b3ed71a30b3` plus regression `50d73742602eb5813f026ac084121d0e375538f6`. Video lease serialization/fail-closed recovery: `68bded2230a69510b13ba782f9e9efb1e6215446`, `34313b08ec34973a08dabec04df7b693a187d949`, `c146f1e3fd46424ecd3ca303491657c14d9ea82b`. Facebook credential lookup and recovery fencing: `e7f60a300cd2828d9441514944eeebdbaf48a4ea`, `708403550b644602b8ecce9036abeead0329abaf`. Translation claim/recovery: `19bc53f4efc48fac4c90496942e8ea24f0b12a99`, `9f998226148fac9e6ed31d8c082535381be15b5b`. Prayer delivery lease and live-preference checks: `533e5d64538107cb395f6decc63fb652c35c037a`, `883dcf99d6001215aa7f1a0d8742a729d83d48b7`. Kids request-body/RLS hardening: `641bff4d1876d142d189fcb83b767c9da0f2891c`, `cfb4001ad2dddafffa9f72cd9bdcbe28aa5bd995`. Storage retention guard and reference freeze: `615d883504b63d12801fa1fcb91f4ad4eb8b6f86`, `ad91d7cbf7cf40aa0a7d01d3e6ad82995aceadb4`, `e819ac0d6e9d1e2e15bcb8f62270132a4951bce5`. Latest YouTube partner/delete-scope rejection: `9b887bc7b092ff2d0a0881853adc0088fdb412a6`.
+- **Focused source review this pass:** read the current video worker/social recovery and lease helpers/tests; prayer notification worker, pagination and delivery-lease code/tests; Facebook/YouTube credential and OAuth callback contracts; article/Hadith sync workers and queue recovery tests; mobile ad runtime and verification scripts; storage cleanup and retention migration; CircleCI English-sync configuration. This is a targeted batch, not completion of the 267 PR paths or the full main repository.
+- **Branch overlay:** 267 changed-file rows, source snapshot pinned to `9b887bc7...`; 44 paths changed since `fd60203...` are conservatively marked `REVIEW_REQUIRED` until their full trace is completed. The main-baseline matrix remains 1,525 `REVIEW_REQUIRED` rows and zero modules closed.
+- **Manifest:** 2,153 records (1,661 blobs and 492 directories), matching main `c4560d9` on path/type/mode/blob SHA/size; the self-entry is excluded and only `docs` / `docs/audits` directory hashes are intentionally null. The manifest remains main-only and was not rewritten.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` ACTIVE_HEALTHY, PostgreSQL 17.11.0, 418 remote migrations through `20261110170000`; ten PR-only migrations remain unapplied. Security advisor reports `auth_leaked_password_protection` WARN; performance advisor has no findings; health lints are empty. No production migration/SQL mutation.
+- **Vercel:** production `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` READY at `main@c4560d9`. No audit Preview deployment exists. Eight read-only production GETs returned HTTP 200; iOS AASA response remains empty, while Android assetlinks contain `com.zikr.app` and the configured fingerprint. No branch deploy or post-deploy smoke.
+- **Independent main CI:** `ci/circleci: english-content-sync` is FAILURE on main. Logs/partial side effects remain unverified; no rerun or Gemini/content-generation work was initiated.
+- **Owner gates:** `.github/CODEOWNERS` assigns all paths to `@Zikrmediaofficial`. PR #320 has zero submitted reviews, zero review threads, and no reviewer request. Connected identity collaborator permission is `null`; owner review cannot be obtained autonomously. The iOS app ID setting remains absent. No merge or protected-branch bypass.
+- **Safety:** no content generation, Gemini request, social publication, push notification, production database mutation, migration application, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment.
+
+### Remaining work
+
+1. Continue full source/import/consumer/runtime review for every PR overlay path and the 1,525 main-baseline review-required rows; do not close paths based on CI alone.
+2. Inspect the existing CircleCI `english-content-sync` failure logs and determine whether the scheduled run partially synchronized records; do not rerun until its external side effects are understood.
+3. Obtain mandatory CODEOWNERS owner review; no merge before approval.
+4. Owner must configure `IOS_ASSOCIATED_DOMAIN_APP_ID` using the real Apple Team ID and `com.zikr.app`, then verify iOS Universal Links on a physical device.
+5. Apply the ten pending Supabase migrations only through the approved owner/release procedure and enable leaked-password protection in Supabase Auth.
+6. Complete authenticated admin/browser smoke and physical Android/iOS deep-link, OAuth, notification, signing and release acceptance.
+7. After review and gates: merge safely, deploy to Vercel, verify READY at the merged SHA, then run production smoke checks against that exact deployment.
+
+The audit remains open. No error-free or project-closed certification is made.
+
+---
+
+# ZIKR Continuous Closeout Ledger
+
+## Previous verified audit checkpoint — 2026-11-11T23:21:12Z
 
 **State: IN PROGRESS.** PR #320 remains open and unmerged. The audit branch has not been deployed.
 
