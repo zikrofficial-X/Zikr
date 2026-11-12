@@ -4,7 +4,7 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
-import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest, shouldRunScheduledContentPublishing } from "../src/features/videos/services/background-job-outcome";
 import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../src/features/videos/services/background-job-settings";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
@@ -386,7 +386,14 @@ async function main() {
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 
-  const sitePublishing = target === "all" || target === "videos"
+  const shouldPublishScheduledContent = shouldRunScheduledContentPublishing({
+    target,
+    videoDryRun: VIDEO_DRY_RUN,
+  });
+  if (!shouldPublishScheduledContent && VIDEO_DRY_RUN && (target === "all" || target === "videos")) {
+    console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; scheduled internal site publication is skipped.");
+  }
+  const sitePublishing = shouldPublishScheduledContent
     ? await processScheduledContent(20).catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
         console.error("[background-jobs] Internal site publishing queue failed:", message);

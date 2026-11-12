@@ -10,6 +10,8 @@ GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video provi
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
+`VIDEO_AUTOMATION_DRY_RUN=true` also suppresses scheduled internal site publication for `videos` and `all` worker targets, so a rehearsal cannot claim or publish `content_publish_queue` rows. The separate social publisher is not controlled by this flag; keep `SOCIAL_PUBLISH_ENABLED=false` when no external publishing is intended.
+
 Admin **Run Now** is a one-shot dispatch signal stored in `admin_settings.video_automation_run_now`. The video worker consumes it after it has processed at least one request, even when the batch contains both successful and failed items. Failed rows retain their own queue retry state and are not retried by repeatedly replaying the same Run Now signal. A disabled worker, social-only run, or run that processed zero video rows does not consume the request. Each `video_automation_runs` audit row records the actual worker start timestamp and completion timestamp explicitly.
 
 ## Automated-QA external social publishing

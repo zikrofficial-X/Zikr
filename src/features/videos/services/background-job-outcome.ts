@@ -107,3 +107,18 @@ export function buildRunNowRequestDeleteFilter(
     `value=eq.${encodeURIComponent(serializedValue)}`,
   ].join("&");
 }
+
+
+export type ScheduledContentPublishingInput = {
+  target: string;
+  videoDryRun: boolean;
+};
+
+/**
+ * Scheduled internal site publication is part of the video worker's public
+ * side effects. A video dry run must not claim or publish content queue rows.
+ * The independent social publisher remains governed by its own opt-in.
+ */
+export function shouldRunScheduledContentPublishing(input: ScheduledContentPublishingInput): boolean {
+  return !input.videoDryRun && (input.target === "videos" || input.target === "all");
+}

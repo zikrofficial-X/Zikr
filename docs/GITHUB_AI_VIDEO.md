@@ -50,7 +50,7 @@ The database migration `20261002100000_multi_provider_free_video_engine.sql` is 
 
 ## Dry run and daily worker
 
-With `VIDEO_AUTOMATION_DRY_RUN=true`, the worker only plans/records what it would do; it does not generate, upload, or publish. The daily job name is `daily_verified_video_seed`. The existing GitHub Actions workflow is the scheduler; do not add a second recurring scheduler. The internal route requires `x-internal-job-secret` or a matching Bearer token.
+With `VIDEO_AUTOMATION_DRY_RUN=true`, the video worker does not seed or render requests, upload assets, or publish scheduled internal site content; the shared runner skips `content_publish_queue` for `videos` and `all` targets. This is not a dry run for the separate social publisher: keep `SOCIAL_PUBLISH_ENABLED=false` and use `BACKGROUND_JOB_TARGET=videos` for a no-social-publish rehearsal. The daily job name is `daily_verified_video_seed`. The existing GitHub Actions workflow is the scheduler; do not add a second recurring scheduler. The internal route requires `x-internal-job-secret` or a matching Bearer token.
 
 Run locally:
 

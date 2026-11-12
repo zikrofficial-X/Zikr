@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildRunNowRequestDeleteFilter, buildRunNowRequestValueFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, buildRunNowRequestValueFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest, shouldRunScheduledContentPublishing } from "../../src/features/videos/services/background-job-outcome";
 import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../../src/features/videos/services/background-job-settings";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
@@ -50,6 +50,19 @@ assert.equal(evaluateBackgroundJobOutcome({
   socialFailed: 0,
   sitePublishingFailed: true,
 }).shouldFailRun, true, "an internal site-publishing failure must remain fatal");
+
+assert.equal(shouldRunScheduledContentPublishing({ target: "videos", videoDryRun: true }), false,
+  "video dry-run must not claim or publish scheduled internal site content");
+assert.equal(shouldRunScheduledContentPublishing({ target: "all", videoDryRun: true }), false,
+  "an all-target dry-run must not publish scheduled internal site content");
+assert.equal(shouldRunScheduledContentPublishing({ target: "videos", videoDryRun: false }), true,
+  "the production video worker must still publish eligible internal site content after generation");
+assert.equal(shouldRunScheduledContentPublishing({ target: "all", videoDryRun: false }), true,
+  "an explicit non-dry-run all-target worker may process scheduled site content");
+assert.equal(shouldRunScheduledContentPublishing({ target: "social", videoDryRun: false }), false,
+  "the social-only worker must not claim the internal site publishing queue");
+assert.equal(shouldRunScheduledContentPublishing({ target: "insights", videoDryRun: false }), false,
+  "the analytics-only worker must not claim the internal site publishing queue");
 
 console.log("Background job outcome policy passed: partial video failures do not suppress eligible social publishing.");
 
@@ -146,6 +159,8 @@ assert.equal(
 );
 
 const backgroundRunnerSource = readFileSync(resolve(process.cwd(), "scripts/run-background-jobs.ts"), "utf8");
+assert.match(backgroundRunnerSource, /shouldRunScheduledContentPublishing\(\{[\s\S]*?target,[\s\S]*?videoDryRun: VIDEO_DRY_RUN/,
+  "the background runner must gate scheduled site publication with the video dry-run policy");
 assert.match(backgroundRunnerSource, /select=key,value,updated_at/, "Run Now consumption must read the row version");
 assert.match(backgroundRunnerSource, /enabled: isVideoAutomationEnabled\(values\.video_automation_enabled\)/, "video generation must require an explicit Admin enable flag");
 assert.match(backgroundRunnerSource, /Could not read Admin video settings; video automation will remain disabled/, "Admin settings read failures must be logged and fail closed");
