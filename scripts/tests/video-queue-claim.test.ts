@@ -189,7 +189,7 @@ test("post-render catalog and social queue work renews the processing lease", ()
   assert.ok(videoWorkerSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)"));
   assert.ok(videoWorkerSource.includes("renew: () => patchProcessingRequestWithLease({})"));
 
-  const siteRegistrationCall = "await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(");
+  const siteRegistrationCall = "await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(";
   assert.equal(
     videoWorkerSource.split(siteRegistrationCall).length - 1,
     2,
