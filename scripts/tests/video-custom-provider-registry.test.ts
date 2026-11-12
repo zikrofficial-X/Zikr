@@ -39,6 +39,8 @@ assert.ok(!providerSource.includes('args.push("--hf-token"'));
 assert.ok(pythonSource.includes("download_files=False"));
 assert.ok(pythonSource.includes("is_allowed_space_file_url"));
 assert.ok(pythonSource.includes("SameOriginRedirectHandler"));
+assert.ok(pythonSource.includes("resolve_file_url"));
+assert.ok(pythonSource.includes("utils.encode_file_path"));
 assert.ok(pythonSource.includes("MAX_VIDEO_BYTES"));
 assert.ok(pythonSource.includes('header[4:8] != b"ftyp"'));
 assert.ok(!pythonSource.includes("shutil.copyfile("));

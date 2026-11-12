@@ -95,6 +95,20 @@ def extract_file_value(value):
     return None
 
 
+def resolve_file_url(value, space_origin, encode_file_path):
+    source = extract_file_value(value)
+    if not isinstance(source, str) or not source:
+        raise RuntimeError("Gradio output must include a file URL or remote file path.")
+    if source.startswith(("http://", "https://")):
+        return source
+    if not is_trusted_space_origin(space_origin):
+        raise RuntimeError("Cannot construct a file URL for an untrusted Space origin.")
+    encoded_path = encode_file_path(source)
+    if not isinstance(encoded_path, str) or not encoded_path:
+        raise RuntimeError("Gradio returned an invalid remote file path.")
+    return space_origin.rstrip("/") + "/file=" + encoded_path
+
+
 def materialize_output(value, destination, space_origin, token=None):
     source = extract_file_value(value)
     if not isinstance(source, str) or not source:
@@ -158,7 +172,7 @@ def main():
         os.environ["HF_HOME"] = str(Path(args.output).parent / "hf-home")
 
     try:
-        from gradio_client import Client, handle_file
+        from gradio_client import Client, handle_file, utils
     except Exception as exc:
         raise RuntimeError(
             "gradio_client is not installed. The workflow must install it before the video worker runs."
@@ -216,7 +230,8 @@ def main():
         )
 
     video_value = result[0] if isinstance(result, (tuple, list)) else result
-    output = materialize_output(video_value, args.output, space_origin, token=token)
+    video_url = resolve_file_url(video_value, space_origin, utils.encode_file_path)
+    output = materialize_output(video_url, args.output, space_origin, token=token)
     print(
         json.dumps(
             {

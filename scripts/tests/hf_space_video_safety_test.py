@@ -68,6 +68,17 @@ class HuggingFaceOutputSafetyTests(unittest.TestCase):
             FILE_URL,
         )
 
+    def test_remote_file_path_is_converted_to_same_origin_file_url(self):
+        result = MODULE.resolve_file_url(
+            {"path": "/tmp/gradio/video output.mp4"},
+            SPACE_ORIGIN,
+            lambda path: path.replace("/", "%2F").replace(" ", "%20"),
+        )
+        self.assertEqual(
+            result,
+            SPACE_ORIGIN + "/file=%2Ftmp%2Fgradio%2Fvideo%20output.mp4",
+        )
+
     def test_local_paths_are_rejected_without_opening_them(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(RuntimeError, "local paths are not accepted"):
