@@ -2095,10 +2095,8 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
       ),
   );
 
-  if (existing.status === "processing" && newlyEnabledTargets.length > 0) {
-    // Do not reset a live publisher lease. Queue only the newly enabled targets
-    // in separate idempotent rows so the active worker can finish its snapshot.
-    for (const target of newlyEnabledTargets) {
+  const queueSupplementalTargets = async (lateTargets: string[]) => {
+    for (const target of lateTargets) {
       const supplementalKey = `${socialKey}:late:${target}`;
       const supplemental = await findSocialQueueByAutomationKey(supplementalKey);
       if (supplemental) continue;
@@ -2108,6 +2106,12 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         body: JSON.stringify(buildQueuePayload([target], supplementalKey)),
       });
     }
+  };
+
+  if (existing.status === "processing" && newlyEnabledTargets.length > 0) {
+    // Do not reset a live publisher lease. Queue only the newly enabled targets
+    // in separate idempotent rows so the active worker can finish its snapshot.
+    await queueSupplementalTargets(newlyEnabledTargets);
     return;
   }
 
@@ -2138,7 +2142,64 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
       },
     );
     if (!updated?.[0]?.id) {
-      console.warn("[template-video] Social queue row changed during target expansion; leaving the newer state untouched:", existing.id);
+      // The publisher may have claimed the row between our read and PATCH.
+      // Re-read once: if it is now processing, use supplemental rows; otherwise
+      // retry the compare-and-set against the newer revision.
+      const latest = await findSocialQueueByAutomationKey(socialKey);
+      if (latest) {
+        const latestTargets = Array.isArray(latest.target_platforms)
+          ? latest.target_platforms.filter(Boolean)
+          : [];
+        const latestPlatformResults =
+          latest.metadata?.platformResults && typeof latest.metadata.platformResults === "object"
+            ? (latest.metadata.platformResults as Record<string, unknown>)
+            : {};
+        const latestNewTargets = targets.filter(
+          target =>
+            !latestTargets.includes(target) &&
+            !(
+              latestPlatformResults[target] &&
+              typeof latestPlatformResults[target] === "object" &&
+              (latestPlatformResults[target] as { ok?: unknown }).ok === true
+            ),
+        );
+        if (latest.status === "processing" && latestNewTargets.length > 0) {
+          await queueSupplementalTargets(latestNewTargets);
+        } else if (latestNewTargets.length > 0) {
+          const latestFilter = buildVideoSocialQueueUpdateFilter(
+            latest.id,
+            latest.status,
+            latest.updated_at,
+          );
+          if (latestFilter) {
+            const latestDesiredTargets = [...new Set([...latestTargets, ...targets])];
+            const retried = await supabaseServerAdminRequest<Array<{ id: string }>>(
+              `/rest/v1/social_publish_queue?${latestFilter}`,
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+                body: JSON.stringify({
+                  video_url: videoUrl,
+                  target_platforms: latestDesiredTargets,
+                  status: "queued",
+                  scheduled_at: new Date().toISOString(),
+                  error_message: null,
+                  updated_at: new Date().toISOString(),
+                  metadata: {
+                    ...(latest.metadata ?? {}),
+                    authBlocked: false,
+                    nextRetryAt: null,
+                  },
+                }),
+              },
+            );
+            if (!retried?.[0]?.id) {
+              console.warn("[template-video] Social queue row changed again during target expansion; leaving the newer state untouched:", latest.id);
+            }
+          }
+        }
+      }
+      console.warn("[template-video] Social queue row changed during target expansion; reconciled once against the latest lease state:", existing.id);
     }
   }
 }

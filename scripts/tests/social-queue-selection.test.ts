@@ -218,3 +218,9 @@ assert.ok(
   templateVideoWorker.includes("buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at)"),
   "missing-media social recovery must also compare-and-set its queue row revision",
 );
+
+assert.ok(
+  templateVideoWorker.includes("const latest = await findSocialQueueByAutomationKey(socialKey)") &&
+    templateVideoWorker.includes("queueSupplementalTargets(latestNewTargets)"),
+  "a publisher claim racing the initial compare-and-set must be reconciled without resetting its active lease or losing new targets",
+);

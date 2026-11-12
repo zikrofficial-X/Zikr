@@ -226,7 +226,9 @@ if (!worker.includes("async function queueSocialItems") ||
 }
 if (!worker.includes('existing.status === "processing" && newlyEnabledTargets.length > 0') ||
     !worker.includes(":late:${target}") ||
-    !worker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)")) {
+    !worker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)") ||
+    !worker.includes("const latest = await findSocialQueueByAutomationKey(socialKey)") ||
+    !worker.includes("queueSupplementalTargets(latestNewTargets)")) {
   failures.push("video social queue expansion must preserve active publisher leases and use compare-and-set for non-processing rows");
 }
 if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
