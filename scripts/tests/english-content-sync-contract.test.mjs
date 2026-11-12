@@ -70,6 +70,12 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
+assert.ok(
+  articleSync.includes("const geminiApiKey = process.env.GEMINI_API_KEY?.trim();") &&
+    articleSync.includes("if (!geminiApiKey) {"),
+  "article translation must validate Gemini before stale-queue recovery or claims can mutate production rows",
+);
+
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
 const articleCandidateIndex = articleSync.indexOf('const rows = await supabase<ArticleRow[]>(');
 assert.ok(
@@ -90,6 +96,24 @@ const circleEnglishSync = circleCi.slice(
   circleCi.indexOf("  english-content-sync:"),
   circleCi.indexOf("  android-release-draft:"),
 );
+const credentialValidationStart = circleEnglishSync.indexOf("name: Validate production content-sync credentials");
+const boundedSyncStart = circleEnglishSync.indexOf("name: Run bounded English content sync");
+const credentialValidation = circleEnglishSync.slice(credentialValidationStart, boundedSyncStart);
+const boundedSyncCommand = circleEnglishSync.slice(boundedSyncStart);
+assert.ok(
+  credentialValidation.includes('test -n "${GEMINI_API_KEY:-}"'),
+  "CircleCI must validate Gemini before either worker can write to production",
+);
+assert.ok(
+  credentialValidationStart >= 0 && boundedSyncStart > credentialValidationStart,
+  "all production content-sync credentials must be validated before the bounded worker step",
+);
+assert.doesNotMatch(
+  boundedSyncCommand,
+  /if \[\[ -n "${GEMINI_API_KEY:-}" \]\]/,
+  "the bounded worker step must not partially run Hadith sync when Gemini is missing",
+);
+
 assert.ok(
   circleEnglishSync.includes("timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en"),
   "the scheduled CircleCI article worker must have a hard 40-minute limit below its 60-minute queue lease",
