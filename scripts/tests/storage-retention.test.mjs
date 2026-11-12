@@ -73,15 +73,22 @@ assert.deepEqual(
   [encodedReferencePath],
   "double-encoded Storage object URLs must remain visible to the reference inventory",
 );
+assert.deepEqual(
+  [...findManagedVideoReferences({ [encodedReferenceUrl]: true }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "Storage references stored as JSON object keys must block staging-object deletion",
+);
+let overEncodedReferenceUrl = encodedReferenceUrl;
+for (let depth = 0; depth < 6; depth += 1) {
+  overEncodedReferenceUrl = encodeURIComponent(overEncodedReferenceUrl);
+}
+assert.throws(
+  () => findManagedVideoReferences({ sourceUrl: overEncodedReferenceUrl }, encodedReferenceCandidates, supabaseUrl),
+  /exceeds the safe URL decoding depth/,
+  "references deeper than the decoder bound must stop retention instead of being treated as unreferenced",
+);
 
-const expectedEncodedReferencePatterns = [
-  "%automated/%",
-  "%automated%2F%",
-  "%automated%252F%",
-  "%automated%25252F%",
-  "%automated%2525252F%",
-  "%automated%252525252F%",
-];
+const expectedEncodedReferencePatterns = ["%automated%"];
 function captureReferencePatterns(patterns) {
   const captured = [];
   const query = {
@@ -362,8 +369,8 @@ const rawReferenceUrl = supabaseUrl + "/storage/v1/object/public/videos/" + enco
 const textReferenceCalls = capturePatternCalls(textReferencePatterns("articles", "content"));
 assert.equal(
   textReferenceCalls.length,
-  6,
-  "text references must be queried from raw through five-times-encoded path forms",
+  1,
+  "one broad text prefilter must select raw and arbitrarily encoded managed paths before exact matching",
 );
 const encodedReferenceUrls = [rawReferenceUrl];
 let encodedReferenceUrlAtDepth = rawReferenceUrl;
@@ -374,14 +381,14 @@ for (let depth = 0; depth < 5; depth += 1) {
 for (const value of encodedReferenceUrls) {
   assert.ok(
     textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "the database text-column filter must select Storage URLs at every supported encoding depth before recursive reference matching",
+    "the broad database text-column filter must select Storage URLs before recursive reference matching",
   );
 }
 const storagePathCalls = capturePatternCalls(storagePathReferencePatterns("media_assets", "storage_path"));
 assert.equal(
   storagePathCalls.length,
-  6,
-  "storage path references must use the same bounded encoding-depth coverage",
+  1,
+  "one broad Storage-path prefilter must select arbitrarily encoded managed paths before exact matching",
 );
 const encodedStoragePaths = [encodedReferencePath];
 let encodedStoragePath = encodedReferencePath;
@@ -392,7 +399,7 @@ for (let depth = 0; depth < 5; depth += 1) {
 for (const value of encodedStoragePaths) {
   assert.ok(
     storagePathCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "plain Storage path filters must select paths at every supported encoding depth",
+    "the broad Storage path filter must select paths before recursive reference matching",
   );
 }
 const unexpectedPatternsStart = storageRetentionSource.indexOf("  const patterns = [", storageRetentionSource.indexOf("async function loadUnexpectedVideoReferences"));

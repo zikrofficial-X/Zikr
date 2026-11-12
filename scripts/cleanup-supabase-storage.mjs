@@ -122,7 +122,12 @@ export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
       return;
     }
     if (typeof entry === "object") {
-      for (const item of Object.values(entry)) visit(item);
+      // Media references can be stored as either JSON values or map keys.
+      // Inspect both so a URL-keyed metadata object cannot hide a live asset.
+      for (const [key, item] of Object.entries(entry)) {
+        visit(key);
+        visit(item);
+      }
       return;
     }
 
@@ -168,6 +173,21 @@ export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
         ) {
           references.add(path);
         }
+      }
+    }
+
+    // Never interpret an over-encoded managed path as "unreferenced". The
+    // broad SQL prefilter below selects it, and this guard stops the entire
+    // retention run if the exact matcher cannot safely decode it.
+    if (decoded.toLowerCase().includes("automated")) {
+      let hasMoreEncoding = false;
+      try {
+        hasMoreEncoding = decodeURIComponent(decoded) !== decoded;
+      } catch {
+        // Malformed percent escapes cannot be decoded into a valid managed path.
+      }
+      if (hasMoreEncoding) {
+        throw new Error("Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.");
       }
     }
   };
@@ -525,18 +545,11 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
   tawasheeh: "id",
 });
 
-// Every managed video object is stored under automated/. These patterns cover
-// raw paths and percent-encoded slash separators, including encoded URL values.
-// They deliberately over-select; exact recursive matching filters false positives.
-const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(
-  Array.from({ length: MAX_VIDEO_REFERENCE_ENCODING_DEPTH + 1 }, (_, depth) => {
-    let encodedSlash = "/";
-    for (let pass = 0; pass < depth; pass += 1) {
-      encodedSlash = encodeURIComponent(encodedSlash);
-    }
-    return `%automated${encodedSlash}%`;
-  }),
-);
+// The "automated" path segment is invariant under encodeURIComponent. A
+// single broad prefilter therefore catches raw and arbitrarily nested URL
+// encodings; exact recursive matching removes false positives. References
+// beyond the decoder's safety bound cause the retention run to fail closed.
+const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(["%automated%"]);
 
 export function textReferencePatterns(table, column) {
   return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
