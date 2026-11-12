@@ -163,9 +163,9 @@ assert.match(preferenceLoader, /\.from\("prayer_locations"\)/);
 assert.match(preferenceLoader, /\.from\("background_reminder_preferences"\)/);
 
 assert.match(preferenceLoader, /calculation_method, madhab, notifications_enabled, prayer_reminders/);
-assert.match(preferenceLoader, /\\.select\\("id, latitude, longitude, timezone"\\)/);
+assert.match(preferenceLoader, /\.select\("id, latitude, longitude, timezone"\)/);
 assert.match(preferenceLoader, /dhikr_interval_minutes, salawat_enabled, salawat_interval_minutes/);
-assert.match(deliverySourceForFencing, /\\.from\\("prayer_schedule_cache"\\)/);
+assert.match(deliverySourceForFencing, /\.from\("prayer_schedule_cache"\)/);
 assert.match(deliverySourceForFencing, /isCurrentPrayerReminderSchedule/);
 assert.match(deliverySourceForFencing, /isCurrentIntervalReminderSlot/);
 
