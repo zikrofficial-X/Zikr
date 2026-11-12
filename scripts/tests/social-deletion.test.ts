@@ -248,7 +248,7 @@ assert.ok(
   "the server must reject remote social deletion before any provider call unless the request carries explicit confirmation",
 );
 assert.match(
-  socialAdminClient,
+  readFileSync("src/app/admin/social/social-client.tsx", "utf8"),
   /JSON\\.stringify\\(\\{ action: "delete_published", ids, platforms, confirmed: true \\}\\)/,
   "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
 );
