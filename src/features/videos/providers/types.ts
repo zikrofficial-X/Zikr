@@ -103,6 +103,15 @@ export function parseCustomVideoSpaces(value: string | undefined): VideoEngineCo
   }
 }
 
+/**
+ * Gemini editorial planning is opt-in only when both the global AI switch and
+ * the non-free-mode switch are enabled and a server key is present.
+ */
+export function isVideoAiPlanningEnabled(env = process.env): boolean {
+  const config = getVideoEngineConfig(env);
+  return !config.freeOnly && config.aiEnabled && Boolean(env.GEMINI_API_KEY?.trim());
+}
+
 export function getVideoEngineConfig(env = process.env): VideoEngineConfig {
   const customSpaces = parseCustomVideoSpaces(env.HF_VIDEO_CUSTOM_SPACES);
   const availableProviders = new Set<VideoProviderName>([

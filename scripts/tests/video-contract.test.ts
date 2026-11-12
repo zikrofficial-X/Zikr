@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { MAX_AUTO_VIDEO_SECONDS, resolveRenderDuration } from "../../src/features/videos/services/render-duration";
+import { isVideoAiPlanningEnabled } from "../../src/features/videos/providers/types";
 
 // Contract: TypeScript video status/category unions must match the latest DB check constraints.
 const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
@@ -71,6 +72,29 @@ assert.ok(
   Math.abs(resolveRenderDuration(53.6, 20) - 54.4) < 0.001,
   "a 53.6-second narration must render with its full duration and audio tail",
 );
+assert.equal(
+  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "true", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  false,
+  "free-only mode must never call Gemini even when the AI feature flag is enabled",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "false", GEMINI_API_KEY: "test-key" }),
+  false,
+  "VIDEO_AI_ENABLED=false must prevent Gemini calls even when free-only mode is disabled",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  true,
+  "Gemini planning requires both explicit opt-in flags and a server key",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "  " }),
+  false,
+  "a blank Gemini key must not enable AI planning",
+);
+const videoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(videoWorker.includes("return isVideoAiPlanningEnabled();"), "the video worker must use the shared Gemini opt-in policy");
+
 assert.equal(resolveRenderDuration(0, 20), 20, "invalid audio duration must fall back to the requested target duration");
 assert.throws(
   () => resolveRenderDuration(59.3, 20),

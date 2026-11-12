@@ -29,7 +29,7 @@ import {
   buildVideoSocialQueueRecoveryLeaseFilter,
 } from "../../src/features/videos/services/video-queue-claim";
 import { createSerializedLeaseMutation, getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
-import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { getVideoEngineConfig, isVideoAiPlanningEnabled } from "../../src/features/videos/providers/types";
 import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../../src/features/videos/services/background-job-settings";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -902,7 +902,7 @@ export function contentSourceUrl(request: GeneratedRequest) {
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
-  return process.env.VIDEO_FREE_ONLY?.toLowerCase() === "false" && Boolean(process.env.GEMINI_API_KEY?.trim());
+  return isVideoAiPlanningEnabled();
 }
 
 function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
