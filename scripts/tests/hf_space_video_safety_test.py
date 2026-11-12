@@ -67,6 +67,9 @@ class HuggingFaceOutputSafetyTests(unittest.TestCase):
         self.assertTrue(MODULE.is_trusted_space_origin("https://huggingface.co/spaces/owner/space"))
         self.assertFalse(MODULE.is_trusted_space_origin("https://huggingface.co/"))
         self.assertFalse(MODULE.is_trusted_space_origin("http://owner-space.hf.space"))
+        self.assertFalse(MODULE.is_trusted_space_origin("https://owner-space.hf.space:0"))
+        self.assertFalse(MODULE.is_allowed_space_file_url("https://owner-space.hf.space:0/file=generated-video.mp4", SPACE_ORIGIN))
+        self.assertFalse(MODULE.is_allowed_space_file_url("https://owner-space.hf.space:8443/file=generated-video.mp4", SPACE_ORIGIN))
 
     def test_filedata_url_is_preferred_over_untrusted_path(self):
         self.assertEqual(

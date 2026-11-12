@@ -31,7 +31,8 @@ def parse_args():
 
 
 def _effective_port(parsed):
-    return parsed.port or (443 if parsed.scheme == "https" else 80)
+    # An explicit port 0 is not the HTTPS default; do not treat falsy ports as absent.
+    return parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
 
 
 def should_use_public_space(space_id, requested_public=False):
