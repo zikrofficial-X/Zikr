@@ -51,6 +51,9 @@ const encodedReferencePath = "automated/story:20750:11.mp4";
 const encodedReferenceCandidates = [encodedReferencePath];
 const encodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story%3A20750%3A11.mp4`;
 const fullyEncodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/${encodeURIComponent(encodedReferencePath)}`;
+const publicUrl = encodedReferenceUrl;
+const cloudinaryMaster = "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4";
+const cutoff = "2026-10-29T00:00:00.000Z";
 assert.deepEqual(
   [...findManagedVideoReferences({ nested: [{ sourceUrl: encodedReferenceUrl }] }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],
