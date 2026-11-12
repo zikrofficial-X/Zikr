@@ -52,7 +52,7 @@ test("server REST timeout remains active when a caller signal is supplied", asyn
   process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example.test";
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "unit-test-anon-key";
   process.env.SUPABASE_URL = "https://supabase.example.test";
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "unit-test-service-key";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "test";
   let observedSignal: AbortSignal | undefined;
   globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => {
     observedSignal = init?.signal ?? undefined;
