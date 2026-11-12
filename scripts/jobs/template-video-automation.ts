@@ -1783,9 +1783,14 @@ async function registerGeneratedVideoOnSite(
     templateVersion: string;
   },
   options: { recoverPurgedRecord?: boolean } = {},
+  signal?: AbortSignal,
 ) {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
   const slug = "zikr-" + request.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
-  const existingRows = await supabaseServerAdminRequest<Array<{
+  const existingRows = await adminRequest<Array<{
     id: string;
     published: boolean | null;
   }>>(
@@ -1800,7 +1805,7 @@ async function registerGeneratedVideoOnSite(
 
   const isKidsVideo = request.content.audience === "kids";
   const categorySlug = isKidsVideo ? "kids-stories" : (INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders");
-  const categoryRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+  const categoryRows = await adminRequest<Array<{ id: string }>>(
     "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
   );
   const now = new Date().toISOString();
@@ -1886,7 +1891,7 @@ async function registerGeneratedVideoOnSite(
   };
 
   if (!videoId) {
-    const inserted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    const inserted = await adminRequest<Array<{ id: string }>>(
       "/rest/v1/videos",
       {
         method: "POST",
@@ -1897,7 +1902,7 @@ async function registerGeneratedVideoOnSite(
     videoId = inserted?.[0]?.id ?? "";
     if (!videoId) throw new Error("Generated video was uploaded but its ZIKR video record was not returned.");
   } else {
-    await supabaseServerAdminRequest(
+    await adminRequest(
       "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&published=eq.false",
       {
         method: "PATCH",
@@ -1910,13 +1915,13 @@ async function registerGeneratedVideoOnSite(
     );
   }
 
-  const queueRows = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
+  const queueRows = await adminRequest<Array<{ id: string; status: string }>>(
     "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
       encodeURIComponent(videoId) + "&select=id,status&order=created_at.desc&limit=1",
   );
   const existingQueue = queueRows?.[0];
   if (!existingQueue) {
-    await supabaseServerAdminRequest("/rest/v1/content_publish_queue", {
+    await adminRequest("/rest/v1/content_publish_queue", {
       method: "POST",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({
@@ -1932,7 +1937,7 @@ async function registerGeneratedVideoOnSite(
     existingQueue.status === "failed" ||
     (options.recoverPurgedRecord === true && existingQueue.status === "published")
   ) {
-    await supabaseServerAdminRequest(
+    await adminRequest(
       "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) +
         "&status=eq." + encodeURIComponent(existingQueue.status),
       {
@@ -1963,15 +1968,21 @@ async function restoreMissingMediaSocialQueueItems(
   requestId: string,
   videoUrl: string,
   now: string,
+  signal?: AbortSignal,
 ): Promise<{ recovered: number; failedUpdates: number }> {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
   const pageSize = 100;
   let lastSeenId: string | null = null;
   let recovered = 0;
   let failedUpdates = 0;
 
   while (true) {
+    throwIfVideoLeaseAborted(signal);
     const cursorFilter: string = lastSeenId === null ? "" : "&id=gt." + encodeURIComponent(lastSeenId);
-    const rows: MissingMediaSocialQueueRow[] = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
+    const rows: MissingMediaSocialQueueRow[] = await adminRequest<MissingMediaSocialQueueRow[]>(
       "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
         "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata,updated_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
@@ -1985,7 +1996,7 @@ async function restoreMissingMediaSocialQueueItems(
       try {
         const updateFilter = buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at);
         if (!updateFilter) continue;
-        const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        const updated = await adminRequest<Array<{ id: string }>>(
           "/rest/v1/social_publish_queue?" + updateFilter +
             "&metadata->>sourceMediaMissing=eq.true",
           {
@@ -1996,6 +2007,7 @@ async function restoreMissingMediaSocialQueueItems(
         );
         if (updated?.[0]?.id) recovered += 1;
       } catch (error) {
+        throwIfVideoLeaseAborted(signal);
         failedUpdates += 1;
         console.error("[template-video] Could not release a source-media-held social queue row after verified recovery:", item.id, error);
       }
@@ -2007,14 +2019,21 @@ async function restoreMissingMediaSocialQueueItems(
   return { recovered, failedUpdates };
 }
 
-async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
+async function findSocialQueueByAutomationKey(key: string, signal?: AbortSignal): Promise<SocialQueueRow | null> {
+  throwIfVideoLeaseAborted(signal);
   const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
     `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata,updated_at&limit=1`,
+    signal ? { signal } : undefined,
   );
   return rows?.[0] ?? null;
 }
 
-async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
+async function queueSocialItems(request: GeneratedRequest, videoUrl: string, signal?: AbortSignal) {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
+  throwIfVideoLeaseAborted(signal);
   if (!engineConfig().autoPublishEnabled) {
     console.log(`[template-video] External publishing is disabled for ${request.id}; internal video remains available.`);
     return;
@@ -2057,6 +2076,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   }
   // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
   const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
+  throwIfVideoLeaseAborted(signal);
   if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
@@ -2093,10 +2113,10 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     },
     automation_key: queueAutomationKey,
   });
-  const existing = await findSocialQueueByAutomationKey(socialKey);
+  const existing = await findSocialQueueByAutomationKey(socialKey, signal);
 
   if (!existing) {
-    await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+    await adminRequest("/rest/v1/social_publish_queue", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(buildQueuePayload(targets, socialKey)),
@@ -2126,10 +2146,11 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
 
   const queueSupplementalTargets = async (lateTargets: string[]) => {
     for (const target of lateTargets) {
+      throwIfVideoLeaseAborted(signal);
       const supplementalKey = `${socialKey}:late:${target}`;
-      const supplemental = await findSocialQueueByAutomationKey(supplementalKey);
+      const supplemental = await findSocialQueueByAutomationKey(supplementalKey, signal);
       if (supplemental) continue;
-      await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+      await adminRequest("/rest/v1/social_publish_queue", {
         method: "POST",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify(buildQueuePayload([target], supplementalKey)),
@@ -2150,7 +2171,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
       console.warn("[template-video] Social queue target expansion was deferred because the row is not in a safely mutable state:", existing.id, existing.status);
       return;
     }
-    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    const updated = await adminRequest<Array<{ id: string }>>(
       `/rest/v1/social_publish_queue?${updateFilter}`,
       {
         method: "PATCH",
@@ -2202,7 +2223,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
           );
           if (latestFilter) {
             const latestDesiredTargets = [...new Set([...latestTargets, ...targets])];
-            const retried = await supabaseServerAdminRequest<Array<{ id: string }>>(
+            const retried = await adminRequest<Array<{ id: string }>>(
               `/rest/v1/social_publish_queue?${latestFilter}`,
               {
                 method: "PATCH",
@@ -2376,7 +2397,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       return row;
     };
     try {
-      const withLeaseHeartbeat = <T>(operation: () => Promise<T>) =>
+      const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>) =>
         withVideoRequestLeaseHeartbeat(
           {
             intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
@@ -2389,7 +2410,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           },
           operation,
         );
-      const rendered = await withLeaseHeartbeat(() => renderVideo(request));
+      const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));
       const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
       const qaReviewedAt = new Date().toISOString();
       const qaApproval = createAutomatedVideoQaApproval({
@@ -2502,10 +2523,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             content: recoveredContent,
           };
           await patchProcessingRequestWithLease({});
-          const recoveryResult = await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(
+          const recoveryResult = await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(
             recoveredRequest,
             rendered,
             { recoverPurgedRecord: true },
+            signal,
           ));
 
           if (!recoveryResult.published) {
@@ -2549,8 +2571,8 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
 
             let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
             try {
-              socialQueueRecovery = await withLeaseHeartbeat(() =>
-                restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt),
+              socialQueueRecovery = await withLeaseHeartbeat((signal) =>
+                restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt, signal),
               );
             } catch (queueRecoveryError) {
               console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
@@ -2586,7 +2608,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       }
       if (qaApproval) {
         await patchProcessingRequestWithLease({});
-        await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(request, rendered));
+        await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal));
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
@@ -2597,7 +2619,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       // this worker inserts the queue row that references it.
       await patchProcessingRequestWithLease({});
       try {
-        await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl));
+        await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal));
       } catch (socialError) {
         console.error(
           `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
