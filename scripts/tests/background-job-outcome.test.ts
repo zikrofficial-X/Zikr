@@ -167,6 +167,7 @@ assert.equal(
   3,
   "success, scheduled-worker fallback, and failure updates must all compare-and-set the original request",
 );
+const contentPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/content-publishing.ts"), "utf8");
 const socialPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/social-publishing.ts"), "utf8");
 for (const [workerName, workerSource] of [
   ["social publishing", socialPublishingSource],
@@ -188,7 +189,6 @@ for (const [workerName, workerSource] of [
     `${workerName} must not treat unknown purge-lock values as inactive`,
   );
 }
-const contentPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/content-publishing.ts"), "utf8");
 assert.match(contentPublishingSource, /async function recoverStaleContentPublishingClaims/);
 assert.match(contentPublishingSource, /status=eq\.processing&updated_at=lt\./, "stale content claims must be bounded by the last row update");
 assert.match(contentPublishingSource, /updated_at=eq\.\$\{encodeURIComponent\(row\.updated_at\)\}/, "stale recovery must compare the exact candidate version");
