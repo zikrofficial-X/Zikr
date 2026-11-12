@@ -79,7 +79,7 @@ export async function GET() {
         : "";
       const requestContent = requestContentById.get(requestId) ?? {};
       const socialQueueRows = socialQueueByRequestId.get(requestId) ?? [];
-      const socialQueueForCaption = socialQueueRows.find((row) => getConfirmedPublicKidsVideoSocialPlatforms(row).length > 0) ?? null;
+      const socialQueueForCaption = socialQueueRows.find((row) => confirmedSocialPlatforms(row).length > 0) ?? null;
       const storyText = typeof metadata.storyText === "string"
         ? metadata.storyText
         : [requestContent.textAr, requestContent.script, requestContent.text]
