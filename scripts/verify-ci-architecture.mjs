@@ -454,7 +454,9 @@ assert.ok(
   "Storage retention must run only from canonical main and check out that exact branch before reading production credentials",
 );
 assert.ok(
-  storageSafetyWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'") &&
+  storageSafetyWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE'") &&
+    storageSafetyWorkflow.includes("inputs.reference_writes_paused == true") &&
+    storageSafetyWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true") &&
     !storageSafetyWorkflow.includes("github.event_name == 'schedule' ||"),
   "Scheduled storage retention must remain dry-run and deletion must require typed manual confirmation",
 );
