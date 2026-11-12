@@ -539,18 +539,31 @@ assert.equal(
   "both records must still be fenced by the exact Cloudinary playback URL"
 );
 
-const queueRetentionWhere = retentionRpcMigration.match(
-  /UPDATE public\\.social_publish_queue\\s+SET[\\s\\S]*?\\bWHERE([\\s\\S]*?);/i,
-)?.[1] ?? "";
-const requestRetentionWhere = retentionRpcMigration.match(
-  /UPDATE public\\.video_generation_requests\\s+SET[\\s\\S]*?\\bWHERE([\\s\\S]*?);/i,
-)?.[1] ?? "";
-assert.match(queueRetentionWhere, /video_url = p_expected_url/);
-assert.match(requestRetentionWhere, /video_url = p_expected_url/);
-assert.doesNotMatch(queueRetentionWhere, /video_url\\s+IS\\s+NULL/i,
-  "finalization must preserve the Cloudinary queue playback URL instead of requiring it to be null");
-assert.doesNotMatch(requestRetentionWhere, /video_url\\s+IS\\s+NULL/i,
-  "finalization must preserve the Cloudinary request playback URL instead of requiring it to be null");
+function extractRetentionWhere(table) {
+  const updateStart = retentionRpcMigration.indexOf(`UPDATE public.${table}`);
+  const whereStart = retentionRpcMigration.indexOf("WHERE", updateStart);
+  const statementEnd = retentionRpcMigration.indexOf(";", whereStart);
+  assert.ok(updateStart >= 0 && whereStart > updateStart && statementEnd > whereStart,
+    `the retention RPC must contain a bounded UPDATE for ${table}`);
+  return retentionRpcMigration.slice(whereStart, statementEnd);
+}
+const queueRetentionWhere = extractRetentionWhere("social_publish_queue");
+const requestRetentionWhere = extractRetentionWhere("video_generation_requests");
+for (const [label, whereClause] of [
+  ["queue", queueRetentionWhere],
+  ["request", requestRetentionWhere],
+]) {
+  assert.ok(whereClause.includes("video_url = p_expected_url"),
+    `the ${label} retention finalization must preserve the exact Cloudinary playback URL`);
+  assert.equal(whereClause.includes("video_url IS NULL"), false,
+    `the ${label} retention finalization must not require the playback URL to be null`);
+  assert.ok(whereClause.includes("NOT p_finalize"),
+    `the ${label} retention finalization must distinguish pending and finalize transitions`);
+}
+assert.ok(queueRetentionWhere.includes("metadata->'storageRetention'->>'state' = 'purge_pending'"));
+assert.ok(queueRetentionWhere.includes("metadata->'storageRetention'->>'path' = p_retention->>'path'"));
+assert.ok(requestRetentionWhere.includes("content->'storageRetention'->>'state' = 'purge_pending'"));
+assert.ok(requestRetentionWhere.includes("content->'storageRetention'->>'path' = p_retention->>'path'"));
 assert.match(retentionRpcMigration, /Cloudinary playback URL remains intact/i,
   "the retention RPC must document that the durable playback reference is preserved");
 assert.ok(
