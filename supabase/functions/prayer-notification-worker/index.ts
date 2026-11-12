@@ -571,6 +571,20 @@ async function claimDueDelivery(
   return (updated as Delivery | null) ?? null;
 }
 
+async function getActiveSubscriptionForDelivery(
+  delivery: Delivery,
+): Promise<PushSubscriptionRow | null> {
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id, user_id, endpoint, p256dh, auth")
+    .eq("id", delivery.push_subscription_id)
+    .eq("user_id", delivery.user_id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as PushSubscriptionRow | null) ?? null;
+}
+
 /** Finalize only while this exact worker still owns the processing lease. */
 async function updateDeliveryIfLease(
   delivery: Delivery,
@@ -599,19 +613,6 @@ async function deliverDue(
   await recoverStaleClaims(now);
   const candidates = await getDueDeliveryCandidates(now);
   if (!candidates.length) return { sent: 0, failed: 0, deactivated: 0 };
-
-  const subscriptionIds = [
-    ...new Set(candidates.map(delivery => delivery.push_subscription_id)),
-  ];
-  const { data: rows, error } = await supabase
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth")
-    .in("id", subscriptionIds)
-    .eq("is_active", true);
-  if (error) throw error;
-  const subscriptions = new Map(
-    (rows ?? []).map(row => [row.id, row as PushSubscriptionRow])
-  );
 
   const prayerUserIds = [
     ...new Set(
@@ -750,40 +751,50 @@ async function deliverDue(
       continue;
     }
 
-    const subscription = subscriptions.get(delivery.push_subscription_id);
-    if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
-      await updateDeliveryIfLease(delivery, {
-        status: "cancelled",
-        processed_at: deliveryNow.toISOString(),
-        retry_after: null,
-        error_message: subscription
-          ? "Subscription owner does not match delivery owner"
-          : "Subscription is no longer active",
-      });
-      continue;
-    }
-
-    if (!isAllowedPushEndpoint(subscription.endpoint)) {
-      const { error: deactivateError } = await supabase
-        .from("push_subscriptions")
-        .update({ is_active: false, updated_at: deliveryNow.toISOString() })
-        .eq("id", subscription.id)
-        .eq("user_id", delivery.user_id);
-      if (deactivateError) {
-        console.error("[prayer-notification-worker] invalid endpoint deactivation failed:", deactivateError.message);
-      } else {
-        deactivated += 1;
-      }
-      await updateDeliveryIfLease(delivery, {
-        status: "cancelled",
-        processed_at: deliveryNow.toISOString(),
-        retry_after: null,
-        error_message: "Unsupported push service endpoint host",
-      });
-      continue;
-    }
-
+    let subscription: PushSubscriptionRow | null = null;
     try {
+      // Re-read after claiming each delivery. A batch snapshot can become stale
+      // while earlier pushes are sent, allowing an opted-out device or replaced
+      // endpoint to receive a later notification from the same batch.
+      subscription = await getActiveSubscriptionForDelivery(delivery);
+      if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
+        await updateDeliveryIfLease(delivery, {
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: subscription
+            ? "Subscription owner does not match delivery owner"
+            : "Subscription is no longer active",
+        });
+        continue;
+      }
+
+      if (!isAllowedPushEndpoint(subscription.endpoint)) {
+        const { data: deactivatedRow, error: deactivateError } = await supabase
+          .from("push_subscriptions")
+          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+          .eq("id", subscription.id)
+          .eq("user_id", delivery.user_id)
+          .eq("endpoint", subscription.endpoint)
+          .eq("p256dh", subscription.p256dh)
+          .eq("auth", subscription.auth)
+          .eq("is_active", true)
+          .select("id")
+          .maybeSingle();
+        if (deactivateError) {
+          console.error("[prayer-notification-worker] invalid endpoint deactivation failed:", deactivateError.message);
+        } else if (deactivatedRow?.id) {
+          deactivated += 1;
+        }
+        await updateDeliveryIfLease(delivery, {
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: "Unsupported push service endpoint host",
+        });
+        continue;
+      }
+
       const topic = buildNotificationTopic({
         notificationKind: delivery.notification_kind,
         prayerName: delivery.prayer_name,
@@ -830,6 +841,9 @@ async function deliverDue(
         })
         .eq("id", subscription.id)
         .eq("user_id", delivery.user_id)
+        .eq("endpoint", subscription.endpoint)
+        .eq("p256dh", subscription.p256dh)
+        .eq("auth", subscription.auth)
         .eq("is_active", true);
       if (lastUsedError) console.error("[prayer-notification-worker] subscription last-used update failed:", lastUsedError.message);
       sent += 1;
@@ -844,17 +858,23 @@ async function deliverDue(
               Math.min(15 * 60_000, 60_000 * 2 ** delivery.attempt_count)
           ).toISOString()
         : null;
-      if (invalid) {
-        // A 404/410 is definitive for the endpoint even if this delivery lease
-        // was concurrently recovered; do not leave a dead subscription active.
-        const { error: deactivateError } = await supabase
+      if (invalid && subscription) {
+        // A 404/410 is definitive only for the exact endpoint/key snapshot sent.
+        // Never deactivate a replacement subscription that arrived concurrently.
+        const { data: deactivatedRow, error: deactivateError } = await supabase
           .from("push_subscriptions")
           .update({ is_active: false, updated_at: deliveryNow.toISOString() })
           .eq("id", subscription.id)
-          .eq("user_id", delivery.user_id);
+          .eq("user_id", delivery.user_id)
+          .eq("endpoint", subscription.endpoint)
+          .eq("p256dh", subscription.p256dh)
+          .eq("auth", subscription.auth)
+          .eq("is_active", true)
+          .select("id")
+          .maybeSingle();
         if (deactivateError) {
           console.error("[prayer-notification-worker] subscription deactivation failed:", deactivateError.message);
-        } else {
+        } else if (deactivatedRow?.id) {
           deactivated += 1;
         }
       }
