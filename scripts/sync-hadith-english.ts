@@ -23,6 +23,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 type BookRow = { id: string; slug: string; name_en: string | null };
 type HadithRow = {
   hadith_number: string;
+  text_ar: string;
   text_en: string | null;
   book_id: string;
   ref: string | null;
@@ -79,7 +80,7 @@ async function main() {
   const bookById = new Map(books.map(book => [book.id, book]));
 
   const rows = await supabase<HadithRow[]>(
-    "/rest/v1/hadiths?select=hadith_number,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" +
+    "/rest/v1/hadiths?select=hadith_number,text_ar,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" +
       batchSize
   );
 
@@ -88,7 +89,7 @@ async function main() {
   let failed = 0;
   for (const row of rows) {
     const book = bookById.get(row.book_id);
-    if (!book?.slug) continue;
+    if (!book?.slug || !row.text_ar?.trim()) continue;
 
     try {
       const english = await fetchEnglish(book.slug, row.hadith_number);
@@ -100,7 +101,7 @@ async function main() {
       }
 
       const updatedRows = await supabase<Array<{ hadith_number: string }>>(
-        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}&or=(text_en.is.null,text_en.eq.)`,
+        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}&published=eq.true&text_ar=eq.${encodeURIComponent(row.text_ar)}&or=(text_en.is.null,text_en.eq.)`,
         {
           method: "PATCH",
           body: JSON.stringify({

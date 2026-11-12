@@ -20,6 +20,10 @@ assert.ok(
   hadithSync.includes("an English value was added while the external source was fetched"),
   "the Hadith sync must explain why a concurrent edit was preserved",
 );
+assert.ok(
+  hadithSync.includes("published=eq.true&text_ar=eq.${encodeURIComponent(row.text_ar)}"),
+  "Hadith sync updates must revalidate both publication state and the Arabic source snapshot",
+);
 
 assert.ok(
   articleSync.includes("select=id,status,attempt_count"),
@@ -28,6 +32,28 @@ assert.ok(
 assert.ok(
   articleSync.includes("attempt_count: Math.max(0, Number(existing.attempt_count) || 0) + 1"),
   "article translation retries must increment, not reset, the attempt counter",
+);
+assert.ok(
+  articleSync.includes("TRANSLATION_QUEUE_LEASE_MS = 60 * 60_000"),
+  "article translation claims must remain leased longer than the 40-minute workflow timeout",
+);
+assert.ok(
+  articleSync.includes("on_conflict=content_type,content_id,target_locale,source_hash") &&
+    articleSync.includes("resolution=ignore-duplicates,return=representation"),
+  "concurrent article translation runs must not create duplicate queue rows or duplicate Gemini jobs",
+);
+assert.ok(
+  articleSync.includes("status=eq.${encodeURIComponent(existing.status)}&updated_at=eq.${encodeURIComponent(existing.updated_at)}"),
+  "article translation queue claims must compare the exact status and updated_at version",
+);
+assert.ok(
+  articleSync.includes("status=eq.processing&updated_at=eq.${encodeURIComponent(claim.updatedAt)}"),
+  "translation completion and failure writes must retain the exact processing lease",
+);
+assert.ok(
+  articleSync.includes("updated_at=eq.${encodeURIComponent(article.updated_at)}") &&
+    articleSync.includes("and=(${emptyFieldFilters})"),
+  "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
 console.log("English content sync concurrency and retry contracts passed.");

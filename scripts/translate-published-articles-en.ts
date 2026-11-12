@@ -58,6 +58,7 @@ type ArticleRow = {
   title_en: string | null;
   summary_en: string | null;
   content_en: string | null;
+  updated_at: string | null;
 };
 
 async function supabase<T>(
@@ -111,6 +112,123 @@ function parseJson(text: string): {
   return { title_en, summary_en, content_en };
 }
 
+type TranslationQueueRow = {
+  id: string;
+  status: string;
+  attempt_count: number | null;
+  updated_at: string;
+  available_at: string;
+};
+
+type TranslationQueueClaim = {
+  id: string;
+  updatedAt: string;
+  attemptCount: number;
+};
+
+const TRANSLATION_QUEUE_LEASE_MS = 60 * 60_000;
+
+async function claimTranslationQueueRow(
+  article: ArticleRow,
+  sourceHash: string,
+): Promise<TranslationQueueClaim | null> {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const nowMs = now.getTime();
+  const [existing] = await supabase<TranslationQueueRow[]>(
+    `/rest/v1/content_translation_queue?select=id,status,attempt_count,updated_at,available_at&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
+  );
+
+  const sourcePayload = {
+    title_ar: article.title_ar ?? "",
+    summary_ar: article.summary_ar ?? "",
+    content_ar: article.content_ar ?? "",
+  };
+  const provider = "google-gemini";
+  const model = process.env.GEMINI_MODEL ?? "configured";
+
+  if (existing) {
+    if (["generated", "approved", "published"].includes(existing.status)) return null;
+    if (!["queued", "failed", "processing"].includes(existing.status)) return null;
+
+    const updatedAtMs = Date.parse(existing.updated_at);
+    if (!Number.isFinite(updatedAtMs)) return null;
+    if (existing.status === "processing" && nowMs - updatedAtMs < TRANSLATION_QUEUE_LEASE_MS) {
+      return null;
+    }
+
+    const availableAtMs = Date.parse(existing.available_at);
+    if (
+      existing.status !== "processing" &&
+      (!Number.isFinite(availableAtMs) || availableAtMs > nowMs)
+    ) {
+      return null;
+    }
+
+    const attemptCount = Math.max(0, Number(existing.attempt_count) || 0) + 1;
+    const [claimed] = await supabase<Array<{ id: string; updated_at: string }>>(
+      `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(existing.id)}&status=eq.${encodeURIComponent(existing.status)}&updated_at=eq.${encodeURIComponent(existing.updated_at)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "processing",
+          provider,
+          model,
+          source_payload: sourcePayload,
+          attempt_count: attemptCount,
+          error_message: null,
+          processed_at: null,
+          available_at: nowIso,
+          updated_at: nowIso,
+        }),
+      },
+    );
+    return claimed?.id && claimed.updated_at
+      ? { id: claimed.id, updatedAt: claimed.updated_at, attemptCount }
+      : null;
+  }
+
+  // A unique-key conflict means another runner inserted the same source job.
+  // Ignore the duplicate insert and let the owner of that row finish its claim.
+  const [created] = await supabase<Array<{ id: string; updated_at: string }>>(
+    "/rest/v1/content_translation_queue?on_conflict=content_type,content_id,target_locale,source_hash",
+    {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+      body: JSON.stringify({
+        content_type: "article",
+        content_id: article.id,
+        source_locale: "ar",
+        target_locale: "en",
+        source_hash: sourceHash,
+        source_payload: sourcePayload,
+        status: "processing",
+        provider,
+        model,
+        attempt_count: 1,
+        available_at: nowIso,
+      }),
+    },
+  );
+  return created?.id && created.updated_at
+    ? { id: created.id, updatedAt: created.updated_at, attemptCount: 1 }
+    : null;
+}
+
+async function updateTranslationQueueClaim(
+  claim: TranslationQueueClaim,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const [updated] = await supabase<Array<{ id: string }>>(
+    `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(claim.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claim.updatedAt)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+    },
+  );
+  return Boolean(updated?.id);
+}
+
 function buildPrompt(article: ArticleRow): string {
   return `Translate this Islamic editorial article from Arabic to natural, publication-quality English.
 
@@ -134,7 +252,7 @@ ${article.content_ar ?? ""}`;
 
 async function main() {
   const rows = await supabase<ArticleRow[]>(
-    "/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en&published=eq.true&or=(title_en.is.null,title_en.eq.,summary_en.is.null,summary_en.eq.,content_en.is.null,content_en.eq.)&order=created_at.asc&limit=" + batchSize,
+    "/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en,updated_at&published=eq.true&or=(title_en.is.null,title_en.eq.,summary_en.is.null,summary_en.eq.,content_en.is.null,content_en.eq.)&order=created_at.asc&limit=" + batchSize,
   );
 
   console.log(`Found ${rows.length} published articles missing English fields.`);
@@ -142,50 +260,16 @@ async function main() {
   let generated = 0;
   let failed = 0;
   for (const article of rows) {
-    const sourceHash = hashSource(article);
-    const [existing] = await supabase<Array<{ id: string; status: string; attempt_count: number | null }>>(
-      `/rest/v1/content_translation_queue?select=id,status,attempt_count&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
-    );
-
-    if (existing && ["generated", "approved", "published"].includes(existing.status)) {
+    if (!article.updated_at || !Number.isFinite(Date.parse(article.updated_at))) {
+      console.warn(`Skipped ${article.id}; article source has no valid updated_at version for safe translation.`);
       continue;
     }
 
-    if (existing) {
-      await supabase(
-        `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(existing.id)}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            status: "processing",
-            provider: "google-gemini",
-            model: process.env.GEMINI_MODEL ?? "configured",
-            attempt_count: Math.max(0, Number(existing.attempt_count) || 0) + 1,
-            error_message: null,
-          }),
-        },
-      );
-    } else {
-      await supabase("/rest/v1/content_translation_queue", {
-        method: "POST",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          content_type: "article",
-          content_id: article.id,
-          source_locale: "ar",
-          target_locale: "en",
-          source_hash: sourceHash,
-          source_payload: {
-            title_ar: article.title_ar ?? "",
-            summary_ar: article.summary_ar ?? "",
-            content_ar: article.content_ar ?? "",
-          },
-          status: "processing",
-          provider: "google-gemini",
-          model: process.env.GEMINI_MODEL ?? "configured",
-          attempt_count: 1,
-        }),
-      });
+    const sourceHash = hashSource(article);
+    const queueClaim = await claimTranslationQueueRow(article, sourceHash);
+    if (!queueClaim) {
+      console.log(`Skipped ${article.id}; an active or newer translation queue claim owns this source.`);
+      continue;
     }
 
     try {
@@ -198,41 +282,58 @@ async function main() {
       if (!article.summary_en?.trim()) fieldsToPatch.push("summary_en");
       if (!article.content_en?.trim()) fieldsToPatch.push("content_en");
 
-      for (const field of fieldsToPatch) {
-        const [updated] = await supabase<Array<{ id: string }>>(
-          `/rest/v1/articles?id=eq.${encodeURIComponent(article.id)}&or=(${field}.is.null,${field}.eq.)`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              [field]: translation[field],
-              updated_at: new Date().toISOString(),
-            }),
-          },
-        );
-        if (!updated) {
-          console.warn(
-            `Skipped ${article.id}/${field}; an English value was added after the source row was read.`,
-          );
-        }
+      if (fieldsToPatch.length === 0) {
+        const finalized = await updateTranslationQueueClaim(queueClaim, {
+          status: "failed",
+          error_message: "English fields were completed while this translation was running.",
+          processed_at: new Date().toISOString(),
+          available_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        });
+        if (!finalized) console.warn(`Preserved a newer translation queue state for ${article.id}.`);
+        continue;
       }
 
-      const [queueRow] = await supabase<Array<{ id: string }>>(
-        `/rest/v1/content_translation_queue?select=id&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
+      const emptyFieldFilters = fieldsToPatch
+        .map((field) => `or(${field}.is.null,${field}.eq.)`)
+        .join(",");
+      const articleFilter =
+        `/rest/v1/articles?id=eq.${encodeURIComponent(article.id)}&updated_at=eq.${encodeURIComponent(article.updated_at)}&and=(${emptyFieldFilters})`;
+      const articlePatch = Object.fromEntries(
+        fieldsToPatch.map((field) => [field, translation[field]]),
+      );
+      const [updatedArticle] = await supabase<Array<{ id: string }>>(
+        articleFilter,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            ...articlePatch,
+            updated_at: new Date().toISOString(),
+          }),
+        },
       );
 
-      if (queueRow) {
-        await supabase(
-          `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(queueRow.id)}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              status: "generated",
-              draft_payload: translation,
-              processed_at: new Date().toISOString(),
-              error_message: null,
-            }),
-          },
-        );
+      if (!updatedArticle?.id) {
+        const finalized = await updateTranslationQueueClaim(queueClaim, {
+          status: "failed",
+          error_message: "Source article or English fields changed during translation; retry against the current source.",
+          processed_at: new Date().toISOString(),
+          available_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+        });
+        if (!finalized) console.warn(`Preserved a newer translation queue state for ${article.id}.`);
+        console.warn(`Skipped ${article.id}; the source version changed while Gemini was processing.`);
+        continue;
+      }
+
+      const finalized = await updateTranslationQueueClaim(queueClaim, {
+        status: "generated",
+        draft_payload: translation,
+        processed_at: new Date().toISOString(),
+        error_message: null,
+        available_at: new Date().toISOString(),
+      });
+      if (!finalized) {
+        console.warn(`Article ${article.id} was updated, but a newer translation queue state was preserved.`);
+        continue;
       }
 
       generated += 1;
@@ -241,22 +342,14 @@ async function main() {
       failed += 1;
       console.error(`Translation failed for ${article.id}:`, error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const [queueRow] = await supabase<Array<{ id: string }>>(
-        `/rest/v1/content_translation_queue?select=id&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
-      );
-      if (queueRow) {
-        await supabase(
-          `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(queueRow.id)}`,
-          {
-            method: "PATCH",
-            body: JSON.stringify({
-              status: "failed",
-              error_message: errorMessage,
-              processed_at: new Date().toISOString(),
-            }),
-          },
-        );
-      }
+      const retryDelayMs = Math.min(6 * 60 * 60_000, 15 * 60_000 * 2 ** Math.max(0, queueClaim.attemptCount - 1));
+      const finalized = await updateTranslationQueueClaim(queueClaim, {
+        status: "failed",
+        error_message: errorMessage,
+        processed_at: new Date().toISOString(),
+        available_at: new Date(Date.now() + retryDelayMs).toISOString(),
+      });
+      if (!finalized) console.warn(`Preserved a newer translation queue state after failure for ${article.id}.`);
       if (/\b429\b|resource_exhausted|quota|rate.?limit/i.test(errorMessage)) {
         console.error("Gemini quota or rate limit reached; stopping this batch to avoid further calls.");
         break;
@@ -269,7 +362,6 @@ async function main() {
     throw new Error(`${failed} article translation(s) failed; inspect the logged item errors before retrying.`);
   }
 }
-
 void main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
