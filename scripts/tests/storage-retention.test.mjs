@@ -418,8 +418,23 @@ assert.ok(
   "the preflight must inspect the active retention RPC definition rather than trust a version flag",
 );
 assert.ok(
-  retentionRpcMigration.includes("video_url\\s*=\\s*case\\s+when\\s+p_finalize\\s+then\\s+null"),
-  "the preflight must reject the old URL-clearing RPC implementation",
+  retentionRpcMigration.includes("pg_catalog.regexp_match"),
+  "the preflight must parse the active queue and request UPDATE statements",
+);
+assert.ok(
+  retentionRpcMigration.includes("queue_update[1] !~*") &&
+    retentionRpcMigration.includes("request_update[1] !~*"),
+  "the preflight must reject playback-URL assignments in both UPDATE SET clauses",
+);
+assert.ok(
+  retentionRpcMigration.includes("queue_update[2] ~*") &&
+    retentionRpcMigration.includes("request_update[2] ~*"),
+  "the preflight must require the expected playback URL in both UPDATE WHERE clauses",
+);
+assert.ok(
+  retentionRpcMigration.includes("pg_catalog.regexp_count(definition") &&
+    retentionRpcMigration.includes("TRUNCATE"),
+  "the preflight must reject unreviewed extra updates, deletes, truncates, and dynamic SQL",
 );
 assert.ok(
   retentionRpcMigration.includes("GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()\n  TO service_role;"),

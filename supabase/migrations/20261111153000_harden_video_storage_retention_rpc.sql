@@ -103,18 +103,57 @@ COMMENT ON FUNCTION public.update_video_storage_retention(uuid, uuid, text, json
 -- apply. A missing migration or a regression to the old URL-clearing body fails closed.
 CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY INVOKER
 SET search_path = ''
 AS $function$
-  SELECT NOT (
-    pg_catalog.lower(
-      pg_catalog.pg_get_functiondef(
-        'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
-      )
-    ) ~ 'video_url\s*=\s*case\s+when\s+p_finalize\s+then\s+null'
+DECLARE
+  definition text;
+  queue_update text[];
+  request_update text[];
+BEGIN
+  definition := pg_catalog.pg_get_functiondef(
+    'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
   );
+
+  -- Parse both UPDATE statements. The preflight must inspect their SET and
+  -- WHERE clauses independently; merely rejecting one known old SQL string is
+  -- not sufficient to prove that a future implementation preserves playback.
+  queue_update := pg_catalog.regexp_match(
+    definition,
+    'UPDATE\s+public\.social_publish_queue\s+SET(.*?)WHERE(.*?);',
+    'is'
+  );
+  request_update := pg_catalog.regexp_match(
+    definition,
+    'UPDATE\s+public\.video_generation_requests\s+SET(.*?)WHERE(.*?);',
+    'is'
+  );
+
+  IF queue_update IS NULL OR request_update IS NULL THEN
+    RETURN false;
+  END IF;
+
+  RETURN
+    pg_catalog.regexp_count(definition, '\mUPDATE\M', 1, 'i') = 2
+    AND pg_catalog.regexp_count(definition, '\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M', 1, 'i') = 0
+    AND queue_update[1] ~* '\mmetadata\M\s*='
+    AND queue_update[1] !~* '\mvideo_url\M\s*='
+    AND queue_update[2] ~* '\mid\M\s*=\s*p_queue_id'
+    AND queue_update[2] ~* '\mcontent_id\M\s*=\s*p_request_id::text'
+    AND queue_update[2] ~* '\mstatus\M\s*=\s*''published'''
+    AND queue_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
+    AND queue_update[2] ~* 'metadata->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
+    AND request_update[1] ~* '\mcontent\M\s*='
+    AND request_update[1] !~* '\mvideo_url\M\s*='
+    AND request_update[2] ~* '\mid\M\s*=\s*p_request_id'
+    AND request_update[2] ~* '\mstatus\M\s*=\s*''completed'''
+    AND request_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
+    AND request_update[2] ~* 'content->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
+    AND definition ~* 'p_finalize\s+IS\s+DISTINCT\s+FROM'
+    AND definition ~* 'p_retention->>''bucket''\s+IS\s+DISTINCT\s+FROM\s+''videos''';
+END;
 $function$;
 
 REVOKE ALL ON FUNCTION public.video_storage_retention_contract_ready()
@@ -123,6 +162,6 @@ GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()
   TO service_role;
 
 COMMENT ON FUNCTION public.video_storage_retention_contract_ready() IS
-  'Returns true only when the active retention RPC preserves Cloudinary playback URLs; the cleanup script requires this preflight before any apply.';
+  'Returns true only when the active retention RPC has exactly two fenced metadata/content updates and no playback-URL assignment; the cleanup script requires this preflight before any apply.';
 
 COMMIT;

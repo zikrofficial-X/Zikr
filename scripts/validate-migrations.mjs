@@ -333,6 +333,63 @@ for (const f of migrationsToApply.slice(startIndex)) {
   }
 }
 
+if (failed === 0) {
+  const safeRetentionContract = await db.query(
+    "SELECT public.video_storage_retention_contract_ready() AS ready",
+  );
+  if (safeRetentionContract.rows[0]?.ready !== true) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_FAILED: the current RPC did not satisfy the playback-preservation preflight.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_SAFE_PASSED");
+  }
+
+  // Prove that the live preflight rejects a function that clears playback URLs.
+  // This replacement is isolated to the in-memory PGlite transaction and is
+  // rolled back before any later migration checks or process exit.
+  await db.exec("BEGIN");
+  let unsafeRetentionRejected = false;
+  try {
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
+        p_queue_id uuid,
+        p_request_id uuid,
+        p_expected_url text,
+        p_retention jsonb,
+        p_finalize boolean DEFAULT false
+      )
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY INVOKER
+      SET search_path = ''
+      AS $unsafe$
+      BEGIN
+        UPDATE public.social_publish_queue
+        SET video_url = NULL
+        WHERE id = p_queue_id;
+
+        UPDATE public.video_generation_requests
+        SET video_url = NULL
+        WHERE id = p_request_id;
+      END;
+      $unsafe$;
+    `);
+    const unsafeRetentionContract = await db.query(
+      "SELECT public.video_storage_retention_contract_ready() AS ready",
+    );
+    unsafeRetentionRejected = unsafeRetentionContract.rows[0]?.ready === false;
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+
+  if (!unsafeRetentionRejected) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an RPC that clears Cloudinary playback URLs.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_URL_CLEARING");
+  }
+}
+
 const res = await db.query(`
   SELECT c.relname AS index, t.relname AS table
   FROM pg_index i
