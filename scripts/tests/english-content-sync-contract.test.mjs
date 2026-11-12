@@ -103,7 +103,6 @@ const circleEnglishSync = circleCi.slice(
 );
 const credentialValidationStart = circleEnglishSync.indexOf("name: Validate production content-sync credentials");
 const boundedSyncStart = circleEnglishSync.indexOf("name: Run bounded English content sync");
-const credentialValidation = circleEnglishSync.slice(credentialValidationStart, boundedSyncStart);
 const boundedSyncCommand = circleEnglishSync.slice(boundedSyncStart);
 assert.ok(
   credentialValidationStart >= 0 && boundedSyncStart > credentialValidationStart,
