@@ -253,8 +253,8 @@ assert.ok(
 );
 assert.ok(
   videoQueueSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)") &&
-    videoQueueSource.includes("throwIfVideoLeaseAborted(signal)") &&
-    videoQueueSource.includes("...(signal ? { signal } : {})"),
+    videoWorker.includes("throwIfVideoLeaseAborted(signal)") &&
+    videoWorker.includes("...(signal ? { signal } : {})"),
   "lease loss must abort in-flight media registration and social queue REST requests before they can continue as a stale worker.",
 );
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
