@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
+import { PRODUCTION_URL } from "@/lib/site";
 import { AdSense, ADSENSE_CONFIGURED } from "./adsense";
 import { AppUpdateChecker } from "./app-update-checker";
 import { PrayerAlertProvider } from "./prayer-alert-provider";
@@ -28,7 +29,15 @@ function DeferredThirdPartyRuntime() {
   }, []);
 
   useEffect(() => {
-    setIsWebRuntime(!Capacitor.isNativePlatform());
+    let isCanonicalHost = false;
+    try {
+      isCanonicalHost =
+        window.location.hostname.toLowerCase() ===
+        new URL(PRODUCTION_URL).hostname.toLowerCase();
+    } catch {
+      isCanonicalHost = false;
+    }
+    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalHost);
   }, []);
 
   if (!ready) return null;

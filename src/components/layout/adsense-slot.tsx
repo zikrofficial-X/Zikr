@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
+import { PRODUCTION_URL } from "@/lib/site";
 import { usePathname } from "next/navigation";
 import {
   ADSENSE_ARTICLE_SLOT,
@@ -17,13 +18,22 @@ declare global {
   }
 }
 
+
+function isCanonicalProductionHost(): boolean {
+  try {
+    return window.location.hostname.toLowerCase() === new URL(PRODUCTION_URL).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 export function AdSenseSlot({ isEnglish }: { isEnglish: boolean }) {
   const [isWebRuntime, setIsWebRuntime] = useState(false);
   const pathname = usePathname();
   const slotRef = useRef<HTMLModElement | null>(null);
 
   useEffect(() => {
-    setIsWebRuntime(!Capacitor.isNativePlatform());
+    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionHost());
   }, []);
 
   useEffect(() => {

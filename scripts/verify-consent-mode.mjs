@@ -8,7 +8,7 @@ const advertisingRuntime = readFileSync(
 
 const consentDefault = layout.indexOf("gtag('consent', 'default'");
 const cmpScript = advertisingRuntime.indexOf('"google-funding-choices"');
-const analytics = layout.indexOf('id="google-analytics-src"');
+const analytics = advertisingRuntime.indexOf('id="google-analytics-src"');
 const tagManager = advertisingRuntime.indexOf('"google-tag-manager"');
 const nativeGuard = advertisingRuntime.indexOf(
   "if (Capacitor.isNativePlatform())",
@@ -18,6 +18,9 @@ if (consentDefault < 0) {
   throw new Error(
     "Google Consent Mode must default to denied before loading Google tags",
   );
+}
+if (!layout.includes('id="google-consent-mode-default"') || !layout.includes('strategy="beforeInteractive"')) {
+  throw new Error("Google Consent Mode defaults must execute before interactive client runtimes can load GA4");
 }
 for (const token of [
   "ad_storage: 'denied'",
@@ -51,9 +54,10 @@ for (const token of [
     throw new Error("Web-only third-party tag loader is missing: " + token);
   }
 }
-if (analytics < 0 || analytics < consentDefault) {
+const canonicalHostGuard = advertisingRuntime.indexOf("if (!isCanonicalProductionHost())");
+if (analytics < 0 || consentDefault < 0 || canonicalHostGuard < 0 || analytics < canonicalHostGuard) {
   throw new Error(
-    "Google Analytics must load only after the denied-by-default consent state is established",
+    "Google Analytics must load only after the denied-by-default consent state and canonical production-host guard are established",
   );
 }
 if (
