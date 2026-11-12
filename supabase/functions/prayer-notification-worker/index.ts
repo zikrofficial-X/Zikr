@@ -695,7 +695,7 @@ async function deliverDue(
       intervalMs: getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000),
       renew: () => updateLease({ processing_at: new Date().toISOString() }),
       onRenewalError: (error) => console.warn(
-        "[prayer-notification-worker] Delivery lease heartbeat failed; retrying before stale recovery:",
+        "[prayer-notification-worker] Delivery lease heartbeat failed; treating ownership as lost and skipping further sends:",
         delivery.id,
         error,
       ),

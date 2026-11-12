@@ -271,21 +271,22 @@ jobs:
             article_status=0
             hadith_status=0
 
-            if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-              echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
-              if ! command -v timeout >/dev/null 2>&1; then
-                echo "GNU timeout is required to keep the translation worker below its 60-minute lease." >&2
-                article_status=127
-              else
-                timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
-              fi
+            if ! command -v timeout >/dev/null 2>&1; then
+              echo "GNU timeout is required to bound both scheduled English sync workers." >&2
+              article_status=127
+              hadith_status=127
             else
-              echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
-              article_status=1
-            fi
+              if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+                echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
+                timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
+              else
+                echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
+                article_status=1
+              fi
 
-            echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
-            pnpm sync:hadith:en || hadith_status=$?
+              echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
+              timeout --signal=TERM --kill-after=60s 15m pnpm sync:hadith:en || hadith_status=$?
+            fi
 
             if (( article_status != 0 || hadith_status != 0 )); then
               echo "English sync incomplete (articles=${article_status}, hadith=${hadith_status})." >&2

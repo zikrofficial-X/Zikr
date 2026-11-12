@@ -17,6 +17,19 @@ assert.ok(
   "a concurrent English edit must cause a safe skip before the sync is counted",
 );
 assert.ok(
+  hadithSync.includes("signal: init.signal ?? AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS)"),
+  "Supabase reads and writes in the Hadith sync must have a bounded request timeout",
+);
+assert.ok(
+  hadithSync.includes("signal: AbortSignal.timeout(HADITH_API_TIMEOUT_MS)"),
+  "the external Hadith source request must have a bounded timeout",
+);
+assert.ok(
+  hadithSync.includes("if (response.status === 404 || response.status === 204) return null;") &&
+    hadithSync.includes("throw new Error(`Hadith API ${response.status}:"),
+  "only a genuine missing source may be skipped; upstream 429/5xx failures must fail the sync",
+);
+assert.ok(
   hadithSync.includes("an English value was added while the external source was fetched"),
   "the Hadith sync must explain why a concurrent edit was preserved",
 );
@@ -82,7 +95,16 @@ assert.ok(
   "the scheduled CircleCI article worker must have a hard 40-minute limit below its 60-minute queue lease",
 );
 assert.ok(
-  circleEnglishSync.includes("if ! command -v timeout >/dev/null 2>&1; then"),
-  "the scheduled worker must fail closed when its hard-timeout utility is unavailable",
+  circleEnglishSync.includes("timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en"),
+  "the scheduled CircleCI article worker must have a hard 40-minute limit below its 60-minute queue lease",
+);
+assert.ok(
+  circleEnglishSync.includes("timeout --signal=TERM --kill-after=60s 15m pnpm sync:hadith:en"),
+  "the scheduled Hadith sync must have a hard runtime bound",
+);
+assert.ok(
+  circleEnglishSync.includes("if ! command -v timeout >/dev/null 2>&1; then") &&
+    circleEnglishSync.includes("hadith_status=127"),
+  "the scheduled workers must fail closed when their hard-timeout utility is unavailable",
 );
 console.log("English content sync concurrency and retry contracts passed.");

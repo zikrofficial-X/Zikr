@@ -488,6 +488,28 @@ await new Promise(resolve => setTimeout(resolve, 25));
 assert.equal(lostDeliveryHeartbeat.leaseLost, true, "a failed compare-and-set must stop a worker that no longer owns the delivery");
 await lostDeliveryHeartbeat.stop();
 
+let deliveryRenewalErrors = 0;
+let failedRenewalAttempts = 0;
+const failedRenewalHeartbeat = startDeliveryLeaseHeartbeat({
+  intervalMs: 5,
+  renew: async () => {
+    failedRenewalAttempts += 1;
+    throw new Error("temporary database outage");
+  },
+  onRenewalError: () => {
+    deliveryRenewalErrors += 1;
+  },
+});
+await new Promise(resolve => setTimeout(resolve, 25));
+assert.equal(
+  failedRenewalHeartbeat.leaseLost,
+  true,
+  "a heartbeat transport error must fail closed because lease ownership is uncertain",
+);
+assert.equal(deliveryRenewalErrors, 1, "a failed renewal must report its error once and stop retrying");
+assert.equal(failedRenewalAttempts, 1, "a worker must not keep processing after an unconfirmed lease renewal");
+await failedRenewalHeartbeat.stop();
+
 const deliveryLeaseUpdateSource = worker.slice(leaseUpdateStart, deliverDueStart);
 assert.match(deliveryLeaseUpdateSource, /select\("id, processing_at, updated_at"\)/);
 assert.match(deliveryLeaseUpdateSource, /delivery\.processing_at = data\.processing_at/);

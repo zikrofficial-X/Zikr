@@ -28,10 +28,15 @@ export function startDeliveryLeaseHeartbeat(options: {
         clearInterval(timer);
       })
       .catch((error: unknown) => {
+        // An uncertain renewal cannot prove ownership. Stop before another
+        // provider send rather than continuing after the stale-recovery window.
+        leaseLost = true;
+        stopped = true;
+        clearInterval(timer);
         try {
           options.onRenewalError?.(error);
         } catch {
-          // Logging/telemetry must not interrupt lease renewal.
+          // Logging/telemetry must not interrupt fail-closed lease handling.
         }
       })
       .finally(() => {

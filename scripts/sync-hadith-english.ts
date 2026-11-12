@@ -1,5 +1,8 @@
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const SUPABASE_REQUEST_TIMEOUT_MS = 15_000;
+const HADITH_API_TIMEOUT_MS = 10_000;
+
 const apiBase = (
   process.env.HADITH_API_BASE_URL ?? "https://ummahapi.com/api/hadith"
 ).replace(/\/$/, "");
@@ -47,6 +50,7 @@ async function supabase<T>(path: string, init: RequestInit = {}): Promise<T> {
       Prefer: "return=representation",
       ...(init.headers ?? {}),
     },
+    signal: init.signal ?? AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error(`Supabase ${response.status}: ${await response.text()}`);
@@ -60,9 +64,16 @@ async function fetchEnglish(
 ): Promise<string | null> {
   const response = await fetch(
     `${apiBase}/${encodeURIComponent(bookSlug)}/${encodeURIComponent(number)}`,
-    { headers: { Accept: "application/json" } }
+    {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(HADITH_API_TIMEOUT_MS),
+    }
   );
-  if (!response.ok) return null;
+  if (response.status === 404 || response.status === 204) return null;
+  if (!response.ok) {
+    const details = (await response.text()).slice(0, 300);
+    throw new Error(`Hadith API ${response.status}: ${details || "request failed"}`);
+  }
   const payload = (await response.json()) as UmmahResponse;
   if (!payload.success || !payload.data) return null;
   const text =
