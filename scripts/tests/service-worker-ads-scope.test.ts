@@ -98,6 +98,15 @@ assert.match(
 );
 const webAdsRuntime = readFileSync("src/components/layout/web-advertising-runtime.tsx", "utf8");
 const adsenseSlot = readFileSync("src/components/layout/adsense-slot.tsx", "utf8");
+const runtimeEffects = readFileSync("src/components/layout/runtime-effects.tsx", "utf8");
+assert.ok(
+  runtimeEffects.includes("window.location.origin === new URL(PRODUCTION_URL).origin"),
+  "deferred AdSense scripts must require the exact canonical HTTPS origin, including its port",
+);
+assert.ok(
+  !runtimeEffects.includes("window.location.hostname"),
+  "deferred AdSense scripts must not use a hostname-only production gate",
+);
 const integrityVerifier = readFileSync("scripts/verify-project-integrity.mjs", "utf8");
 assert.ok(
   integrityVerifier.includes("'window.location.origin'"),
