@@ -95,6 +95,26 @@ const hasLeaseFencedTransitions =
   /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*status:\s*["']completed["']\s*,/.test(postClaimWorker) &&
   /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*status:\s*terminalStatus\s*,/.test(postClaimWorker);
 assert(hasLeaseFencedTransitions, "hash claim, completion and failure updates are fenced by the processing lease");
+
+const catalogRegistrationStart = worker.indexOf("async function registerGeneratedVideoOnSite");
+const catalogRegistrationEnd = worker.indexOf("type MissingMediaSocialQueueRow", catalogRegistrationStart);
+const catalogRegistration = worker.slice(catalogRegistrationStart, catalogRegistrationEnd).replace(/\s+/g, " ");
+assert(
+  catalogRegistration.includes("&select=id,published,updated_at,metadata&limit=1") &&
+    catalogRegistration.includes('metadata.mediaState !== "purged"') &&
+    catalogRegistration.includes("metadata.mediaPurgedFromPublished !== true") &&
+    catalogRegistration.includes("buildUnpublishedVideoCatalogUpdateFilter(videoId, existingVideo?.updated_at)") &&
+    catalogRegistration.includes('Prefer: "return=representation"') &&
+    catalogRegistration.includes("if (!updatedVideoRows?.[0]?.id)"),
+  "generated-video catalog recovery rechecks purged state and compare-and-sets the exact catalog row revision",
+);
+const normalizedPostClaimWorker = postClaimWorker.replace(/\s+/g, " ");
+assert(
+  normalizedPostClaimWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))") &&
+    normalizedPostClaimWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite( recoveredRequest, rendered, { recoverPurgedRecord: true }, signal, ))"),
+  "normal and duplicate generated-video catalog registration run under the processing lease heartbeat",
+);
+
 assert(
   !postClaimWorker.includes("/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}"),
   "no post-claim ID-only PATCH can overwrite a newer worker",

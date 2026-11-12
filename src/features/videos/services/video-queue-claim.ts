@@ -165,3 +165,25 @@ export function buildVideoSocialQueueRecoveryLeaseFilter(
     "content->>socialQueueEnqueueStatus=eq.processing",
   ].join("&");
 }
+
+/**
+ * Compare-and-set filter for updating an unpublished generated-video catalog row.
+ * A nullable updated_at is guarded with IS NULL; missing/invalid revisions fail closed.
+ */
+export function buildUnpublishedVideoCatalogUpdateFilter(
+  id: string,
+  updatedAt: string | null | undefined,
+): string | null {
+  const normalizedId = id.trim();
+  if (!normalizedId || updatedAt === undefined) return null;
+  const normalizedUpdatedAt = updatedAt === null ? null : updatedAt.trim();
+  if (updatedAt !== null && timestamp(normalizedUpdatedAt) === null) return null;
+
+  return [
+    `id=eq.${encodeURIComponent(normalizedId)}`,
+    "published=eq.false",
+    normalizedUpdatedAt === null
+      ? "updated_at=is.null"
+      : `updated_at=eq.${encodeURIComponent(normalizedUpdatedAt)}`,
+  ].join("&");
+}

@@ -20,6 +20,7 @@ import { buildVideoSocialQueueUpdateFilter } from "../../src/features/social/ser
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import {
   buildProcessingVideoRequestLeaseFilter,
+  buildUnpublishedVideoCatalogUpdateFilter,
   buildStaleVideoRequestRecoveryFilter,
   buildVideoRequestClaimFilter,
   buildVideoSocialQueueRecoveryClaimFilter,
@@ -1799,14 +1800,32 @@ async function registerGeneratedVideoOnSite(
   const existingRows = await adminRequest<Array<{
     id: string;
     published: boolean | null;
+    updated_at: string | null;
+    metadata: Record<string, unknown> | null;
   }>>(
-    "/rest/v1/videos?slug=eq." + encodeURIComponent(slug) + "&select=id,published&limit=1",
+    "/rest/v1/videos?slug=eq." + encodeURIComponent(slug) + "&select=id,published,updated_at,metadata&limit=1",
   );
-  let videoId = existingRows?.[0]?.id ?? "";
-  const existingPublished = existingRows?.[0]?.published === true;
+  const existingVideo = existingRows?.[0] ?? null;
+  let videoId = existingVideo?.id ?? "";
+  const existingPublished = existingVideo?.published === true;
   if (existingPublished) {
     console.log("[video-worker] Internal video already published; preserving existing site record:", videoId);
     return { videoId, published: true, queued: false };
+  }
+  if (options.recoverPurgedRecord === true && existingVideo) {
+    const metadata = existingVideo.metadata ?? {};
+    const hasCurrentMediaUrl = [metadata.generatedVideoUrl, metadata.videoUrl].some(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    );
+    if (
+      metadata.mediaState !== "purged" ||
+      metadata.mediaPurgedFromPublished !== true ||
+      hasCurrentMediaUrl
+    ) {
+      throw new Error(
+        `Canonical video catalog record ${videoId} is no longer eligible for purged-media recovery; preserving its current media.`,
+      );
+    }
   }
 
   const isKidsVideo = request.content.audience === "kids";
@@ -1908,17 +1927,24 @@ async function registerGeneratedVideoOnSite(
     videoId = inserted?.[0]?.id ?? "";
     if (!videoId) throw new Error("Generated video was uploaded but its ZIKR video record was not returned.");
   } else {
-    await adminRequest(
-      "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&published=eq.false",
+    const videoUpdateFilter = buildUnpublishedVideoCatalogUpdateFilter(videoId, existingVideo?.updated_at);
+    if (!videoUpdateFilter) {
+      throw new Error(`Generated video catalog record ${videoId} has no valid row revision; refusing an unfenced update.`);
+    }
+    const updatedVideoRows = await adminRequest<Array<{ id: string }>>(
+      `/rest/v1/videos?${videoUpdateFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           ...record,
           created_at: undefined,
         }),
       },
     );
+    if (!updatedVideoRows?.[0]?.id) {
+      throw new Error(`Generated video catalog record ${videoId} changed during registration; preserving the newer row.`);
+    }
   }
 
   const queueRows = await adminRequest<Array<{ id: string; status: string }>>(

@@ -5,6 +5,7 @@ import test from "node:test";
 
 import {
   buildProcessingVideoRequestLeaseFilter,
+  buildUnpublishedVideoCatalogUpdateFilter,
   buildStaleVideoRequestRecoveryFilter,
   buildVideoRequestClaimFilter,
   buildVideoSocialQueueRecoveryClaimFilter,
@@ -352,4 +353,33 @@ test("Video queue priority verifier accepts rolling leases and recoverable socia
     [result.stdout, result.stderr].filter(Boolean).join("\n") ||
       "Video queue priority verifier must accept the current lease-fenced worker contract",
   );
+});
+
+test("unpublished video catalog updates use the exact selected row revision", () => {
+  assert.equal(
+    buildUnpublishedVideoCatalogUpdateFilter("video/1", updatedAt),
+    "id=eq.video%2F1&published=eq.false&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  );
+  assert.equal(
+    buildUnpublishedVideoCatalogUpdateFilter("video-2", null),
+    "id=eq.video-2&published=eq.false&updated_at=is.null",
+  );
+  assert.equal(buildUnpublishedVideoCatalogUpdateFilter("video-3", undefined), null);
+  assert.equal(buildUnpublishedVideoCatalogUpdateFilter("video-4", "not-a-date"), null);
+});
+
+test("purged catalog recovery rechecks media state and compare-and-sets the catalog row", () => {
+  const start = videoWorkerSource.indexOf("async function registerGeneratedVideoOnSite");
+  const end = videoWorkerSource.indexOf("type MissingMediaSocialQueueRow", start);
+  const registration = videoWorkerSource.slice(start, end);
+  assert.ok(registration.includes("&select=id,published,updated_at,metadata&limit=1"));
+  assert.ok(registration.includes('metadata.mediaState !== "purged"'));
+  assert.ok(registration.includes("metadata.mediaPurgedFromPublished !== true"));
+  assert.ok(registration.includes("buildUnpublishedVideoCatalogUpdateFilter(videoId, existingVideo?.updated_at)"));
+  assert.ok(registration.includes('Prefer: "return=representation"'));
+  assert.ok(registration.includes("if (!updatedVideoRows?.[0]?.id)"));
+
+  const normalizedWorker = videoWorkerSource.replace(/\s+/g, " ");
+  assert.ok(normalizedWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))"));
+  assert.ok(normalizedWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite( recoveredRequest, rendered, { recoverPurgedRecord: true }, signal, ))"));
 });
