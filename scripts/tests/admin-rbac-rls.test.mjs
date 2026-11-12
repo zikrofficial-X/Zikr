@@ -426,4 +426,29 @@ assert.doesNotMatch(
   "video-generation deletion must not be authorized by the less-privileged video.manage permission",
 );
 
+const clientPrivilegeHardeningMigration = readFileSync(
+  "supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql",
+  "utf8",
+);
+assert.match(
+  clientPrivilegeHardeningMigration,
+  /REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN\s+ON ALL TABLES IN SCHEMA public\s+FROM PUBLIC, anon, authenticated/i,
+  "browser roles and PUBLIC must lose non-DML table privileges on every existing public table",
+);
+assert.match(
+  clientPrivilegeHardeningMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public\s+REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES\s+FROM PUBLIC, anon, authenticated/i,
+  "future postgres-owned public tables must not inherit browser DDL privileges",
+);
+assert.ok(
+  clientPrivilegeHardeningMigration.includes("rolname = 'supabase_admin'") &&
+    clientPrivilegeHardeningMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES FROM PUBLIC, anon, authenticated"),
+  "future supabase_admin-owned public tables must also lose browser DDL privileges",
+);
+assert.doesNotMatch(
+  clientPrivilegeHardeningMigration,
+  /GRANT\s+(?:TRUNCATE|REFERENCES|TRIGGER|MAINTAIN)\b/i,
+  "the privilege hardening migration must not re-grant non-DML table privileges",
+);
+
 console.log("Admin RBAC/RLS migration contract passed.");
