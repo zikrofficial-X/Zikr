@@ -263,7 +263,6 @@ jobs:
             set -euo pipefail
             test -n "${SUPABASE_URL:-}" || { echo "Missing SUPABASE_URL."; exit 1; }
             test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "Missing SUPABASE_SERVICE_ROLE_KEY."; exit 1; }
-            test -n "${GEMINI_API_KEY:-}" || { echo "Missing GEMINI_API_KEY."; exit 1; }
       - run:
           name: Run bounded English content sync
           shell: /bin/bash
@@ -277,8 +276,13 @@ jobs:
               article_status=127
               hadith_status=127
             else
-              echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
-              timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
+              if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+                echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
+                timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
+              else
+                echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
+                article_status=1
+              fi
 
               echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
               timeout --signal=TERM --kill-after=60s 15m pnpm sync:hadith:en || hadith_status=$?
