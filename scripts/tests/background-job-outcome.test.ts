@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildRunNowRequestDeleteFilter, buildRunNowRequestValueFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
-import { isVideoAutomationEnabled } from "../../src/features/videos/services/background-job-settings";
+import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../../src/features/videos/services/background-job-settings";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
@@ -55,6 +55,13 @@ console.log("Background job outcome policy passed: partial video failures do not
 
 assert.equal(isVideoAutomationEnabled(true), true, "an explicit boolean enable flag may start video automation");
 assert.equal(isVideoAutomationEnabled("true"), true, "an explicit string enable flag may start video automation");
+assert.equal(isVideoAutomationEnabled(" TRUE "), true, "explicit string enable values are normalized without accepting missing values");
+assert.equal(isVideoPurgeInProgress(undefined), false, "an absent purge-lock row does not imply an active purge");
+assert.equal(isVideoPurgeInProgress(false), false, "an explicitly released purge lock is inactive");
+assert.equal(isVideoPurgeInProgress("false"), false, "the legacy string false value remains inactive");
+for (const activeOrInvalidLock of [true, "true", null, "", "locked", 0, 1]) {
+  assert.equal(isVideoPurgeInProgress(activeOrInvalidLock), true, "active or malformed purge-lock values must fail closed");
+}
 for (const missingOrInvalid of [undefined, null, false, "false", "", "enabled", "1", 1]) {
   assert.equal(isVideoAutomationEnabled(missingOrInvalid), false, "missing or invalid admin configuration must not start video generation");
 }
@@ -146,6 +153,13 @@ assert.match(backgroundRunnerSource, /buildRunNowRequestDeleteFilter\(row\.updat
 assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "Run Now deletion must match the exact request identity");
 assert.match(backgroundRunnerSource, /import \{[^}]*isSameRunNowRequest[^}]*\} from "\.\.\/src\/features\/videos\/services\/background-job-outcome"/, "the Run Now identity guard must be imported from the shared policy");
 const adminSystemActionsSource = readFileSync(resolve(process.cwd(), "src/app/admin/system-actions.ts"), "utf8");
+const templateVideoWorkerSource = readFileSync(resolve(process.cwd(), "scripts/jobs/template-video-automation.ts"), "utf8");
+const videoPurgeRouteSource = readFileSync(resolve(process.cwd(), "src/app/api/admin/video-purge/route.ts"), "utf8");
+assert.match(backgroundRunnerSource, /isVideoPurgeInProgress\(values\.video_purge_in_progress\) \|\| !isVideoAutomationEnabled\(values\.video_automation_enabled\)/, "a missing or malformed live enable flag must stop an in-flight background video worker");
+assert.match(templateVideoWorkerSource, /isVideoPurgeInProgress\(settings\.video_purge_in_progress\) \|\| !isVideoAutomationEnabled\(settings\.video_automation_enabled\)/, "the direct video worker must use the same fail-closed live lock policy");
+assert.match(adminSystemActionsSource, /if \(isVideoPurgeInProgress\(purgeRows\?\.\[0\]\?\.value\)\)/, "video settings must not change while a purge lock is active or malformed");
+assert.match(adminSystemActionsSource, /if \(!isVideoAutomationEnabled\(configuredEnabled\)\)/, "Run Now must not dispatch when the Admin enable flag is missing or invalid");
+assert.match(videoPurgeRouteSource, /return isVideoAutomationEnabled\(rows\?\.\[0\]\?\.value\)/, "purge restoration must preserve a missing or legacy-false automation setting as disabled");
 assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");
 assert.match(adminSystemActionsSource, /buildRunNowRequestValueFilter\(request\)/, "Run Now dispatch must build a compare-and-set predicate from the request it created");
 assert.equal(

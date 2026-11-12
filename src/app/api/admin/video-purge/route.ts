@@ -7,6 +7,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge, wasPublishedBeforeMediaPurge } from "@/features/videos/services/video-media-contract";
 import { isGeneratedCloudinaryVideoUrl } from "@/features/videos/services/video-media-url";
+import { isVideoAutomationEnabled } from "@/features/videos/services/background-job-settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -263,7 +264,7 @@ async function getVideoAutomationEnabled(): Promise<boolean> {
   const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
   );
-  return rows?.[0]?.value !== false;
+  return isVideoAutomationEnabled(rows?.[0]?.value);
 }
 
 async function restoreVideoAutomation(enabled: boolean): Promise<void> {

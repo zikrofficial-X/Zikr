@@ -5,7 +5,7 @@ import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
 import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
-import { isVideoAutomationEnabled } from "../src/features/videos/services/background-job-settings";
+import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../src/features/videos/services/background-job-settings";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
@@ -150,7 +150,7 @@ async function isVideoGenerationPaused(): Promise<boolean> {
       "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
     );
     const values = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
-    return values.video_purge_in_progress === true || values.video_automation_enabled === false;
+    return isVideoPurgeInProgress(values.video_purge_in_progress) || !isVideoAutomationEnabled(values.video_automation_enabled);
   } catch (error) {
     console.error("[background-jobs] Could not verify the live video-generation lock; failing closed:", error);
     return true;

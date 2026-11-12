@@ -28,6 +28,7 @@ import {
 } from "../../src/features/videos/services/video-queue-claim";
 import { createSerializedLeaseMutation, getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../../src/features/videos/services/background-job-settings";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
 import { CURRENT_VIDEO_RENDERER_VERSION, versionedTemplateLabel } from "../../src/features/videos/services/video-template-version";
@@ -70,7 +71,7 @@ async function isVideoGenerationPaused(signal?: AbortSignal): Promise<boolean> {
       signal ? { signal } : undefined,
     );
     const settings = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
-    return settings.video_purge_in_progress === true || settings.video_automation_enabled === false;
+    return isVideoPurgeInProgress(settings.video_purge_in_progress) || !isVideoAutomationEnabled(settings.video_automation_enabled);
   } catch (error) {
     throwIfVideoLeaseAborted(signal);
     console.error("[video-worker] Could not verify the production video-generation lock:", error);
