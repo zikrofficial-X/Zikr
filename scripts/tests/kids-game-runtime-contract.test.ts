@@ -10,6 +10,8 @@ assert.ok(validationRoute.includes("status: allQualityChecksPassed ? 'success' :
 assert.ok(validationRoute.includes("ALL CATALOG AND RUNTIME GAMES VALIDATED AND READY") && validationRoute.includes("GAMES REQUIRE ATTENTION"), "the overall status must reflect failed checks");
 assert.ok(validationRoute.includes("status: allQualityChecksPassed ? 200 : 503"), "failed validation must not return HTTP 200");
 assert.ok(validationRoute.includes("status: g.isEnabled ? 'enabled' : 'disabled'"), "disabled catalog games must not display a ready status");
+assert.ok(validationRoute.includes("titleAr: g.titleAr"), "runtime API must expose the Arabic title from the registry titleAr field");
+assert.ok(!validationRoute.includes("g.maxEnemies"), "runtime scoring checks must only use fields defined by the GameDefinition contract");
 
 const registry = readFileSync("src/lib/games/registry.ts", "utf8");
 const stage = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
