@@ -21,8 +21,10 @@ for (const platform of ["facebook", "whatsapp", "twitter", "copy-link"]) {
 }
 assert.ok(shareComponent.includes("keepalive: true"), "share tracking should survive the browser opening an external share window");
 assert.ok(shareComponent.includes("const getShareUrl = () =>"), "the share URL must be resolved only in the click handler to avoid server/client origin hydration mismatch");
+assert.match(route, /readBoundedJsonBody\(request, MAX_REQUEST_BODY_BYTES\)/, "public share tracking must enforce a streamed request-size limit");
+assert.doesNotMatch(route, /request\.json\(\)/, "public share tracking must not buffer an unbounded JSON body");
 assert.ok(
-  route.indexOf("consumeKidsShareRateLimit") < route.indexOf("request.json()"),
+  route.indexOf("consumeKidsShareRateLimit") < route.indexOf("readBoundedJsonBody"),
   "the shared limiter must run before parsing untrusted request bodies",
 );
 assert.doesNotMatch(route, /rateLimitBuckets|RATE_LIMIT_WINDOW_MS/, "share throttling must not depend on per-instance memory");
