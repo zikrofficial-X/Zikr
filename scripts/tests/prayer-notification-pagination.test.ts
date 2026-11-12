@@ -2,7 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
-import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "../../supabase/functions/prayer-notification-worker/time-zone";
+import {
+  buildNotificationTopic,
+  isCurrentIntervalReminderSlot,
+  isCurrentPrayerReminderSchedule,
+  nextLocalDate,
+  previousLocalDate,
+  zonedDateTime,
+} from "../../supabase/functions/prayer-notification-worker/time-zone";
 import { isAllowedPushEndpoint } from "../../src/features/notifications/services/push-endpoint";
 import {
   normalizePushSubscriptionRequestBody,
@@ -154,6 +161,14 @@ assert.ok(preferenceLoaderStart >= 0 && preferenceLoaderEnd > preferenceLoaderSt
 assert.match(preferenceLoader, /\.from\("prayer_preferences"\)/);
 assert.match(preferenceLoader, /\.from\("prayer_locations"\)/);
 assert.match(preferenceLoader, /\.from\("background_reminder_preferences"\)/);
+
+assert.match(preferenceLoader, /calculation_method, madhab, notifications_enabled, prayer_reminders/);
+assert.match(preferenceLoader, /\\.select\\("id, latitude, longitude, timezone"\\)/);
+assert.match(preferenceLoader, /dhikr_interval_minutes, salawat_enabled, salawat_interval_minutes/);
+assert.match(deliverySourceForFencing, /\\.from\\("prayer_schedule_cache"\\)/);
+assert.match(deliverySourceForFencing, /isCurrentPrayerReminderSchedule/);
+assert.match(deliverySourceForFencing, /isCurrentIntervalReminderSlot/);
+
 assert.equal(
   (preferenceLoader.match(/\.eq\("user_id", delivery\.user_id\)/g) ?? []).length,
   3,
@@ -223,6 +238,48 @@ assert.equal(
   "2026-03-08T10:30:00.000Z",
   "valid local times after a daylight-saving transition must resolve to the matching instant",
 );
+
+
+assert.equal(
+  previousLocalDate(new Date("2026-11-12T12:00:00.000Z"), "Pacific/Kiritimati"),
+  "2026-11-12",
+  "previous local calendar advancement must respect UTC+14 without skipping a date",
+);
+assert.equal(
+  isCurrentPrayerReminderSchedule({
+    scheduledAt: "2026-11-12T02:50:00.000Z",
+    prayerAt: new Date("2026-11-12T03:00:00.000Z"),
+    offsetMinutes: -10,
+  }),
+  true,
+  "a delivery matching the current prayer time and offset remains valid",
+);
+assert.equal(
+  isCurrentPrayerReminderSchedule({
+    scheduledAt: "2026-11-12T02:50:00.000Z",
+    prayerAt: new Date("2026-11-12T03:00:00.000Z"),
+    offsetMinutes: 0,
+  }),
+  false,
+  "a queued delivery from a superseded prayer offset must be cancelled",
+);
+assert.equal(
+  isCurrentPrayerReminderSchedule({
+    scheduledAt: "2026-11-12T02:50:00.000Z",
+    prayerAt: new Date("2026-11-12T03:00:00.000Z"),
+    offsetMinutes: null,
+  }),
+  false,
+  "a disabled or malformed prayer offset must fail closed",
+);
+assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:15:00.000Z", 15), true);
+assert.equal(
+  isCurrentIntervalReminderSlot("2026-11-12T08:15:00.000Z", 60),
+  false,
+  "a stale quarter-hour reminder must not send after the interval changes to hourly",
+);
+assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:00:00.000Z", 60), true);
+assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:00:00.000Z", null), false);
 
 const pushTopics = [
   buildNotificationTopic({ notificationKind: "prayer", prayerName: "Fajr", scheduledAt: "2026-11-11T03:00:00.000Z" }),

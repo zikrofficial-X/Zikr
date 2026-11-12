@@ -137,3 +137,75 @@ export function zonedDateTime(
   }
   return null;
 }
+
+/** Return the previous calendar date in an IANA timezone without UTC+14/DST drift. */
+export function previousLocalDate(date: Date, timeZone: string): string {
+  if (!Number.isFinite(date.getTime())) {
+    throw new RangeError("A valid date is required.");
+  }
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: string) => Number(parts.find(part => part.type === type)?.value ?? 0);
+  const year = value("year");
+  const month = value("month");
+  const day = value("day");
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    throw new Error("Could not resolve the local calendar date.");
+  }
+  const previous = new Date(Date.UTC(year, month - 1, day - 1));
+  return [
+    previous.getUTCFullYear(),
+    String(previous.getUTCMonth() + 1).padStart(2, "0"),
+    String(previous.getUTCDate()).padStart(2, "0"),
+  ].join("-");
+}
+
+/** Check a queued prayer reminder against the current prayer time and offset. */
+export function isCurrentPrayerReminderSchedule(input: {
+  scheduledAt: string;
+  prayerAt: Date;
+  offsetMinutes: unknown;
+  toleranceMs?: number;
+}): boolean {
+  const scheduledTime = new Date(input.scheduledAt).getTime();
+  const prayerTime = input.prayerAt.getTime();
+  const tolerance = input.toleranceMs ?? 1_000;
+  if (
+    !Number.isFinite(scheduledTime) ||
+    !Number.isFinite(prayerTime) ||
+    !Number.isInteger(input.offsetMinutes) ||
+    !Number.isFinite(tolerance) ||
+    tolerance < 0
+  ) {
+    return false;
+  }
+  const expectedTime = prayerTime + Number(input.offsetMinutes) * 60_000;
+  return Math.abs(scheduledTime - expectedTime) <= tolerance;
+}
+
+/** Background reminder intervals are anchored to UTC midnight by the SQL planner. */
+export function isCurrentIntervalReminderSlot(
+  scheduledAt: string,
+  intervalMinutes: unknown,
+): boolean {
+  const scheduledTime = new Date(scheduledAt).getTime();
+  if (
+    !Number.isFinite(scheduledTime) ||
+    !Number.isInteger(intervalMinutes) ||
+    Number(intervalMinutes) <= 0
+  ) {
+    return false;
+  }
+  const instant = new Date(scheduledTime);
+  const utcDayStart = Date.UTC(
+    instant.getUTCFullYear(),
+    instant.getUTCMonth(),
+    instant.getUTCDate(),
+  );
+  const elapsedMinutes = (scheduledTime - utcDayStart) / 60_000;
+  return Number.isInteger(elapsedMinutes) && elapsedMinutes % Number(intervalMinutes) === 0;
+}

@@ -2,7 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "./eligibility.ts";
-import { buildNotificationTopic, nextLocalDate, zonedDateTime } from "./time-zone.ts";
+import {
+  buildNotificationTopic,
+  isCurrentIntervalReminderSlot,
+  isCurrentPrayerReminderSchedule,
+  nextLocalDate,
+  previousLocalDate,
+  zonedDateTime,
+} from "./time-zone.ts";
 import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
 import {
   ApplicationServer,
@@ -76,7 +83,9 @@ type VapidBundle = {
 type BackgroundReminderPreference = {
   user_id: string;
   dhikr_enabled: boolean;
+  dhikr_interval_minutes: number;
   salawat_enabled: boolean;
+  salawat_interval_minutes: number;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
   timezone: string | null;
@@ -607,20 +616,20 @@ async function updateDeliveryIfLease(
 }
 
 async function getCurrentDeliveryPreferences(delivery: Delivery): Promise<{
-  prayerPreference: Pick<PrayerPreference, "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null;
-  prayerLocation: Pick<PrayerLocation, "timezone"> | null;
+  prayerPreference: Pick<PrayerPreference, "calculation_method" | "madhab" | "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null;
+  prayerLocation: Pick<PrayerLocation, "id" | "latitude" | "longitude" | "timezone"> | null;
   backgroundPreference: BackgroundReminderPreference | null;
 }> {
   if (delivery.notification_kind === "prayer") {
     const [preferenceResult, locationResult] = await Promise.all([
       supabase
         .from("prayer_preferences")
-        .select("notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
+        .select("calculation_method, madhab, notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
         .eq("user_id", delivery.user_id)
         .maybeSingle(),
       supabase
         .from("prayer_locations")
-        .select("timezone")
+        .select("id, latitude, longitude, timezone")
         .eq("user_id", delivery.user_id)
         .eq("is_default", true)
         .order("updated_at", { ascending: false })
@@ -630,15 +639,15 @@ async function getCurrentDeliveryPreferences(delivery: Delivery): Promise<{
     if (preferenceResult.error) throw preferenceResult.error;
     if (locationResult.error) throw locationResult.error;
     return {
-      prayerPreference: (preferenceResult.data ?? null) as Pick<PrayerPreference, "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null,
-      prayerLocation: (locationResult.data ?? null) as Pick<PrayerLocation, "timezone"> | null,
+      prayerPreference: (preferenceResult.data ?? null) as Pick<PrayerPreference, "calculation_method" | "madhab" | "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null,
+      prayerLocation: (locationResult.data ?? null) as Pick<PrayerLocation, "id" | "latitude" | "longitude" | "timezone"> | null,
       backgroundPreference: null,
     };
   }
 
   const { data, error } = await supabase
     .from("background_reminder_preferences")
-    .select("user_id, dhikr_enabled, salawat_enabled, quiet_hours_start, quiet_hours_end, timezone")
+    .select("user_id, dhikr_enabled, dhikr_interval_minutes, salawat_enabled, salawat_interval_minutes, quiet_hours_start, quiet_hours_end, timezone")
     .eq("user_id", delivery.user_id)
     .maybeSingle();
   if (error) throw error;
@@ -689,7 +698,9 @@ async function deliverDue(
           !preference ||
           preference.notifications_enabled !== true ||
           !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
-          !location?.timezone
+          !location?.timezone ||
+          location.latitude === null ||
+          location.longitude === null
         ) {
           skipReason = "Prayer reminder is no longer enabled or configured";
         } else if (
@@ -707,6 +718,47 @@ async function deliverDue(
           )
         ) {
           skipReason = "Skipped during quiet hours";
+        } else {
+          const timeZone = safeTimeZone(location.timezone);
+          const prayerDates = [
+            ...new Set([
+              formatLocalDate(scheduledAt, timeZone),
+              previousLocalDate(scheduledAt, timeZone),
+              nextLocalDate(scheduledAt, timeZone),
+            ]),
+          ];
+          const method = preference.calculation_method ?? "umm-al-qura";
+          const madhab = preference.madhab ?? "shafi";
+          const { data: cacheRows, error: cacheError } = await supabase
+            .from("prayer_schedule_cache")
+            .select("location_id, prayer_date, latitude, longitude, timezone, calculation_method, madhab, timings")
+            .eq("location_id", location.id)
+            .in("prayer_date", prayerDates);
+          if (cacheError) throw cacheError;
+          const currentCache = (cacheRows ?? []).map(row => row as CachedSchedule).find(cache =>
+            Number(cache.latitude) === Number(location.latitude) &&
+            Number(cache.longitude) === Number(location.longitude) &&
+            cache.timezone === timeZone &&
+            cache.calculation_method === method &&
+            cache.madhab === madhab
+          );
+          const currentPrayerAt = currentCache
+            ? zonedDateTime(
+                currentCache.prayer_date,
+                timeZone,
+                currentCache.timings[delivery.prayer_name] ?? "",
+              )
+            : null;
+          if (
+            !currentPrayerAt ||
+            !isCurrentPrayerReminderSchedule({
+              scheduledAt: delivery.scheduled_at,
+              prayerAt: currentPrayerAt,
+              offsetMinutes: preference.prayer_reminders?.[delivery.prayer_name],
+            })
+          ) {
+            skipReason = "Prayer reminder schedule changed; stale delivery cancelled";
+          }
         }
       } else {
         const preference = currentPreferences.backgroundPreference;
@@ -714,8 +766,14 @@ async function deliverDue(
           delivery.notification_kind === "dhikr"
             ? preference?.dhikr_enabled
             : preference?.salawat_enabled;
+        const intervalMinutes =
+          delivery.notification_kind === "dhikr"
+            ? preference?.dhikr_interval_minutes
+            : preference?.salawat_interval_minutes;
         if (!preference || enabled !== true) {
           skipReason = "Background reminder is no longer enabled";
+        } else if (!isCurrentIntervalReminderSlot(delivery.scheduled_at, intervalMinutes)) {
+          skipReason = "Background reminder interval changed; stale delivery cancelled";
         } else if (
           inQuietHours(
             scheduledAt,
