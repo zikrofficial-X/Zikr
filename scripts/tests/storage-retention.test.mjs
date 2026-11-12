@@ -18,14 +18,30 @@ import {
   selectProtectedAndroidTags,
 } from "../cleanup-supabase-storage.mjs";
 
+const storageRetentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");
 const supabaseUrl = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
 assert.equal(assertExpectedSupabaseProject(supabaseUrl, "zqtssvlvmkzeeyqghqfk"), "zqtssvlvmkzeeyqghqfk");
 assert.throws(() => assertExpectedSupabaseProject(supabaseUrl, "wrong-project"), /20-character Supabase project ref/);
 assert.throws(() => assertExpectedSupabaseProject("https://other-project.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
 assert.throws(() => assertExpectedSupabaseProject("http://zqtssvlvmkzeeyqghqfk.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
-assert.doesNotThrow(() => assertRetentionApplyConfirmation(false, ""));
-assert.throws(() => assertRetentionApplyConfirmation(true, ""), /DELETE_STAGING_COPIES/);
-assert.doesNotThrow(() => assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES"));
+assert.doesNotThrow(() => assertRetentionApplyConfirmation(false, "", false));
+assert.throws(
+  () => assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE", false),
+  /RETENTION_REFERENCE_WRITES_PAUSED=true/,
+  "apply must be blocked unless all media-reference writers are paused",
+);
+assert.throws(
+  () => assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES", true),
+  /DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE/,
+  "the operator must acknowledge the reference freeze in the typed confirmation",
+);
+assert.doesNotThrow(() =>
+  assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE", true),
+);
+assert.match(storageRetentionWorkflow, /reference_writes_paused:[\\s\\S]*?default: false[\\s\\S]*?type: boolean/);
+assert.match(storageRetentionWorkflow, /RETENTION_REFERENCE_WRITES_PAUSED: \\$\\{\\{ inputs\\.reference_writes_paused \\}\\}/);
+assert.match(storageRetentionWorkflow, /inputs\\.reference_writes_paused == true/);
+assert.match(storageRetentionWorkflow, /DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE/);
 const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`;
 const cloudinaryMaster = "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4";
 const now = new Date("2026-10-30T12:00:00.000Z");

@@ -38,9 +38,13 @@ export function assertExpectedSupabaseProject(supabaseUrl, expectedProjectRef) {
   return expected;
 }
 
-export function assertRetentionApplyConfirmation(apply, confirmation) {
-  if (apply && asString(confirmation) !== "DELETE_STAGING_COPIES") {
-    throw new Error("Refusing destructive Storage retention without RETENTION_CONFIRMATION=DELETE_STAGING_COPIES.");
+export function assertRetentionApplyConfirmation(apply, confirmation, referenceWritesPaused = false) {
+  if (!apply) return;
+  if (referenceWritesPaused !== true) {
+    throw new Error("Refusing destructive Storage retention unless RETENTION_REFERENCE_WRITES_PAUSED=true; pause video generation, social publishing, and admin/media-reference writes for the entire apply window.");
+  }
+  if (asString(confirmation) !== "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE") {
+    throw new Error("Refusing destructive Storage retention without RETENTION_CONFIRMATION=DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE.");
   }
 }
 
@@ -867,7 +871,11 @@ async function updateAndroidBucketRows(client, paths) {
 
 async function main() {
   const apply = process.argv.includes("--apply");
-  assertRetentionApplyConfirmation(apply, process.env.RETENTION_CONFIRMATION);
+  assertRetentionApplyConfirmation(
+    apply,
+    process.env.RETENTION_CONFIRMATION,
+    process.env.RETENTION_REFERENCE_WRITES_PAUSED === "true",
+  );
   const { supabaseUrl, serviceRoleKey } = assertEnv();
   const client = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
