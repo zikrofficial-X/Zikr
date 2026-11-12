@@ -16,6 +16,7 @@ const smartLinkPromo = read("src/components/smartlink-promo.tsx");
 const serviceWorkerRegister = read(
   "src/components/layout/service-worker-register.tsx",
 );
+const runtimePolicy = read("src/lib/ads/runtime-policy.ts");
 const serviceWorker = read("public/sw.js");
 const offlineAudio = read("src/features/quran/services/offline-audio.ts");
 const offlinePack = read("src/lib/offline-pack.ts");
@@ -55,18 +56,32 @@ requireCondition(
   "Standalone SmartLink promotional sections must stay hidden in native shells.",
 );
 requireCondition(
-  serviceWorkerRegister.includes("'/sw.js?native=1'") &&
-    serviceWorkerRegister.includes("'/sw.js'"),
-  "Native and browser service workers must use distinct script URLs.",
+  serviceWorkerRegister.includes("getServiceWorkerScriptUrl") &&
+    serviceWorkerRegister.includes("PRODUCTION_URL") &&
+    serviceWorkerRegister.includes("window.location.hostname") &&
+    runtimePolicy.includes('return "/sw.js?native=1"') &&
+    runtimePolicy.includes('return "/sw.js?monetag=1"') &&
+    runtimePolicy.includes('return "/sw.js"'),
+  "Native, canonical production, and preview workers must use distinct script URLs.",
 );
+const monetagImportIndex = serviceWorker.indexOf(
+  "importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')",
+);
+const monetagImportTryIndex = serviceWorker.lastIndexOf("try {", monetagImportIndex);
+const monetagImportCatchIndex = serviceWorker.indexOf("} catch", monetagImportIndex);
 requireCondition(
   serviceWorker.includes('searchParams.get("native") === "1"') &&
-    serviceWorker.includes("importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw')"),
-  "The Monetag service-worker import must be conditional and skipped for the native worker.",
+    serviceWorker.includes('searchParams.get("monetag") === "1"') &&
+    serviceWorker.includes('hostname.toLowerCase() === "zikrmediaofficial.vercel.app"') &&
+    serviceWorker.includes("if (isCanonicalMonetagWorker)") &&
+    monetagImportTryIndex >= 0 &&
+    monetagImportTryIndex < monetagImportIndex &&
+    monetagImportCatchIndex > monetagImportIndex,
+  "Monetag service-worker import must be canonical-production-only and non-fatal when the third party is unavailable.",
 );
 requireCondition(
-  serviceWorker.includes("async function purgeNativeAdvertisingMarkup()") &&
-    serviceWorker.includes("await purgeNativeAdvertisingMarkup()"),
+  serviceWorker.includes("async function purgeDisabledAdvertisingMarkup()") &&
+    serviceWorker.includes("await purgeDisabledAdvertisingMarkup()"),
   "The native worker must remove cached HTML containing previously published ad markup.",
 );
 const appShellCachePattern = /^zikr-v\d+$/;

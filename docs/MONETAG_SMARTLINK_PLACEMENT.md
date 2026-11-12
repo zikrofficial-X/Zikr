@@ -36,6 +36,17 @@ runtime guard. These exclusions apply to newly rebuilt APK/AAB artifacts; a
 previously installed build must receive the updated app/web runtime and worker
 before its old advertising integration can be removed.
 
+## Canonical-host restriction
+
+Monetag tags and the Monetag service-worker import are permitted only on the
+canonical production origin. The browser registers `/sw.js?monetag=1` only
+when the current hostname exactly matches the canonical host. Vercel Preview,
+staging aliases, and local development register `/sw.js` without Monetag.
+The worker independently checks both the marker and canonical hostname before
+calling `importScripts`; a failed third-party import is non-fatal so offline
+caching and notification handlers can still install. Non-canonical and native
+workers remove only cached HTML that contains legacy advertising markup.
+
 The website continues to use its approved, disclosed Monetag placements.
 
 ## Social video metadata

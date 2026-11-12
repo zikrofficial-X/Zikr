@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { hydrateOfflineContent } from '@/lib/offline-pack';
+import { getServiceWorkerScriptUrl } from '@/lib/ads/runtime-policy';
+import { PRODUCTION_URL } from '@/lib/site';
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -90,9 +92,11 @@ export function ServiceWorkerRegister() {
 
     const registerServiceWorker = async () => {
       try {
-        const serviceWorkerUrl = Capacitor.isNativePlatform()
-          ? '/sw.js?native=1'
-          : '/sw.js';
+        const serviceWorkerUrl = getServiceWorkerScriptUrl({
+          isNative: Capacitor.isNativePlatform(),
+          hostname: window.location.hostname,
+          productionUrl: PRODUCTION_URL,
+        });
         registration = await navigator.serviceWorker.register(serviceWorkerUrl, {
           scope: '/',
           updateViaCache: 'none'

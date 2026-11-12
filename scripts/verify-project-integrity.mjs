@@ -267,9 +267,20 @@ requireText('src/lib/offline-db.ts', [
 ]);
 requireText('src/components/layout/service-worker-register.tsx', [
   'navigator.serviceWorker.register(serviceWorkerUrl',
-  "'/sw.js?native=1'",
-  "'/sw.js'",
+  'getServiceWorkerScriptUrl',
+  'PRODUCTION_URL',
+  'window.location.hostname',
   'hydrateOfflineContent',
+]);
+requireText('src/lib/ads/runtime-policy.ts', [
+  '"/sw.js?native=1"',
+  '"/sw.js?monetag=1"',
+  '"/sw.js"',
+]);
+requireText('public/sw.js', [
+  'searchParams.get("native") === "1"',
+  'searchParams.get("monetag") === "1"',
+  'hostname.toLowerCase() === "zikrmediaofficial.vercel.app"',
 ]);
 requireText('src/app/layout.tsx', ['OfflineNavigationGuard']);
 requireText('src/app/manifest.ts', ['short_name', 'icons']);
