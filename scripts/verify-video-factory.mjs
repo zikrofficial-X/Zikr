@@ -73,9 +73,24 @@ if (!template.includes("function isContentHashConflict(error: unknown)")) failur
 const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLease = async");
 const leaseFencePosition = template.indexOf("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt)", leaseHelperPosition);
 const renderedHashWritePosition = template.indexOf("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });", leaseHelperPosition);
-const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)", renderedHashWritePosition);
-if (leaseHelperPosition < 0 || leaseFencePosition < leaseHelperPosition || renderedHashWritePosition < leaseFencePosition || siteRegistrationPosition < renderedHashWritePosition) {
-  failures.push("rendered content hash must be atomically written under the current processing lease before public site registration");
+const leaseHeartbeatPosition = template.indexOf("const withLeaseHeartbeat = <T>", leaseHelperPosition);
+const siteRegistrationPosition = template.indexOf(
+  "await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(request, rendered))",
+  renderedHashWritePosition,
+);
+const socialQueuePosition = template.indexOf(
+  "await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))",
+  siteRegistrationPosition,
+);
+if (
+  leaseHelperPosition < 0 ||
+  leaseFencePosition < leaseHelperPosition ||
+  leaseHeartbeatPosition < leaseFencePosition ||
+  renderedHashWritePosition < leaseHeartbeatPosition ||
+  siteRegistrationPosition < renderedHashWritePosition ||
+  socialQueuePosition < siteRegistrationPosition
+) {
+  failures.push("rendered hash, catalog registration, and social queue writes must remain inside the current processing lease before completion");
 }
 for (const token of [
   'status: "cancelled"',
