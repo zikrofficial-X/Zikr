@@ -30,7 +30,8 @@ assert.ok(
   "article translation retries must read the existing attempt counter",
 );
 assert.ok(
-  articleSync.includes("attempt_count: Math.max(0, Number(existing.attempt_count) || 0) + 1"),
+  articleSync.includes("const attemptCount = Math.max(0, Number(existing.attempt_count) || 0) + 1") &&
+    articleSync.includes("attempt_count: attemptCount"),
   "article translation retries must increment, not reset, the attempt counter",
 );
 assert.ok(
