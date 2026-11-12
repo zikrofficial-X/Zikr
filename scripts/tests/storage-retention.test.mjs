@@ -437,6 +437,10 @@ assert.ok(
   "the preflight must reject unreviewed extra updates, deletes, truncates, and dynamic SQL",
 );
 assert.ok(
+  retentionRpcMigration.includes(String.raw\`'\mINSERT\M|\mMERGE\M|\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M|\mCALL\M|\mPERFORM\M|\mSELECT\M|\mCOPY\M'\`),
+  "the preflight must reject extra inserts, merges, procedure/function calls, selects, and copy statements",
+);
+assert.ok(
   retentionRpcMigration.includes("GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()\n  TO service_role;"),
   "only the service role may call the retention contract preflight",
 );
