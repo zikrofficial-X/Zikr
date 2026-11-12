@@ -25,8 +25,7 @@ function createRequest(
     cancel() {
       cancelled = true;
     },
-    { highWaterMark: 0 },
-  });
+  }, { highWaterMark: 0 });
   return {
     request: { headers: new Headers(headers), body },
     state: {
