@@ -2279,16 +2279,19 @@ async function recoverPendingVideoSocialQueueEnqueues(
   }
   const candidateLimit = Math.max(1, Math.min(10, Math.floor(limit) || 1));
   const selectFields = "id,title,description,category,content,status,automation_key,error_message,error_details,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms";
-  const [pendingRows, staleRows] = await Promise.all([
+  const [pendingRows, staleRows, retryWaitRows] = await Promise.all([
     supabaseServerAdminRequest<GeneratedRequest[]>(
-      `/rest/v1/video_generation_requests?status=eq.processing&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.pending&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+      `/rest/v1/video_generation_requests?status=in.(processing,retry_wait)&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.pending&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
     ),
     supabaseServerAdminRequest<GeneratedRequest[]>(
       `/rest/v1/video_generation_requests?status=eq.processing&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
     ),
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=eq.retry_wait&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.processing&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
   ]);
   const candidates = [...new Map(
-    [...(pendingRows ?? []), ...(staleRows ?? [])]
+    [...(pendingRows ?? []), ...(staleRows ?? []), ...(retryWaitRows ?? [])]
       .filter((request) => request && typeof request.id === "string")
       .map((request) => [request.id, request] as const),
   ).values()].slice(0, candidateLimit);
@@ -2315,7 +2318,7 @@ async function recoverPendingVideoSocialQueueEnqueues(
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify({ content: claimContent, updated_at: claimNow }),
+        body: JSON.stringify({ status: "processing", content: claimContent, updated_at: claimNow }),
       },
     );
     const claimed = claimedRows?.[0];
@@ -2807,12 +2810,22 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             ? request.content.aiProviderJobId
             : null,
       };
-      await patchProcessingRequestWithLease({
-        ...completedMediaFields,
-        content: request.content,
-        error_message: null,
-        error_details: null,
-      });
+      try {
+        await patchProcessingRequestWithLease({
+          ...completedMediaFields,
+          content: request.content,
+          error_message: null,
+          error_details: null,
+        });
+      } catch (persistError) {
+        skipped += 1;
+        if (persistError instanceof VideoRequestLeaseLostError) {
+          console.warn(`[template-video] Media handoff lease changed before social enqueue for ${request.id}; the newer owner was left untouched.`);
+        } else {
+          console.error(`[template-video] Could not persist the generated media handoff for ${request.id}; stale recovery will reconcile it:`, persistError);
+        }
+        continue;
+      }
 
       let socialQueueResult: "queued" | "not_required";
       try {
@@ -2826,11 +2839,23 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           socialQueueEnqueueStatus: "pending",
           socialQueueEnqueueLastError: message.slice(0, 500),
         };
-        await patchProcessingRequestWithLease({
-          content: request.content,
-          error_message: "Social queue enqueue pending",
-          error_details: message.slice(0, 2000),
-        });
+        try {
+          await patchProcessingRequestWithLease({
+            content: request.content,
+            error_message: "Social queue enqueue pending",
+            error_details: message.slice(0, 2000),
+          });
+        } catch (handoffPersistError) {
+          if (handoffPersistError instanceof VideoRequestLeaseLostError) {
+            skipped += 1;
+            console.warn(`[template-video] Did not overwrite a newer media handoff owner for ${request.id}.`);
+            continue;
+          }
+          console.error(
+            `[template-video] Could not persist the pending social handoff for ${request.id}; the stale processing marker will be recovered:`,
+            handoffPersistError,
+          );
+        }
         skipped += 1;
         console.error(
           `[template-video] Internal video succeeded; social queue handoff remains pending for ${request.id}:`,
@@ -2844,13 +2869,23 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         socialQueueEnqueueStatus: socialQueueResult,
         socialQueueEnqueueLastError: null,
       };
-      await patchProcessingRequestWithLease({
-        status: "completed",
-        ...completedMediaFields,
-        content: request.content,
-        error_message: null,
-        error_details: null,
-      });
+      try {
+        await patchProcessingRequestWithLease({
+          status: "completed",
+          ...completedMediaFields,
+          content: request.content,
+          error_message: null,
+          error_details: null,
+        });
+      } catch (completionError) {
+        skipped += 1;
+        if (completionError instanceof VideoRequestLeaseLostError) {
+          console.warn(`[template-video] Completion lease changed after durable social enqueue for ${request.id}; the newer owner was left untouched.`);
+        } else {
+          console.error(`[template-video] Social queue is durable but completion state could not be persisted for ${request.id}; stale recovery will finalize it:`, completionError);
+        }
+        continue;
+      }
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {

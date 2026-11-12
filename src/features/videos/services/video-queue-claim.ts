@@ -115,7 +115,7 @@ export function buildVideoSocialQueueRecoveryClaimFilter(
   const enqueueStatus = candidate.content?.socialQueueEnqueueStatus;
   if (
     !id ||
-    candidate.status !== "processing" ||
+    (candidate.status !== "processing" && candidate.status !== "retry_wait") ||
     !updatedAt ||
     updatedTimestamp === null ||
     !videoUrl ||
@@ -125,14 +125,14 @@ export function buildVideoSocialQueueRecoveryClaimFilter(
     return null;
   }
 
-  if (enqueueStatus === "processing") {
+  if (candidate.status === "processing" && enqueueStatus === "processing") {
     const staleTimestamp = timestamp(staleBefore);
     if (staleTimestamp === null || updatedTimestamp >= staleTimestamp) return null;
   }
 
   return [
     `id=eq.${encodeURIComponent(id)}`,
-    "status=eq.processing",
+    `status=eq.${candidate.status}`,
     `video_url=eq.${encodeURIComponent(videoUrl)}`,
     `updated_at=eq.${encodeURIComponent(updatedAt)}`,
     `content->>socialQueueEnqueueStatus=eq.${enqueueStatus}`,

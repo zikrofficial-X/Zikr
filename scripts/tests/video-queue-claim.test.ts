@@ -136,7 +136,7 @@ test("stale social queue handoffs are recoverable but live leases are not", () =
   assert.equal(
     buildVideoSocialQueueRecoveryClaimFilter({
       ...candidate,
-      updated_at: "2026-11-11T22:59:59.000Z",
+      updated_at: "2026-11-11T23:00:01.000Z",
     }, staleBefore),
     null,
     "a non-stale processing lease must remain owned by the current worker",
@@ -154,6 +154,21 @@ test("stale social queue handoffs are recoverable but live leases are not", () =
       content: { socialQueueEnqueueStatus: "queued" },
     }, staleBefore),
     null,
+  );
+});
+
+test("retry_wait handoffs are adopted by the recovery worker without rerendering", () => {
+  assert.equal(
+    buildVideoSocialQueueRecoveryClaimFilter({
+      id: "request-7",
+      status: "retry_wait",
+      video_url: generatedVideoUrl,
+      updated_at: "2026-11-11T22:59:59.000Z",
+      content: { socialQueueEnqueueStatus: "processing" },
+    }, "2026-11-11T23:00:00.000Z"),
+    "id=eq.request-7&status=eq.retry_wait&video_url=eq." +
+      encodeURIComponent(generatedVideoUrl) +
+      "&updated_at=eq.2026-11-11T22%3A59%3A59.000Z&content->>socialQueueEnqueueStatus=eq.processing",
   );
 });
 
@@ -306,4 +321,7 @@ test("failed social enqueue remains recoverable and cannot complete the video re
   assert.ok(videoWorkerSource.includes("content->>socialQueueEnqueueStatus=eq.processing"));
   assert.ok(videoWorkerSource.includes("buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore)"));
   assert.ok(videoWorkerSource.includes("buildVideoSocialQueueRecoveryLeaseFilter("));
+  assert.ok(videoWorkerSource.includes("status=in.(processing,retry_wait)"));
+  assert.ok(videoWorkerSource.includes("catch (handoffPersistError)"));
+  assert.ok(videoWorkerSource.includes("catch (completionError)"));
 });
