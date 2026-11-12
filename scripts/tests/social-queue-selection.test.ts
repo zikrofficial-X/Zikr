@@ -190,8 +190,13 @@ assert.doesNotMatch(markQueueItemSource, /updated_at:\s*new Date\(\)\.toISOStrin
   "a same-millisecond queue transition must not leave an old publisher lease reusable");
 assert.equal(
   (socialPublisher.match(/const claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/g) ?? []).length,
-  2,
-  "both batch and single-item publisher claims must advance the row-version token",
+  1,
+  "the batch publisher claim must advance the row-version token",
+);
+assert.equal(
+  (socialPublisher.match(/claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/g) ?? []).length,
+  1,
+  "the single-item publisher claim must advance the outer lease token before the server response is applied",
 );
 assert.equal(
   buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),

@@ -1059,7 +1059,7 @@ export async function processSocialPublishItem(
     }
     const claimNow = new Date();
     const claimAt = claimNow.toISOString();
-    const claimUpdatedAt = buildNextRowVersionUpdatedAt(item.updated_at, claimNow);
+    claimUpdatedAt = buildNextRowVersionUpdatedAt(item.updated_at, claimNow);
     const claimed = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
       `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, item.status, claimAt, item.updated_at)}`,
       {
