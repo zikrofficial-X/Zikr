@@ -52,12 +52,11 @@ BEGIN
   WHERE id = p_queue_id
     AND content_id = p_request_id::text
     AND status = 'published'
+    AND video_url = p_expected_url
     AND (
-      video_url = p_expected_url
+      NOT p_finalize
       OR (
-        p_finalize
-        AND video_url IS NULL
-        AND metadata->'storageRetention'->>'state' = 'purge_pending'
+        metadata->'storageRetention'->>'state' = 'purge_pending'
         AND metadata->'storageRetention'->>'path' = p_retention->>'path'
       )
     );
@@ -74,12 +73,11 @@ BEGIN
     updated_at = now()
   WHERE id = p_request_id
     AND status = 'completed'
+    AND video_url = p_expected_url
     AND (
-      video_url = p_expected_url
+      NOT p_finalize
       OR (
-        p_finalize
-        AND video_url IS NULL
-        AND content->'storageRetention'->>'state' = 'purge_pending'
+        content->'storageRetention'->>'state' = 'purge_pending'
         AND content->'storageRetention'->>'path' = p_retention->>'path'
       )
     );
@@ -152,6 +150,7 @@ BEGIN
     AND queue_update[2] ~* '\mcontent_id\M\s*=\s*p_request_id::text'
     AND queue_update[2] ~* '\mstatus\M\s*=\s*''published'''
     AND queue_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
+    AND queue_update[2] !~* '\mvideo_url\M\s+IS\s+NULL'
     AND queue_update[2] ~* 'metadata->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
     AND request_update[1] ~* '\mcontent\M\s*='
     AND request_update[1] !~* '\mvideo_url\M\s*='
@@ -160,6 +159,7 @@ BEGIN
     AND request_update[2] ~* '\mid\M\s*=\s*p_request_id'
     AND request_update[2] ~* '\mstatus\M\s*=\s*''completed'''
     AND request_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
+    AND request_update[2] !~* '\mvideo_url\M\s+IS\s+NULL'
     AND request_update[2] ~* 'content->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
     AND definition ~* 'p_finalize\s+IS\s+DISTINCT\s+FROM'
     AND definition ~* 'p_retention->>''bucket''\s+IS\s+DISTINCT\s+FROM\s+''videos''';

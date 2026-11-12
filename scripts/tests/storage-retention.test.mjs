@@ -538,6 +538,19 @@ assert.equal(
   2,
   "both records must still be fenced by the exact Cloudinary playback URL"
 );
+
+const queueRetentionWhere = retentionRpcMigration.match(
+  /UPDATE public\\.social_publish_queue\\s+SET[\\s\\S]*?\\bWHERE([\\s\\S]*?);/i,
+)?.[1] ?? "";
+const requestRetentionWhere = retentionRpcMigration.match(
+  /UPDATE public\\.video_generation_requests\\s+SET[\\s\\S]*?\\bWHERE([\\s\\S]*?);/i,
+)?.[1] ?? "";
+assert.match(queueRetentionWhere, /video_url = p_expected_url/);
+assert.match(requestRetentionWhere, /video_url = p_expected_url/);
+assert.doesNotMatch(queueRetentionWhere, /video_url\\s+IS\\s+NULL/i,
+  "finalization must preserve the Cloudinary queue playback URL instead of requiring it to be null");
+assert.doesNotMatch(requestRetentionWhere, /video_url\\s+IS\\s+NULL/i,
+  "finalization must preserve the Cloudinary request playback URL instead of requiring it to be null");
 assert.match(retentionRpcMigration, /Cloudinary playback URL remains intact/i,
   "the retention RPC must document that the durable playback reference is preserved");
 assert.ok(
