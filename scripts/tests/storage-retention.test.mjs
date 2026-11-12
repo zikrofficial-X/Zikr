@@ -436,8 +436,9 @@ assert.ok(
     retentionRpcMigration.includes("TRUNCATE"),
   "the preflight must reject unreviewed extra updates, deletes, truncates, and dynamic SQL",
 );
-assert.ok(
-  retentionRpcMigration.includes(String.raw\`'\mINSERT\M|\mMERGE\M|\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M|\mCALL\M|\mPERFORM\M|\mSELECT\M|\mCOPY\M'\`),
+assert.match(
+  retentionRpcMigration,
+  /\\mINSERT\\M\|\\mMERGE\\M\|\\mDELETE\\M\|\\mTRUNCATE\\M\|\\mEXECUTE\\M\|\\mCALL\\M\|\\mPERFORM\\M\|\\mSELECT\\M\|\\mCOPY\\M/,
   "the preflight must reject extra inserts, merges, procedure/function calls, selects, and copy statements",
 );
 assert.ok(
