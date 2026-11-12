@@ -2759,18 +2759,12 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
             }
 
-            await patchProcessingRequestWithLease({
-              status: "cancelled",
-              video_url: null,
-              scene: null,
-              render_duration_ms: null,
-              generation_attempts: attempts,
-              next_retry_at: null,
-              last_attempt_at: duplicateAt,
-              error_message: "Duplicate render recovered into the canonical request",
-              error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
-            });
 
+
+            // Keep this request in processing while the held social rows are
+            // reconciled. The lease heartbeat below uses a processing-only CAS
+            // filter; cancelling first would make the next renewal look like
+            // lease loss and abort a long-running reconciliation.
             let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
             try {
               socialQueueRecovery = await withLeaseHeartbeat((signal) =>
@@ -2782,6 +2776,18 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
               console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
             }
+
+            await patchProcessingRequestWithLease({
+              status: "cancelled",
+              video_url: null,
+              scene: null,
+              render_duration_ms: null,
+              generation_attempts: attempts,
+              next_retry_at: null,
+              last_attempt_at: duplicateAt,
+              error_message: "Duplicate render recovered into the canonical request",
+              error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
+            });
 
             succeeded += 1;
             console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
