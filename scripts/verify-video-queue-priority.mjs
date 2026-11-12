@@ -96,9 +96,9 @@ const hasLeaseFencedTransitions =
   /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*status:\s*terminalStatus\s*,/.test(postClaimWorker);
 assert(hasLeaseFencedTransitions, "hash claim, completion and failure updates are fenced by the processing lease");
 
-const catalogRegistrationStart = worker.indexOf("async function registerGeneratedVideoOnSite");
-const catalogRegistrationEnd = worker.indexOf("type MissingMediaSocialQueueRow", catalogRegistrationStart);
-const catalogRegistration = worker.slice(catalogRegistrationStart, catalogRegistrationEnd).replace(/\s+/g, " ");
+const catalogRegistrationStart = queue.indexOf("async function registerGeneratedVideoOnSite");
+const catalogRegistrationEnd = queue.indexOf("type MissingMediaSocialQueueRow", catalogRegistrationStart);
+const catalogRegistration = queue.slice(catalogRegistrationStart, catalogRegistrationEnd).replace(/\s+/g, " ");
 assert(
   catalogRegistration.includes("&select=id,published,updated_at,metadata&limit=1") &&
     catalogRegistration.includes('metadata.mediaState !== "purged"') &&
