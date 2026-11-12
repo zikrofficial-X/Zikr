@@ -154,6 +154,15 @@ export function countUniqueWrittenContentReservations(
 export function createWrittenSocialAutomationKey(kind: string, id: string) {
  return `written-social-v1:${kind}:${id}`;
 }
+/** Build an inclusive PostgREST cutoff for the historical written-article backfill. */
+export function buildWrittenArticleBackfillCreatedAtFilter(cutoff: string): string {
+ const parsedCutoff = new Date(cutoff);
+ if (!Number.isFinite(parsedCutoff.getTime())) {
+  throw new Error("Invalid written article backfill cutoff.");
+ }
+ return `created_at=gte.${encodeURIComponent(parsedCutoff.toISOString())}`;
+}
+
 
 export function buildWrittenSocialQueuePayload(
  source: WrittenContentSource,

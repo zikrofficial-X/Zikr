@@ -1,9 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {asWrittenRecord,buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,parseWrittenGenerationRequest,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,isKidsWrittenSourceReservation,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
+import {asWrittenRecord,buildPublicKidsWrittenPost,countUniqueWrittenContentReservations,parseWrittenGenerationRequest,buildWrittenArticleBackfillCreatedAtFilter,buildWrittenBackfillQueuePayload,buildWrittenPost,buildWrittenSocialQueuePayload,chooseWrittenSourceKind,shouldBackfillKidsWrittenPost,scheduleKidsBackfillWithinUtcDay,containsKidsPersonalDataSolicitation,createWrittenAutomationKey,createWrittenSocialAutomationKey,isEligibleKidsWrittenPostForPublishing,isKidsWrittenPostCandidate,isKidsWrittenSourceReservation,normalizeWrittenCategory,validateWrittenPostDraft,type CurrentKidsStory,type KidsWrittenQueueRow,type WrittenContentSource,type WrittenPostDraft} from "../../src/features/social/services/written-content";
 assert.deepEqual(asWrittenRecord({ automationPublicationHold: true }), { automationPublicationHold: true }, "object metadata must be preserved for publication-hold checks");
 assert.deepEqual(asWrittenRecord(null), {}, "missing metadata must normalize to an empty record");
 assert.deepEqual(asWrittenRecord(["invalid"]), {}, "array metadata must not be treated as a metadata record");
+
+assert.equal(
+ buildWrittenArticleBackfillCreatedAtFilter("2026-11-06T20:00:00Z"),
+ "created_at=gte.2026-11-06T20%3A00%3A00.000Z",
+ "historical backfill must include every published article at or after the cutoff, not only an exact timestamp match",
+);
+assert.throws(
+ () => buildWrittenArticleBackfillCreatedAtFilter("not-a-date"),
+ /Invalid written article backfill cutoff/,
+ "invalid backfill cutoffs must be rejected before constructing a PostgREST query",
+);
 
 const source:WrittenContentSource={kind:"quran",id:"ayah-1",title:"آية",sourceText:"إِنَّ مَعَ الْعُسْرِ يُسْرًا",reference:"سورة الشرح، الآية 6",publicPath:"/quran/ash-sharh",categoryLabel:"القرآن الكريم",sourceVerified:true,quoteRequired:true};
 const draft:WrittenPostDraft={eligible:true,title:"مع كل عسر يسر",hook:"قد تمر بلحظة تظن فيها أن الطريق انتهى، لكن الأمل يظل حاضرًا.",reflection:"تدعونا الآية إلى ألا نستسلم لليأس، وأن نتذكر أن الشدة لا تدوم وأن الأمل باب للعمل والصبر.",question:"ما المعنى الذي تستحضره عندما تمر بوقت صعب؟"};
@@ -272,7 +283,9 @@ assert.match(worker, /select=id,title,title_ar,summary,summary_ar,content,conten
 assert.match(worker, /metadata\.automation==="written-content-v2"/, "generated written articles must not recursively become new source material");
 assert.ok(worker.includes("&status=in.(queued,processing)&select=id,status,scheduled_at&order=scheduled_at.asc,id.asc&limit=1"), "a failed or cancelled site-publication row must not block a safe new queued attempt");
 assert.match(worker, /while\(created < maxNewRows\)/, "Facebook backfill must continue scanning past already-queued historical pages");
-assert.match(worker, /metadata->>automation=eq\.written-content-v2&published=eq\.true&created_at=/, "social backfill must only consider articles that remain publicly published");
+assert.match(worker, /metadata->>automation=eq\.written-content-v2&published=eq\.true&\$\{createdAtFilter\}/, "social backfill must only consider articles that remain publicly published");
+assert.match(worker, /buildWrittenArticleBackfillCreatedAtFilter\(cutoff\.toISOString\(\)\)/, "historical social backfill must use the inclusive created_at cutoff helper");
+assert.doesNotMatch(worker, /created_at=\$\{encodeURIComponent\(cutoff\.toISOString\(\)\)\}/, "historical social backfill must never use exact timestamp equality");
 assert.match(worker, /select=id,title,content,slug,metadata,created_at,published&order=created_at\.asc,id\.asc/, "backfill must read the published flag for a defensive row-level check");
 assert.match(worker, /article\.published!==true/, "backfill must fail closed if an unpublished article is returned unexpectedly");
 assert.match(worker, /existingMetadata\.automationPublicationHold===true/, "an explicit admin unpublish must block the written-content automation from silently re-publishing the article");

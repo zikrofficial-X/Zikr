@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { asWrittenRecord } from "../../src/features/social/services/written-content";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenBackfillQueuePayload, countUniqueWrittenContentReservations, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, isKidsWrittenPostCandidate, isKidsWrittenSourceReservation, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenArticleBackfillCreatedAtFilter, buildWrittenBackfillQueuePayload, countUniqueWrittenContentReservations, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, isKidsWrittenPostCandidate, isKidsWrittenSourceReservation, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -248,6 +248,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
  const cutoffValue=process.env.SOCIAL_PUBLISH_AFTER?.trim()||"2026-11-06T20:00:00Z";
  const cutoff=new Date(cutoffValue);
  if(!Number.isFinite(cutoff.getTime()))throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff for written-post backfill.");
+ const createdAtFilter=buildWrittenArticleBackfillCreatedAtFilter(cutoff.toISOString());
  const maxNewRows=Math.max(1,Math.min(200,Math.floor(Number(limit)||100)));
  const pageSize=Math.min(100,maxNewRows);
  const today = new Date();
@@ -272,7 +273,7 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
  let created=0,slot=0,offset=0;
  while(created < maxNewRows){
   const rows=await readRequired<Row>(
-   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=${encodeURIComponent(cutoff.toISOString())}`+
+   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&${createdAtFilter}`+
    `&select=id,title,content,slug,metadata,created_at,published&order=created_at.asc,id.asc&limit=${pageSize}&offset=${offset}`,
   );
   if(rows.length===0)break;

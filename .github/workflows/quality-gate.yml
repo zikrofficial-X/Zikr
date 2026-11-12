@@ -89,6 +89,11 @@ jobs:
         run: bash scripts/tests/kids-game-levels-rls.integration.sh
         timeout-minutes: 5
 
+      - name: Verify video Storage retention RPC contract against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/video-storage-retention-contract.integration.sh
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |

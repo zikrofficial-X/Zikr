@@ -136,7 +136,8 @@ BEGIN
   END IF;
 
   RETURN
-    pg_catalog.regexp_count(definition, '\mUPDATE\M', 1, 'i') = 2
+    pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.social_publish_queue\s+SET', 1, 'i') = 1
+    AND pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.video_generation_requests\s+SET', 1, 'i') = 1
     AND pg_catalog.regexp_count(
       definition,
       '\mINSERT\M|\mMERGE\M|\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M|\mCALL\M|\mPERFORM\M|\mSELECT\M|\mCOPY\M',
