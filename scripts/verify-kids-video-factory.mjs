@@ -16,7 +16,7 @@ for (const id of ["salim-nour", "garden-friends", "little-inventors", "little-go
 }
 
 const worker = read("scripts/jobs/template-video-automation.ts");
-for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validateGeneratedKidsEpisode", "validateCanonicalKidsEpisodeSnapshot", 'category: "other"', 'audience: "kids"', 'contentFormat: "series_episode"', 'voiceProfile: "kids_friendly"', "assertKidsStoryContract", 'VIDEO_FREE_ONLY?.toLowerCase() === "false"']) {
+for (const token of ['const mode = slot % 7', "buildKidsSeriesEpisode", "validateGeneratedKidsEpisode", "validateCanonicalKidsEpisodeSnapshot", 'category: "other"', 'audience: "kids"', 'contentFormat: "series_episode"', 'voiceProfile: "kids_friendly"', "assertKidsStoryContract"]) {
   if (!worker.includes(token)) failures.push("video worker missing kids/free mode contract: " + token);
 }
 const outcomePolicy = read("src/features/videos/services/background-job-outcome.ts");
@@ -42,6 +42,14 @@ if (!router.includes("templateAttempted")) failures.push("local FFmpeg fallback 
 
 const config = read("src/features/videos/providers/types.ts");
 if (!config.includes("freeOnly: bool(env.VIDEO_FREE_ONLY, true)")) failures.push("free-only must be the default provider policy");
+if (!config.includes("isVideoAiPlanningEnabled") ||
+    !config.includes("!config.freeOnly && config.aiEnabled") ||
+    !config.includes("env.GEMINI_API_KEY?.trim()")) {
+  failures.push("Gemini editorial planning must require the explicit AI switch, non-free mode, and a non-empty server key");
+}
+if (!worker.includes("return isVideoAiPlanningEnabled();")) {
+  failures.push("video worker must use the shared Gemini planning opt-in policy");
+}
 
 const curated = read("src/features/videos/data/curated-content.ts");
 if (!curated.includes("CURATED_KIDS_STORY_SOURCES") || !curated.includes("KIDS_SERIES_EPISODES_PER_SEASON")) failures.push("admin must expose the canonical first-season catalogue");

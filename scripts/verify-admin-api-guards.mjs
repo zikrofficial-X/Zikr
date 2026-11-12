@@ -96,7 +96,7 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/youtube/callback/route.ts GET": ["social.manage"],
-  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/route.ts POST": ["social.manage", "social.publish"],
   "src/app/api/admin/social/written/route.ts GET": ["social.manage"],
@@ -227,6 +227,10 @@ if (facebookOAuthCallbackSource.includes("unblockFacebookAuthBlockedQueue")) {
 const facebookOAuthConnectSource = readFileSync(join(apiRoot, "social/facebook/connect/route.ts"), "utf8");
 if (!facebookOAuthConnectSource.includes('requireAdminStepUpApi("social.publish"')) {
   failures.push("Facebook OAuth connect must require social.publish MFA step-up before beginning a publishing-capable OAuth flow");
+}
+const youtubeOAuthConnectSource = readFileSync(join(apiRoot, "social/youtube/connect/route.ts"), "utf8");
+if (!youtubeOAuthConnectSource.includes('requireAdminStepUpApi("social.publish"')) {
+  failures.push("YouTube OAuth connect must require social.publish MFA step-up before beginning a publishing-capable OAuth flow");
 }
 const releaseActionStart = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")');
 const releaseActionEnd = socialRouteSource.indexOf('if (action === "run_worker")', releaseActionStart);
