@@ -4,6 +4,10 @@ import { resolveStaleTranslationQueueRecovery } from "../src/features/articles/s
 
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+if (!geminiApiKey) {
+  throw new Error("GEMINI_API_KEY is required before translation queue recovery or claims.");
+}
 function parseBatchSize(raw: string | undefined): number {
   const value = raw?.trim() ? Number(raw) : 5;
   if (!Number.isInteger(value)) {
@@ -49,10 +53,7 @@ if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
 }
 
-const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
-if (!geminiApiKey) {
-  throw new Error("GEMINI_API_KEY is required before translation queue recovery or claims.");
-}
+
 
 type ArticleRow = {
   id: string;

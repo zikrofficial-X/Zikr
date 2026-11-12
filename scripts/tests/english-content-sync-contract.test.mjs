@@ -70,13 +70,15 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
-assert.ok(
-  articleSync.includes("const geminiApiKey = process.env.GEMINI_API_KEY?.trim();") &&
-    articleSync.includes("if (!geminiApiKey) {"),
-  "article translation must validate Gemini before stale-queue recovery or claims can mutate production rows",
-);
-
+const geminiKeyDeclarationIndex = articleSync.indexOf("const geminiApiKey = process.env.GEMINI_API_KEY?.trim();");
 const geminiGuardIndex = articleSync.indexOf("if (!geminiApiKey) {");
+const geminiFactoryIndex = articleSync.indexOf("async function generateGeminiTextForJob(");
+assert.ok(
+  geminiKeyDeclarationIndex >= 0 &&
+    geminiGuardIndex > geminiKeyDeclarationIndex &&
+    geminiFactoryIndex > geminiGuardIndex,
+  "Gemini credentials must be declared and narrowed before the model factory uses the key",
+);
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
 assert.ok(
   geminiGuardIndex >= 0 && geminiGuardIndex < recoveryCallIndex,
