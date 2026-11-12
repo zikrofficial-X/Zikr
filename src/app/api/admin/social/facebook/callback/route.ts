@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
-import { saveFacebookPageCredential, saveFacebookPublicProfile, unblockFacebookAuthBlockedQueue } from "@/features/social/services/facebook-credentials";
+import { saveFacebookPageCredential, saveFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
 import { hasFacebookPagePublishingTask } from "@/features/social/services/facebook-oauth-policy";
 
@@ -172,14 +172,8 @@ export async function GET(request: NextRequest) {
       expiresAt: null,
       grantedPermissions,
     });
-    let releasedAuthBlockedQueueItems = 0;
-    let authBlockedQueueRecoveryFailed = false;
-    try {
-      releasedAuthBlockedQueueItems = await unblockFacebookAuthBlockedQueue();
-    } catch {
-      // Keep a valid OAuth connection even if queue recovery must be retried separately.
-      authBlockedQueueRecoveryFailed = true;
-    }
+    // Connecting credentials must not enqueue public posts. Queue release is a
+    // separate social.publish action protected by MFA step-up and explicit confirmation.
     try {
       await saveFacebookPublicProfile({
         pageId: selectedPage.id,
@@ -199,8 +193,7 @@ export async function GET(request: NextRequest) {
           pageName: pageResult.data.name || selectedPage.name || "Facebook Page",
           grantedPermissions,
           tokenType: "page",
-          releasedAuthBlockedQueueItems,
-          authBlockedQueueRecoveryFailed,
+          queueRecoveryRequiresExplicitPublishStepUp: true,
         },
       });
     } catch {

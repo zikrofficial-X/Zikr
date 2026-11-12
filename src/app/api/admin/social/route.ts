@@ -451,6 +451,7 @@ export async function POST(request: NextRequest) {
       platforms?: unknown;
       confirmedNoRemotePublication?: unknown;
       deleteLocalMemory?: unknown;
+      confirmed?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
     if (action === "delete" || action === "delete_failed") {
@@ -463,7 +464,7 @@ export async function POST(request: NextRequest) {
       }
     }
     const confirmedNoRemotePublication = body.confirmedNoRemotePublication === true;
-    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token"].includes(action)) {
+    if (["retry", "retry_all_failed", "run_worker", "publish_now", "delete_published", "adopt_server_facebook_token", "release_auth_blocked_queue"].includes(action)) {
       const executionAuth = await requireAdminStepUpApi("social.publish", "/admin/social");
       if (!executionAuth.ok) {
         return NextResponse.json(
@@ -524,7 +525,7 @@ export async function POST(request: NextRequest) {
       const health = await getFacebookPageConnectionHealth();
       await recordAdminAuditEvent({
         action: "social.facebook.token_adopt",
-        permission: "social.manage",
+        permission: "social.publish",
         resourceType: "social_publish_queue",
         metadata: { released, queueUpdateFailed, workerDispatched, pageName: adopted.pageName },
       });
@@ -532,6 +533,54 @@ export async function POST(request: NextRequest) {
         ok: true,
         adopted: true,
         pageName: adopted.pageName,
+        released,
+        queueUpdateFailed,
+        workerDispatched,
+        health,
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (action === "release_auth_blocked_queue") {
+      if (body.confirmed !== true) {
+        return NextResponse.json(
+          { error: "explicit_confirmation_required" },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+      const health = await getFacebookPageConnectionHealth();
+      if (health.facebookConnectionStatus !== "connected" || health.facebookEnabled !== true) {
+        return NextResponse.json(
+          { error: "facebook_connection_not_ready" },
+          { status: 409, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
+      let released = 0;
+      let queueUpdateFailed = false;
+      try {
+        released = await unblockFacebookAuthBlockedQueue();
+      } catch {
+        queueUpdateFailed = true;
+      }
+
+      let workerDispatched = false;
+      if (released > 0) {
+        try {
+          await triggerSocialWorker();
+          workerDispatched = true;
+        } catch {
+          // The scheduled publisher remains the fallback after an explicit, step-up-gated release.
+        }
+      }
+
+      await recordAdminAuditEvent({
+        action: "social.facebook.auth_blocked_queue.release",
+        permission: "social.publish",
+        resourceType: "social_publish_queue",
+        metadata: { released, queueUpdateFailed, workerDispatched, pageName: health.facebookPageName },
+      });
+      return NextResponse.json({
+        ok: true,
         released,
         queueUpdateFailed,
         workerDispatched,
@@ -550,7 +599,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, worker });
     }
     if (
-      !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published"].includes(action)
+      !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published", "release_auth_blocked_queue"].includes(action)
     )
       return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
     if (["delete", "delete_failed"].includes(action) && ids.length > LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT) {

@@ -204,9 +204,26 @@ const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > soc
   : "";
 if (
   !socialActionGate.includes("adopt_server_facebook_token") ||
+  !socialActionGate.includes("release_auth_blocked_queue") ||
   !/\brequireAdmin(?:StepUp)?Api\s*\(\s*["']social\.publish["']\s*(?:,|\))/.test(socialActionGate)
 ) {
-  failures.push("social token adoption must require social.publish because it releases and dispatches public queue items");
+  failures.push("social token adoption and auth-blocked queue release must require social.publish MFA step-up");
+}
+const facebookOAuthCallbackSource = readFileSync(join(apiRoot, "social/facebook/callback/route.ts"), "utf8");
+if (facebookOAuthCallbackSource.includes("unblockFacebookAuthBlockedQueue")) {
+  failures.push("Facebook OAuth callback must not release public queue items; queue recovery requires a separate social.publish step-up action");
+}
+const releaseActionStart = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")');
+const releaseActionEnd = socialRouteSource.indexOf('if (action === "run_worker")', releaseActionStart);
+const releaseActionBlock = releaseActionStart >= 0 && releaseActionEnd > releaseActionStart
+  ? socialRouteSource.slice(releaseActionStart, releaseActionEnd)
+  : "";
+if (
+  !releaseActionBlock.includes("body.confirmed !== true") ||
+  !releaseActionBlock.includes('health.facebookConnectionStatus !== "connected"') ||
+  !releaseActionBlock.includes("unblockFacebookAuthBlockedQueue()")
+) {
+  failures.push("Facebook auth-blocked queue release must require confirmation, a healthy connected Page, and the explicit social.publish step-up gate");
 }
 
 const routeFiles = walk(apiRoot)

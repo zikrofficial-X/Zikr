@@ -597,3 +597,36 @@ assert.doesNotMatch(
   /getFacebookPageCredentials\(\)\.catch\(\(\) => null\)/,
   "video enqueue must not swallow Facebook credential failures",
 );
+
+
+const facebookOAuthCallbackSource = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/facebook/callback/route.ts"),
+  "utf8",
+);
+assert.doesNotMatch(
+  facebookOAuthCallbackSource,
+  /unblockFacebookAuthBlockedQueue/,
+  "OAuth credential connection must not release public queue items under social.manage alone",
+);
+const adminSocialRouteSource = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
+  "utf8",
+);
+const socialPublishGateStart = adminSocialRouteSource.indexOf('if (["retry"');
+const socialPublishGateEnd = adminSocialRouteSource.indexOf("const ids", socialPublishGateStart);
+const socialPublishGate = socialPublishGateStart >= 0 && socialPublishGateEnd > socialPublishGateStart
+  ? adminSocialRouteSource.slice(socialPublishGateStart, socialPublishGateEnd)
+  : "";
+assert.match(socialPublishGate, /release_auth_blocked_queue/, "queue release must be in the social.publish step-up action set");
+assert.match(socialPublishGate, /requireAdminStepUpApi\("social\.publish"/, "queue release must require MFA step-up");
+const releaseActionStart = adminSocialRouteSource.indexOf('if (action === "release_auth_blocked_queue")');
+const releaseActionEnd = adminSocialRouteSource.indexOf('if (action === "run_worker")', releaseActionStart);
+const releaseActionBlock = releaseActionStart >= 0 && releaseActionEnd > releaseActionStart
+  ? adminSocialRouteSource.slice(releaseActionStart, releaseActionEnd)
+  : "";
+assert.ok(releaseActionStart >= 0 && releaseActionEnd > releaseActionStart, "an explicit queue-release action must exist");
+assert.match(releaseActionBlock, /body\.confirmed !== true/, "queue release must require explicit confirmation");
+assert.match(releaseActionBlock, /health\.facebookConnectionStatus !== "connected"/, "queue release must verify a connected Facebook Page");
+assert.match(releaseActionBlock, /health\.facebookEnabled !== true/, "queue release must verify Facebook publishing is enabled");
+assert.match(releaseActionBlock, /unblockFacebookAuthBlockedQueue\(\)/, "only the explicit action may release auth-blocked queue rows");
+assert.match(releaseActionBlock, /permission: "social\.publish"/, "queue release must be audited as social.publish");

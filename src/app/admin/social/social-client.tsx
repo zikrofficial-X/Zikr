@@ -219,7 +219,7 @@ function facebookReelsInsightsSummary(item: QueueItem, permissionGranted: boolea
   ].filter(Boolean).join(" · ") || "لا توجد إحصاءات Reels متاحة";
 }
 
-export default function AdminSocialPage() {
+export default function AdminSocialClient({ canPublish }: { canPublish: boolean }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
     youtubeConfigured: false,
@@ -458,6 +458,40 @@ export default function AdminSocialPage() {
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اعتماد توكن Facebook من إعدادات الخادم.");
+    } finally {
+      setBusy(false);
+    }
+  }, [load]);
+
+  const releaseAuthBlockedQueue = useCallback(async () => {
+    if (!window.confirm("سيتم إعادة العناصر المحجوبة بسبب اعتماد Facebook إلى طابور النشر. قد تُنشر تلقائيًا بعد ذلك. هل تؤكد المتابعة؟")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "release_auth_blocked_queue", confirmed: true }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        nextPath?: string;
+        released?: number;
+        queueUpdateFailed?: boolean;
+        workerDispatched?: boolean;
+      };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
+      if (!response.ok) throw new Error(payload.error || "تعذر استئناف العناصر المحجوبة.");
+      const summary = [
+        "تم تحرير " + (payload.released ?? 0) + " عنصرًا محجوبًا بعد التحقق من اتصال Facebook.",
+        payload.queueUpdateFailed ? "تعذر تحديث بعض العناصر؛ راجع الطابور قبل أي محاولة أخرى." : "",
+        (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل الناشر المجدول المعالجة في دورته التالية." : "",
+      ].filter(Boolean);
+      setMessage(summary.join(" "));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر استئناف العناصر المحجوبة.");
     } finally {
       setBusy(false);
     }
@@ -869,8 +903,22 @@ export default function AdminSocialPage() {
           role="status"
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200"
         >
-          يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
-          هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد اعتماد توكن صالح، سيعاد فتح العناصر تلقائيًا مع الاحتفاظ بنتائج النشر الناجحة لتجنب تكرارها.
+          <p>
+            يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
+            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد استعادة الاتصال تظل العناصر محجوبة؛ لا يعاد فتحها تلقائيًا.
+          </p>
+          {canPublish ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !health.facebookEnabled || health.facebookConnectionStatus !== "connected"}
+              onClick={() => void releaseAuthBlockedQueue()}
+            >
+              استئناف نشر العناصر المحجوبة ({health.facebookAuthBlocked}) — يتطلب MFA
+            </Button>
+          ) : (
+            <p className="text-xs">استئناف النشر يتطلب صلاحية social.publish.</p>
+          )}
         </div>
       )}
         </>
