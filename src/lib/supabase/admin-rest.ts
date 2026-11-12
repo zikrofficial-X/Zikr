@@ -42,6 +42,26 @@ function retryDelayMs(attempt: number): number {
   return Math.min(4000, 400 * 2 ** Math.max(0, attempt - 1));
 }
 
+function waitForRetryDelay(delayMs: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const cleanup = () => signal?.removeEventListener("abort", onAbort);
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, delayMs);
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      cleanup();
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 async function restRequest<T>(
   path: string,
   init?: RestRequestInit,
@@ -65,6 +85,9 @@ async function restRequest<T>(
   let lastError: unknown = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (fetchInit.signal?.aborted) {
+      throw fetchInit.signal.reason ?? new DOMException("Aborted", "AbortError");
+    }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -95,7 +118,7 @@ async function restRequest<T>(
             Number.isFinite(retryAfter) && retryAfter > 0
               ? Math.min(8000, retryAfter * 1000)
               : retryDelayMs(attempt);
-          await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+          await waitForRetryDelay(retryAfterMs, fetchInit.signal);
           continue;
         }
 
@@ -109,13 +132,14 @@ async function restRequest<T>(
     } catch (error) {
       lastError = error;
       if (
+        fetchInit.signal?.aborted ||
         !retryableMethod ||
         attempt >= maxAttempts ||
         !isRetryableTransportError(error)
       ) {
         throw error;
       }
-      await new Promise((resolve) => setTimeout(resolve, retryDelayMs(attempt)));
+      await waitForRetryDelay(retryDelayMs(attempt), fetchInit.signal);
     } finally {
       clearTimeout(timeoutId);
     }
