@@ -2257,15 +2257,20 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       return row;
     };
     try {
-      const rendered = await withVideoRequestLeaseHeartbeat({
-        intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
-        renew: () => patchProcessingRequestWithLease({}),
-        isLeaseLost: (error) => error instanceof VideoRequestLeaseLostError,
-        onRenewalError: (error) => console.warn(
-          `[template-video] Processing lease heartbeat failed for ${request.id}; retrying before stale recovery:`,
-          error,
-        ),
-      }, () => renderVideo(request));
+      const withLeaseHeartbeat = <T>(operation: () => Promise<T>) =>
+        withVideoRequestLeaseHeartbeat(
+          {
+            intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
+            renew: () => patchProcessingRequestWithLease({}),
+            isLeaseLost: (error) => error instanceof VideoRequestLeaseLostError,
+            onRenewalError: (error) => console.warn(
+              `[template-video] Processing lease heartbeat failed for ${request.id}; retrying before stale recovery:`,
+              error,
+            ),
+          },
+          operation,
+        );
+      const rendered = await withLeaseHeartbeat(() => renderVideo(request));
       const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
       const qaReviewedAt = new Date().toISOString();
       const qaApproval = createAutomatedVideoQaApproval({
@@ -2371,11 +2376,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             content: recoveredContent,
           };
           await patchProcessingRequestWithLease({});
-          const recoveryResult = await registerGeneratedVideoOnSite(
+          const recoveryResult = await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(
             recoveredRequest,
             rendered,
             { recoverPurgedRecord: true },
-          );
+          ));
 
           if (!recoveryResult.published) {
             const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
@@ -2418,7 +2423,9 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
 
             let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
             try {
-              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
+              socialQueueRecovery = await withLeaseHeartbeat(() =>
+                restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt),
+              );
             } catch (queueRecoveryError) {
               console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
             }
@@ -2453,7 +2460,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       }
       if (qaApproval) {
         await patchProcessingRequestWithLease({});
-        await registerGeneratedVideoOnSite(request, rendered);
+        await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(request, rendered));
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
@@ -2464,7 +2471,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       // this worker inserts the queue row that references it.
       await patchProcessingRequestWithLease({});
       try {
-        await queueSocialItems(request, rendered.videoUrl);
+        await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl));
       } catch (socialError) {
         console.error(
           `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
