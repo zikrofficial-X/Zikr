@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { updateVideoRequestStatus } from '@/features/videos/services/video-automation';
@@ -9,9 +9,12 @@ export async function POST(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAdminApi('video.manage');
+    const auth = await requireAdminStepUpApi('video.manage', '/admin/video/requests');
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status });
+      return NextResponse.json(
+        { error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined },
+        { status: auth.status, headers: { 'Cache-Control': 'no-store' } },
+      );
     }
     const { id } = await context.params;
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {

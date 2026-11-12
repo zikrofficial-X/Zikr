@@ -94,6 +94,7 @@ export default function AdminVideoRequestsClient() {
     try {
       const response = await fetch(`/api/admin/videos/${encodeURIComponent(id)}/retry`, { method: "POST" });
       const data = await response.json().catch(() => ({}));
+      if (!response.ok && data.error === "step_up_required" && redirectToAdminStepUp(data.nextPath)) return;
       if (!response.ok) throw new Error(data.error || "تعذر إعادة المحاولة.");
       setMessage("تمت إعادة العملية إلى الطابور.");
       await load();

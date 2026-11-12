@@ -128,6 +128,11 @@ if (!videoPurgePost.includes('requireAdminStepUpApi("video.delete",')) {
   failures.push("video purge POST must enforce the configured destructive-action MFA step-up policy");
 }
 
+const videoRetrySource = readFileSync(join(apiRoot, "videos/[id]/retry/route.ts"), "utf8");
+if (!/requireAdminStepUpApi\s*\(\s*['"]video\.manage['"]\s*,\s*['"]\/admin\/video\/requests['"]\s*\)/.test(videoRetrySource)) {
+  failures.push("video retry POST must enforce the configured step-up policy before re-queuing external video generation");
+}
+
 const socialRouteSource = readFileSync(join(apiRoot, "social/route.ts"), "utf8");
 const socialActionGateStart = socialRouteSource.indexOf("if ([");
 const socialActionGateEnd = socialRouteSource.indexOf("const ids", socialActionGateStart);
