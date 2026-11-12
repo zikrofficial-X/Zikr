@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
-import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
+import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
@@ -18,16 +18,37 @@ const facebookRecoveryCandidate = {
   id: "queue-row-123",
   status: "partial",
   updated_at: "2026-11-12T06:00:00.000Z",
+  created_at: "2026-11-12T05:00:00.000Z",
 };
 assert.equal(
   buildFacebookQueueRecoveryFilter(facebookRecoveryCandidate),
-  "id=eq.queue-row-123&status=eq.partial&updated_at=eq.2026-11-12T06%3A00%3A00.000Z&metadata->>authBlocked=eq.true",
+  "id=eq.queue-row-123&status=eq.partial&updated_at=eq.2026-11-12T06%3A00%3A00.000Z&created_at=eq.2026-11-12T05%3A00%3A00.000Z&metadata->>authBlocked=eq.true",
   "Facebook reauthorization recovery must compare the exact row version and still require the auth-block marker",
 );
 assert.equal(
   buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, updated_at: null }),
   null,
   "a recovery candidate without an updated_at version must fail closed",
+);
+assert.equal(
+  buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, created_at: "2026-11-06T19:59:59.000Z" }),
+  null,
+  "historical Facebook auth-blocked rows before the publishing cutoff must remain outside automatic recovery",
+);
+assert.equal(
+  buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, created_at: null }),
+  null,
+  "a recovery candidate without a creation timestamp must fail closed",
+);
+assert.equal(
+  resolveSocialPublishCutoff(DEFAULT_SOCIAL_PUBLISH_AFTER),
+  "2026-11-06T20:00:00.000Z",
+  "the shared social publishing cutoff must normalize to a stable UTC timestamp",
+);
+assert.throws(
+  () => resolveSocialPublishCutoff("not-a-date"),
+  /Invalid SOCIAL_PUBLISH_AFTER cutoff/,
+  "an invalid publishing cutoff must fail closed",
 );
 assert.equal(
   buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, status: "processing" }),
@@ -579,12 +600,21 @@ await assert.rejects(
   "an expired Page token must remain a recoverable enqueue error, not become not_required",
 );
 
+const socialPublishWorkflowSource = readFileSync(
+  resolve(process.cwd(), ".github/workflows/publish-social.yml"),
+  "utf8",
+);
+assert.ok(
+  socialPublishWorkflowSource.includes(`SOCIAL_PUBLISH_AFTER: "${DEFAULT_SOCIAL_PUBLISH_AFTER}"`),
+  "the production publisher workflow and queue recovery must share the same historical-row cutoff",
+);
 const facebookCredentialsSource = readFileSync(
   resolve(process.cwd(), "src/features/social/services/facebook-credentials.ts"),
   "utf8",
 );
-assert.match(facebookCredentialsSource, /select=id,target_platforms,metadata,status,updated_at/);
-assert.match(facebookCredentialsSource, /buildFacebookQueueRecoveryFilter\(item\)/);
+assert.match(facebookCredentialsSource, /select=id,target_platforms,metadata,status,updated_at,created_at/);
+assert.match(facebookCredentialsSource, /created_at=gte/);
+assert.match(facebookCredentialsSource, /buildFacebookQueueRecoveryFilter\(item, publishAfter\)/);
 assert.match(facebookCredentialsSource, /if \(!patch \|\| !filter\) continue/);
 
 const templateVideoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
