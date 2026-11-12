@@ -837,6 +837,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "delete_published") {
+      if (body.confirmed !== true) {
+        return NextResponse.json(
+          { error: "explicit_confirmation_required" },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
       if (body.deleteLocalMemory === true) {
         return NextResponse.json(
           { error: "Local media deletion is not supported by this action; use the separately reviewed storage-retention workflow." },

@@ -238,6 +238,20 @@ assert.equal(
 const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
+const remoteDeleteActionStart = socialAdminRoute.indexOf('if (action === "delete_published") {');
+const remoteDeleteConfirmationGuard = socialAdminRoute.indexOf("if (body.confirmed !== true)", remoteDeleteActionStart);
+const firstRemoteDeleteCall = socialAdminRoute.indexOf("deleteSocialPlatformPost(", remoteDeleteActionStart);
+assert.ok(
+  remoteDeleteActionStart >= 0 &&
+    remoteDeleteConfirmationGuard > remoteDeleteActionStart &&
+    firstRemoteDeleteCall > remoteDeleteConfirmationGuard,
+  "the server must reject remote social deletion before any provider call unless the request carries explicit confirmation",
+);
+assert.match(
+  socialAdminClient,
+  /JSON\\.stringify\\(\\{ action: "delete_published", ids, platforms, confirmed: true \\}\\)/,
+  "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
+);
 assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
 assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
 assert.match(

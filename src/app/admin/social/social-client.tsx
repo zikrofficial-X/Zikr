@@ -661,7 +661,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const response = await fetch("/api/admin/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete_published", ids, platforms }),
+        body: JSON.stringify({ action: "delete_published", ids, platforms, confirmed: true }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
