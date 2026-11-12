@@ -159,7 +159,7 @@ if (capacitorConfig.plugins?.BiometricAuth) failures.push('capacitor.config.json
 
 const mobileDependencyManifest = JSON.parse(read('mobile/capacitor-dependencies.json') || '{}');
 const expectedMobileDeps = {
-  ...Object.fromEntries(Object.entries(packageJson.dependencies || {}).filter(([name]) => name.startsWith('@capacitor/') || name.startsWith('@capawesome/'))),
+  ...Object.fromEntries(Object.entries(packageJson.dependencies || {}).filter(([name]) => name.startsWith('@capacitor/') || name.startsWith('@capawesome/') || name.startsWith('@capgo/'))),
   ...Object.fromEntries(Object.entries(packageJson.devDependencies || {}).filter(([name]) => name === '@capacitor/cli')),
 };
 const declaredMobileDeps = { ...(mobileDependencyManifest.dependencies || {}), ...(mobileDependencyManifest.devDependencies || {}) };

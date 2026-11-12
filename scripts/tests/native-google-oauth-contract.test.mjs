@@ -13,6 +13,11 @@ const androidManifest = read("android/app/src/main/AndroidManifest.xml");
 const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
 const authCallback = read("src/app/auth/callback/route.ts");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
+const projectIntegrity = read("scripts/verify-project-integrity.mjs");
+assert.ok(
+  projectIntegrity.includes("name.startsWith('@capgo/')"),
+  "project integrity must recognize installed @capgo native plugins in the mobile dependency manifest",
+);
 const capacitor = JSON.parse(read("capacitor.config.json"));
 const mobileDependencies = JSON.parse(read("mobile/capacitor-dependencies.json"));
 const packageDependencies = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
