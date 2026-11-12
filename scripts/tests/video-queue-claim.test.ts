@@ -178,8 +178,13 @@ test("post-render catalog and social queue work renews the processing lease", ()
     videoWorkerSource.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))"),
     "social queue insertion must keep the processing lease alive until durable",
   );
+  const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(");
+  const recoveryOperationPosition = videoWorkerSource.indexOf(
+    "restoreMissingMediaSocialQueueItems(",
+    recoveryHeartbeatPosition,
+  );
   assert.ok(
-    videoWorkerSource.includes("await withLeaseHeartbeat(() =>\\n                restoreMissingMediaSocialQueueItems("),
+    recoveryHeartbeatPosition >= 0 && recoveryOperationPosition > recoveryHeartbeatPosition,
     "recovered social queue rows must also be protected by the active lease",
   );
 });
