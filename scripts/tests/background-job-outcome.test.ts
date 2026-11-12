@@ -167,6 +167,27 @@ assert.equal(
   3,
   "success, scheduled-worker fallback, and failure updates must all compare-and-set the original request",
 );
+const socialPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/social-publishing.ts"), "utf8");
+for (const [workerName, workerSource] of [
+  ["social publishing", socialPublishingSource],
+  ["scheduled content publishing", contentPublishingSource],
+] as const) {
+  assert.match(
+    workerSource,
+    /import \{ isVideoPurgeInProgress as isVideoPurgeLockActive \} from ["']\.\.\/\.\.\/src\/features\/videos\/services\/background-job-settings["']/,
+    `${workerName} must import the shared fail-closed purge-lock policy`,
+  );
+  assert.match(
+    workerSource,
+    /return isVideoPurgeLockActive\(rows\?\.\[0\]\?\.value\)/,
+    `${workerName} must fail closed for null or malformed purge-lock values`,
+  );
+  assert.doesNotMatch(
+    workerSource,
+    /rows\?\.\[0\]\?\.value\s*===\s*true/,
+    `${workerName} must not treat unknown purge-lock values as inactive`,
+  );
+}
 const contentPublishingSource = readFileSync(resolve(process.cwd(), "scripts/jobs/content-publishing.ts"), "utf8");
 assert.match(contentPublishingSource, /async function recoverStaleContentPublishingClaims/);
 assert.match(contentPublishingSource, /status=eq\.processing&updated_at=lt\./, "stale content claims must be bounded by the last row update");

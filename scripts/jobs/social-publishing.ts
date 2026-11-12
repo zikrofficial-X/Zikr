@@ -4,6 +4,7 @@ import { syncFacebookReelsInsights } from "../../src/features/social/services/fa
 import { getFacebookPageProfile } from "../../src/features/social/integrations/facebook";
 import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { getFacebookProfileSyncFailureCount } from "../../src/features/social/services/social-insights-sync-status";
+import { isVideoPurgeInProgress as isVideoPurgeLockActive } from "../../src/features/videos/services/background-job-settings";
 import { recoverPendingVideoSocialQueueEnqueues } from "./template-video-automation";
 import {
   claimPendingSocialPublishItems,
@@ -16,7 +17,7 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
     const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
       "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
     );
-    return rows?.[0]?.value === true;
+    return isVideoPurgeLockActive(rows?.[0]?.value);
   } catch (error) {
     console.error("[social-worker] Could not verify the video purge lock; failing closed:", error);
     return true;

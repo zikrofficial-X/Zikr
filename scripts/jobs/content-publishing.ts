@@ -1,5 +1,6 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { inspectVideoQueueItemApproval } from "../../src/features/videos/services/video-publish-approval";
+import { isVideoPurgeInProgress as isVideoPurgeLockActive } from "../../src/features/videos/services/background-job-settings";
 
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string; updated_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
@@ -10,7 +11,7 @@ async function isVideoPurgeInProgress(): Promise<boolean> {
     const rows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
       "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
     );
-    return rows?.[0]?.value === true;
+    return isVideoPurgeLockActive(rows?.[0]?.value);
   } catch (error) {
     console.error("[content-publishing] Could not verify the video purge lock; holding video publication.", error);
     return true;
