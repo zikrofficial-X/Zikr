@@ -8,6 +8,7 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import { getOptionalFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
@@ -2224,7 +2225,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
           status: "queued",
           scheduled_at: new Date().toISOString(),
           error_message: null,
-          updated_at: new Date().toISOString(),
+          updated_at: buildNextRowVersionUpdatedAt(existing.updated_at),
           metadata: {
             ...(existing.metadata ?? {}),
             authBlocked: false,
@@ -2280,7 +2281,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
               status: "queued",
               scheduled_at: new Date().toISOString(),
               error_message: null,
-              updated_at: new Date().toISOString(),
+              updated_at: buildNextRowVersionUpdatedAt(latest.updated_at),
               metadata: {
                 ...(latest.metadata ?? {}),
                 authBlocked: false,
@@ -2355,7 +2356,7 @@ export async function recoverPendingVideoSocialQueueEnqueues(
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify({ status: "processing", content: claimContent, updated_at: claimNow }),
+        body: JSON.stringify({ status: "processing", content: claimContent, updated_at: buildNextRowVersionUpdatedAt(request.updated_at ?? null) }),
       },
     );
     const claimed = claimedRows?.[0];
@@ -2380,7 +2381,7 @@ export async function recoverPendingVideoSocialQueueEnqueues(
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt) }),
         },
       );
       const row = updated?.[0];
@@ -2546,7 +2547,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           status: "processing",
           error_message: null,
           error_details: null,
-          updated_at: claimNow,
+          updated_at: buildNextRowVersionUpdatedAt(request.updated_at ?? null),
         }),
       },
     );
@@ -2565,7 +2566,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             status: request.status,
             error_message: request.error_message ?? null,
             error_details: request.error_details ?? null,
-            updated_at: new Date().toISOString(),
+            updated_at: buildNextRowVersionUpdatedAt(claimUpdatedAt),
           }),
         },
       );
@@ -2590,7 +2591,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt) }),
         },
       );
       const row = rows?.[0];

@@ -1,4 +1,5 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 
 type SocialQueueMetadataRow = {
   id: string;
@@ -51,18 +52,7 @@ export function buildNextSocialQueueMetadataUpdatedAt(
   previousUpdatedAt: string | null,
   now: Date = new Date(),
 ): string {
-  const nowMs = now.getTime();
-  if (!Number.isFinite(nowMs)) {
-    throw new Error("Social queue metadata update requires a valid current timestamp.");
-  }
-  const previousMs = previousUpdatedAt === null ? Number.NaN : Date.parse(previousUpdatedAt);
-  if (previousUpdatedAt !== null && !Number.isFinite(previousMs)) {
-    throw new Error("Social queue metadata update requires a valid previous updated_at timestamp.");
-  }
-  const nextMs = Number.isFinite(previousMs)
-    ? Math.max(nowMs, previousMs + 1)
-    : nowMs;
-  return new Date(nextMs).toISOString();
+  return buildNextRowVersionUpdatedAt(previousUpdatedAt, now);
 }
 
 /** Build the exact row-version filter used for safe metadata-only queue updates. */

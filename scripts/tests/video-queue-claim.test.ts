@@ -18,6 +18,7 @@ import {
   withVideoRequestLeaseHeartbeat,
 } from "../../src/features/videos/services/video-lease-heartbeat";
 import { isVideoPurgeLockResponseActive } from "../../src/features/videos/services/background-job-settings";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const videoWorkerSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
 const socialWorkerSource = readFileSync("scripts/jobs/social-publishing.ts", "utf8");
@@ -25,6 +26,31 @@ const backgroundJobsSource = readFileSync("scripts/run-background-jobs.ts", "utf
 
 const now = "2026-11-11T22:59:00.000Z";
 const updatedAt = "2026-11-11T22:40:00.000Z";
+
+test("CAS writes always advance their updated_at row-version token", () => {
+  const sameMillisecond = new Date("2026-11-11T22:40:00.000Z");
+  assert.equal(
+    buildNextRowVersionUpdatedAt(updatedAt, sameMillisecond),
+    "2026-11-11T22:40:00.001Z",
+  );
+  assert.equal(
+    buildNextRowVersionUpdatedAt("2026-11-11T22:40:00.001Z", sameMillisecond),
+    "2026-11-11T22:40:00.002Z",
+  );
+  assert.match(videoWorkerSource, /updated_at:\\s*buildNextRowVersionUpdatedAt\\(existing\\.updated_at\\)/);
+  assert.match(videoWorkerSource, /updated_at:\\s*buildNextRowVersionUpdatedAt\\(latest\\.updated_at\\)/);
+  assert.equal(
+    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\\(request\\.updated_at \\?\\? null\\)/g) ?? []).length,
+    2,
+    "both initial claims must advance the selected request revision",
+  );
+  assert.equal(
+    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\\(leaseUpdatedAt\\)/g) ?? []).length,
+    2,
+    "both lease mutation paths must advance the exact lease revision",
+  );
+  assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\\(claimUpdatedAt\\)/);
+});
 
 test("foreground lease writes and heartbeat renewals serialize on the latest row revision", async () => {
   let revision = 1;

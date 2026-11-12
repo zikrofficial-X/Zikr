@@ -19,6 +19,7 @@ import {
 } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
@@ -704,7 +705,7 @@ async function syncKidsSocialPublicationToCatalog(
     ) return;
 
     const allTargetsSucceeded = item.target_platforms.every((platform) => successfulPlatforms.includes(platform));
-    const updatedAt = new Date().toISOString();
+    const updatedAt = buildNextRowVersionUpdatedAt(row.updated_at);
     const nextMetadata = {
       ...existing,
       socialPublication: {
@@ -767,7 +768,7 @@ async function syncYouTubeVideoReferenceToCatalog(
       return;
     }
     const metadata = row.metadata ?? {};
-    const updatedAt = new Date().toISOString();
+    const updatedAt = buildNextRowVersionUpdatedAt(row.updated_at);
     const restorePurgedVideo = shouldRestorePurgedPublishedVideo(row);
     const previousMediaRecovery = metadata.mediaRecovery && typeof metadata.mediaRecovery === "object" && !Array.isArray(metadata.mediaRecovery)
       ? metadata.mediaRecovery as Record<string, unknown>
@@ -855,7 +856,7 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
   const fullyPublishedAt = new Date().toISOString();
   const stagingCleanupEligibleAt = existingEligibleAt ??
     getPublishedVideoStagingCleanupEligibleAt(fullyPublishedAt);
-  const requestUpdatedAt = new Date().toISOString();
+  const requestUpdatedAt = buildNextRowVersionUpdatedAt(request.updated_at);
   const updatedRequest = await supabaseServerAdminRequest<Array<{ id: string }>>(
     "/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(item.content_id) +
       "&status=eq.completed&video_url=eq." + encodeURIComponent(item.video_url) +
@@ -1179,6 +1180,7 @@ export async function processSocialPublishItem(
   }
 
   const inFlightStartedAt = new Date().toISOString();
+  const inFlightUpdatedAt = buildNextRowVersionUpdatedAt(claimLease.updatedAt);
   const inFlightMetadata = buildSocialPublishInFlightMetadata(
     previousMetadata,
     runnablePlatforms,
@@ -1189,7 +1191,7 @@ export async function processSocialPublishItem(
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-      body: JSON.stringify({ metadata: inFlightMetadata, updated_at: inFlightStartedAt }),
+      body: JSON.stringify({ metadata: inFlightMetadata, updated_at: inFlightUpdatedAt }),
     },
   );
   if (!Array.isArray(inFlightClaim) || !inFlightClaim[0] || !Number.isFinite(Date.parse(inFlightClaim[0].updated_at))) {

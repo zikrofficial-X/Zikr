@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import {
   getPublishedVideoStagingCleanupEligibleAt,
   PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER,
@@ -62,6 +64,33 @@ assert.equal(
 assert.throws(
   () => buildNextSocialQueueMetadataUpdatedAt("not-a-date", sameMillisecond),
   /valid previous updated_at timestamp/,
+);
+
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-12T18:00:00.000Z", sameMillisecond),
+  "2026-11-12T18:00:00.001Z",
+  "every CAS writer must advance its row version when the clock is in the same millisecond",
+);
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-12T18:00:00.001Z", sameMillisecond),
+  "2026-11-12T18:00:00.002Z",
+  "a stale wall clock must still produce a strictly newer row version",
+);
+const socialPublishingSource = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+assert.equal(
+  (socialPublishingSource.match(/buildNextRowVersionUpdatedAt\\(row\\.updated_at\\)/g) ?? []).length,
+  2,
+  "both video catalog metadata writers must advance the row version before their CAS update",
+);
+assert.match(
+  socialPublishingSource,
+  /buildNextRowVersionUpdatedAt\\(request\\.updated_at\\)/,
+  "published-video staging metadata must advance the generation request row version",
+);
+assert.match(
+  socialPublishingSource,
+  /updated_at: inFlightUpdatedAt/,
+  "the social publisher in-flight marker must advance the processing row version",
 );
 assert.deepEqual(
   mergeSocialQueueMetadata(
