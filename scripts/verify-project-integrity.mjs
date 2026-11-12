@@ -269,7 +269,7 @@ requireText('src/components/layout/service-worker-register.tsx', [
   'navigator.serviceWorker.register(serviceWorkerUrl',
   'getServiceWorkerScriptUrl',
   'PRODUCTION_URL',
-  'window.location.hostname',
+  'window.location.origin',
   'hydrateOfflineContent',
 ]);
 requireText('src/lib/ads/runtime-policy.ts', [
@@ -280,7 +280,7 @@ requireText('src/lib/ads/runtime-policy.ts', [
 requireText('public/sw.js', [
   'searchParams.get("native") === "1"',
   'searchParams.get("monetag") === "1"',
-  'hostname.toLowerCase() === "zikrmediaofficial.vercel.app"',
+  'serviceWorkerLocation.origin === "https://zikrmediaofficial.vercel.app"',
 ]);
 requireText('src/app/layout.tsx', ['OfflineNavigationGuard']);
 requireText('src/app/manifest.ts', ['short_name', 'icons']);
