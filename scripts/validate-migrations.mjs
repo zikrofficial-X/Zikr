@@ -75,7 +75,9 @@ DO $do$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN CREATE ROLE supabase_admin; END IF;
 END $do$;
+GRANT CREATE ON SCHEMA public TO supabase_admin;
 
 -- Production still contains these runtime tables from the archived 20260929
 -- kids/video migration family. They are intentionally kept outside the active
@@ -522,6 +524,49 @@ if (failed === 0) {
     console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an unexpected status assignment.");
   } else {
     console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_EXTRA_COLUMN_ASSIGNMENT");
+  }
+}
+
+
+if (failed === 0) {
+  const clientTablePrivileges = await db.query(`
+    SELECT n.nspname AS schema_name, c.relname AS table_name,
+           r.role_name, p.privilege
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+    CROSS JOIN unnest(ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN']::text[]) AS p(privilege)
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+      AND has_table_privilege(r.role_name, c.oid, p.privilege)
+    ORDER BY c.relname, r.role_name, p.privilege
+  `);
+  const clientDefaultPrivileges = await db.query(`
+    SELECT owner.rolname AS owner, COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+           acl.privilege_type
+    FROM pg_default_acl d
+    JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    JOIN pg_roles owner ON owner.oid = d.defaclrole
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE n.nspname = 'public'
+      AND d.defaclobjtype = 'r'
+      AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
+      AND acl.privilege_type IN ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN')
+    ORDER BY owner.rolname, grantee.rolname, acl.privilege_type
+  `);
+
+  if (clientTablePrivileges.rows.length > 0 || clientDefaultPrivileges.rows.length > 0) {
+    failed++;
+    console.error(
+      "CLIENT_NON_DML_TABLE_PRIVILEGES_REGRESSION: browser roles retain non-RLS table privileges.",
+      JSON.stringify({
+        existing: clientTablePrivileges.rows,
+        defaults: clientDefaultPrivileges.rows,
+      }),
+    );
+  } else {
+    console.log("CLIENT_NON_DML_TABLE_PRIVILEGES_REVOKED");
   }
 }
 

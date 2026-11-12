@@ -124,6 +124,40 @@ for (const token of [
   }
 }
 
+
+const clientNonDmlMigrationPath =
+  "supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql";
+const clientNonDmlMigration = read(clientNonDmlMigrationPath);
+for (const token of [
+  "REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN",
+  "ON ALL TABLES IN SCHEMA public",
+  "FROM PUBLIC, anon, authenticated;",
+  "ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public",
+  "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public",
+]) {
+  if (!clientNonDmlMigration.includes(token)) {
+    failures.push(`${clientNonDmlMigrationPath} missing client non-DML privilege hardening: ${token}`);
+  }
+}
+if (
+  clientNonDmlMigration.includes("REVOKE ALL") ||
+  clientNonDmlMigration.includes("REVOKE SELECT") ||
+  clientNonDmlMigration.includes("REVOKE INSERT") ||
+  clientNonDmlMigration.includes("REVOKE UPDATE") ||
+  clientNonDmlMigration.includes("REVOKE DELETE") ||
+  clientNonDmlMigration.includes("FROM service_role")
+) {
+  failures.push("client non-DML hardening must preserve RLS-governed DML and service_role privileges");
+}
+if (
+  clientNonDmlMigration.includes("TRUNCATE TABLE") ||
+  clientNonDmlMigration.includes("DELETE FROM") ||
+  clientNonDmlMigration.includes("DROP TABLE") ||
+  clientNonDmlMigration.includes("DISABLE ROW LEVEL SECURITY")
+) {
+  failures.push("client non-DML hardening must not mutate application data or disable RLS");
+}
+
 if (failures.length) {
   console.error("SECURITY_HARDENING_CHECK_FAILED");
   for (const failure of failures) console.error("❌ " + failure);
