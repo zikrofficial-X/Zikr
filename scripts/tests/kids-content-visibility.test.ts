@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
-import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow } from "../../src/features/social/services/kids-video-social-visibility";
+import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
 import {
   getFallbackKidsContentBySlug,
@@ -171,7 +171,11 @@ assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detai
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
 assert.ok(kidsVideosApi.includes("isPublicKidsVideoSocialQueueRow(row)"), "the Kids video feed must only use confirmed public social queue rows");
-assert.ok(kidsVideosApi.includes("const platforms = row ? confirmedSocialPlatforms(row) : storedPlatforms"), "live queue deletion state must override stale catalog social badges");
+assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must aggregate all original and supplemental social queue rows");
+assert.ok(kidsVideosApi.includes("socialQueueReadSucceeded = true"), "stored social badges must be used only after a successful live queue read");
+assert.ok(kidsVideosApi.includes("Promise.allSettled"), "a social queue read failure must be distinguishable from a legitimate empty result");
+assert.doesNotMatch(kidsVideosApi, /status=in\.\(published,partial\)/, "queued, processing and failed supplemental rows must participate in live publication reconciliation");
+
 assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
 assert.ok(kidsVideosApi.includes("published_at=not.is.null"), "the public Kids video feed must require a confirmed publication timestamp");
 
@@ -250,6 +254,71 @@ assert.deepEqual(
   }),
   [],
   "an explicit failed result ledger must not fall back to optimistic target_platforms",
+);
+
+const originalYoutubeQueueRow = {
+  content_type: "kids_video",
+  status: "published",
+  target_platforms: ["youtube"],
+  published_at: "2026-11-11T12:00:00.000Z",
+  metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-123" } } },
+};
+const supplementalFacebookQueueRow = {
+  content_type: "kids_video",
+  status: "published",
+  target_platforms: ["facebook"],
+  published_at: "2026-11-11T12:05:00.000Z",
+  metadata: { audience: "kids", platformResults: { facebook: { ok: true, remoteId: "fb-video-456" } } },
+};
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([supplementalFacebookQueueRow, originalYoutubeQueueRow], null, true),
+  { status: "published", platforms: ["youtube", "facebook"], publishedAt: "2026-11-11T12:05:00.000Z" },
+  "a newer supplemental row must not hide a confirmed platform from the original Kids video queue row",
+);
+const pendingSupplementalRow = {
+  ...supplementalFacebookQueueRow,
+  status: "queued",
+  published_at: null,
+  metadata: { audience: "kids", platformResults: {} },
+};
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([pendingSupplementalRow, originalYoutubeQueueRow], null, true),
+  { status: "partial", platforms: ["youtube"], publishedAt: "2026-11-11T12:00:00.000Z" },
+  "a pending supplemental target must not erase the original confirmed publication",
+);
+const deletedYoutubeSupplementalRow = {
+  content_type: "kids_video",
+  status: "partial",
+  target_platforms: ["youtube"],
+  published_at: null,
+  metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted" } } },
+};
+assert.equal(
+  resolveKidsVideoSocialPublication([originalYoutubeQueueRow, deletedYoutubeSupplementalRow], null, true),
+  null,
+  "a confirmed deletion in any supplemental row must override an older success for that platform",
+);
+const storedLegacyPublication = { status: "published", platforms: ["youtube"], publishedAt: "2026-11-10T12:00:00.000Z" };
+assert.equal(
+  resolveKidsVideoSocialPublication([], storedLegacyPublication, false),
+  null,
+  "a failed live queue read must not resurrect a stale catalog publication badge",
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([], storedLegacyPublication, true),
+  storedLegacyPublication,
+  "a successful empty live query may retain the legacy catalog fallback",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([{
+    content_type: "kids_video",
+    status: "failed",
+    target_platforms: ["youtube"],
+    published_at: null,
+    metadata: { audience: "kids", platformResults: {} },
+  }], storedLegacyPublication, true),
+  null,
+  "a live failed queue row must override stale catalog publication metadata",
 );
 
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");

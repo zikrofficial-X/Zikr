@@ -66,3 +66,108 @@ export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
   // but never expose an ordinary partial row with no confirmed remote result.
   return hasConfirmedDelivery || hasConfirmedDeletion;
 }
+
+export type KidsVideoSocialPublication = {
+  status: "published" | "partial";
+  platforms: string[];
+  publishedAt: string | null;
+};
+
+/**
+ * Aggregate the original social queue row and any supplemental target rows for
+ * one generated Kids video. A newer supplemental row must not hide confirmed
+ * platforms from the original row, and a confirmed deletion wins across rows.
+ */
+export function resolveKidsVideoSocialPublication(
+  rowsInput: readonly unknown[],
+  stored: unknown,
+  queueReadSucceeded: boolean,
+): KidsVideoSocialPublication | null {
+  if (!queueReadSucceeded) return null;
+
+  const rows = rowsInput.filter((value) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const row = value as Record<string, unknown>;
+    const metadata = asRecord(row.metadata);
+    return typeof row.content_type === "string" &&
+      row.content_type.endsWith("_video") &&
+      metadata.audience === "kids";
+  });
+
+  if (rows.length === 0) {
+    if (rowsInput.length > 0) return null;
+    const storedRecord = asRecord(stored);
+    const storedPlatforms = Array.isArray(storedRecord.platforms)
+      ? [...new Set(storedRecord.platforms.filter(
+          (platform): platform is string =>
+            typeof platform === "string" && SOCIAL_PLATFORMS.has(platform),
+        ))]
+      : [];
+    if (storedPlatforms.length === 0) return null;
+    return {
+      status: storedRecord.status === "published" ? "published" : "partial",
+      platforms: storedPlatforms,
+      publishedAt: typeof storedRecord.publishedAt === "string" &&
+        Number.isFinite(Date.parse(storedRecord.publishedAt))
+        ? storedRecord.publishedAt
+        : null,
+    };
+  }
+
+  const targets = new Set<string>();
+  const delivered = new Set<string>();
+  const deleted = new Set<string>();
+  let publishedAt: string | null = null;
+  let latestPublishedAt = Number.NEGATIVE_INFINITY;
+
+  for (const row of rows) {
+    const record = row as Record<string, unknown>;
+    const metadata = asRecord(record.metadata);
+    const rowTargets = Array.isArray(record.target_platforms)
+      ? record.target_platforms.filter(
+          (platform): platform is string =>
+            typeof platform === "string" && SOCIAL_PLATFORMS.has(platform),
+        )
+      : [];
+    for (const platform of rowTargets) targets.add(platform);
+
+    for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
+      delivered.add(platform);
+    }
+
+    const deletions = asRecord(metadata.platformDeletions);
+    for (const [platform, value] of Object.entries(deletions)) {
+      if (SOCIAL_PLATFORMS.has(platform) && asRecord(value).status === "deleted") {
+        deleted.add(platform);
+      }
+    }
+
+    const rowPublishedAt = record.published_at;
+    if (
+      getConfirmedPublicKidsVideoSocialPlatforms(record).length > 0 &&
+      typeof rowPublishedAt === "string" &&
+      Number.isFinite(Date.parse(rowPublishedAt))
+    ) {
+      const timestamp = Date.parse(rowPublishedAt);
+      if (timestamp > latestPublishedAt) {
+        latestPublishedAt = timestamp;
+        publishedAt = rowPublishedAt;
+      }
+    }
+  }
+
+  const platforms = [...SOCIAL_PLATFORMS].filter(
+    (platform) => delivered.has(platform) && !deleted.has(platform),
+  );
+  if (platforms.length === 0) return null;
+
+  const allTargetsPublished = targets.size > 0
+    ? [...targets].every((platform) => platforms.includes(platform))
+    : rows.some((row) => (row as Record<string, unknown>).status === "published");
+
+  return {
+    status: allTargetsPublished ? "published" : "partial",
+    platforms,
+    publishedAt,
+  };
+}

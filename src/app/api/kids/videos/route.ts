@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getKidsGeneratedVideos } from "@/features/videos/services/videos";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow } from "@/features/social/services/kids-video-social-visibility";
+import { getConfirmedPublicKidsVideoSocialPlatforms, resolveKidsVideoSocialPublication } from "@/features/social/services/kids-video-social-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -26,28 +26,6 @@ function confirmedSocialPlatforms(row: SocialQueueRow): string[] {
   return getConfirmedPublicKidsVideoSocialPlatforms(row);
 }
 
-function publicSocialPublication(row: SocialQueueRow | null, stored: unknown) {
-  const storedRecord = asRecord(stored);
-  const storedPlatforms = Array.isArray(storedRecord.platforms)
-    ? storedRecord.platforms.filter((platform): platform is string =>
-        typeof platform === "string" &&
-        (platform === "youtube" || platform === "facebook" || platform === "facebook_reels"))
-    : [];
-  // When a queue row exists it is the live source of truth. In particular, a
-  // confirmed remote deletion must not be overridden by stale catalog metadata.
-  const platforms = row ? confirmedSocialPlatforms(row) : storedPlatforms;
-  if (platforms.length === 0) return null;
-  let status: "published" | "partial" = "partial";
-  if (row?.status === "published" || (!row && storedRecord.status === "published")) {
-    status = "published";
-  }
-  let publishedAt: string | null = null;
-  if (row) publishedAt = row.published_at;
-  else if (typeof storedRecord.publishedAt === "string") publishedAt = storedRecord.publishedAt;
-
-  return { status, platforms, publishedAt };
-}
-
 export async function GET() {
   try {
     // This service enforces published=true, audience=kids, the Kids generator marker,
@@ -58,34 +36,39 @@ export async function GET() {
       .filter((id): id is string => typeof id === "string" && id.length > 0))];
 
     let requestContentById = new Map<string, Record<string, unknown>>();
-    const socialQueueByRequestId = new Map<string, SocialQueueRow>();
+    const socialQueueByRequestId = new Map<string, SocialQueueRow[]>();
+    let socialQueueReadSucceeded = false;
     if (requestIds.length > 0) {
       const filter = requestIds.map(encodeURIComponent).join(",");
-      const [requests, socialRows] = await Promise.all([
+      const [requestsResult, socialRowsResult] = await Promise.allSettled([
         supabaseServerAdminRequest<Array<{ id: string; content: unknown }>>(
           "/rest/v1/video_generation_requests?id=in.(" + filter + ")&select=id,content",
-        ).catch((error) => {
-          console.warn("[api/kids/videos] Could not load linked story text:", error);
-          return [];
-        }),
+        ),
+        // Include every Kids queue state so a newer supplemental or failed row
+        // cannot hide an older confirmed publication or leave a stale badge.
         supabaseServerAdminRequest<SocialQueueRow[]>(
           "/rest/v1/social_publish_queue?content_id=in.(" + filter +
-            ")&status=in.(published,partial)&published_at=not.is.null&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=300",
-        ).catch((error) => {
-          console.warn("[api/kids/videos] Could not load linked social posts:", error);
-          return [];
-        }),
+            ")&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=600",
+        ),
       ]);
+      const requests = requestsResult.status === "fulfilled" ? requestsResult.value : [];
+      const socialRows = socialRowsResult.status === "fulfilled" ? socialRowsResult.value : [];
+      if (requestsResult.status === "rejected") {
+        console.warn("[api/kids/videos] Could not load linked story text:", requestsResult.reason);
+      }
+      if (socialRowsResult.status === "fulfilled") {
+        socialQueueReadSucceeded = true;
+      } else {
+        console.warn("[api/kids/videos] Could not load linked social posts:", socialRowsResult.reason);
+      }
 
       requestContentById = new Map<string, Record<string, unknown>>();
       for (const row of requests ?? []) requestContentById.set(row.id, asRecord(row.content));
       for (const row of socialRows ?? []) {
-        if (
-          !row.content_id ||
-          !isPublicKidsVideoSocialQueueRow(row) ||
-          socialQueueByRequestId.has(row.content_id)
-        ) continue;
-        socialQueueByRequestId.set(row.content_id, row);
+        if (!row.content_id) continue;
+        const rowsForRequest = socialQueueByRequestId.get(row.content_id) ?? [];
+        rowsForRequest.push(row);
+        socialQueueByRequestId.set(row.content_id, rowsForRequest);
       }
     }
 
@@ -95,15 +78,16 @@ export async function GET() {
         ? metadata.videoGenerationRequestId
         : "";
       const requestContent = requestContentById.get(requestId) ?? {};
-      const socialQueue = socialQueueByRequestId.get(requestId) ?? null;
+      const socialQueueRows = socialQueueByRequestId.get(requestId) ?? [];
+      const socialQueueForCaption = socialQueueRows.find((row) => getConfirmedPublicKidsVideoSocialPlatforms(row).length > 0) ?? null;
       const storyText = typeof metadata.storyText === "string"
         ? metadata.storyText
         : [requestContent.textAr, requestContent.script, requestContent.text]
             .find((value): value is string => typeof value === "string" && value.trim().length > 0) ?? null;
       const socialCaption = typeof metadata.socialCaption === "string" && metadata.socialCaption.trim()
         ? metadata.socialCaption
-        : typeof socialQueue?.body === "string" && socialQueue.body.trim()
-          ? socialQueue.body
+        : typeof socialQueueForCaption?.body === "string" && socialQueueForCaption.body.trim()
+          ? socialQueueForCaption.body
           : null;
 
       return {
@@ -127,7 +111,7 @@ export async function GET() {
         learningObjective: typeof metadata.learningObjective === "string"
           ? metadata.learningObjective
           : typeof requestContent.learningObjective === "string" ? requestContent.learningObjective : null,
-        socialPublication: publicSocialPublication(socialQueue, metadata.socialPublication),
+        socialPublication: resolveKidsVideoSocialPublication(socialQueueRows, metadata.socialPublication, socialQueueReadSucceeded),
       };
     });
 
