@@ -2,12 +2,17 @@ import { createHash } from "node:crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { resolveStaleTranslationQueueRecovery } from "../src/features/articles/services/translation-queue-recovery";
 
-const supabaseUrl = process.env.SUPABASE_URL?.trim();
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
-if (!geminiApiKey) {
-  throw new Error("GEMINI_API_KEY is required before translation queue recovery or claims.");
+function requireEnvironmentValue(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required before translation queue recovery or claims.`);
+  }
+  return value;
 }
+
+const supabaseUrl = requireEnvironmentValue("SUPABASE_URL");
+const serviceRoleKey = requireEnvironmentValue("SUPABASE_SERVICE_ROLE_KEY");
+const geminiApiKey = requireEnvironmentValue("GEMINI_API_KEY");
 function parseBatchSize(raw: string | undefined): number {
   const value = raw?.trim() ? Number(raw) : 5;
   if (!Number.isInteger(value)) {
@@ -49,11 +54,6 @@ async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000):
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
-}
-
-
 
 type ArticleRow = {
   id: string;
@@ -73,7 +73,7 @@ async function supabase<T>(
   const response = await fetch(`${supabaseUrl}${path}`, {
     ...init,
     headers: {
-      apikey: serviceRoleKey!,
+      apikey: serviceRoleKey,
       Authorization: `Bearer ${serviceRoleKey}`,
       "Content-Type": "application/json",
       Prefer: "return=representation",
