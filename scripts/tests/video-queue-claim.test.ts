@@ -143,6 +143,25 @@ test("long-running render renews its exact processing lease while the provider i
   assert.ok(renewals >= 1, "the provider operation must renew its lease before it can become stale");
 });
 
+test("lease loss aborts an in-flight worker operation immediately", async () => {
+  const leaseLost = new Error("lease lost");
+  let observedSignal: AbortSignal | undefined;
+  const task = withVideoRequestLeaseHeartbeat({
+    intervalMs: 5,
+    renew: async () => { throw leaseLost; },
+    isLeaseLost: (error) => error === leaseLost,
+  }, async (signal) => {
+    observedSignal = signal;
+    await new Promise<never>((_resolve, reject) => {
+      const abort = () => reject(signal.reason);
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+    });
+  });
+  await assert.rejects(task, leaseLost);
+  assert.ok(observedSignal?.aborted, "lease loss must abort the active operation immediately");
+});
+
 test("a lost processing lease prevents a completed render from advancing to publication", async () => {
   const leaseLost = new Error("lease lost");
   const task = withVideoRequestLeaseHeartbeat({

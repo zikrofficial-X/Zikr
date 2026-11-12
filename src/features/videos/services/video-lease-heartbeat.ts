@@ -12,7 +12,7 @@ export async function withVideoRequestLeaseHeartbeat<T>(
     isLeaseLost: (error: unknown) => boolean;
     onRenewalError?: (error: unknown) => void;
   },
-  operation: () => Promise<T>,
+  operation: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
   const intervalMs = Number.isFinite(options.intervalMs) && options.intervalMs > 0
     ? Math.max(1, Math.floor(options.intervalMs))
@@ -21,6 +21,7 @@ export async function withVideoRequestLeaseHeartbeat<T>(
   let leaseLost = false;
   let leaseLostError: unknown;
   let pending: Promise<void> | null = null;
+  const controller = new AbortController();
 
   const timer = setInterval(() => {
     if (stopped || pending || leaseLost) return;
@@ -39,6 +40,7 @@ export async function withVideoRequestLeaseHeartbeat<T>(
           leaseLost = true;
           leaseLostError = error;
           stopped = true;
+          controller.abort(error);
           clearInterval(timer);
           return;
         }
@@ -61,7 +63,7 @@ export async function withVideoRequestLeaseHeartbeat<T>(
   };
 
   try {
-    const result = await operation();
+    const result = await operation(controller.signal);
     await stop();
     if (leaseLost) throw leaseLostError;
     return result;

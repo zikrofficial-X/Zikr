@@ -80,7 +80,9 @@ async function restRequest<T>(
           ...(fetchInit.headers || {}),
         },
         cache: fetchInit.cache ?? "no-store",
-        signal: fetchInit.signal ?? controller.signal,
+        signal: fetchInit.signal
+          ? AbortSignal.any([controller.signal, fetchInit.signal])
+          : controller.signal,
       });
 
       if (!response.ok) {
