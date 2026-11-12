@@ -74,23 +74,34 @@ const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLe
 const leaseFencePosition = template.indexOf("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt)", leaseHelperPosition);
 const renderedHashWritePosition = template.indexOf("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });", leaseHelperPosition);
 const leaseHeartbeatPosition = template.indexOf("const withLeaseHeartbeat = <T>", leaseHelperPosition);
+const renderPosition = template.indexOf(
+  "const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));",
+  leaseHeartbeatPosition,
+);
 const siteRegistrationPosition = template.indexOf(
-  "await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(request, rendered))",
+  "await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))",
   renderedHashWritePosition,
 );
 const socialQueuePosition = template.indexOf(
-  "await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))",
+  "await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal))",
   siteRegistrationPosition,
 );
+const leaseAbortGuardPosition = template.indexOf("function throwIfVideoLeaseAborted(signal?: AbortSignal)");
+const leaseAwareRestWritePosition = template.indexOf("...(signal ? { signal } : {})");
+const adminRest = read("src/lib/supabase/admin-rest.ts");
 if (
   leaseHelperPosition < 0 ||
   leaseFencePosition < leaseHelperPosition ||
   leaseHeartbeatPosition < leaseFencePosition ||
-  renderedHashWritePosition < leaseHeartbeatPosition ||
+  renderPosition < leaseHeartbeatPosition ||
+  renderedHashWritePosition < renderPosition ||
   siteRegistrationPosition < renderedHashWritePosition ||
-  socialQueuePosition < siteRegistrationPosition
+  socialQueuePosition < siteRegistrationPosition ||
+  leaseAbortGuardPosition < 0 ||
+  leaseAwareRestWritePosition < 0 ||
+  !adminRest.includes("AbortSignal.any([controller.signal, fetchInit.signal])")
 ) {
-  failures.push("rendered hash, catalog registration, and social queue writes must remain inside the current processing lease before completion");
+  failures.push("rendered hash, catalog registration, and social queue writes must remain inside the current processing lease; lease loss must abort in-flight rendering and REST side effects");
 }
 for (const token of [
   'status: "cancelled"',

@@ -220,7 +220,7 @@ assert.ok(
 );
 
 assert.ok(
-  templateVideoWorker.includes("const latest = await findSocialQueueByAutomationKey(socialKey)") &&
+  templateVideoWorker.includes("const latest = await findSocialQueueByAutomationKey(socialKey, signal)") &&
     templateVideoWorker.includes("queueSupplementalTargets(latestNewTargets)"),
   "a publisher claim racing the initial compare-and-set must be reconciled without resetting its active lease or losing new targets",
 );
