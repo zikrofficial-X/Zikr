@@ -8,7 +8,7 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
-import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
+import { getOptionalFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
@@ -2107,9 +2107,11 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
     targets.push("youtube");
   }
   // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
-  const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
+  const facebookCredentials = process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false"
+    ? await getOptionalFacebookPageCredentials()
+    : null;
   throwIfVideoLeaseAborted(signal);
-  if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
+  if (facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
   if (!targets.length) return "not_required";

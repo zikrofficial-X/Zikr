@@ -5,6 +5,14 @@ import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconcili
 import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
+import {
+  FacebookPageNotConnectedError,
+  getFacebookPageCredentials,
+  getOptionalFacebookPageCredentials,
+  isMissingFacebookReelsCooldownColumnError,
+  readStoredFacebookCredential,
+  type StoredFacebookCredential,
+} from "../../src/features/social/services/facebook-credentials";
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(both, ["facebook", "facebook_reels", "youtube"]);
@@ -449,4 +457,107 @@ assert.equal(
   ),
   null,
   "a global auth flag must not override a recorded non-auth Facebook failure",
+);
+
+
+// Facebook credential reads may use the legacy projection only when the additive
+// Reels cooldown column is specifically missing. Transient failures must propagate.
+const missingFacebookCooldownColumn = new Error(
+  'Supabase REST 400: {"code":"42703","message":"column social_platform_credentials.facebook_reels_next_allowed_at does not exist"}',
+);
+const transientFacebookCredentialRead = new Error("Supabase REST 503: upstream unavailable");
+const legacyFacebookCredential: Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at"> = {
+  platform: "facebook",
+  page_id: "page-test-123",
+  page_name: "ZIKR test page",
+  page_access_token: "unit-test-token",
+  is_enabled: true,
+  token_type: "page",
+  expires_at: null,
+  granted_permissions: ["pages_manage_posts", "pages_read_engagement", "pages_show_list", "read_insights"],
+  connection_status: "connected",
+  last_validated_at: null,
+  last_error_code: null,
+  last_error_message: null,
+  connected_at: null,
+  updated_at: "2026-11-12T06:00:00.000Z",
+};
+
+assert.equal(isMissingFacebookReelsCooldownColumnError(missingFacebookCooldownColumn), true);
+assert.equal(
+  isMissingFacebookReelsCooldownColumnError(new Error("PGRST204: Could not find the 'facebook_reels_next_allowed_at' column in the schema cache")),
+  true,
+);
+assert.equal(isMissingFacebookReelsCooldownColumnError(transientFacebookCredentialRead), false);
+
+let legacyReadCalls = 0;
+const legacyFacebookRead = async <T>(path: string): Promise<T> => {
+  legacyReadCalls += 1;
+  if (path.includes("facebook_reels_next_allowed_at")) throw missingFacebookCooldownColumn;
+  return [legacyFacebookCredential] as T;
+};
+assert.deepEqual(
+  await readStoredFacebookCredential(legacyFacebookRead),
+  { ...legacyFacebookCredential, facebook_reels_next_allowed_at: null },
+  "a confirmed missing additive column may use the legacy projection",
+);
+assert.equal(legacyReadCalls, 2, "the legacy projection must run only after the missing-column error");
+
+let transientReadCalls = 0;
+await assert.rejects(
+  readStoredFacebookCredential(async <T>(): Promise<T> => {
+    transientReadCalls += 1;
+    throw transientFacebookCredentialRead;
+  }),
+  /upstream unavailable/,
+  "transient credential-store failures must propagate instead of looking like a missing Page",
+);
+assert.equal(transientReadCalls, 1, "transient errors must not trigger the legacy-column fallback");
+
+let fallbackReadCalls = 0;
+await assert.rejects(
+  readStoredFacebookCredential(async <T>(): Promise<T> => {
+    fallbackReadCalls += 1;
+    if (fallbackReadCalls === 1) throw missingFacebookCooldownColumn;
+    throw new Error("Supabase REST 503: legacy projection unavailable");
+  }),
+  /legacy projection unavailable/,
+  "a failed legacy projection must remain an error rather than returning an empty credential",
+);
+assert.equal(fallbackReadCalls, 2);
+
+assert.equal(
+  await getOptionalFacebookPageCredentials(async () => null),
+  null,
+  "a successful empty credential lookup means Facebook is genuinely not connected",
+);
+await assert.rejects(
+  getFacebookPageCredentials(async () => null),
+  FacebookPageNotConnectedError,
+);
+await assert.rejects(
+  getOptionalFacebookPageCredentials(async () => { throw transientFacebookCredentialRead; }),
+  /upstream unavailable/,
+  "the optional getter must suppress only the explicit not-connected state",
+);
+const expiredFacebookCredential = {
+  ...legacyFacebookCredential,
+  expires_at: "2020-01-01T00:00:00.000Z",
+  facebook_reels_next_allowed_at: null,
+} satisfies StoredFacebookCredential;
+await assert.rejects(
+  getOptionalFacebookPageCredentials(async () => expiredFacebookCredential),
+  /access token has expired/,
+  "an expired Page token must remain a recoverable enqueue error, not become not_required",
+);
+
+const templateVideoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(
+  templateVideoWorker.includes("getOptionalFacebookPageCredentials()"),
+  "video enqueue must distinguish a missing Facebook connection from credential-store or authorization failures",
+);
+assert.doesNotMatch(
+  templateVideoWorker,
+  /getFacebookPageCredentials\(\)\.catch\(\(\) => null\)/,
+  "video enqueue must not swallow Facebook credential failures",
 );

@@ -82,26 +82,37 @@ export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
     !scopes.some((scope) => YOUTUBE_DELETE_CAPABLE_SCOPES.has(scope));
 }
 
-async function readStoredYouTubeUploadRefreshToken(): Promise<string | null> {
-  try {
-    const rows = await supabaseServerAdminRequest<StoredYouTubeOAuthCredential[]>(
-      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
-    );
-    const row = Array.isArray(rows) ? rows[0] : null;
-    if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
-    const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
-    if (!hasYouTubeUploadScopes(scopes)) return null;
-    const token = row?.refresh_token;
-    return typeof token === "string" && token.trim() ? token.trim() : null;
-  } catch {
-    return null;
+type YouTubeCredentialRequest = <T>(path: string) => Promise<T>;
+
+export async function readStoredYouTubeUploadRefreshToken(
+  request: YouTubeCredentialRequest = supabaseServerAdminRequest,
+  configuredChannelId: string | undefined = process.env.YOUTUBE_CHANNEL_ID,
+): Promise<string | null> {
+  const rows = await request<StoredYouTubeOAuthCredential[]>(
+    "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
+  );
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return null;
+  if (!matchesConfiguredYouTubeChannel(row.channel_id, configuredChannelId)) {
+    throw new Error("Stored YouTube OAuth credential does not match the configured channel.");
   }
+  const scopes = Array.isArray(row.granted_scopes) ? row.granted_scopes : [];
+  if (!hasYouTubeUploadScopes(scopes)) {
+    throw new Error("Stored YouTube OAuth credential is missing the required upload/read scopes or includes a delete-capable scope.");
+  }
+  const token = row.refresh_token;
+  if (typeof token !== "string" || !token.trim()) {
+    throw new Error("Stored YouTube OAuth credential is missing its refresh token.");
+  }
+  return token.trim();
 }
 
 export async function getYouTubeUploadRefreshToken(
   readStored: () => Promise<string | null> = readStoredYouTubeUploadRefreshToken,
 ): Promise<string | null> {
-  return readStored().catch(() => null);
+  // A missing credential is a normal unconfigured state; a failed read or invalid
+  // stored credential must propagate so publishing can retry instead of skipping.
+  return readStored();
 }
 
 export async function saveYouTubeOAuthCredential(

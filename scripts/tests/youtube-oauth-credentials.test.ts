@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
-import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
+import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC999"), false, "a token for a different channel must fail closed");
@@ -158,10 +158,48 @@ assert.equal(
   null,
   "missing upload-scoped credentials must fail closed",
 );
+
+const uploadCredentialRow = {
+  refresh_token: "stored-upload-token",
+  granted_scopes: requiredUploadScopes,
+  channel_id: "UC123",
+};
+const readUploadCredential = async <T>(): Promise<T> => [uploadCredentialRow] as T;
 assert.equal(
-  await getYouTubeUploadRefreshToken(async () => { throw new Error("database unavailable"); }),
+  await readStoredYouTubeUploadRefreshToken(readUploadCredential, "UC123"),
+  "stored-upload-token",
+);
+assert.equal(
+  await readStoredYouTubeUploadRefreshToken(async <T>(): Promise<T> => [] as T, "UC123"),
   null,
-  "credential-store errors must fail closed",
+  "a genuinely absent YouTube credential remains an unconfigured state",
+);
+await assert.rejects(
+  readStoredYouTubeUploadRefreshToken(readUploadCredential, "UC999"),
+  /does not match the configured channel/,
+);
+await assert.rejects(
+  readStoredYouTubeUploadRefreshToken(
+    async <T>(): Promise<T> => [{ ...uploadCredentialRow, granted_scopes: requiredUploadScopes.filter(scope => scope !== "https://www.googleapis.com/auth/youtube.upload") }] as T,
+    "UC123",
+  ),
+  /missing the required upload\/read scopes/,
+);
+await assert.rejects(
+  readStoredYouTubeUploadRefreshToken(
+    async <T>(): Promise<T> => [{ ...uploadCredentialRow, refresh_token: " " }] as T,
+    "UC123",
+  ),
+  /missing its refresh token/,
+);
+await assert.rejects(
+  readStoredYouTubeUploadRefreshToken(async <T>(): Promise<T> => { throw new Error("database unavailable"); }, "UC123"),
+  /database unavailable/,
+);
+await assert.rejects(
+  getYouTubeUploadRefreshToken(async () => { throw new Error("database unavailable"); }),
+  /database unavailable/,
+  "credential-store errors must propagate so publishing can retry instead of treating the channel as absent",
 );
 
 const credentialSource = readFileSync(

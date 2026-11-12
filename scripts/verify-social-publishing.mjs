@@ -119,11 +119,17 @@ if (!videoPublishApproval.includes("export function hasCompleteKidsVideoSeriesMe
   failures.push("Kids video catalog visibility and social publishing must share one complete series-episode contract");
 }
 if (!videoGenerator.includes("getYouTubeUploadRefreshToken") ||
-    !videoGenerator.includes("getFacebookPageCredentials") ||
+    !videoGenerator.includes("getOptionalFacebookPageCredentials") ||
+    videoGenerator.includes("getFacebookPageCredentials().catch(() => null)") ||
     !videoGenerator.includes("FACEBOOK_PUBLISHING_REQUESTED") ||
     !videoGenerator.includes("buildAutomatedVideoQaChecklist") ||
     !videoGenerator.includes("createAutomatedVideoQaApproval")) {
   failures.push("video social queue targets must be gated by verified provider credentials and a complete automated QA snapshot");
+}
+if (youtubeCredentials.includes("export async function getYouTubeUploadRefreshToken") &&
+    youtubeCredentials.slice(youtubeCredentials.indexOf("export async function getYouTubeUploadRefreshToken"))
+      .includes("return readStored().catch(() => null)")) {
+  failures.push("YouTube upload credential-store errors must propagate to retryable publishing paths instead of appearing unconfigured");
 }
 if (!socialPublishingService.includes("hasVideoApprovalForQueueItem") ||
     !socialPublishingService.includes("Video held because automated QA is missing") ||

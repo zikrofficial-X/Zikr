@@ -67,26 +67,37 @@ function siteGraphVersion() {
  * app identity, expiry, required scopes, and target Page are verified server-side.
  * Merely changing an environment variable never silently changes the active credential.
  */
-export async function readStoredFacebookCredential(): Promise<StoredFacebookCredential | null> {
+type FacebookCredentialRequest = <T>(path: string) => Promise<T>;
+type FacebookCredentialReader = () => Promise<StoredFacebookCredential | null>;
+
+export function isMissingFacebookReelsCooldownColumnError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes("facebook_reels_next_allowed_at") && (
+    message.includes("42703") ||
+    message.includes("pgrst204") ||
+    /column[\\s\\S]*(does not exist|schema cache)/.test(message)
+  );
+}
+
+export async function readStoredFacebookCredential(
+  request: FacebookCredentialRequest = supabaseServerAdminRequest,
+): Promise<StoredFacebookCredential | null> {
+  let rows: StoredFacebookCredential[];
   try {
-    const rows = await supabaseServerAdminRequest<StoredFacebookCredential[]>(
+    rows = await request<StoredFacebookCredential[]>(
       `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${CREDENTIAL_FIELDS}&limit=1`,
     );
-    return Array.isArray(rows) ? rows[0] ?? null : null;
-  } catch {
-    // Preview projects can temporarily lack the additive cooldown migration. Fall
-    // back to established columns so OAuth connectivity still works.
-    try {
-      const rows = await supabaseServerAdminRequest<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
-        `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
-      );
-      const row = Array.isArray(rows) ? rows[0] : null;
-      return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
-    } catch {
-      // Never log exceptions because provider responses can contain sensitive context.
-      return null;
-    }
+  } catch (error) {
+    // Only a missing additive cooldown column justifies the legacy projection.
+    // Network, permission, and server errors must not erase cooldown state.
+    if (!isMissingFacebookReelsCooldownColumnError(error)) throw error;
+    const legacyRows = await request<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
+      `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
+    );
+    const row = Array.isArray(legacyRows) ? legacyRows[0] : null;
+    return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
   }
+  return Array.isArray(rows) ? rows[0] ?? null : null;
 }
 
 export async function getFacebookReelsNextAllowedAt(): Promise<string | null> {
@@ -108,15 +119,22 @@ export async function setFacebookReelsNextAllowedAt(until: string): Promise<void
   );
 }
 
-export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
+export class FacebookPageNotConnectedError extends Error {
+  constructor() {
+    super("Facebook Page is not connected through the OAuth-managed publishing center. Reconnect the Page from the admin publishing center.");
+    this.name = "FacebookPageNotConnectedError";
+  }
+}
+
+export async function getFacebookPageCredentials(
+  readCredential: FacebookCredentialReader = readStoredFacebookCredential,
+): Promise<FacebookPageCredentials> {
   // Outbound publishing uses only the validated Supabase credential. A server-side
   // environment token is never used directly; the admin must explicitly validate and
   // import it through adoptServerConfiguredFacebookPageToken first.
-  const stored = await readStoredFacebookCredential();
+  const stored = await readCredential();
   if (!stored) {
-    throw new Error(
-      "Facebook Page is not connected through the OAuth-managed publishing center. Reconnect the Page from the admin publishing center.",
-    );
+    throw new FacebookPageNotConnectedError();
   }
 
   if (stored.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
@@ -139,6 +157,17 @@ export async function getFacebookPageCredentials(): Promise<FacebookPageCredenti
     connectionStatus: stored.connection_status,
     reelsNextAllowedAt: stored.facebook_reels_next_allowed_at,
   };
+}
+
+export async function getOptionalFacebookPageCredentials(
+  readCredential: FacebookCredentialReader = readStoredFacebookCredential,
+): Promise<FacebookPageCredentials | null> {
+  try {
+    return await getFacebookPageCredentials(readCredential);
+  } catch (error) {
+    if (error instanceof FacebookPageNotConnectedError) return null;
+    throw error;
+  }
 }
 
 function classifyGraphFailure(code: string | null, message: string): {
@@ -198,10 +227,26 @@ async function persistValidation(
 
 export async function getFacebookPageConnectionHealth(): Promise<FacebookConnectionHealth> {
   const env = getServerEnv();
-  const stored = await readStoredFacebookCredential();
   const envPageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
   const envToken = env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? "";
   const hasEnvironmentToken = Boolean(envPageId && envToken);
+  let stored: StoredFacebookCredential | null;
+  try {
+    stored = await readStoredFacebookCredential();
+  } catch {
+    return {
+      facebookEnabled: false,
+      facebookCredentialsConfigured: false,
+      facebookEnvironmentTokenConfigured: hasEnvironmentToken,
+      facebookConnectionStatus: "error",
+      facebookPageName: null,
+      facebookTokenSource: hasEnvironmentToken ? "environment" : "missing",
+      facebookLastCheckedAt: null,
+      facebookTokenExpiresAt: null,
+      facebookInsightsPermissionGranted: false,
+      facebookConnectionMessage: "تعذر قراءة اعتماد Facebook من قاعدة البيانات. أعد الاختبار لاحقًا؛ لم يتم تغيير حالة النشر.",
+    };
+  }
 
   // A token configured in Vercel is not the active publishing credential until
   // an administrator validates and imports it into the server-only credentials table.
