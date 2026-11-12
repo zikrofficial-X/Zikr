@@ -153,9 +153,8 @@ if (!mediaDisposal.includes("stagingCleanupEligibleAt") ||
   failures.push("social publishing must preserve both media pointers and defer staging-copy deletion to the 48-hour retention worker");
 }
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
-    !socialPublishingService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff") ||
-    !socialPublishingService.includes("stale recovery is disabled")) {
-  failures.push("social queue reads, stale recovery, and cleanup must be restricted to the explicit post-launch cutoff");
+    (socialPublishingService.match(/resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/g) ?? []).length < 2) {
+  failures.push("social queue reads and stale recovery must share the validated explicit post-launch cutoff");
 }
 const claimStart = socialPublishingService.indexOf("export async function claimPendingSocialPublishItems");
 const claimEnd = socialPublishingService.indexOf("export async function processSocialPublishItem", claimStart);
