@@ -33,6 +33,7 @@ export async function readBoundedJsonBody(
   if (declaredLengthHeader !== null) {
     const declaredLength = Number(declaredLengthHeader);
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+      await request.body?.cancel().catch(() => undefined);
       return OVERSIZED_BODY;
     }
   }

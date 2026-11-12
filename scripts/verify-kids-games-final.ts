@@ -15,15 +15,27 @@ const legacySubmitResultRoute = readFileSync(
   join(root, "src/app/api/kids/games/submit-result/route.ts"),
   "utf8",
 );
+const currentScoreRoute = readFileSync(
+  join(root, "src/app/api/kids/games/score/route.ts"),
+  "utf8",
+);
+const boundedJsonBodyReader = readFileSync(
+  join(root, "src/lib/request/bounded-json-body.ts"),
+  "utf8",
+);
+const boundedBodyCall = "readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES)";
 if (
-  !legacySubmitResultRoute.includes('request.headers.get("content-length")') ||
-  !legacySubmitResultRoute.includes("await request.text()") ||
-  !legacySubmitResultRoute.includes("new TextEncoder().encode(rawBody).byteLength > 16_384") ||
-  !legacySubmitResultRoute.includes("JSON.parse(rawBody)") ||
-  !legacySubmitResultRoute.includes("status: 413") ||
-  !legacySubmitResultRoute.includes("status: 400")
+  !legacySubmitResultRoute.includes(boundedBodyCall) ||
+  !currentScoreRoute.includes(boundedBodyCall) ||
+  /request\\.(?:text|json|arrayBuffer)\\s*\\(/.test(legacySubmitResultRoute) ||
+  /request\\.(?:text|json|arrayBuffer)\\s*\\(/.test(currentScoreRoute) ||
+  !boundedJsonBodyReader.includes("MAX_REQUEST_BODY_BYTES = 16_384") ||
+  !boundedJsonBodyReader.includes("request.body.getReader()") ||
+  !boundedJsonBodyReader.includes("totalBytes > maxBytes") ||
+  !boundedJsonBodyReader.includes("reader.cancel()") ||
+  !boundedJsonBodyReader.includes("JSON.parse(decoded)")
 ) {
-  throw new Error("Deprecated Kids result endpoint must enforce the same bounded JSON body contract as the current score endpoint.");
+  throw new Error("Kids result endpoints must use the shared streaming JSON reader and enforce the 16 KiB limit before parsing.");
 }
 const required = [
   "src/features/kids/components/games/kids-game-kit.tsx",

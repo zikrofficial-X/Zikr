@@ -57,6 +57,7 @@ test("an oversized declared Content-Length is rejected without reading the strea
   const result = await readBoundedJsonBody(request);
   assert.deepEqual(result, { ok: false, status: 413, error: "Request body is too large" });
   assert.equal(state.reads, 0);
+  assert.equal(state.cancelled, true, "declared oversized bodies must be cancelled without being read");
 });
 
 test("a chunked or under-reported body is stopped as soon as streamed bytes exceed the limit", async () => {
