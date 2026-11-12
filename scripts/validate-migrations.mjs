@@ -541,20 +541,47 @@ if (failed === 0) {
       AND has_table_privilege(r.role_name, c.oid, p.privilege)
     ORDER BY c.relname, r.role_name, p.privilege
   `);
-  const clientDefaultPrivileges = await db.query(`
-    SELECT owner.rolname AS owner, COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+  const clientDefaultPrivilegesSql = `
+    SELECT owner.rolname AS owner,
+           COALESCE(n.nspname, '<global>') AS schema_name,
+           COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
            acl.privilege_type
     FROM pg_default_acl d
-    JOIN pg_namespace n ON n.oid = d.defaclnamespace
     JOIN pg_roles owner ON owner.oid = d.defaclrole
+    LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
     CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
     LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
-    WHERE n.nspname = 'public'
-      AND d.defaclobjtype = 'r'
+    WHERE d.defaclobjtype = 'r'
+      AND (d.defaclnamespace = 0 OR n.nspname = 'public')
       AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
       AND acl.privilege_type IN ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN')
-    ORDER BY owner.rolname, grantee.rolname, acl.privilege_type
-  `);
+    ORDER BY owner.rolname, schema_name, grantee, acl.privilege_type
+  `;
+  const clientDefaultPrivileges = await db.query(clientDefaultPrivilegesSql);
+
+  // Global default privileges are additive to per-schema defaults. Prove that
+  // the audit query detects a global grant as well as the public-schema grants
+  // removed by the migration chain; the probe is rolled back in this PGlite DB.
+  await db.exec("BEGIN");
+  let globalDefaultPrivilegeDetected = false;
+  try {
+    await db.exec("ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT TRUNCATE ON TABLES TO anon");
+    const globalProbe = await db.query(clientDefaultPrivilegesSql);
+    globalDefaultPrivilegeDetected = globalProbe.rows.some((row) =>
+      row.owner === "postgres" &&
+      row.schema_name === "<global>" &&
+      row.grantee === "anon" &&
+      row.privilege_type === "TRUNCATE"
+    );
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+  if (!globalDefaultPrivilegeDetected) {
+    failed++;
+    console.error("CLIENT_NON_DML_GLOBAL_DEFAULT_PRIVILEGE_AUDIT_FAILED: the audit query did not detect a global browser-role grant.");
+  } else {
+    console.log("CLIENT_NON_DML_GLOBAL_DEFAULT_PRIVILEGE_AUDIT_PASSED");
+  }
 
   if (clientTablePrivileges.rows.length > 0 || clientDefaultPrivileges.rows.length > 0) {
     failed++;
