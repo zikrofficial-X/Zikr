@@ -246,14 +246,12 @@ const youtubeConnectSource = readFileSync(
   new URL("../../src/app/api/admin/social/youtube/connect/route.ts", import.meta.url),
   "utf8",
 );
-assert.match(
-  youtubeConnectSource,
-  /const clientSecret = env\\.YOUTUBE_CLIENT_SECRET\\?\\.trim\\(\\);/,
+assert.ok(
+  youtubeConnectSource.includes("const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();"),
   "OAuth initiation must preflight the client secret required by the callback token exchange",
 );
-assert.match(
-  youtubeConnectSource,
-  /if \\(!clientId \\|\\| !clientSecret\\) return adminStatusRedirect\\("configuration_missing"\\);/,
+assert.ok(
+  youtubeConnectSource.includes('if (!clientId || !clientSecret) return adminStatusRedirect("configuration_missing");'),
   "OAuth initiation must reject an incomplete client ID/secret pair before consent",
 );
 const oauthConfigGuard = youtubeConnectSource.indexOf("if (!clientId || !clientSecret)");
