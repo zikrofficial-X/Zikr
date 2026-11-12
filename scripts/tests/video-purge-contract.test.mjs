@@ -234,8 +234,8 @@ const claimStatement = videoQueueSource.indexOf("const claimed = await", claimLo
 const preClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimLoopStart);
 const postClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimStatement);
 const claimRestore = videoQueueSource.indexOf("status: request.status", postClaimLockCheck);
-const renderStart = videoQueueSource.indexOf("const rendered = await withLeaseHeartbeat(() => renderVideo(request));", claimStatement);
-const renderCallback = videoQueueSource.indexOf("() => renderVideo(request)", renderStart);
+const renderStart = videoQueueSource.indexOf("const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));", claimStatement);
+const renderCallback = videoQueueSource.indexOf("(signal) => renderVideo(request, signal)", renderStart);
 assert.ok(
   queueStartLockCheck >= 0 && queueStartLockCheck < staleRecoveryStart &&
     preClaimLockCheck >= claimLoopStart && preClaimLockCheck < claimStatement &&
@@ -244,12 +244,18 @@ assert.ok(
     renderCallback > renderStart,
   "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
 );
-const socialQueueEnqueuePosition = videoQueueSource.indexOf("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl));");
+const socialQueueEnqueuePosition = videoQueueSource.indexOf("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal));");
 const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        video_url: rendered.videoUrl');
 assert.ok(
   socialQueueEnqueuePosition >= 0 &&
     completedRequestPatchPosition > socialQueueEnqueuePosition,
   "generated video requests must remain processing until any social queue row that references the media has been created, so purge preflight cannot miss the in-flight enqueue window.",
+);
+assert.ok(
+  videoQueueSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)") &&
+    videoQueueSource.includes("throwIfVideoLeaseAborted(signal)") &&
+    videoQueueSource.includes("...(signal ? { signal } : {})"),
+  "lease loss must abort in-flight media registration and social queue REST requests before they can continue as a stale worker.",
 );
 assert.ok(videoQueuePage.includes("PurgeGeneratedVideosControl"));
 assert.ok(generationStudio.includes("PurgeGeneratedVideosControl"));
