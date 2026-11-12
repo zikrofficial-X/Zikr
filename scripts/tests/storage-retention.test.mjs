@@ -12,6 +12,7 @@ import {
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
   collectPaginatedRows,
+  verifyStoragePathsAbsent,
   indexManagedBackupReferences,
   matchesSha256Digest,
   isEligiblePublishedQueueItem,
@@ -156,6 +157,34 @@ const pagedRows = await collectPaginatedRows(
   6,
 );
 assert.deepEqual(pagedRows, [10, 20, 30, 40, 50], "all pages must be read before retention decisions");
+const verifiedPrefixes = [];
+const verifiedPathCount = await verifyStoragePathsAbsent(
+  ["automated/removed-a.mp4", "automated/removed-b.mp4", "android/v1.1.6/app-release.apk"],
+  async (prefix) => {
+    verifiedPrefixes.push(prefix);
+    return [];
+  },
+);
+assert.equal(verifiedPathCount, 3, "all unique requested object paths must be verified absent");
+assert.deepEqual(
+  [...new Set(verifiedPrefixes)].sort(),
+  ["android/v1.1.6", "automated"],
+  "post-delete verification must group paths and list each parent prefix",
+);
+await assert.rejects(
+  () => verifyStoragePathsAbsent(
+    ["automated/still-present.mp4"],
+    async () => [{ id: "storage-object-id", name: "still-present.mp4" }],
+  ),
+  /Storage objects remain after removal; refusing to finalize retention/,
+  "a partially successful Storage remove must not allow database rows to be finalized as purged",
+);
+await assert.rejects(
+  () => verifyStoragePathsAbsent(["automated/unknown.mp4"], async () => null),
+  /post-delete inventory was incomplete/,
+  "an incomplete post-delete listing must fail closed",
+);
+
 const duplicateBackupReferences = indexManagedBackupReferences(
   [
     { id: "queue-a", video_url: "https://cdn.example/primary.mp4", metadata: { supabaseOriginalVideoUrl: publicUrl } },
@@ -255,6 +284,19 @@ assert.equal(
 );
 
 const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage.mjs", import.meta.url), "utf8");
+const videoRemoveIndex = storageRetentionSource.indexOf('.storage.from(VIDEO_BUCKET).remove(pathsToRemove)');
+const videoVerifyIndex = storageRetentionSource.indexOf('verifyStoragePathsAbsent(\n        pathsToRemove', videoRemoveIndex);
+const videoFinalizeIndex = storageRetentionSource.indexOf('state: "purged"', videoVerifyIndex);
+assert.ok(
+  videoRemoveIndex >= 0 && videoVerifyIndex > videoRemoveIndex && videoFinalizeIndex > videoVerifyIndex,
+  "exact video object absence must be verified before the database retention state is finalized",
+);
+assert.match(
+  storageRetentionSource,
+  /async function updateAndroidBucketRows[\s\S]*?\.remove\(paths\)[\s\S]*?verifyStoragePathsAbsent\(\s*paths/,
+  "Android duplicate removal must also verify exact object absence",
+);
+
 assert.equal(getReferenceOrderColumn("youtube_feed_cache"), "video_id");
 assert.equal(getReferenceOrderColumn("social_platform_profiles"), "platform");
 assert.equal(getReferenceOrderColumn("content_library"), "id");

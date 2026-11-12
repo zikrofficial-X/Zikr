@@ -106,10 +106,11 @@ jobs:
           RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         run: pnpm storage:cleanup -- --apply
 
-      - name: Verify final bucket inventory
+      - name: Report post-cleanup inventory (exact object paths verified by retention script)
         shell: bash
         run: |
           set -euo pipefail
           echo "Storage retention run completed for commit ${GITHUB_SHA}."
+          echo "The retention script verifies every removed object path is absent before marking video records purged."
           echo "Only fully published videos older than 48 hours and checksum-verified redundant Android copies are eligible."
           echo "Queued, partial, recently published, non-queued, pinned, rollback, or unbacked release assets are retained."

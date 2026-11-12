@@ -316,8 +316,47 @@ async function listDirectory(client, bucket, prefix) {
       sortBy: { column: "name", order: "asc" },
     });
     if (error) throw new Error(`Storage list failed for ${bucket}/${prefix}: ${error.message}`);
-    return data ?? [];
+    if (!Array.isArray(data)) throw new Error(`Storage list returned an incomplete inventory for ${bucket}/${prefix}; refusing cleanup.`);
+    return data;
   }, `Storage inventory ${bucket}/${prefix}`);
+}
+
+export async function verifyStoragePathsAbsent(paths, listDirectoryForPrefix) {
+  const uniquePaths = [...new Set(paths.map(asString).filter(Boolean))];
+  const grouped = new Map();
+
+  for (const path of uniquePaths) {
+    const separator = path.lastIndexOf("/");
+    const prefix = separator >= 0 ? path.slice(0, separator) : "";
+    const name = separator >= 0 ? path.slice(separator + 1) : path;
+    if (!name) throw new Error(`Invalid Storage object path: ${path}`);
+    if (!grouped.has(prefix)) grouped.set(prefix, []);
+    grouped.get(prefix).push({ path, name });
+  }
+
+  const remaining = [];
+  for (const [prefix, expected] of grouped) {
+    const entries = await listDirectoryForPrefix(prefix);
+    if (!Array.isArray(entries)) {
+      throw new Error(`Storage post-delete inventory was incomplete for prefix ${prefix || "<root>"}; refusing to finalize retention.`);
+    }
+    const presentNames = new Set(
+      entries
+        .filter((entry) => entry && typeof entry === "object" && entry.id)
+        .map((entry) => asString(entry.name))
+        .filter(Boolean),
+    );
+    for (const item of expected) {
+      if (presentNames.has(item.name)) remaining.push(item.path);
+    }
+  }
+
+  if (remaining.length > 0) {
+    throw new Error(
+      `Storage objects remain after removal; refusing to finalize retention: ${remaining.join(", ")}`,
+    );
+  }
+  return uniquePaths.length;
 }
 
 async function readSmallStorageBytes(client, bucket, path, maxBytes = 128 * 1024) {
@@ -867,6 +906,11 @@ async function updateAndroidBucketRows(client, paths) {
   if (!paths.length) return;
   const { error } = await client.storage.from(ANDROID_BUCKET).remove(paths);
   if (error) throw new Error(`Android Storage remove failed: ${error.message}`);
+  const verifiedCount = await verifyStoragePathsAbsent(
+    paths,
+    (prefix) => listDirectory(client, ANDROID_BUCKET, prefix),
+  );
+  console.log(`Verified ${verifiedCount} Android release Storage paths are absent.`);
 }
 
 async function main() {
@@ -1125,6 +1169,11 @@ async function main() {
     if (pathsToRemove.length > 0) {
       const { error } = await client.storage.from(VIDEO_BUCKET).remove(pathsToRemove);
       if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
+      const verifiedCount = await verifyStoragePathsAbsent(
+        pathsToRemove,
+        (prefix) => listDirectory(client, VIDEO_BUCKET, prefix),
+      );
+      console.log(`Verified ${verifiedCount} video staging Storage paths are absent before database finalization.`);
     }
 
     // The Cloudinary URL is the permanent playback master referenced by public.videos.
