@@ -459,7 +459,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
   }, [load]);
 
   const releaseAuthBlockedQueue = useCallback(async () => {
-    if (!window.confirm("سيتم إعادة العناصر المحجوبة بسبب اعتماد Facebook إلى طابور النشر. قد تُنشر تلقائيًا بعد ذلك. هل تؤكد المتابعة؟")) return;
+    if (!window.confirm("سيتم إعادة العناصر المحجوبة المؤهلة ضمن نافذة النشر الحالية إلى الطابور. العناصر التاريخية الأقدم ستظل محجوبة. قد تُنشر العناصر المعادة تلقائيًا. هل تؤكد المتابعة؟")) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -479,7 +479,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر استئناف العناصر المحجوبة.");
       const summary = [
-        "تم تحرير " + (payload.released ?? 0) + " عنصرًا محجوبًا بعد التحقق من اتصال Facebook.",
+        "تم تحرير " + (payload.released ?? 0) + " عنصرًا مؤهلًا ضمن نافذة النشر الحالية بعد التحقق من اتصال Facebook. العناصر التاريخية الأقدم تظل محجوبة.",
         payload.queueUpdateFailed ? "تعذر تحديث بعض العناصر؛ راجع الطابور قبل أي محاولة أخرى." : "",
         (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل الناشر المجدول المعالجة في دورته التالية." : "",
       ].filter(Boolean);
@@ -900,7 +900,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         >
           <p>
             يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
-            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. إعادة ربط Facebook تحفظ الاعتماد فقط ولا تستأنف العناصر المحجوبة تلقائيًا. استخدم زر الاستئناف الصريح بعد مراجعة العناصر؛ يتطلب تأكيدًا وMFA، وقد تُنشر العناصر بعد إعادتها إلى الطابور.
+            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. إعادة ربط Facebook أو اعتماد توكن الخادم تحفظ الاعتماد فقط ولا تستأنف العناصر المحجوبة تلقائيًا. استخدم زر الاستئناف الصريح بعد مراجعة العناصر؛ يتطلب تأكيدًا وMFA، ولا يعيد إلا العناصر الواقعة ضمن نافذة النشر الحالية. العناصر التاريخية الأقدم تظل محجوبة.
           </p>
           {canPublish ? (
             <Button
