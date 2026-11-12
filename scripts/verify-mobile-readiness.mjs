@@ -119,7 +119,7 @@ for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permis
 
 
 const fileProviderPaths = read("android/app/src/main/res/xml/file_paths.xml");
-if (/<external-path\\b/.test(fileProviderPaths)) {
+if (fileProviderPaths.includes("<external-path")) {
   failures.push("Android FileProvider must not expose the shared external-storage root; keep files app-private.");
 }
 for (const token of [
@@ -131,8 +131,8 @@ for (const token of [
 
 const gradleProperties = read("android/gradle.properties");
 const circleCiConfig = read(".circleci/config.yml");
-const configuredMetaspace = Number(gradleProperties.match(/MaxMetaspaceSize=(\\d+)m/)?.[1] ?? 0);
-const circleCiMetaspaceCaps = [...circleCiConfig.matchAll(/MaxMetaspaceSize=(\\d+)m/g)].map(match => Number(match[1]));
+const configuredMetaspace = Number(gradleProperties.match(/MaxMetaspaceSize=([0-9]+)m/)?.[1] ?? 0);
+const circleCiMetaspaceCaps = [...circleCiConfig.matchAll(/MaxMetaspaceSize=([0-9]+)m/g)].map(match => Number(match[1]));
 if (configuredMetaspace <= 0) failures.push("Android Gradle project must declare an explicit MaxMetaspaceSize.");
 if (circleCiMetaspaceCaps.some(cap => cap < configuredMetaspace)) {
   failures.push("CircleCI Android release overrides must not lower MaxMetaspaceSize below android/gradle.properties.");
