@@ -599,10 +599,6 @@ assert.doesNotMatch(
 );
 
 
-const facebookOAuthCallbackSource = readFileSync(
-  resolve(process.cwd(), "src/app/api/admin/social/facebook/callback/route.ts"),
-  "utf8",
-);
 assert.doesNotMatch(
   facebookOAuthCallbackSource,
   /unblockFacebookAuthBlockedQueue/,
