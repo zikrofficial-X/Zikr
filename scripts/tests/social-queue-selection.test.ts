@@ -205,7 +205,8 @@ assert.ok(
   "video social queue lookup must read the revision used by compare-and-set",
 );
 assert.ok(
-  templateVideoWorker.includes('existing.status === "processing" && newlyEnabledTargets.length > 0') &&
+  templateVideoWorker.includes('if (existing.status === "processing")') &&
+    templateVideoWorker.includes("if (newlyEnabledTargets.length > 0) await queueSupplementalTargets(newlyEnabledTargets)") &&
     templateVideoWorker.includes(":late:${target}") &&
     templateVideoWorker.includes("buildQueuePayload([target], supplementalKey)"),
   "newly enabled targets must use idempotent supplemental rows while the original social row is processing",
