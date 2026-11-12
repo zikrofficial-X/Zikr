@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { EXPECTED_PLATFORM_APIS, EXPECTED_PLATFORM_PAGES } from './platform-route-baseline.mjs';
+import { EXPECTED_PLATFORM_APIS, EXPECTED_PLATFORM_PAGES, isPlatformRouteInventoryValid } from './platform-route-baseline.mjs';
 
 const root = process.cwd();
 const failures = [];
@@ -132,8 +132,8 @@ const platformPageRoutes = platformRouteFiles.filter((file) => file.endsWith('/p
 const platformApiRoutes = platformRouteFiles.filter((file) => file.endsWith('/route.ts')).length;
 // Keep this baseline synchronized with the verified route inventory; update it deliberately when canonical routes are added or retired.
 // Shared route inventory baseline keeps route and integrity checks synchronized.
-if (platformPageRoutes !== EXPECTED_PLATFORM_PAGES || platformApiRoutes !== EXPECTED_PLATFORM_APIS) {
-  warnings.push('Platform route inventory changed: expected ' + EXPECTED_PLATFORM_PAGES + ' pages + ' + EXPECTED_PLATFORM_APIS + ' APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
+if (!isPlatformRouteInventoryValid(platformPageRoutes, platformApiRoutes)) {
+  failures.push('Platform route inventory changed: expected ' + EXPECTED_PLATFORM_PAGES + ' pages + ' + EXPECTED_PLATFORM_APIS + ' APIs, found ' + platformPageRoutes + ' pages + ' + platformApiRoutes + ' APIs.');
 }
 
 

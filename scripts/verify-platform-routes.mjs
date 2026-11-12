@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { EXPECTED_PLATFORM_APIS, EXPECTED_PLATFORM_PAGES } from './platform-route-baseline.mjs';
+import { EXPECTED_PLATFORM_APIS, EXPECTED_PLATFORM_PAGES, isPlatformRouteInventoryValid } from './platform-route-baseline.mjs';
 
 const root = process.cwd();
 
@@ -213,8 +213,8 @@ if (pages.length < 1) failures.push('No page routes discovered under src/app');
 if (apis.length < 1) failures.push('No API routes discovered under src/app');
 
 // Shared route inventory baseline is also consumed by project-integrity checks.
-if (pages.length !== EXPECTED_PLATFORM_PAGES || apis.length !== EXPECTED_PLATFORM_APIS) {
-  warnings.push(
+if (!isPlatformRouteInventoryValid(pages.length, apis.length)) {
+  failures.push(
     `Route inventory drift: expected ${EXPECTED_PLATFORM_PAGES} pages and ${EXPECTED_PLATFORM_APIS} API routes; discovered ${pages.length} pages and ${apis.length} API routes.`,
   );
 }

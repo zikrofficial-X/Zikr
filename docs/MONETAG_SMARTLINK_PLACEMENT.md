@@ -12,10 +12,11 @@ Its UI label must clearly identify it as an advertisement or external sponsored 
 
 The disclosed link is placed in:
 - The homepage promotional section.
+- A standalone promotional section on the About page and Articles index.
 - The shared footer on eligible general public pages.
-- The public video hub and individual video-detail routes are excluded from the footer and do not render a SmartLink component.
+- The public video hub and individual video-detail routes do not render a SmartLink component.
 
-The footer placement is suppressed on administration/authentication, child-directed, sacred-text, worship-tool, and individual video-detail routes. Keep the external link separate from Quran, Hadith, dua, adhkar, prayer, Qibla, and children's learning interfaces.
+The footer placement is suppressed on administration/authentication, child-directed, sacred-text, worship-tool, About, Articles, and video routes. About and Articles have their own explicit promotional placement. Keep the external link separate from Quran, Hadith, dua, adhkar, prayer, Qibla, and children's learning interfaces.
 
 The link opens a new tab and uses `rel="nofollow sponsored noopener noreferrer"`. Its disclosure explains that the destination may be a third-party offer or website.
 
@@ -39,13 +40,14 @@ before its old advertising integration can be removed.
 ## Canonical-host restriction
 
 Monetag tags and the Monetag service-worker import are permitted only on the
-canonical production origin. The browser registers `/sw.js?monetag=1` only
-when the current hostname exactly matches the canonical host. Vercel Preview,
-staging aliases, and local development register `/sw.js` without Monetag.
-The worker independently checks both the marker and canonical hostname before
-calling `importScripts`; a failed third-party import is non-fatal so offline
-caching and notification handlers can still install. Non-canonical and native
-workers remove only cached HTML that contains legacy advertising markup.
+exact canonical HTTPS origin (`https://zikrmediaofficial.vercel.app`). The
+browser compares the complete origin, not just the hostname, before registering
+`/sw.js?monetag=1`; alternate ports, Vercel Preview aliases, staging aliases,
+and local development register `/sw.js` without Monetag. The worker independently
+checks both the marker and exact canonical origin before calling `importScripts`;
+a failed third-party import is non-fatal so offline caching and notification
+handlers can still install. Non-canonical and native workers remove only cached
+HTML that contains legacy advertising markup.
 
 The website continues to use its approved, disclosed Monetag placements.
 
