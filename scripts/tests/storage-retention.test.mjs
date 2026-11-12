@@ -359,20 +359,41 @@ const sqlLikeMatches = (value, pattern) => {
   return new RegExp("^" + expression + "$", "i").test(value);
 };
 const rawReferenceUrl = supabaseUrl + "/storage/v1/object/public/videos/" + encodedReferencePath;
-const fullyEncodedReferenceUrlForQuery = encodeURIComponent(rawReferenceUrl);
-const doubleEncodedReferenceUrlForQuery = encodeURIComponent(fullyEncodedReferenceUrlForQuery);
 const textReferenceCalls = capturePatternCalls(textReferencePatterns("articles", "content"));
-assert.equal(textReferenceCalls.length, 2, "text references must be queried in raw and percent-encoded path forms");
-for (const value of [rawReferenceUrl, fullyEncodedReferenceUrlForQuery, doubleEncodedReferenceUrlForQuery]) {
-  assert.ok(textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "the database text-column filter must select raw, fully encoded, and double-encoded Storage URLs before recursive reference matching");
+assert.equal(
+  textReferenceCalls.length,
+  6,
+  "text references must be queried from raw through five-times-encoded path forms",
+);
+const encodedReferenceUrls = [rawReferenceUrl];
+let encodedReferenceUrl = rawReferenceUrl;
+for (let depth = 0; depth < 5; depth += 1) {
+  encodedReferenceUrl = encodeURIComponent(encodedReferenceUrl);
+  encodedReferenceUrls.push(encodedReferenceUrl);
 }
-const fullyEncodedStoragePath = encodeURIComponent(encodedReferencePath);
-const doubleEncodedStoragePath = encodeURIComponent(fullyEncodedStoragePath);
+for (const value of encodedReferenceUrls) {
+  assert.ok(
+    textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
+    "the database text-column filter must select Storage URLs at every supported encoding depth before recursive reference matching",
+  );
+}
 const storagePathCalls = capturePatternCalls(storagePathReferencePatterns("media_assets", "storage_path"));
-for (const value of [encodedReferencePath, fullyEncodedStoragePath, doubleEncodedStoragePath]) {
-  assert.ok(storagePathCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "plain Storage path filters must select raw, fully encoded, and double-encoded paths");
+assert.equal(
+  storagePathCalls.length,
+  6,
+  "storage path references must use the same bounded encoding-depth coverage",
+);
+const encodedStoragePaths = [encodedReferencePath];
+let encodedStoragePath = encodedReferencePath;
+for (let depth = 0; depth < 5; depth += 1) {
+  encodedStoragePath = encodeURIComponent(encodedStoragePath);
+  encodedStoragePaths.push(encodedStoragePath);
+}
+for (const value of encodedStoragePaths) {
+  assert.ok(
+    storagePathCalls.some((call) => sqlLikeMatches(value, call.pattern)),
+    "plain Storage path filters must select paths at every supported encoding depth",
+  );
 }
 const unexpectedPatternsStart = storageRetentionSource.indexOf("  const patterns = [", storageRetentionSource.indexOf("async function loadUnexpectedVideoReferences"));
 const unexpectedPatternsEnd = storageRetentionSource.indexOf("  ];", unexpectedPatternsStart);
