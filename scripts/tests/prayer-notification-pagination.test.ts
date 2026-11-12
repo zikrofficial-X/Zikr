@@ -144,9 +144,6 @@ assert.match(subscriptionLoader, /\.eq\("user_id", delivery\.user_id\)/);
 assert.match(subscriptionLoader, /\.eq\("is_active", true\)/,
   "each delivery must re-read only its current active subscription after the claim");
 
-const deliverDueStart = worker.indexOf("async function deliverDue");
-const deliverDueEnd = worker.indexOf("function constantTimeEqual", deliverDueStart);
-const deliverDueSource = worker.slice(deliverDueStart, deliverDueEnd);
 const claimPosition = deliverDueSource.indexOf("claimDueDelivery(candidate, deliveryNow)");
 const subscriptionReadPosition = deliverDueSource.indexOf("getActiveSubscriptionForDelivery(delivery)");
 const pushDelivery = deliverDueSource.indexOf(".pushTextMessage(");
