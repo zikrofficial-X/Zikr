@@ -1,4 +1,5 @@
 import { recordKidsGameResultForUser } from "@/features/kids/services/games";
+import { MAX_REQUEST_BODY_BYTES, readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
@@ -44,33 +45,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const declaredLength = Number(request.headers.get("content-length") ?? 0);
-    if (Number.isFinite(declaredLength) && declaredLength > 16_384) {
+    const parsedBody = await readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES);
+    if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: "Request body is too large" },
-        { status: 413, headers: { Deprecation: "true" } },
-      );
-    }
-
-    let body: unknown;
-    try {
-      const rawBody = await request.text();
-      if (new TextEncoder().encode(rawBody).byteLength > 16_384) {
-        return NextResponse.json(
-          { error: "Request body is too large" },
-          { status: 413, headers: { Deprecation: "true" } },
-        );
-      }
-      body = JSON.parse(rawBody);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid JSON payload" },
-        { status: 400, headers: { Deprecation: "true" } },
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { Deprecation: "true" } },
       );
     }
 
     const legacyBody =
-      body && typeof body === "object" ? body as Record<string, unknown> : {};
+      parsedBody.value && typeof parsedBody.value === "object"
+        ? parsedBody.value as Record<string, unknown>
+        : {};
 
     const normalized = {
       gameId: legacyBody.gameId,
