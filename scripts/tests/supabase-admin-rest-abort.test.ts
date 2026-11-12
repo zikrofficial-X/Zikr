@@ -8,7 +8,9 @@ test("Supabase REST combines caller cancellation with its own timeout", async ()
   const originalUrl = process.env.SUPABASE_URL;
   const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   process.env.SUPABASE_URL = "https://supabase.example.test";
-  process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
+  const testServiceKey = "unit-test-key";
+  assert.ok(testServiceKey.length < 20, "the fake credential must not resemble a secret literal");
+  process.env.SUPABASE_SERVICE_ROLE_KEY = testServiceKey;
 
   let observedSignal: AbortSignal | undefined;
   globalThis.fetch = ((_input: RequestInfo | URL, init?: RequestInit) => {
