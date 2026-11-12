@@ -1,6 +1,37 @@
 # ZIKR — Project Status
 
-## Latest verified audit checkpoint — 2026-11-11T23:21:12Z
+## Latest verified audit checkpoint — 2026-11-12T04:31:03Z
+
+**State: IN PROGRESS.** PR #320 remains open and unmerged. The audit branch has not been deployed.
+
+- **Repository / PR:** `zikrofficial-X/Zikr`, [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320).
+- **Branch / base:** `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Verified code head:** `fd60203db57afc4b5168d3643d95eeffe5a90a2e`; 806 commits ahead, 0 behind; 251 changed files (86 added, 165 modified, 0 removed). Reconciled branch inventory: 2,244 entries (1,748 files, 496 directories).
+- **Exact-head verification:** GitHub Quality Gate run `43154835362` / job `130972325889` completed SUCCESS at the exact code head. The job ran `pnpm verify` with `QUALITY_GATE_FULL_SCOPE=true` and ended `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all report SUCCESS at the same head.
+- **Repair 1 — secret-scanner fixture:** `scripts/tests/supabase-admin-rest-abort.test.ts` used the 21-character literal `test-service-role-key`, which matched the repository secret-literal detector even though it was a test-only value. Commit `c09fcff028e018fa05fedece4fab8196fa12ed67` changes it to `unit-test-key` and asserts the fixture stays below the detector's 20-character threshold. The full gate now passes.
+- **Repair 2 — video automation fail-open:** `scripts/run-background-jobs.ts` previously defaulted a missing `video_automation_enabled` setting to `true` and swallowed settings-read errors. A missing row or failed read could therefore allow video generation (and AI-provider work) when the worker was not in dry-run mode. Commits `8910ba37fd1899d837768ebacf268debafaf6d94`, `2dbd5509f1c780d1d760a93b4d55ce88a5064221`, and `fd60203db57afc4b5168d3643d95eeffe5a90a2e` add `isVideoAutomationEnabled`, require an explicit `true`/`"true"`, log read failures, and cover missing, null, false, malformed, and numeric values. Missing/unreadable configuration now disables video generation. No generation was triggered by the audit.
+- **Worker lifecycle follow-up:** the current `template-video-automation.ts` uses lease heartbeats and row-version/CAS filters for post-claim writes; the earlier ID-only-write warning in the prior checkpoint is superseded. A separate defect remains open: `queueSocialItems` errors are logged and swallowed, after which the generation request is marked `completed`. The inspected `social-publishing.ts` and `audit-video-media.ts` paths consume/audit existing queue rows and do not demonstrate recovery of a missing queue item. A durable enqueue outbox/reconciliation path and regression test are still needed.
+- **Media purge safety:** `/api/admin/video-purge` returns HTTP 409 for file/memory scopes before acquiring the purge lock or issuing destructive calls because the complete cross-table reference inventory is not yet proven. The contract test passes. No purge or storage cleanup was executed.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` is ACTIVE_HEALTHY with 418 remote migrations through `20261110170000`. Ten PR-branch migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, and `20261111170000`. No production migration was applied.
+- **Vercel:** Production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. No Preview deployment exists for the audit branch. No audit-branch deployment or smoke test was performed.
+- **Main baseline / matrix:** the 2,153-record manifest remains pinned to `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` and is not rewritten from an unmerged branch. Main baseline remains 2,154 entries (1,662 files, 492 directories). The file-status matrix still reports 1,525 `REVIEW_REQUIRED` rows and zero closed modules.
+- **Governance / independent CI:** PR #320 has zero submitted reviews and zero review threads. The connected GitHub identity has no collaborator permission for `@Zikrmediaofficial` (`permission=null`), so CODEOWNERS review cannot be obtained autonomously. Main's separate scheduled CircleCI `english-content-sync` context remains FAILURE; it is not a PR check and was not rerun.
+- **Safety:** no content generation, Gemini request, social publication, production database mutation, Supabase migration application, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered.
+
+### Remaining work
+
+1. Trace and repair the swallowed social-queue enqueue failure with an idempotent outbox/recovery path and focused regression coverage.
+2. Continue the file-by-file/import/consumer/runtime review of all 251 PR paths and the 1,662-file main baseline; do not mark files closed from CI alone.
+3. Reconcile the branch overlay, matrix, project status, and ledger to the exact source head and preserve the main-only manifest baseline.
+4. Obtain required CODEOWNERS owner review; do not merge without it.
+5. Apply the ten pending Supabase migrations only through the approved owner procedure.
+6. Complete authenticated admin/browser acceptance, Apple Team ID configuration, physical Android/iOS deep-link/OAuth/notification/signing acceptance, then merge/deploy only after the exact final head passes all gates.
+
+The audit remains open. No error-free or project-closed certification is made.
+
+---
+
+## Previous verified audit checkpoint — 2026-11-11T23:21:12Z
 
 **State: IN PROGRESS.** PR #320 remains open and unmerged. The audit branch has not been deployed.
 

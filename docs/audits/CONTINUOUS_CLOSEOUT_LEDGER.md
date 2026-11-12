@@ -1010,3 +1010,48 @@ No content generation, Gemini request, social publication, audit-triggered produ
 6. Only after required review and migration approval: safe merge, Vercel deployment, READY verification, and production smoke tests on the deployed SHA.
 
 No content generation, Gemini request, social publication, production database mutation, Storage/media deletion, Android release, merge, or deployment was triggered. The audit remains open.
+
+
+## 2026-11-12T04:31:03Z — exact-head continuation, CI fixture repair, and fail-closed video automation
+
+### Repository and verification evidence
+
+- Repository `zikrofficial-X/Zikr`; PR #320; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Exact code head `fd60203db57afc4b5168d3643d95eeffe5a90a2e`; PR comparison: 806 commits ahead, 0 behind; 251 changed files (86 added, 165 modified, 0 removed). The branch inventory reconciles to 2,244 entries (1,748 files, 496 directories).
+- GitHub Quality Gate run `43154835362`, canonical job `130972325889`: SUCCESS at the exact code head. The job log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, and `QUALITY_GATE=PASSED_FULL`. PostgreSQL 17 integration checks and the production build completed successfully.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs`: SUCCESS at the exact code head.
+- The prior code head `8cea618dd2db423f38b758f8aee4de84456e8e3` had failed the secret-literal integrity check because a test fixture looked like a long service-role credential. That failure was not bypassed; the fixture was corrected and the exact full gate rerun.
+
+### Repair batches
+
+1. **Secret-literal false positive:** commit `c09fcff028e018fa05fedece4fab8196fa12ed67` replaces `test-service-role-key` with `unit-test-key` in `scripts/tests/supabase-admin-rest-abort.test.ts` and adds a short-fixture assertion. The test remains a non-network abort-contract test.
+2. **Video automation fail-closed:** commit `8910ba37fd1899d837768ebacf268debafaf6d94` adds a pure explicit-enable parser; commit `2dbd5509f1c780d1d760a93b4d55ce88a5064221` uses it in `scripts/run-background-jobs.ts` and logs settings-read errors; commit `fd60203db57afc4b5168d3643d95eeffe5a90a2e` adds regression cases. Missing, null, malformed, false, and numeric values disable automation; only explicit boolean/string true enables it. No generation or Gemini request was triggered.
+
+### Additional source-path findings
+
+- The current video worker contains lease heartbeats and row-version/CAS filters for post-claim writes; the earlier warning that later worker writes were ID-only is superseded by the current code.
+- **Open functional defect:** `scripts/jobs/template-video-automation.ts` catches a `queueSocialItems` failure, logs it, then still marks the generation request `completed`. The inspected social-publishing and media-audit jobs process/audit existing queue rows; a compensating enqueue/recovery path has not been demonstrated. A durable idempotent outbox/reconciliation path and regression test remain required.
+- The admin video-purge route fails closed with HTTP 409 for file/memory scopes before purge-lock acquisition and before destructive Cloudinary/Storage calls. The route remains intentionally unavailable until its full cross-table reference inventory is proven. No purge or cleanup job was run.
+- The Kids bounded-body routes, HF public-space provider path, admin retry step-up path, Kids video visibility path, and prayer notification pagination/timezone paths were read in this pass; the canonical full gate passed their registered contract tests. Full consumer tracing remains open where the overlay status says so.
+
+### Inventory and manifest reconciliation
+
+- Main baseline remains `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`: 2,154 entries (1,662 files, 492 directories). The checked-in main manifest has 2,153 records because it excludes its own entry; it remains pinned to main and is not rewritten from the PR branch.
+- PR #320 branch comparison has 251 changed paths. The branch overlay excludes itself and therefore contains 250 rows (85 added, 165 modified). The overlay's source code snapshot is `fd60203db57afc4b5168d3643d95eeffe5a90a2e`; per-path blob SHA and byte counts are reconciled in the updated overlay.
+- The main-baseline matrix still has 1,525 `REVIEW_REQUIRED` rows and zero closed modules. The 250-row branch overlay is not a repository-wide completion certificate.
+
+### Production, Supabase, and governance gates
+
+- Supabase read-only migration listing: 418 remote versions, latest `20261110170000`; ten branch-only migrations remain pending: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, and `20261111170000`. No migration was applied.
+- Vercel Production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9`. No Preview deployment exists for the audit branch; no merge, deployment, or post-deployment smoke test occurred.
+- PR #320 has zero submitted reviews and zero review threads. The connected identity's collaborator permission for `@Zikrmediaofficial` is null. CODEOWNERS review remains mandatory and cannot be obtained autonomously.
+- Main's separate scheduled CircleCI `english-content-sync` context remains FAILURE. It is not a PR #320 check; no rerun was initiated and any sync side effects remain unverified.
+
+### Remaining work
+
+1. Implement and test an idempotent social-queue outbox/reconciliation path before closing the video worker lifecycle.
+2. Continue source/import/consumer/runtime review for all PR paths and the main-baseline files; keep unread paths `REVIEW_REQUIRED`.
+3. Obtain CODEOWNERS approval, apply pending migrations only through the approved procedure, and complete owner/device-only acceptance.
+4. Only after owner review and migration approval: merge safely, deploy to Vercel, verify READY, and run production smoke checks against the deployed SHA.
+
+No content generation, Gemini request, social publication, production database mutation, migration application, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was performed. The audit remains open.
