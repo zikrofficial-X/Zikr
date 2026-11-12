@@ -165,21 +165,21 @@ test("the video worker wraps rendering in the lease heartbeat before claiming th
 });
 
 test("post-render catalog and social queue work renews the processing lease", () => {
-  assert.match(videoWorkerSource, /const withLeaseHeartbeat = <T>\\(operation: \\(\\) => Promise<T>\\)/);
-  assert.match(videoWorkerSource, /renew: \\(\\) => patchProcessingRequestWithLease\\(\\{\\}\\)/);
+  assert.ok(videoWorkerSource.includes("const withLeaseHeartbeat = <T>(operation: () => Promise<T>)"));
+  assert.ok(videoWorkerSource.includes("renew: () => patchProcessingRequestWithLease({})"));
+
+  const siteRegistrationCall = "await withLeaseHeartbeat(() => registerGeneratedVideoOnSite(";
   assert.equal(
-    (videoWorkerSource.match(/await withLeaseHeartbeat\\(\\(\\) => registerGeneratedVideoOnSite\\(/g) ?? []).length,
+    videoWorkerSource.split(siteRegistrationCall).length - 1,
     2,
     "both canonical recovery and normal site registration must keep the lease alive",
   );
-  assert.match(
-    videoWorkerSource,
-    /await withLeaseHeartbeat\\(\\(\\) => queueSocialItems\\(request, rendered\\.videoUrl\\)\\)/,
+  assert.ok(
+    videoWorkerSource.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))"),
     "social queue insertion must keep the processing lease alive until durable",
   );
-  assert.match(
-    videoWorkerSource,
-    /await withLeaseHeartbeat\\(\\(\\) =>\\s*restoreMissingMediaSocialQueueItems\\(/,
+  assert.ok(
+    videoWorkerSource.includes("await withLeaseHeartbeat(() =>\\n                restoreMissingMediaSocialQueueItems("),
     "recovered social queue rows must also be protected by the active lease",
   );
 });
