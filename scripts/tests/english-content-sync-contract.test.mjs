@@ -101,17 +101,13 @@ const boundedSyncStart = circleEnglishSync.indexOf("name: Run bounded English co
 const credentialValidation = circleEnglishSync.slice(credentialValidationStart, boundedSyncStart);
 const boundedSyncCommand = circleEnglishSync.slice(boundedSyncStart);
 assert.ok(
-  credentialValidation.includes('test -n "${GEMINI_API_KEY:-}"'),
-  "CircleCI must validate Gemini before either worker can write to production",
-);
-assert.ok(
   credentialValidationStart >= 0 && boundedSyncStart > credentialValidationStart,
-  "all production content-sync credentials must be validated before the bounded worker step",
+  "Supabase credentials shared by both content-sync workers must be validated before the bounded worker step",
 );
-assert.doesNotMatch(
+assert.match(
   boundedSyncCommand,
-  /if \[\[ -n "${GEMINI_API_KEY:-}" \]\]/,
-  "the bounded worker step must not partially run Hadith sync when Gemini is missing",
+  /if \[\[ -n "${GEMINI_API_KEY:-}" \]\][\s\S]*?pnpm translate:articles:en[\s\S]*?else[\s\S]*?article_status=1[\s\S]*?fi[\s\S]*?pnpm sync:hadith:en/,
+  "Hadith sync must remain independent when Gemini is missing or article translation fails",
 );
 
 assert.ok(
