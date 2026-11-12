@@ -139,12 +139,14 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
         conditioningImage = await makeWanConditioningImage(tempDir, input.style);
       }
 
+      const space = this.customSpace || configuredSpace(this.variant);
+      const publicSpace = Boolean(this.customSpace) || space !== DEFAULT_SPACES[this.variant];
       const args = [
         "scripts/jobs/hf-space-video.py",
         "--provider",
         this.variant,
         "--space",
-        this.customSpace || configuredSpace(this.variant),
+        space,
         "--prompt-file",
         promptPath,
         "--output",
@@ -158,11 +160,14 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
       if (conditioningImage) args.push("--image", conditioningImage);
 
       const childEnv: NodeJS.ProcessEnv = { ...process.env };
-      if (this.customSpace) {
-        // Admin-configured Spaces are public and untrusted. Never expose the
-        // server HF token or a cached Hugging Face login to a custom Space.
+      if (publicSpace) {
+        // Only the two built-in Spaces may receive the server HF token.
+        // Admin-configured or environment-overridden public Spaces are untrusted.
         args.push("--public-space");
         childEnv.HF_TOKEN = "";
+        delete childEnv.HF_TOKEN_PATH;
+        delete childEnv.HUGGING_FACE_HUB_TOKEN;
+        delete childEnv.HUGGINGFACE_HUB_TOKEN;
         childEnv.HF_HOME = path.join(tempDir, "hf-home");
         childEnv.HF_HUB_DISABLE_IMPLICIT_TOKEN = "1";
       }

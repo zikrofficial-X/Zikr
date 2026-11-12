@@ -57,6 +57,12 @@ class HuggingFaceOutputSafetyTests(unittest.TestCase):
         self.assertFalse(MODULE.is_allowed_space_file_url("https://169.254.169.254/latest/meta-data", SPACE_ORIGIN))
         self.assertFalse(MODULE.is_allowed_space_file_url("https://owner-space.hf.space.evil.example/file=video.mp4", SPACE_ORIGIN))
 
+    def test_only_builtin_spaces_may_use_an_implicit_hf_token(self):
+        self.assertFalse(MODULE.should_use_public_space("zerogpu-aoti/wan2-2-fp8da-aoti-faster"))
+        self.assertFalse(MODULE.should_use_public_space("Lightricks/ltx-video-distilled"))
+        self.assertTrue(MODULE.should_use_public_space("attacker/custom-space"))
+        self.assertTrue(MODULE.should_use_public_space("zerogpu-aoti/wan2-2-fp8da-aoti-faster", True))
+
     def test_huggingface_origin_must_be_a_space_origin(self):
         self.assertTrue(MODULE.is_trusted_space_origin("https://huggingface.co/spaces/owner/space"))
         self.assertFalse(MODULE.is_trusted_space_origin("https://huggingface.co/"))

@@ -11,6 +11,10 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 MAX_VIDEO_BYTES = 256 * 1024 * 1024
 MIN_VIDEO_BYTES = 1024
 SPACE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+BUILTIN_SPACE_IDS = {
+    "zerogpu-aoti/wan2-2-fp8da-aoti-faster",
+    "Lightricks/ltx-video-distilled",
+}
 
 
 def parse_args():
@@ -28,6 +32,10 @@ def parse_args():
 
 def _effective_port(parsed):
     return parsed.port or (443 if parsed.scheme == "https" else 80)
+
+
+def should_use_public_space(space_id, requested_public=False):
+    return requested_public or space_id not in BUILTIN_SPACE_IDS
 
 
 def is_trusted_space_origin(space_origin):
@@ -165,9 +173,13 @@ def main():
     if not SPACE_ID_PATTERN.fullmatch(args.space):
         raise RuntimeError("Hugging Face Space must use the owner/name identifier format.")
 
+    args.public_space = should_use_public_space(args.space, args.public_space)
     if args.public_space:
         # A public custom Space must not inherit a runner's token or cached login.
         os.environ["HF_TOKEN"] = ""
+        os.environ.pop("HF_TOKEN_PATH", None)
+        os.environ.pop("HUGGING_FACE_HUB_TOKEN", None)
+        os.environ.pop("HUGGINGFACE_HUB_TOKEN", None)
         os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
         os.environ["HF_HOME"] = str(Path(args.output).parent / "hf-home")
 
