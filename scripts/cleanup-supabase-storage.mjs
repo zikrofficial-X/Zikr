@@ -425,6 +425,7 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
   social_sync_jobs: "id",
   quran_audio: "id",
   site_audio_assets: "id",
+  site_settings: "key",
   video_generation_requests: "id",
   videos: "id",
   youtube_feed_cache: "video_id",
@@ -756,6 +757,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
     ...jsonReferencePattern("quran_reciters", "metadata"),
     ...textReferencePatterns("quran_tafsir", "source_url"),
     ...jsonReferencePattern("scholars", "metadata"),
+    ...jsonReferencePattern("site_settings", "value"),
     ...textReferencePatterns("social_sync_jobs", "source_url"),
     ...textReferencePatterns("stories", "content"),
     ...jsonReferencePattern("stories", "metadata"),
@@ -817,6 +819,7 @@ async function getAndroidReleaseReferences(client) {
   const { data, error } = await client
     .from("site_settings")
     .select("key,value")
+    .order("key", { ascending: true })
     .range(0, 999);
   if (error) throw new Error(`Cannot read Android release settings: ${error.message}`);
   const rows = data ?? [];

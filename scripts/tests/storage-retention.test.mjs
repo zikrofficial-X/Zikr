@@ -244,6 +244,7 @@ const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage
 assert.equal(getReferenceOrderColumn("youtube_feed_cache"), "video_id");
 assert.equal(getReferenceOrderColumn("social_platform_profiles"), "platform");
 assert.equal(getReferenceOrderColumn("content_library"), "id");
+assert.equal(getReferenceOrderColumn("site_settings"), "key");
 assert.throws(() => getReferenceOrderColumn("unknown_table"), /No deterministic primary-key order/);
 const orderMapStart = storageRetentionSource.indexOf("const REFERENCE_ORDER_COLUMNS = Object.freeze({");
 const orderMapEnd = storageRetentionSource.indexOf("});", orderMapStart);
@@ -258,6 +259,11 @@ for (const table of new Set(referenceTables)) {
   assert.ok(orderMapSource.includes(`${table}:`), `reference inventory table ${table} must declare a stable primary-key ordering`);
 }
 assert.match(storageRetentionSource, /pattern\.filter\(query\)\.order\(orderColumn, \{ ascending: true \}\)/);
+assert.match(
+  storageRetentionSource,
+  /from\("site_settings"\)[\s\S]*?select\("key,value"\)[\s\S]*?order\("key", \{ ascending: true \}\)/,
+  "site_settings must be scanned in deterministic key order before storage deletion",
+);
 for (const [table, column] of [
   ["articles", "content"],
   ["stories", "content"],
@@ -282,6 +288,7 @@ for (const [table, column] of [
   ["kids_content", "metadata"],
   ["video_automation_runs", "metadata"],
   ["content_translation_queue", "source_payload"],
+  ["site_settings", "value"],
 ]) {
   assert.ok(
     storageRetentionSource.includes(`jsonReferencePattern("${table}", "${column}")`),
