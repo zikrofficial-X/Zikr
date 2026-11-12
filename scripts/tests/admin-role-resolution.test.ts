@@ -41,6 +41,10 @@ const usersPage = readFileSync("src/app/admin/users/page.tsx", "utf8");
 const usersTable = readFileSync("src/features/admin/components/users-table.tsx", "utf8");
 const usersAction = readFileSync("src/features/admin/actions/users.ts", "utf8");
 assert.match(usersPage, /hasAdminPermission\(currentAdmin\.role, "audit\.read"\)/);
+assert.match(usersPage, /resolveAdminRole\(user\.role, roleByUser\.get\(user\.id\)\)/, "the users table must not display a delegated assignment for a profile that is not admin");
+assert.match(usersPage, /async function getTotalUsers\(\): Promise<number \| null>/, "the users page must tolerate a failed count query without failing the whole page");
+assert.match(usersPage, /totalUsers \?\? "غير متاح"/, "a failed total-user count must be shown as unavailable rather than crashing or implying zero");
+
 assert.match(usersPage, /user_id=in\.\(/, "delegated role lookups must be scoped to the displayed user IDs");
 assert.match(usersPage, /userIds\.map\(\(id\) => encodeURIComponent\(id\)\)\.join\(","\)/, "role assignment filters must encode each displayed UUID");
 
