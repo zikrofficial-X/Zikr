@@ -143,8 +143,8 @@ async function main() {
   let failed = 0;
   for (const article of rows) {
     const sourceHash = hashSource(article);
-    const [existing] = await supabase<Array<{ id: string; status: string }>>(
-      `/rest/v1/content_translation_queue?select=id,status&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
+    const [existing] = await supabase<Array<{ id: string; status: string; attempt_count: number | null }>>(
+      `/rest/v1/content_translation_queue?select=id,status,attempt_count&content_type=eq.article&content_id=eq.${encodeURIComponent(article.id)}&target_locale=eq.en&source_hash=eq.${sourceHash}&limit=1`,
     );
 
     if (existing && ["generated", "approved", "published"].includes(existing.status)) {
@@ -160,7 +160,7 @@ async function main() {
             status: "processing",
             provider: "google-gemini",
             model: process.env.GEMINI_MODEL ?? "configured",
-            attempt_count: 1,
+            attempt_count: Math.max(0, Number(existing.attempt_count) || 0) + 1,
             error_message: null,
           }),
         },

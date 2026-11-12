@@ -99,8 +99,8 @@ async function main() {
         continue;
       }
 
-      await supabase(
-        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}`,
+      const updatedRows = await supabase<Array<{ hadith_number: string }>>(
+        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}&or=(text_en.is.null,text_en.eq.)`,
         {
           method: "PATCH",
           body: JSON.stringify({
@@ -108,6 +108,12 @@ async function main() {
           }),
         }
       );
+      if (!updatedRows.length) {
+        console.log(
+          `Skipped ${book.slug}/${row.hadith_number}; an English value was added while the external source was fetched.`
+        );
+        continue;
+      }
       synced += 1;
       console.log(`Synced ${book.slug}/${row.hadith_number}`);
     } catch (error) {
