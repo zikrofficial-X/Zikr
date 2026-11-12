@@ -608,6 +608,11 @@ assert.match(
   /requireAdminStepUpApi\("social\.publish"/,
   "Facebook OAuth connect must require social.publish MFA step-up before starting a publishing-capable flow",
 );
+assert.match(
+  facebookOAuthConnectSource,
+  /"nextPath"\s+in\s+publishStepUp/,
+  "Facebook OAuth connect must narrow the MFA result union before reading its optional nextPath",
+);
 const facebookCallbackSaveIndex = facebookOAuthCallbackSource.indexOf("await saveFacebookPageCredential(");
 const facebookCallbackStepUpIndex = facebookOAuthCallbackSource.indexOf('requireAdminStepUpApi("social.publish"');
 const facebookCallbackReleaseIndex = facebookOAuthCallbackSource.indexOf("await unblockFacebookAuthBlockedQueue(");
