@@ -4,6 +4,7 @@ const requiredFiles = [
   "capacitor.config.json",
   "mobile-shell/index.html",
   "android/app/src/main/AndroidManifest.xml",
+  "android/app/src/main/res/xml/file_paths.xml",
   "android/gradle/wrapper/gradle-wrapper.properties",
   "android/app/src/main/java/com/zikr/app/MainActivity.java",
   "android/app/src/main/res/drawable/ic_stat_zikr.xml",
@@ -114,6 +115,27 @@ for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories",
 
 for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"]) {
   if (androidManifest.includes(permission)) failures.push(`Android manifest must not request unused broad storage permission ${permission}`);
+}
+
+
+const fileProviderPaths = read("android/app/src/main/res/xml/file_paths.xml");
+if (/<external-path\\b/.test(fileProviderPaths)) {
+  failures.push("Android FileProvider must not expose the shared external-storage root; keep files app-private.");
+}
+for (const token of [
+  '<files-path name="my_app_files" path="." />',
+  '<cache-path name="my_cache_images" path="." />',
+]) {
+  if (!fileProviderPaths.includes(token)) failures.push("Android FileProvider must retain the app-private path " + token);
+}
+
+const gradleProperties = read("android/gradle.properties");
+const circleCiConfig = read(".circleci/config.yml");
+const configuredMetaspace = Number(gradleProperties.match(/MaxMetaspaceSize=(\\d+)m/)?.[1] ?? 0);
+const circleCiMetaspaceCaps = [...circleCiConfig.matchAll(/MaxMetaspaceSize=(\\d+)m/g)].map(match => Number(match[1]));
+if (configuredMetaspace <= 0) failures.push("Android Gradle project must declare an explicit MaxMetaspaceSize.");
+if (circleCiMetaspaceCaps.some(cap => cap < configuredMetaspace)) {
+  failures.push("CircleCI Android release overrides must not lower MaxMetaspaceSize below android/gradle.properties.");
 }
 
 const plist = read("ios/App/App/Info.plist");

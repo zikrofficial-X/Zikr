@@ -415,7 +415,7 @@ jobs:
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
         -Dorg.gradle.jvmargs=-Xmx2048m
-        -XX:MaxMetaspaceSize=512m
+        -XX:MaxMetaspaceSize=768m
         -Dfile.encoding=UTF-8
     steps:
       - checkout
@@ -566,7 +566,7 @@ jobs:
           command: |
             set -euo pipefail
             cd android
-            ./gradlew clean --no-daemon --max-workers=1 --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew clean --no-daemon --max-workers=1 --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
           no_output_timeout: 20m
       - run:
           name: Build signed APK and AAB
@@ -574,7 +574,7 @@ jobs:
           command: |
             set -euo pipefail
             cd android
-            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
           no_output_timeout: 40m
       - run:
           name: Verify APK, AAB, signature and version
