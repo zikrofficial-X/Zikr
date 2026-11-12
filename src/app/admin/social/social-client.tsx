@@ -436,9 +436,6 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         nextPath?: string;
         adopted?: boolean;
         pageName?: string;
-        released?: number;
-        queueUpdateFailed?: boolean;
-        workerDispatched?: boolean;
         health?: Health;
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
@@ -450,10 +447,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       }
       const summary = [
         "تم التحقق من التوكن وحفظ اعتماد الصفحة " + (payload.pageName || "Facebook") + ".",
-        "تم تحرير " + (payload.released ?? 0) + " عنصرًا قديمًا لإعادة المعالجة دون تكرار ما نُشر بنجاح.",
-        payload.queueUpdateFailed ? "لكن تعذر تحديث بعض عناصر الطابور؛ أعد تحديث الصفحة قبل تشغيل العامل." : "",
-        (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل العامل المجدول المعالجة خلال دورة النشر التالية." : "",
-      ].filter(Boolean);
+        "لم يتم استئناف أي عناصر محجوبة. راجعها ثم استخدم زر الاستئناف الصريح إذا رغبت؛ قد تُنشر تلقائيًا بعد إعادتها إلى الطابور.",
+      ];
       setMessage(summary.join(" "));
       await load();
     } catch (cause) {
