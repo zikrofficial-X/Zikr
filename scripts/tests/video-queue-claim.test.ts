@@ -46,10 +46,11 @@ test("CAS writes always advance their updated_at row-version token", () => {
   );
   assert.equal(
     (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\(leaseUpdatedAt\)/g) ?? []).length,
-    2,
-    "both lease mutation paths must advance the exact lease revision",
+    1,
+    "the narrowed lease mutation path must advance its exact lease revision",
   );
   assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\(claimUpdatedAt\)/);
+  assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\(leaseUpdatedAt \?\? null\)/);
   assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(existingVideo\?\.updated_at \?\? null\)/);
   assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(duplicate\.updated_at \?\? null\)/);
 

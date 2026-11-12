@@ -2382,7 +2382,7 @@ export async function recoverPendingVideoSocialQueueEnqueues(
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt) }),
+          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt ?? null) }),
         },
       );
       const row = updated?.[0];

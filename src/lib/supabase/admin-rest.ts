@@ -118,7 +118,7 @@ async function restRequest<T>(
             Number.isFinite(retryAfter) && retryAfter > 0
               ? Math.min(8000, retryAfter * 1000)
               : retryDelayMs(attempt);
-          await waitForRetryDelay(retryAfterMs, fetchInit.signal);
+          await waitForRetryDelay(retryAfterMs, fetchInit.signal ?? undefined);
           continue;
         }
 
@@ -139,7 +139,7 @@ async function restRequest<T>(
       ) {
         throw error;
       }
-      await waitForRetryDelay(retryDelayMs(attempt), fetchInit.signal);
+      await waitForRetryDelay(retryDelayMs(attempt), fetchInit.signal ?? undefined);
     } finally {
       clearTimeout(timeoutId);
     }
