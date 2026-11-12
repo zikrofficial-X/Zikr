@@ -37,19 +37,19 @@ test("CAS writes always advance their updated_at row-version token", () => {
     buildNextRowVersionUpdatedAt("2026-11-11T22:40:00.001Z", sameMillisecond),
     "2026-11-11T22:40:00.002Z",
   );
-  assert.match(videoWorkerSource, /updated_at:\\s*buildNextRowVersionUpdatedAt\\(existing\\.updated_at\\)/);
-  assert.match(videoWorkerSource, /updated_at:\\s*buildNextRowVersionUpdatedAt\\(latest\\.updated_at\\)/);
+  assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(existing\.updated_at\)/);
+  assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(latest\.updated_at\)/);
   assert.equal(
-    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\\(request\\.updated_at \\?\\? null\\)/g) ?? []).length,
+    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\(request\.updated_at \?\? null\)/g) ?? []).length,
     2,
     "both initial claims must advance the selected request revision",
   );
   assert.equal(
-    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\\(leaseUpdatedAt\\)/g) ?? []).length,
+    (videoWorkerSource.match(/buildNextRowVersionUpdatedAt\(leaseUpdatedAt\)/g) ?? []).length,
     2,
     "both lease mutation paths must advance the exact lease revision",
   );
-  assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\\(claimUpdatedAt\\)/);
+  assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\(claimUpdatedAt\)/);
 });
 
 test("foreground lease writes and heartbeat renewals serialize on the latest row revision", async () => {

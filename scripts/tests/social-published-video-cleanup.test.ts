@@ -78,13 +78,13 @@ assert.equal(
 );
 const socialPublishingSource = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
 assert.equal(
-  (socialPublishingSource.match(/buildNextRowVersionUpdatedAt\\(row\\.updated_at\\)/g) ?? []).length,
+  (socialPublishingSource.match(/buildNextRowVersionUpdatedAt\(row\.updated_at\)/g) ?? []).length,
   2,
   "both video catalog metadata writers must advance the row version before their CAS update",
 );
 assert.match(
   socialPublishingSource,
-  /buildNextRowVersionUpdatedAt\\(request\\.updated_at\\)/,
+  /buildNextRowVersionUpdatedAt\(request\.updated_at\)/,
   "published-video staging metadata must advance the generation request row version",
 );
 assert.match(
