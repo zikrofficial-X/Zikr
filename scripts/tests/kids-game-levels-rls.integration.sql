@@ -20,10 +20,13 @@ SET LOCAL test.is_admin = 'false';
 DO $authenticated$
 BEGIN
   IF (SELECT count(*) FROM public.kids_game_levels) <> 0 THEN
-    RAISE EXCEPTION 'Authenticated non-admin clients must not bypass the anonymous-only public policy';
+    RAISE EXCEPTION 'Authenticated non-admin clients must not bypass the anonymous-only parent-scoped level policy';
   END IF;
   IF (SELECT count(*) FROM public.kids_game_questions) <> 0 THEN
-    RAISE EXCEPTION 'Authenticated non-admin clients must not bypass the anonymous-only question policy';
+    RAISE EXCEPTION 'Authenticated non-admin clients must not read published question rows containing correct_index';
+  END IF;
+  IF NOT has_table_privilege('authenticated', 'public.kids_game_questions', 'SELECT') THEN
+    RAISE EXCEPTION 'Authenticated role should retain table privilege while RLS restricts answer-key visibility to admins';
   END IF;
 END
 $authenticated$;
@@ -61,9 +64,15 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'kids_game_levels'
-      AND policyname = 'admin_all_kids_game_levels_select'
+      AND policyname IN (
+        'admin_all_kids_game_levels_select',
+        'kids_game_levels_admin_select',
+        'kids_game_levels_admin_insert',
+        'kids_game_levels_admin_update',
+        'kids_game_levels_admin_delete'
+      )
   ) THEN
-    RAISE EXCEPTION 'The duplicate Kids levels admin SELECT policy must not remain';
+    RAISE EXCEPTION 'Legacy Kids levels policies must be removed in favor of the parent-scoped anon policy and admin ALL policy';
   END IF;
 
   IF (
@@ -71,9 +80,11 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'kids_game_questions'
-      AND policyname = 'kids_game_questions_admin_all'
+      AND policyname = 'kids_game_questions_admin_select'
+      AND coalesce(qual, '') ILIKE '%private.is_admin_user%'
+      AND coalesce(qual, '') NOT ILIKE '%published%'
   ) <> 1 THEN
-    RAISE EXCEPTION 'Kids questions must retain exactly one admin ALL policy';
+    RAISE EXCEPTION 'Kids question SELECT must be restricted to administrators, not all authenticated users';
   END IF;
 
   IF EXISTS (
@@ -81,19 +92,13 @@ BEGIN
     FROM pg_policies
     WHERE schemaname = 'public'
       AND tablename = 'kids_game_questions'
-      AND policyname = 'admin_all_kids_game_questions_select'
+      AND policyname IN (
+        'kids_game_questions_public_read',
+        'kids_game_questions_admin_all',
+        'admin_all_kids_game_questions_select'
+      )
   ) THEN
-    RAISE EXCEPTION 'The duplicate Kids questions admin SELECT policy must not remain';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM pg_policies
-    WHERE schemaname = 'public'
-      AND tablename = 'kids_game_questions'
-      AND policyname = 'kids_game_questions_public_read'
-  ) THEN
-    RAISE EXCEPTION 'The answer-key table must not retain a public read policy';
+    RAISE EXCEPTION 'Kids answer-key table must not retain a public or duplicate broad admin policy';
   END IF;
 END
 $policy_contract$;
