@@ -158,7 +158,9 @@ test("lease loss aborts an in-flight worker operation immediately", async () => 
       else signal.addEventListener("abort", abort, { once: true });
     });
   });
-  await assert.rejects(task, leaseLost);
+  const rejected = assert.rejects(task, leaseLost);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  await rejected;
   assert.ok(observedSignal?.aborted, "lease loss must abort the active operation immediately");
 });
 
