@@ -103,7 +103,7 @@ if (!videoWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') ||
   failures.push("video generation must enqueue only automated-QA-approved social candidates without a manual review gate");
 }
 if (!videoGenerator.includes("async function queueSocialItems") ||
-    !videoGenerator.includes("await queueSocialItems(request, rendered.videoUrl)") ||
+    !videoGenerator.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))") ||
     videoGenerator.includes("reconcileCompletedVideoSocialQueue")) {
   failures.push("only newly generated videos may create social queue items; historical generation requests must not be reconciled");
 }

@@ -16,6 +16,7 @@ import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateG
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
 import { buildDuplicateVideoOwnerRecoveryFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
+import { buildVideoSocialQueueUpdateFilter } from "../../src/features/social/services/social-queue-selection";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { buildProcessingVideoRequestLeaseFilter, buildStaleVideoRequestRecoveryFilter, buildVideoRequestClaimFilter } from "../../src/features/videos/services/video-queue-claim";
 import { getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
@@ -161,6 +162,7 @@ type SocialQueueRow = {
   status: string;
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
+  updated_at: string | null;
 };
 export 
 type GeneratedRequest = {
@@ -1925,6 +1927,7 @@ type MissingMediaSocialQueueRow = {
   status: string;
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
+  updated_at: string | null;
 };
 
 async function restoreMissingMediaSocialQueueItems(
@@ -1941,7 +1944,7 @@ async function restoreMissingMediaSocialQueueItems(
     const cursorFilter: string = lastSeenId === null ? "" : "&id=gt." + encodeURIComponent(lastSeenId);
     const rows: MissingMediaSocialQueueRow[] = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
       "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
-        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata&order=id.asc&limit=" +
+        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata,updated_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
@@ -1951,9 +1954,10 @@ async function restoreMissingMediaSocialQueueItems(
       const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
       if (!patch) continue;
       try {
+        const updateFilter = buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at);
+        if (!updateFilter) continue;
         const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
-            "&status=eq." + encodeURIComponent(item.status) +
+          "/rest/v1/social_publish_queue?" + updateFilter +
             "&metadata->>sourceMediaMissing=eq.true",
           {
             method: "PATCH",
@@ -1976,7 +1980,7 @@ async function restoreMissingMediaSocialQueueItems(
 
 async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
   const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
-    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
+    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata,updated_at&limit=1`,
   );
   return rows?.[0] ?? null;
 }
@@ -2030,42 +2034,43 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
   if (!targets.length) return;
 
   const socialKey = `${key}:social-video`;
+  const buildQueuePayload = (queueTargets: string[], queueAutomationKey: string) => ({
+    content_type: `${request.category || "content"}_video`,
+    content_id: request.id,
+    title: request.title,
+    body: [
+      buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
+      content.audience === "kids" && typeof content.seriesTitle === "string"
+        ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
+        : "",
+    ].filter(Boolean).join("\n\n"),
+    video_url: videoUrl,
+    target_platforms: queueTargets,
+    status: "queued",
+    metadata: {
+      automationKey: queueAutomationKey,
+      publicPath,
+      videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
+      sourceUrl: contentSourceUrl(request),
+      authBlocked: false,
+      attempts: 0,
+      maxAttempts: 5,
+      nextRetryAt: null,
+      ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+      audience: content.audience === "kids" ? "kids" : "general",
+      kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
+      automatedVideoQa: content.automatedVideoQa,
+      automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
+    },
+    automation_key: queueAutomationKey,
+  });
   const existing = await findSocialQueueByAutomationKey(socialKey);
 
   if (!existing) {
     await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        content_type: `${request.category || "content"}_video`,
-        content_id: request.id,
-        title: request.title,
-        body: [
-          buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
-          content.audience === "kids" && typeof content.seriesTitle === "string"
-            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
-            : "",
-        ].filter(Boolean).join("\n\n"),
-        video_url: videoUrl,
-        target_platforms: targets,
-        status: "queued",
-        metadata: {
-          automationKey: socialKey,
-          publicPath,
-          videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
-          sourceUrl: contentSourceUrl(request),
-          authBlocked: false,
-          attempts: 0,
-          maxAttempts: 5,
-          nextRetryAt: null,
-          ai: content.ai && typeof content.ai === "object" ? content.ai : null,
-          audience: content.audience === "kids" ? "kids" : "general",
-          kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
-          automatedVideoQa: content.automatedVideoQa,
-          automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
-        },
-        automation_key: socialKey,
-      }),
+      body: JSON.stringify(buildQueuePayload(targets, socialKey)),
     });
     return;
   }
@@ -2090,12 +2095,33 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
       ),
   );
 
+  if (existing.status === "processing" && newlyEnabledTargets.length > 0) {
+    // Do not reset a live publisher lease. Queue only the newly enabled targets
+    // in separate idempotent rows so the active worker can finish its snapshot.
+    for (const target of newlyEnabledTargets) {
+      const supplementalKey = `${socialKey}:late:${target}`;
+      const supplemental = await findSocialQueueByAutomationKey(supplementalKey);
+      if (supplemental) continue;
+      await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(buildQueuePayload([target], supplementalKey)),
+      });
+    }
+    return;
+  }
+
   if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
-    await supabaseServerAdminRequest(
-      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(existing.id)}`,
+    const updateFilter = buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at);
+    if (!updateFilter) {
+      console.warn("[template-video] Social queue target expansion was deferred because the row is not in a safely mutable state:", existing.id, existing.status);
+      return;
+    }
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/social_publish_queue?${updateFilter}`,
       {
         method: "PATCH",
-        headers: { Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           video_url: videoUrl,
           target_platforms: desiredTargets,
@@ -2111,6 +2137,9 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         }),
       },
     );
+    if (!updated?.[0]?.id) {
+      console.warn("[template-video] Social queue row changed during target expansion; leaving the newer state untouched:", existing.id);
+    }
   }
 }
 

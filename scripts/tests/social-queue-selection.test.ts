@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
@@ -182,3 +182,39 @@ assert.ok(adminRoute.includes('Prefer: "return=representation"'));
 assert.ok(adminRoute.includes("if (Array.isArray(updated) && updated[0]) affected += 1"));
 
 console.log("Social queue starvation regression checks passed.");
+
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "queued", "2026-11-11T22:40:00.000Z"),
+  "id=eq.queue-1&status=eq.queued&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  "video queue reconciliation must compare-and-set the exact social queue row revision",
+);
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "processing", "2026-11-11T22:40:00.000Z"),
+  null,
+  "a video worker must never rewrite an active social publisher lease",
+);
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "queued", null),
+  null,
+  "video queue reconciliation must fail closed when updated_at is unavailable",
+);
+
+const templateVideoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(
+  templateVideoWorker.includes("select=id,status,target_platforms,metadata,updated_at"),
+  "video social queue lookup must read the revision used by compare-and-set",
+);
+assert.ok(
+  templateVideoWorker.includes('existing.status === "processing" && newlyEnabledTargets.length > 0') &&
+    templateVideoWorker.includes(":late:${target}") &&
+    templateVideoWorker.includes("buildQueuePayload([target], supplementalKey)"),
+  "newly enabled targets must use idempotent supplemental rows while the original social row is processing",
+);
+assert.ok(
+  templateVideoWorker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)"),
+  "normal social target expansion must use an exact row-version filter",
+);
+assert.ok(
+  templateVideoWorker.includes("buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at)"),
+  "missing-media social recovery must also compare-and-set its queue row revision",
+);

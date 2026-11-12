@@ -117,3 +117,32 @@ export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionC
 
   return eligible.slice(0, limit);
 }
+
+const VIDEO_SOCIAL_QUEUE_MUTABLE_STATUSES = new Set(["queued", "failed", "partial", "published"]);
+
+/**
+ * Compare-and-set filter for the video worker's social queue reconciliation.
+ * Processing rows are intentionally excluded: changing their updated_at would
+ * invalidate an active publisher lease and could duplicate remote posts.
+ */
+export function buildVideoSocialQueueUpdateFilter(
+  id: string,
+  status: string,
+  updatedAt: string | null | undefined,
+): string | null {
+  const normalizedId = id.trim();
+  const revision = updatedAt?.trim();
+  if (
+    !normalizedId ||
+    !VIDEO_SOCIAL_QUEUE_MUTABLE_STATUSES.has(status) ||
+    !revision ||
+    !Number.isFinite(Date.parse(revision))
+  ) {
+    return null;
+  }
+  return [
+    "id=eq." + encodeURIComponent(normalizedId),
+    "status=eq." + encodeURIComponent(status),
+    "updated_at=eq." + encodeURIComponent(revision),
+  ].join("&");
+}
