@@ -6,6 +6,7 @@ import { getServerEnv } from "@/lib/env";
 import { getYouTubeUploadRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
 import { resolveYouTubeVideoDisclosure } from "@/features/social/services/youtube-video-disclosure";
 import { getFacebookPageCredentials } from "@/features/social/services/facebook-credentials";
+import { resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
 import { extractFacebookReelsNextAllowedAt, isFacebookReelsCooldownDeferredError } from "@/features/social/services/facebook-reels-rate-limit";
 import { isVideoContentType, isVideoQueueItemApprovedForPublishing, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { shouldRestorePurgedPublishedVideo } from "@/features/videos/services/video-media-contract";
@@ -257,12 +258,7 @@ export async function getPendingSocialPublishItems(
   enabledPlatforms: readonly SocialPlatform[] = getEnabledSocialPlatforms(process.env),
 ): Promise<SocialPublishQueueItem[]> {
   const now = encodeURIComponent(new Date().toISOString());
-  const publishAfterValue = process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z";
-  const publishAfterDate = new Date(publishAfterValue);
-  if (!Number.isFinite(publishAfterDate.getTime())) {
-    throw new Error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing to read or claim queue rows.");
-  }
-  const createdSince = encodeURIComponent(publishAfterDate.toISOString());
+  const createdSince = encodeURIComponent(resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER));
   const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
   // Read a wider candidate window before applying automated-QA eligibility. Held
   // videos must not occupy the small delivery batch and starve written posts.
@@ -313,11 +309,7 @@ export async function getPendingSocialPublishItems(
 
 async function recoverStaleSocialPublishItems() {
   const staleBefore = new Date(Date.now() - 20 * 60_000).toISOString();
-  const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
-  if (!Number.isFinite(cutoff.getTime())) {
-    throw new Error("[social-publishing] Invalid SOCIAL_PUBLISH_AFTER cutoff; stale recovery is disabled.");
-  }
-  const createdSince = encodeURIComponent(cutoff.toISOString());
+  const createdSince = encodeURIComponent(resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER));
   try {
     const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
       `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&created_at=gte.${createdSince}&select=id,metadata,target_platforms&order=updated_at.asc,id.asc&limit=50`,
