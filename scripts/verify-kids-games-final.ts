@@ -10,6 +10,21 @@ import { getZikrColoringRules } from "../src/lib/games/zikr-coloring";
 import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "../src/lib/games/kids-level-system";
 
 const root = process.cwd();
+
+const legacySubmitResultRoute = readFileSync(
+  join(root, "src/app/api/kids/games/submit-result/route.ts"),
+  "utf8",
+);
+if (
+  !legacySubmitResultRoute.includes('request.headers.get("content-length")') ||
+  !legacySubmitResultRoute.includes("await request.text()") ||
+  !legacySubmitResultRoute.includes("new TextEncoder().encode(rawBody).byteLength > 16_384") ||
+  !legacySubmitResultRoute.includes("JSON.parse(rawBody)") ||
+  !legacySubmitResultRoute.includes("status: 413") ||
+  !legacySubmitResultRoute.includes("status: 400")
+) {
+  throw new Error("Deprecated Kids result endpoint must enforce the same bounded JSON body contract as the current score endpoint.");
+}
 const required = [
   "src/features/kids/components/games/kids-game-kit.tsx",
   "src/features/kids/components/games/kids-action-runner-road.tsx",

@@ -44,7 +44,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const declaredLength = Number(request.headers.get("content-length") ?? 0);
+    if (Number.isFinite(declaredLength) && declaredLength > 16_384) {
+      return NextResponse.json(
+        { error: "Request body is too large" },
+        { status: 413, headers: { Deprecation: "true" } },
+      );
+    }
+
+    let body: unknown;
+    try {
+      const rawBody = await request.text();
+      if (new TextEncoder().encode(rawBody).byteLength > 16_384) {
+        return NextResponse.json(
+          { error: "Request body is too large" },
+          { status: 413, headers: { Deprecation: "true" } },
+        );
+      }
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400, headers: { Deprecation: "true" } },
+      );
+    }
+
     const legacyBody =
       body && typeof body === "object" ? body as Record<string, unknown> : {};
 
