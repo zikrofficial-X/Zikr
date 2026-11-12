@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { buildRunNowRequestDeleteFilter, buildRunNowRequestValueFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest } from "../../src/features/videos/services/background-job-outcome";
+import { isVideoAutomationEnabled } from "../../src/features/videos/services/background-job-settings";
 
 assert.deepEqual(evaluateBackgroundJobOutcome({
   videoSucceeded: 10,
@@ -51,6 +52,13 @@ assert.equal(evaluateBackgroundJobOutcome({
 }).shouldFailRun, true, "an internal site-publishing failure must remain fatal");
 
 console.log("Background job outcome policy passed: partial video failures do not suppress eligible social publishing.");
+
+assert.equal(isVideoAutomationEnabled(true), true, "an explicit boolean enable flag may start video automation");
+assert.equal(isVideoAutomationEnabled("true"), true, "an explicit string enable flag may start video automation");
+for (const missingOrInvalid of [undefined, null, false, "false", "", "enabled", "1", 1]) {
+  assert.equal(isVideoAutomationEnabled(missingOrInvalid), false, "missing or invalid admin configuration must not start video generation");
+}
+
 
 
 assert.equal(shouldClearRunNowRequest({
@@ -132,6 +140,8 @@ assert.equal(
 
 const backgroundRunnerSource = readFileSync(resolve(process.cwd(), "scripts/run-background-jobs.ts"), "utf8");
 assert.match(backgroundRunnerSource, /select=key,value,updated_at/, "Run Now consumption must read the row version");
+assert.match(backgroundRunnerSource, /enabled: isVideoAutomationEnabled\(values\.video_automation_enabled\)/, "video generation must require an explicit Admin enable flag");
+assert.match(backgroundRunnerSource, /Could not read Admin video settings; video automation will remain disabled/, "Admin settings read failures must be logged and fail closed");
 assert.match(backgroundRunnerSource, /buildRunNowRequestDeleteFilter\(row\.updated_at, row\.value\)/, "Run Now deletion must atomically compare the exact row version and JSONB request value");
 assert.match(backgroundRunnerSource, /isSameRunNowRequest\(parsed, request\)/, "Run Now deletion must match the exact request identity");
 assert.match(backgroundRunnerSource, /import \{[^}]*isSameRunNowRequest[^}]*\} from "\.\.\/src\/features\/videos\/services\/background-job-outcome"/, "the Run Now identity guard must be imported from the shared policy");
