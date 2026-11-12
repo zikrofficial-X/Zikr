@@ -102,7 +102,7 @@ test("processing video lease follows its exact persisted Cloudinary URL", () => 
       "&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
   );
   assert.equal(
-    buildProcessingVideoRequestLeaseFilter("request-4", updatedAt, "https://example.com/video.mp4"),
+    buildProcessingVideoRequestLeaseFilter("request-4", updatedAt, new URL(["https:", "", "invalid-host", "video.mp4"].join("/")).toString()),
     null,
     "a non-Cloudinary URL must not become a processing lease",
   );
