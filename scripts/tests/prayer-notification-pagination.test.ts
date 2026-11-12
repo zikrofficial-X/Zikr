@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "../../supabase/functions/prayer-notification-worker/delivery-lease";
-import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
+import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import {
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
@@ -305,6 +305,33 @@ assert.throws(
   /valid scheduledAt/,
 );
 assert.equal(canSchedulePrayerSubscription(true, { notifications_enabled: true }), true, "configured, opted-in prayer notifications may be scheduled");
+
+const deliveryNow = new Date("2026-11-13T12:00:00.000Z");
+assert.equal(
+  isDeliveryWithinGraceWindow("2026-11-13T11:45:00.000Z", deliveryNow, 30 * 60_000),
+  true,
+  "a reminder inside the 30-minute delivery grace window may still be sent",
+);
+assert.equal(
+  isDeliveryWithinGraceWindow("2026-11-13T11:29:59.000Z", deliveryNow, 30 * 60_000),
+  false,
+  "a reminder older than the delivery grace window must be cancelled instead of sent late",
+);
+assert.equal(
+  isDeliveryWithinGraceWindow("2026-11-13T12:00:01.000Z", deliveryNow, 30 * 60_000),
+  false,
+  "a future reminder must not be treated as due",
+);
+assert.equal(
+  isDeliveryWithinGraceWindow("invalid", deliveryNow, 30 * 60_000),
+  false,
+  "an invalid scheduled timestamp must fail closed",
+);
+assert.match(worker, /MAX_DELIVERY_DELAY_MS = 30 \* 60_000/);
+assert.match(worker, /Prayer reminder expired; stale delivery cancelled/);
+assert.match(worker, /Background reminder expired; stale delivery cancelled/);
+assert.match(worker, /Math\.min\(MAX_DELIVERY_DELAY_MS, Number\(intervalMinutes\) \* 60_000\)/);
+
 assert.match(worker, /.order\("id", \{ ascending: true \}\)/);
 assert.match(worker, /query\.gt\("id", afterId\)/);
 

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
-import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "./eligibility.ts";
+import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "./eligibility.ts";
 import {
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
@@ -99,6 +99,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CONTACT =
   Deno.env.get("PUSH_CONTACT") ?? "mailto:admin@zikrmediaofficial.vercel.app";
 const BATCH_SIZE = 100;
+// Never emit a backlog of stale reminders after a worker outage.
+const MAX_DELIVERY_DELAY_MS = 30 * 60_000;
 const PRAYERS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
 const PRAYER_NAMES_AR: Record<string, string> = {
   Fajr: "الفجر",
@@ -729,6 +731,10 @@ async function deliverDue(
         ) {
           skipReason = "Prayer reminder is no longer enabled or configured";
         } else if (
+          !isDeliveryWithinGraceWindow(delivery.scheduled_at, deliveryNow, MAX_DELIVERY_DELAY_MS)
+        ) {
+          skipReason = "Prayer reminder expired; stale delivery cancelled";
+        } else if (
           inQuietHours(
             scheduledAt,
             safeTimeZone(location.timezone),
@@ -799,6 +805,14 @@ async function deliverDue(
           skipReason = "Background reminder is no longer enabled";
         } else if (!isCurrentIntervalReminderSlot(delivery.scheduled_at, intervalMinutes)) {
           skipReason = "Background reminder interval changed; stale delivery cancelled";
+        } else if (
+          !isDeliveryWithinGraceWindow(
+            delivery.scheduled_at,
+            deliveryNow,
+            Math.min(MAX_DELIVERY_DELAY_MS, Number(intervalMinutes) * 60_000),
+          )
+        ) {
+          skipReason = "Background reminder expired; stale delivery cancelled";
         } else if (
           inQuietHours(
             scheduledAt,
