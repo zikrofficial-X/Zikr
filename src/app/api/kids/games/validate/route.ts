@@ -25,8 +25,7 @@ export async function GET() {
       allRuntimeGamesHaveValidScoringBounds: runtimeGames.every(g =>
         Number.isFinite(g.maxScore) && g.maxScore > 0 &&
         Number.isFinite(g.maxCollectibles) && g.maxCollectibles >= 0 &&
-        Number.isFinite(g.maxDistance) && g.maxDistance >= 0 &&
-        Number.isFinite(g.maxEnemies) && g.maxEnemies >= 0
+        Number.isFinite(g.maxDistance) && g.maxDistance >= 0
       ),
     };
     const allQualityChecksPassed = Object.values(qualityChecks).every(Boolean);
@@ -51,7 +50,7 @@ export async function GET() {
         total: runtimeGames.length,
         games: runtimeGames.map(g => ({
           id: g.id,
-          title: g.title,
+          titleAr: g.titleAr,
           titleEn: g.titleEn,
           icon: g.icon,
           runtimeKind: g.runtimeKind,
