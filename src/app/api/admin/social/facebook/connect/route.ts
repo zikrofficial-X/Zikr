@@ -25,8 +25,9 @@ export async function GET() {
 
   const publishStepUp = await requireAdminStepUpApi("social.publish", "/admin/social");
   if (!publishStepUp.ok) {
-    const destination = publishStepUp.nextPath
-      ? new URL(publishStepUp.nextPath, CANONICAL_SITE_ORIGIN)
+    const nextPath = "nextPath" in publishStepUp ? publishStepUp.nextPath : undefined;
+    const destination = nextPath
+      ? new URL(nextPath, CANONICAL_SITE_ORIGIN)
       : new URL("/admin/social?facebook=step_up_unavailable", CANONICAL_SITE_ORIGIN);
     return NextResponse.redirect(destination, { headers: { "Cache-Control": "no-store" } });
   }
