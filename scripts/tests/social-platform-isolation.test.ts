@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
-import { buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
+import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
@@ -13,6 +13,27 @@ import {
   readStoredFacebookCredential,
   type StoredFacebookCredential,
 } from "../../src/features/social/services/facebook-credentials";
+
+const facebookRecoveryCandidate = {
+  id: "queue-row-123",
+  status: "partial",
+  updated_at: "2026-11-12T06:00:00.000Z",
+};
+assert.equal(
+  buildFacebookQueueRecoveryFilter(facebookRecoveryCandidate),
+  "id=eq.queue-row-123&status=eq.partial&updated_at=eq.2026-11-12T06%3A00%3A00.000Z&metadata->>authBlocked=eq.true",
+  "Facebook reauthorization recovery must compare the exact row version and still require the auth-block marker",
+);
+assert.equal(
+  buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, updated_at: null }),
+  null,
+  "a recovery candidate without an updated_at version must fail closed",
+);
+assert.equal(
+  buildFacebookQueueRecoveryFilter({ ...facebookRecoveryCandidate, status: "processing" }),
+  null,
+  "Facebook reauthorization must never rewrite a row already claimed by a publisher",
+);
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(both, ["facebook", "facebook_reels", "youtube"]);
@@ -557,6 +578,14 @@ await assert.rejects(
   /access token has expired/,
   "an expired Page token must remain a recoverable enqueue error, not become not_required",
 );
+
+const facebookCredentialsSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/facebook-credentials.ts"),
+  "utf8",
+);
+assert.match(facebookCredentialsSource, /select=id,target_platforms,metadata,status,updated_at/);
+assert.match(facebookCredentialsSource, /buildFacebookQueueRecoveryFilter\(item\)/);
+assert.match(facebookCredentialsSource, /if \(!patch \|\| !filter\) continue/);
 
 const templateVideoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
 assert.ok(

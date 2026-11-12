@@ -466,7 +466,7 @@ assert.match(deliverDueSource, /updateDeliveryIfLease\(delivery,/,
 assert.match(staleRecovery, /processed_at: now\.toISOString\(\)/,
   "a recovered stale attempt must record its completion timestamp");
 
-assert.equal(getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000), 200_000);
+assert.equal(getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000), 60_000);
 
 let deliveryRenewals = 0;
 const activeDeliveryHeartbeat = startDeliveryLeaseHeartbeat({
@@ -495,5 +495,11 @@ assert.match(deliveryLeaseUpdateSource, /delivery\.updated_at = data\.updated_at
 assert.match(deliverDueSource, /createAsyncSerialQueue\(\)/);
 assert.match(deliverDueSource, /renew: \(\) => updateLease\(\{ processing_at: new Date\(\)\.toISOString\(\) \}\)/);
 assert.match(deliverDueSource, /finally \{\s*await heartbeat\.stop\(\);\s*\}/);
+
+assert.match(
+  deliverDueSource,
+  /leaseLost\) \{[\s\S]{0,220}before the push provider call[\s\S]{0,180}await applicationServer/,
+  "a worker that has lost its lease must not begin a new provider send",
+);
 
 console.log("Prayer notification subscription pagination and delivery lease contracts passed.");

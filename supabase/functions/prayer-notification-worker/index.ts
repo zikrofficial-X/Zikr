@@ -884,6 +884,10 @@ async function deliverDue(
         : delivery.notification_kind === "dhikr"
           ? "dhikr-reminder"
           : "salawat-reminder";
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Delivery lease was recovered before the push provider call; skipping:", delivery.id);
+        continue;
+      }
       await applicationServer
         .subscribe({
           endpoint: subscription.endpoint,

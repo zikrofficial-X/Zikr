@@ -11,6 +11,34 @@ export type FacebookQueueRecoveryPatch = {
   updated_at: string;
 };
 
+export type FacebookQueueRecoveryCandidate = {
+  id: string;
+  status: string;
+  updated_at: string | null;
+};
+
+export function buildFacebookQueueRecoveryFilter(
+  candidate: FacebookQueueRecoveryCandidate,
+): string | null {
+  const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+  const status = candidate.status;
+  const updatedAt = typeof candidate.updated_at === "string" ? candidate.updated_at.trim() : "";
+  if (
+    !id ||
+    (status !== "failed" && status !== "partial") ||
+    !updatedAt ||
+    !Number.isFinite(Date.parse(updatedAt))
+  ) {
+    return null;
+  }
+
+  // Recovery must never overwrite a newer publisher/admin state read after this snapshot.
+  return "id=eq." + encodeURIComponent(id) +
+    "&status=eq." + encodeURIComponent(status) +
+    "&updated_at=eq." + encodeURIComponent(updatedAt) +
+    "&metadata->>authBlocked=eq.true";
+}
+
 export function buildFacebookQueueRecoveryPatch(
   metadataInput: Record<string, unknown> | null | undefined,
   targetsInput: readonly string[],

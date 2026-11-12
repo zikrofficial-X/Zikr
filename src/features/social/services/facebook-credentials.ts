@@ -1,6 +1,6 @@
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { buildFacebookQueueRecoveryPatch } from "@/features/social/services/facebook-queue-recovery-policy";
+import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch } from "@/features/social/services/facebook-queue-recovery-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -588,6 +588,7 @@ type FacebookAuthBlockedQueueRow = {
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
   status: string;
+  updated_at: string | null;
 };
 
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
@@ -600,7 +601,7 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
   while (true) {
     const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
     const rows: FacebookAuthBlockedQueueRow[] = await supabaseServerAdminRequest<FacebookAuthBlockedQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status&order=id.asc&limit=" +
+      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status,updated_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
@@ -609,10 +610,10 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
       cursor = item.id;
       const now = new Date().toISOString();
       const patch = buildFacebookQueueRecoveryPatch(item.metadata, item.target_platforms ?? [], now);
-      if (!patch) continue;
+      const filter = buildFacebookQueueRecoveryFilter(item);
+      if (!patch || !filter) continue;
       const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
-          "&status=eq." + encodeURIComponent(item.status),
+        "/rest/v1/social_publish_queue?" + filter,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },

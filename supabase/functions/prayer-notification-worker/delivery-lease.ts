@@ -2,7 +2,7 @@ export function getDeliveryLeaseHeartbeatIntervalMs(staleAfterMs: number): numbe
   const safeStaleAfterMs = Number.isFinite(staleAfterMs) && staleAfterMs > 0
     ? staleAfterMs
     : 10 * 60_000;
-  return Math.max(1_000, Math.floor(safeStaleAfterMs / 3));
+  return Math.max(1_000, Math.min(60_000, Math.floor(safeStaleAfterMs / 3)));
 }
 
 export function startDeliveryLeaseHeartbeat(options: {
