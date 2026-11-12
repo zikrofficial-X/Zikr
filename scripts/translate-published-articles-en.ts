@@ -15,10 +15,8 @@ function parseBatchSize(raw: string | undefined): number {
 const batchSize = parseBatchSize(process.env.TRANSLATION_BATCH_SIZE);
 
 async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000): Promise<string | null> {
-  const key = process.env.GEMINI_API_KEY?.trim();
-  if (!key) return null;
   const configured = (process.env.GEMINI_MODEL?.replace(/^google\//, "").trim() || "gemini-3.1-flash-lite");
-  const client = new GoogleGenerativeAI(key);
+  const client = new GoogleGenerativeAI(geminiApiKey);
   const model = client.getGenerativeModel({
     model: configured,
     generationConfig: {
@@ -49,6 +47,11 @@ async function generateGeminiTextForJob(prompt: string, maxOutputTokens = 6000):
 
 if (!supabaseUrl || !serviceRoleKey) {
   throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+}
+
+const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+if (!geminiApiKey) {
+  throw new Error("GEMINI_API_KEY is required before translation queue recovery or claims.");
 }
 
 type ArticleRow = {
