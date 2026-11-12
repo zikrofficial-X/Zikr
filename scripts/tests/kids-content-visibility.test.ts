@@ -329,7 +329,8 @@ const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", 
 assert.match(kidsVideoService, /resolveKidsVideoSocialPublicationForDetail/);
 assert.match(kidsVideoService, /social_publish_queue\?content_id=eq\./, "the Kids video detail route must reconcile live social queue rows");
 assert.match(kidsVideoService, /metadata->>audience=eq\.kids/, "the Kids video detail route must never use general-audience social rows");
-assert.match(kidsVideoService, /metadata:\s*\{\s*\.\.\.metadata,\s*socialPublication,/, "the Kids video detail response must replace stale catalog social badges with the live result");
+assert.match(kidsVideoService, /metadata:\s*\{\s*\.\.\.metadata,\s*socialPublication\s*\}/, "the Kids video detail response must replace stale catalog social badges with the live result");
+assert.ok(kidsVideoService.includes("order=created_at.desc&limit=600"), "the Kids video detail must inspect the same bounded queue history as the public feed");
 assert.match(kidsVideoDetailPage, /نص منشور مُجهّز/, "unpublished generated copy must be labelled as prepared copy, not a published post");
 assert.match(kidsVideoDetailPage, /لم يتم نشره بعد/, "the Kids video detail page must state when a generated caption has no confirmed platform delivery");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");

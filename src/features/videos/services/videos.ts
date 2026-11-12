@@ -181,7 +181,7 @@ async function resolveKidsVideoSocialPublicationForDetail(requestId: unknown, st
   try {
     const rows = await supabaseServerAdminRequest<KidsVideoSocialQueueRow[]>(
       "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
-        "&metadata->>audience=eq.kids&select=content_type,target_platforms,status,published_at,metadata&order=created_at.desc&limit=100",
+        "&metadata->>audience=eq.kids&select=content_type,target_platforms,status,published_at,metadata&order=created_at.desc&limit=600",
       { timeoutMs: 8000, retries: 1, cache: "no-store" },
     );
     if (!Array.isArray(rows)) return null;
