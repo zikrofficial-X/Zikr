@@ -99,6 +99,15 @@ assert.match(
 const webAdsRuntime = readFileSync("src/components/layout/web-advertising-runtime.tsx", "utf8");
 const adsenseSlot = readFileSync("src/components/layout/adsense-slot.tsx", "utf8");
 const searchConsoleVerifier = readFileSync("scripts/verify-google-search-console.mjs", "utf8");
+const consentModeVerifier = readFileSync("scripts/verify-consent-mode.mjs", "utf8");
+assert.ok(
+  consentModeVerifier.includes("if (!isCanonicalProductionOrigin())"),
+  "Consent Mode verification must require the exact canonical origin before analytics injection",
+);
+assert.ok(
+  !consentModeVerifier.includes("isCanonicalProductionHost"),
+  "Consent Mode verification must not regress to hostname-only production checks",
+);
 assert.ok(
   searchConsoleVerifier.includes("if (!isCanonicalProductionOrigin())"),
   "Search Console verification must enforce the exact canonical origin before publisher-script injection",
