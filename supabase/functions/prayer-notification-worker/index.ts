@@ -11,6 +11,8 @@ import {
   zonedDateTime,
 } from "./time-zone.ts";
 import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
+import { createAsyncSerialQueue } from "../../../src/lib/async-serial-queue.ts";
+import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "./delivery-lease.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -609,10 +611,13 @@ async function updateDeliveryIfLease(
     .eq("status", "processing")
     .eq("processing_at", delivery.processing_at)
     .eq("updated_at", delivery.updated_at)
-    .select("id")
+    .select("id, processing_at, updated_at")
     .maybeSingle();
   if (error) throw error;
-  return Boolean(data?.id);
+  if (!data?.id) return false;
+  if (typeof data.processing_at === "string") delivery.processing_at = data.processing_at;
+  if (typeof data.updated_at === "string") delivery.updated_at = data.updated_at;
+  return true;
 }
 
 async function getCurrentDeliveryPreferences(delivery: Delivery): Promise<{
@@ -680,6 +685,26 @@ async function deliverDue(
     let deliveryNow = new Date();
     const delivery = await claimDueDelivery(candidate, deliveryNow);
     if (!delivery) continue;
+
+    // Keep the exact processing row version fresh while a provider request is in flight.
+    // All heartbeat and terminal writes share one serial queue so they cannot race on updated_at.
+    const leaseWriteQueue = createAsyncSerialQueue();
+    const updateLease = (patch: Record<string, unknown>) =>
+      leaseWriteQueue(() => updateDeliveryIfLease(delivery, patch));
+    const heartbeat = startDeliveryLeaseHeartbeat({
+      intervalMs: getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000),
+      renew: () => updateLease({ processing_at: new Date().toISOString() }),
+      onRenewalError: (error) => console.warn(
+        "[prayer-notification-worker] Delivery lease heartbeat failed; retrying before stale recovery:",
+        delivery.id,
+        error,
+      ),
+    });
+    const finalizeDelivery = async (patch: Record<string, unknown>) => {
+      const finalized = await updateLease(patch);
+      await heartbeat.stop();
+      return finalized;
+    };
 
     const scheduledAt = new Date(delivery.scheduled_at);
     let subscription: PushSubscriptionRow | null = null;
@@ -793,7 +818,7 @@ async function deliverDue(
       }
 
       if (skipReason) {
-        const finalized = await updateDeliveryIfLease(delivery, {
+        const finalized = await finalizeDelivery({
           status: "cancelled",
           processed_at: deliveryNow.toISOString(),
           retry_after: null,
@@ -809,7 +834,7 @@ async function deliverDue(
       // endpoint to receive a later notification from the same batch.
       subscription = await getActiveSubscriptionForDelivery(delivery);
       if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
-        await updateDeliveryIfLease(delivery, {
+        await finalizeDelivery({
           status: "cancelled",
           processed_at: deliveryNow.toISOString(),
           retry_after: null,
@@ -837,7 +862,7 @@ async function deliverDue(
         } else if (deactivatedRow?.id) {
           deactivated += 1;
         }
-        await updateDeliveryIfLease(delivery, {
+        await finalizeDelivery({
           status: "cancelled",
           processed_at: deliveryNow.toISOString(),
           retry_after: null,
@@ -874,7 +899,12 @@ async function deliverDue(
           { urgency: Urgency.High, ttl: 300, topic }
         );
 
-      const finalized = await updateDeliveryIfLease(delivery, {
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Push completed after its delivery lease was recovered; preserving the newer state:", delivery.id);
+        continue;
+      }
+
+      const finalized = await finalizeDelivery({
         status: "sent",
         sent_at: deliveryNow.toISOString(),
         processed_at: deliveryNow.toISOString(),
@@ -899,6 +929,10 @@ async function deliverDue(
       if (lastUsedError) console.error("[prayer-notification-worker] subscription last-used update failed:", lastUsedError.message);
       sent += 1;
     } catch (error) {
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Delivery lease was recovered while this attempt was active; preserving the newer state:", delivery.id);
+        continue;
+      }
       const status =
         error instanceof PushMessageError ? error.response.status : null;
       const invalid = status === 404 || status === 410;
@@ -929,7 +963,7 @@ async function deliverDue(
           deactivated += 1;
         }
       }
-      const finalized = await updateDeliveryIfLease(delivery, {
+      const finalized = await finalizeDelivery({
         status: retryable ? "failed" : "cancelled",
         failed_at: deliveryNow.toISOString(),
         processed_at: deliveryNow.toISOString(),
@@ -943,6 +977,8 @@ async function deliverDue(
         continue;
       }
       failed += 1;
+    } finally {
+      await heartbeat.stop();
     }
   }
 

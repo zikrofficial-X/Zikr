@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
+import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "../../supabase/functions/prayer-notification-worker/delivery-lease";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import {
   buildNotificationTopic,
@@ -465,4 +466,34 @@ assert.match(deliverDueSource, /updateDeliveryIfLease\(delivery,/,
 assert.match(staleRecovery, /processed_at: now\.toISOString\(\)/,
   "a recovered stale attempt must record its completion timestamp");
 
-console.log("Prayer notification subscription pagination contracts passed.");
+assert.equal(getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000), 200_000);
+
+let deliveryRenewals = 0;
+const activeDeliveryHeartbeat = startDeliveryLeaseHeartbeat({
+  intervalMs: 5,
+  renew: async () => {
+    deliveryRenewals += 1;
+    return true;
+  },
+});
+await new Promise(resolve => setTimeout(resolve, 25));
+await activeDeliveryHeartbeat.stop();
+assert.ok(deliveryRenewals >= 1, "an in-flight push delivery must renew its processing lease");
+
+const lostDeliveryHeartbeat = startDeliveryLeaseHeartbeat({
+  intervalMs: 5,
+  renew: async () => false,
+});
+await new Promise(resolve => setTimeout(resolve, 25));
+assert.equal(lostDeliveryHeartbeat.leaseLost, true, "a failed compare-and-set must stop a worker that no longer owns the delivery");
+await lostDeliveryHeartbeat.stop();
+
+const deliveryLeaseUpdateSource = worker.slice(leaseUpdateStart, deliverDueStart);
+assert.match(deliveryLeaseUpdateSource, /select\("id, processing_at, updated_at"\)/);
+assert.match(deliveryLeaseUpdateSource, /delivery\.processing_at = data\.processing_at/);
+assert.match(deliveryLeaseUpdateSource, /delivery\.updated_at = data\.updated_at/);
+assert.match(deliverDueSource, /createAsyncSerialQueue\(\)/);
+assert.match(deliverDueSource, /renew: \(\) => updateLease\(\{ processing_at: new Date\(\)\.toISOString\(\) \}\)/);
+assert.match(deliverDueSource, /finally \{\s*await heartbeat\.stop\(\);\s*\}/);
+
+console.log("Prayer notification subscription pagination and delivery lease contracts passed.");
