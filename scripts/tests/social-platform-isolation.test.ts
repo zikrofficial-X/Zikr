@@ -613,14 +613,15 @@ assert.match(
   /"nextPath"\s+in\s+publishStepUp/,
   "Facebook OAuth connect must narrow the MFA result union before reading its optional nextPath",
 );
-const facebookCallbackSaveIndex = facebookOAuthCallbackSource.indexOf("await saveFacebookPageCredential(");
-const facebookCallbackStepUpIndex = facebookOAuthCallbackSource.indexOf('requireAdminStepUpApi("social.publish"');
-const facebookCallbackReleaseIndex = facebookOAuthCallbackSource.indexOf("await unblockFacebookAuthBlockedQueue(");
-assert.ok(
-  facebookCallbackSaveIndex >= 0 &&
-  facebookCallbackStepUpIndex > facebookCallbackSaveIndex &&
-  facebookCallbackReleaseIndex > facebookCallbackStepUpIndex,
-  "OAuth reconnect may release auth-blocked queue rows only after saving the verified Page credential and passing social.publish MFA step-up",
+assert.match(
+  facebookOAuthCallbackSource,
+  /await saveFacebookPageCredential\(/,
+  "Facebook OAuth callback must persist the verified Page credential",
+);
+assert.doesNotMatch(
+  facebookOAuthCallbackSource,
+  /unblockFacebookAuthBlockedQueue/,
+  "Facebook OAuth callback must not silently resume previously blocked posts; queue release requires the separate confirmed social.publish action",
 );
 const adminSocialRouteSource = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
