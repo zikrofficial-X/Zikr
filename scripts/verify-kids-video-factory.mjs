@@ -97,10 +97,14 @@ for (const token of [
   "storyText:",
   "socialCaption:",
   "socialPublication:",
-  "getConfirmedPublicKidsVideoSocialPlatforms",
-  "isPublicKidsVideoSocialQueueRow",
+  "resolveKidsVideoSocialPublication",
+  "socialQueueReadSucceeded",
+  "Promise.allSettled",
 ]) {
   if (!kidsFeedRoute.includes(token)) failures.push("Kids feed API must expose safe QA-approved video/story/social metadata: " + token);
+}
+if (kidsFeedRoute.includes("status=in.(published,partial)")) {
+  failures.push("Kids feed must inspect every queue state so pending/failed supplemental rows cannot hide or resurrect stale social publication metadata");
 }
 const kidsSocialVisibility = read("src/features/social/services/kids-video-social-visibility.ts");
 for (const token of [
