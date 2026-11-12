@@ -26,7 +26,7 @@ function appendScript(id: string, src: string, options?: { cfasync?: boolean }) 
   document.head.appendChild(script);
 }
 
-function isCanonicalProductionHost(): boolean {
+function isCanonicalProductionOrigin(): boolean {
   try {
     return window.location.origin === new URL(PRODUCTION_URL).origin;
   } catch {
@@ -80,7 +80,7 @@ export function WebAdvertisingRuntime() {
 
     // Vercel Preview deployments are production builds too. Never inject
     // publisher scripts outside the canonical origin.
-    if (!isCanonicalProductionHost()) {
+    if (!isCanonicalProductionOrigin()) {
       removeAdvertisingElements();
       return;
     }

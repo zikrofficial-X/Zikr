@@ -19,7 +19,7 @@ declare global {
 }
 
 
-function isCanonicalProductionHost(): boolean {
+function isCanonicalProductionOrigin(): boolean {
   try {
     return window.location.origin === new URL(PRODUCTION_URL).origin;
   } catch {
@@ -33,7 +33,7 @@ export function AdSenseSlot({ isEnglish }: { isEnglish: boolean }) {
   const slotRef = useRef<HTMLModElement | null>(null);
 
   useEffect(() => {
-    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionHost());
+    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionOrigin());
   }, []);
 
   useEffect(() => {

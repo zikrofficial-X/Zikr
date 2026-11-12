@@ -58,10 +58,11 @@ requireCondition(
 requireCondition(
   serviceWorkerRegister.includes("getServiceWorkerScriptUrl") &&
     serviceWorkerRegister.includes("PRODUCTION_URL") &&
-    serviceWorkerRegister.includes("window.location.hostname") &&
+    serviceWorkerRegister.includes("window.location.origin") &&
     runtimePolicy.includes('return "/sw.js?native=1"') &&
     runtimePolicy.includes('return "/sw.js?monetag=1"') &&
-    runtimePolicy.includes('return "/sw.js"'),
+    runtimePolicy.includes('return "/sw.js"') &&
+    runtimePolicy.includes("currentUrl.origin === productionUrl.origin"),
   "Native, canonical production, and preview workers must use distinct script URLs.",
 );
 const monetagImportIndex = serviceWorker.indexOf(
@@ -72,7 +73,7 @@ const monetagImportCatchIndex = serviceWorker.indexOf("} catch", monetagImportIn
 requireCondition(
   serviceWorker.includes('searchParams.get("native") === "1"') &&
     serviceWorker.includes('searchParams.get("monetag") === "1"') &&
-    serviceWorker.includes('hostname.toLowerCase() === "zikrmediaofficial.vercel.app"') &&
+    serviceWorker.includes('serviceWorkerLocation.origin === "https://zikrmediaofficial.vercel.app"') &&
     serviceWorker.includes("if (isCanonicalMonetagWorker)") &&
     monetagImportTryIndex >= 0 &&
     monetagImportTryIndex < monetagImportIndex &&
@@ -127,8 +128,8 @@ requireCondition(
 );
 requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()") &&
-    adsenseSlot.includes("isCanonicalProductionHost"),
-  "The existing AdSense slot must reject native Capacitor runtimes and non-canonical deployment hosts.",
+    adsenseSlot.includes("isCanonicalProductionOrigin"),
+  "The existing AdSense slot must reject native Capacitor runtimes and non-canonical deployment origins.",
 );
 requireCondition(
   runtimeEffects.includes("Capacitor.isNativePlatform()") &&
