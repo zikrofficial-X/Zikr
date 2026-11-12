@@ -204,8 +204,8 @@ if (!templateApi.includes("recordAdminAuditEvent")) failures.push("template acti
 const worker = read("scripts/jobs/template-video-automation.ts");
 if (!worker.includes("async function bindTemplateVersion")) failures.push("video worker must bind requests to an immutable template version");
 if (!worker.includes("request.content.templatePreview === true")) failures.push("template preview mode must be recognized by the renderer");
-if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request)")) failures.push("internal template previews must avoid external generative planning");
-if (!worker.includes("registerGeneratedVideoOnSite(request, rendered)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
+if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request, signal)")) failures.push("internal template previews must avoid external generative planning");
+if (!worker.includes("registerGeneratedVideoOnSite(request, rendered, {}, signal)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
   failures.push("successfully generated videos must be persisted in the internal ZIKR catalog");
 }
 if (!read("scripts/jobs/content-publishing.ts").includes('"videos"')) failures.push("scheduled site publisher must support videos records");
@@ -218,7 +218,7 @@ if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("co
 }
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
 if (!worker.includes("async function queueSocialItems") ||
-    !worker.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))") ||
+    !worker.includes("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal))") ||
     !worker.includes('status: "queued"') ||
     !worker.includes("automation_key: queueAutomationKey") ||
     !worker.includes("buildQueuePayload(targets, socialKey)")) {
@@ -227,7 +227,7 @@ if (!worker.includes("async function queueSocialItems") ||
 if (!worker.includes('existing.status === "processing" && newlyEnabledTargets.length > 0') ||
     !worker.includes(":late:${target}") ||
     !worker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)") ||
-    !worker.includes("const latest = await findSocialQueueByAutomationKey(socialKey)") ||
+    !worker.includes("const latest = await findSocialQueueByAutomationKey(socialKey, signal)") ||
     !worker.includes("queueSupplementalTargets(latestNewTargets)")) {
   failures.push("video social queue expansion must preserve active publisher leases and use compare-and-set for non-processing rows");
 }
