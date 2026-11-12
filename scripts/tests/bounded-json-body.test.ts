@@ -25,6 +25,7 @@ function createRequest(
     cancel() {
       cancelled = true;
     },
+    { highWaterMark: 0 },
   });
   return {
     request: { headers: new Headers(headers), body },
@@ -45,7 +46,7 @@ test("a valid JSON body at the exact byte limit is accepted", async () => {
   const { request } = createRequest([bytes], { "content-length": String(bytes.byteLength) });
   const result = await readBoundedJsonBody(request);
   assert.equal(result.ok, true);
-  if (result.ok) assert.equal((result.value as { value: string }).value.length, MAX_REQUEST_BODY_BYTES - 8);
+  if (result.ok) assert.equal((result.value as { value: string }).value.length, MAX_REQUEST_BODY_BYTES - prefix.length - suffix.length);
 });
 
 test("an oversized declared Content-Length is rejected without reading the stream", async () => {
