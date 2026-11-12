@@ -164,7 +164,12 @@ const kidsSitemap = readFileSync("src/app/sitemap.ts", "utf8");
 const kidsDetailApi = readFileSync("src/app/api/kids/content/[slug]/route.ts", "utf8");
 const kidsContentApi = readFileSync("src/app/api/kids/content/route.ts", "utf8");
 const kidsVideosApi = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+const kidsVideoListPage = readFileSync("src/app/kids/videos/page.tsx", "utf8");
 const kidsVideoDetailPage = readFileSync("src/app/kids/videos/[slug]/page.tsx", "utf8");
+assert.ok(kidsVideoListPage.includes("getKidsGeneratedVideos(60)") && kidsVideoListPage.includes(".catch((error) => {"), "the public Kids video list must recover from Supabase read failures instead of returning HTTP 500");
+assert.ok(kidsVideoListPage.includes("videosUnavailable") && kidsVideoListPage.includes("مكتبة الفيديوهات غير متاحة مؤقتًا"), "the Kids video list must distinguish an unavailable backend from a genuinely empty library");
+assert.ok(kidsVideoDetailPage.includes("const loadVideo = cache(async (slug: string) => {") && kidsVideoDetailPage.includes("return await getKidsGeneratedVideoBySlug(slug)") && kidsVideoDetailPage.includes("catch (error)"), "the Kids video detail page and metadata loader must convert transient service failures into the unavailable state");
+
 assert.match(kidsVideoDetailPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/, "the public Kids video detail iframe must be sandboxed to the trusted player capabilities");
 assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-origin"/, "the public Kids video detail iframe must not leak full referrer paths");
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");

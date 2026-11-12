@@ -19,7 +19,16 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function KidsVideosPage() {
-  const [videos, locale] = await Promise.all([getKidsGeneratedVideos(60), getRequestLocale()]);
+  const [videoResult, locale] = await Promise.all([
+    getKidsGeneratedVideos(60)
+      .then((videos) => ({ videos, unavailable: false as const }))
+      .catch((error) => {
+        console.warn("[kids/videos] list lookup failed:", error instanceof Error ? error.message : String(error));
+        return { videos: [], unavailable: true as const };
+      }),
+    getRequestLocale(),
+  ]);
+  const { videos, unavailable: videosUnavailable } = videoResult;
   const isEnglish = locale === "en";
 
   return (
@@ -69,6 +78,11 @@ export default async function KidsVideosPage() {
               </Link>
             ))}
           </div>
+        ) : videosUnavailable ? (
+          <Card className="p-8 text-center" role="status">
+            <h2 className="text-xl font-bold text-brand-gold">{isEnglish ? "The video library is temporarily unavailable" : "مكتبة الفيديوهات غير متاحة مؤقتًا"}</h2>
+            <p className="mt-3 leading-7 text-brand-cream/65">{isEnglish ? "Please try again in a little while." : "تعذر تحميل الفيديوهات الآن. حاول مرة أخرى بعد قليل."}</p>
+          </Card>
         ) : (
           <Card className="p-8 text-center">
             <h2 className="text-xl font-bold text-brand-gold">{isEnglish ? "No videos are available yet" : "لا توجد فيديوهات متاحة حاليًا"}</h2>

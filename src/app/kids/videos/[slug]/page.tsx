@@ -8,7 +8,14 @@ import { pageMetadata } from "@/lib/site";
 import { resolveVideoMediaUrl } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
-const loadVideo = cache((slug: string) => getKidsGeneratedVideoBySlug(slug));
+const loadVideo = cache(async (slug: string) => {
+  try {
+    return await getKidsGeneratedVideoBySlug(slug);
+  } catch (error) {
+    console.warn("[kids/videos] detail lookup failed:", error instanceof Error ? error.message : String(error));
+    return null;
+  }
+});
 
 type Props = { params: Promise<{ slug: string }> };
 
