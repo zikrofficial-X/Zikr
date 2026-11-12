@@ -7,6 +7,8 @@ import {
   buildProcessingVideoRequestLeaseFilter,
   buildStaleVideoRequestRecoveryFilter,
   buildVideoRequestClaimFilter,
+  buildVideoSocialQueueRecoveryClaimFilter,
+  buildVideoSocialQueueRecoveryLeaseFilter,
 } from "../../src/features/videos/services/video-queue-claim";
 import {
   getVideoRequestLeaseHeartbeatIntervalMs,
@@ -88,6 +90,82 @@ test("pause-lock release is fenced by the exact processing lease", () => {
     "id=eq.request-2&status=eq.processing&video_url=is.null&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
   );
   assert.equal(buildProcessingVideoRequestLeaseFilter("request-2", null), null);
+});
+
+const generatedVideoUrl = "https://res.cloudinary.com/example/video/upload/v1/auto-request-4.mp4";
+
+test("processing video lease follows its exact persisted Cloudinary URL", () => {
+  assert.equal(
+    buildProcessingVideoRequestLeaseFilter("request-4", updatedAt, generatedVideoUrl),
+    "id=eq.request-4&status=eq.processing&video_url=eq." +
+      encodeURIComponent(generatedVideoUrl) +
+      "&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  );
+  assert.equal(
+    buildProcessingVideoRequestLeaseFilter("request-4", updatedAt, "https://example.com/video.mp4"),
+    null,
+    "a non-Cloudinary URL must not become a processing lease",
+  );
+});
+
+test("pending social queue handoffs can be claimed immediately by exact row version", () => {
+  assert.equal(
+    buildVideoSocialQueueRecoveryClaimFilter({
+      id: "request/4",
+      status: "processing",
+      video_url: generatedVideoUrl,
+      updated_at: updatedAt,
+      content: { socialQueueEnqueueStatus: "pending" },
+    }, "2026-11-11T23:00:00.000Z"),
+    "id=eq.request%2F4&status=eq.processing&video_url=eq." +
+      encodeURIComponent(generatedVideoUrl) +
+      "&updated_at=eq.2026-11-11T22%3A40%3A00.000Z&content->>socialQueueEnqueueStatus=eq.pending",
+  );
+});
+
+test("stale social queue handoffs are recoverable but live leases are not", () => {
+  const staleBefore = "2026-11-11T23:00:00.000Z";
+  const candidate = {
+    id: "request-5",
+    status: "processing",
+    video_url: generatedVideoUrl,
+    updated_at: updatedAt,
+    content: { socialQueueEnqueueStatus: "processing" },
+  };
+  assert.ok(buildVideoSocialQueueRecoveryClaimFilter(candidate, staleBefore));
+  assert.equal(
+    buildVideoSocialQueueRecoveryClaimFilter({
+      ...candidate,
+      updated_at: "2026-11-11T22:59:59.000Z",
+    }, staleBefore),
+    null,
+    "a non-stale processing lease must remain owned by the current worker",
+  );
+  assert.equal(
+    buildVideoSocialQueueRecoveryClaimFilter({
+      ...candidate,
+      updated_at: "not-a-date",
+    }, staleBefore),
+    null,
+  );
+  assert.equal(
+    buildVideoSocialQueueRecoveryClaimFilter({
+      ...candidate,
+      content: { socialQueueEnqueueStatus: "queued" },
+    }, staleBefore),
+    null,
+  );
+});
+
+test("social queue recovery lease is fenced by the exact URL, marker, and row version", () => {
+  assert.equal(
+    buildVideoSocialQueueRecoveryLeaseFilter("request-6", generatedVideoUrl, updatedAt),
+    "id=eq.request-6&status=eq.processing&video_url=eq." +
+      encodeURIComponent(generatedVideoUrl) +
+      "&updated_at=eq.2026-11-11T22%3A40%3A00.000Z&content->>socialQueueEnqueueStatus=eq.processing",
+  );
+  assert.equal(buildVideoSocialQueueRecoveryLeaseFilter("request-6", null, updatedAt), null);
+  assert.equal(buildVideoSocialQueueRecoveryLeaseFilter("request-6", generatedVideoUrl, null), null);
 });
 
 test("a stale worker lease cannot update after recovery and a newer claim", () => {
@@ -196,7 +274,7 @@ test("post-render catalog and social queue work renews the processing lease", ()
     "both canonical recovery and normal site registration must keep the lease alive",
   );
   assert.ok(
-    videoWorkerSource.includes("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal))"),
+    videoWorkerSource.includes("withLeaseHeartbeat(\n          (signal) => queueSocialItems(request, rendered.videoUrl, signal),\n        )"),
     "social queue insertion must keep the processing lease alive until durable",
   );
   const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(");
@@ -208,4 +286,24 @@ test("post-render catalog and social queue work renews the processing lease", ()
     recoveryHeartbeatPosition >= 0 && recoveryOperationPosition > recoveryHeartbeatPosition,
     "recovered social queue rows must also be protected by the active lease",
   );
+});
+
+test("failed social enqueue remains recoverable and cannot complete the video request", () => {
+  const queueCall = videoWorkerSource.indexOf("queueSocialItems(request, rendered.videoUrl, signal)");
+  const failureHandler = videoWorkerSource.indexOf("catch (socialError)", queueCall);
+  const pendingMarker = videoWorkerSource.indexOf('socialQueueEnqueueStatus: "pending"', failureHandler);
+  const continuePosition = videoWorkerSource.indexOf("continue;", pendingMarker);
+  const completionPosition = videoWorkerSource.indexOf(
+    'await patchProcessingRequestWithLease({\n        status: "completed"',
+    continuePosition,
+  );
+  assert.ok(queueCall >= 0 && failureHandler > queueCall);
+  assert.ok(pendingMarker > failureHandler, "enqueue failure must persist a pending recovery marker");
+  assert.ok(continuePosition > pendingMarker, "enqueue failure must leave the generation row processing");
+  assert.ok(completionPosition > continuePosition, "the completed transition must only occur after the failure branch continues");
+  assert.ok(videoWorkerSource.includes("recoverPendingVideoSocialQueueEnqueues("));
+  assert.ok(videoWorkerSource.includes("content->>socialQueueEnqueueStatus=eq.pending"));
+  assert.ok(videoWorkerSource.includes("content->>socialQueueEnqueueStatus=eq.processing"));
+  assert.ok(videoWorkerSource.includes("buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore)"));
+  assert.ok(videoWorkerSource.includes("buildVideoSocialQueueRecoveryLeaseFilter("));
 });

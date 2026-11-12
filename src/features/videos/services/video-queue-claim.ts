@@ -59,18 +59,109 @@ export function buildStaleVideoRequestRecoveryFilter(
   ].join("&");
 }
 
+function isGeneratedCloudinaryVideoUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" &&
+      parsed.hostname === "res.cloudinary.com" &&
+      parsed.pathname.includes("/video/upload/");
+  } catch {
+    return false;
+  }
+}
+
 export function buildProcessingVideoRequestLeaseFilter(
   id: string,
   updatedAt: string | null | undefined,
+  videoUrl: string | null = null,
 ): string | null {
   const normalizedId = id.trim();
   const normalizedUpdatedAt = updatedAt?.trim();
+  const normalizedVideoUrl = videoUrl?.trim() ?? null;
   if (!normalizedId || timestamp(normalizedUpdatedAt) === null) return null;
+  if (videoUrl !== null && (!normalizedVideoUrl || !isGeneratedCloudinaryVideoUrl(normalizedVideoUrl))) return null;
 
   return [
     `id=eq.${encodeURIComponent(normalizedId)}`,
     "status=eq.processing",
-    "video_url=is.null",
+    normalizedVideoUrl
+      ? `video_url=eq.${encodeURIComponent(normalizedVideoUrl)}`
+      : "video_url=is.null",
     `updated_at=eq.${encodeURIComponent(normalizedUpdatedAt!)}`,
+  ].join("&");
+}
+
+export type VideoSocialQueueRecoveryCandidate = {
+  id: string;
+  status: string;
+  video_url?: string | null;
+  updated_at?: string | null;
+  content?: Record<string, unknown> | null;
+};
+
+/**
+ * Claim a completed render whose social-queue handoff is pending, or whose
+ * prior handoff worker died while holding the processing marker. The exact
+ * row version and media URL make the claim compare-and-set safe.
+ */
+export function buildVideoSocialQueueRecoveryClaimFilter(
+  candidate: VideoSocialQueueRecoveryCandidate,
+  staleBefore: string,
+): string | null {
+  const id = candidate.id.trim();
+  const updatedAt = candidate.updated_at?.trim();
+  const videoUrl = candidate.video_url?.trim();
+  const updatedTimestamp = timestamp(updatedAt);
+  const enqueueStatus = candidate.content?.socialQueueEnqueueStatus;
+  if (
+    !id ||
+    candidate.status !== "processing" ||
+    !updatedAt ||
+    updatedTimestamp === null ||
+    !videoUrl ||
+    !isGeneratedCloudinaryVideoUrl(videoUrl) ||
+    (enqueueStatus !== "pending" && enqueueStatus !== "processing")
+  ) {
+    return null;
+  }
+
+  if (enqueueStatus === "processing") {
+    const staleTimestamp = timestamp(staleBefore);
+    if (staleTimestamp === null || updatedTimestamp >= staleTimestamp) return null;
+  }
+
+  return [
+    `id=eq.${encodeURIComponent(id)}`,
+    "status=eq.processing",
+    `video_url=eq.${encodeURIComponent(videoUrl)}`,
+    `updated_at=eq.${encodeURIComponent(updatedAt)}`,
+    `content->>socialQueueEnqueueStatus=eq.${enqueueStatus}`,
+  ].join("&");
+}
+
+/** Lease filter for a social enqueue recovery worker after its atomic claim. */
+export function buildVideoSocialQueueRecoveryLeaseFilter(
+  id: string,
+  videoUrl: string | null | undefined,
+  updatedAt: string | null | undefined,
+): string | null {
+  const normalizedId = id.trim();
+  const normalizedVideoUrl = videoUrl?.trim();
+  const normalizedUpdatedAt = updatedAt?.trim();
+  if (
+    !normalizedId ||
+    !normalizedVideoUrl ||
+    !isGeneratedCloudinaryVideoUrl(normalizedVideoUrl) ||
+    timestamp(normalizedUpdatedAt) === null
+  ) {
+    return null;
+  }
+
+  return [
+    `id=eq.${encodeURIComponent(normalizedId)}`,
+    "status=eq.processing",
+    `video_url=eq.${encodeURIComponent(normalizedVideoUrl)}`,
+    `updated_at=eq.${encodeURIComponent(normalizedUpdatedAt!)}`,
+    "content->>socialQueueEnqueueStatus=eq.processing",
   ].join("&");
 }

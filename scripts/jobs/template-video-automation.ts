@@ -18,7 +18,13 @@ import { buildDuplicateVideoOwnerRecoveryFilter, canRecoverDuplicateVideoRender 
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { buildVideoSocialQueueUpdateFilter } from "../../src/features/social/services/social-queue-selection";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
-import { buildProcessingVideoRequestLeaseFilter, buildStaleVideoRequestRecoveryFilter, buildVideoRequestClaimFilter } from "../../src/features/videos/services/video-queue-claim";
+import {
+  buildProcessingVideoRequestLeaseFilter,
+  buildStaleVideoRequestRecoveryFilter,
+  buildVideoRequestClaimFilter,
+  buildVideoSocialQueueRecoveryClaimFilter,
+  buildVideoSocialQueueRecoveryLeaseFilter,
+} from "../../src/features/videos/services/video-queue-claim";
 import { getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
@@ -2028,7 +2034,7 @@ async function findSocialQueueByAutomationKey(key: string, signal?: AbortSignal)
   return rows?.[0] ?? null;
 }
 
-async function queueSocialItems(request: GeneratedRequest, videoUrl: string, signal?: AbortSignal) {
+async function queueSocialItems(request: GeneratedRequest, videoUrl: string, signal?: AbortSignal): Promise<"queued" | "not_required"> {
   const adminRequest = <T>(path: string, init?: RequestInit) => {
     throwIfVideoLeaseAborted(signal);
     return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
@@ -2036,11 +2042,11 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
   throwIfVideoLeaseAborted(signal);
   if (!engineConfig().autoPublishEnabled) {
     console.log(`[template-video] External publishing is disabled for ${request.id}; internal video remains available.`);
-    return;
+    return "not_required";
   }
   if (engineConfig().requiresApproval) {
     console.log(`[template-video] External publishing remains held by the explicit approval setting for ${request.id}.`);
-    return;
+    return "not_required";
   }
   const content = request.content;
   const automatedQa = content.automatedVideoQa && typeof content.automatedVideoQa === "object"
@@ -2048,17 +2054,17 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
     : {};
   if (automatedQa.status !== "passed" || content.approvalStatus !== "approved") {
     console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
-    return;
+    return "not_required";
   }
   const isKidsVideo = content.audience === "kids";
   const kidsSocialStoryContractPassed = !isKidsVideo || hasCompleteKidsVideoSeriesMetadata(content);
   if (!kidsSocialStoryContractPassed) {
     console.warn(`[template-video] Kids story contract did not pass for ${request.id}; no Kids social post was queued.`);
-    return;
+    return "not_required";
   }
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
-    return;
+    return "not_required";
   }
   const key = request.automation_key || request.id;
   const publicPath =
@@ -2080,7 +2086,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
   if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
-  if (!targets.length) return;
+  if (!targets.length) return "not_required";
 
   const socialKey = `${key}:social-video`;
   const buildQueuePayload = (queueTargets: string[], queueAutomationKey: string) => ({
@@ -2121,7 +2127,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify(buildQueuePayload(targets, socialKey)),
     });
-    return;
+    return "queued";
   }
 
   const existingTargets = Array.isArray(existing.target_platforms)
@@ -2158,18 +2164,17 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
     }
   };
 
-  if (existing.status === "processing" && newlyEnabledTargets.length > 0) {
-    // Do not reset a live publisher lease. Queue only the newly enabled targets
+  if (existing.status === "processing") {
+    // Do not reset a live publisher lease. Queue only newly enabled targets
     // in separate idempotent rows so the active worker can finish its snapshot.
-    await queueSupplementalTargets(newlyEnabledTargets);
-    return;
+    if (newlyEnabledTargets.length > 0) await queueSupplementalTargets(newlyEnabledTargets);
+    return "queued";
   }
 
   if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
     const updateFilter = buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at);
     if (!updateFilter) {
-      console.warn("[template-video] Social queue target expansion was deferred because the row is not in a safely mutable state:", existing.id, existing.status);
-      return;
+      throw new Error(`Social queue target expansion could not be safely persisted for ${existing.id} (${existing.status}).`);
     }
     const updated = await adminRequest<Array<{ id: string }>>(
       `/rest/v1/social_publish_queue?${updateFilter}`,
@@ -2193,67 +2198,221 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
     );
     if (!updated?.[0]?.id) {
       // The publisher may have claimed the row between our read and PATCH.
-      // Re-read once: if it is now processing, use supplemental rows; otherwise
-      // retry the compare-and-set against the newer revision.
+      // Re-read once and prove that every requested target is already durable
+      // or can be added without invalidating the active publisher lease.
       const latest = await findSocialQueueByAutomationKey(socialKey, signal);
-      if (latest) {
-        const latestTargets = Array.isArray(latest.target_platforms)
-          ? latest.target_platforms.filter(Boolean)
-          : [];
-        const latestPlatformResults =
-          latest.metadata?.platformResults && typeof latest.metadata.platformResults === "object"
-            ? (latest.metadata.platformResults as Record<string, unknown>)
-            : {};
-        const latestNewTargets = targets.filter(
-          target =>
-            !latestTargets.includes(target) &&
-            !(
-              latestPlatformResults[target] &&
-              typeof latestPlatformResults[target] === "object" &&
-              (latestPlatformResults[target] as { ok?: unknown }).ok === true
-            ),
+      if (!latest) {
+        throw new Error(`Social queue row disappeared during target expansion for ${request.id}.`);
+      }
+      const latestTargets = Array.isArray(latest.target_platforms)
+        ? latest.target_platforms.filter(Boolean)
+        : [];
+      const latestPlatformResults =
+        latest.metadata?.platformResults && typeof latest.metadata.platformResults === "object"
+          ? (latest.metadata.platformResults as Record<string, unknown>)
+          : {};
+      const latestNewTargets = targets.filter(
+        target =>
+          !latestTargets.includes(target) &&
+          !(
+            latestPlatformResults[target] &&
+            typeof latestPlatformResults[target] === "object" &&
+            (latestPlatformResults[target] as { ok?: unknown }).ok === true
+          ),
+      );
+      if (latest.status === "processing" && latestNewTargets.length > 0) {
+        await queueSupplementalTargets(latestNewTargets);
+      } else if (latestNewTargets.length > 0) {
+        const latestFilter = buildVideoSocialQueueUpdateFilter(
+          latest.id,
+          latest.status,
+          latest.updated_at,
         );
-        if (latest.status === "processing" && latestNewTargets.length > 0) {
-          await queueSupplementalTargets(latestNewTargets);
-        } else if (latestNewTargets.length > 0) {
-          const latestFilter = buildVideoSocialQueueUpdateFilter(
-            latest.id,
-            latest.status,
-            latest.updated_at,
-          );
-          if (latestFilter) {
-            const latestDesiredTargets = [...new Set([...latestTargets, ...targets])];
-            const retried = await adminRequest<Array<{ id: string }>>(
-              `/rest/v1/social_publish_queue?${latestFilter}`,
-              {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-                body: JSON.stringify({
-                  video_url: videoUrl,
-                  target_platforms: latestDesiredTargets,
-                  status: "queued",
-                  scheduled_at: new Date().toISOString(),
-                  error_message: null,
-                  updated_at: new Date().toISOString(),
-                  metadata: {
-                    ...(latest.metadata ?? {}),
-                    authBlocked: false,
-                    nextRetryAt: null,
-                  },
-                }),
+        if (!latestFilter) {
+          throw new Error(`Social queue target expansion lost its compare-and-set for ${latest.id}.`);
+        }
+        const latestDesiredTargets = [...new Set([...latestTargets, ...targets])];
+        const retried = await adminRequest<Array<{ id: string }>>(
+          `/rest/v1/social_publish_queue?${latestFilter}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+            body: JSON.stringify({
+              video_url: videoUrl,
+              target_platforms: latestDesiredTargets,
+              status: "queued",
+              scheduled_at: new Date().toISOString(),
+              error_message: null,
+              updated_at: new Date().toISOString(),
+              metadata: {
+                ...(latest.metadata ?? {}),
+                authBlocked: false,
+                nextRetryAt: null,
               },
-            );
-            if (!retried?.[0]?.id) {
-              console.warn("[template-video] Social queue row changed again during target expansion; leaving the newer state untouched:", latest.id);
-            }
-          }
+            }),
+          },
+        );
+        if (!retried?.[0]?.id) {
+          throw new Error(`Social queue target expansion changed again during reconciliation for ${latest.id}.`);
         }
       }
       console.warn("[template-video] Social queue row changed during target expansion; reconciled once against the latest lease state:", existing.id);
     }
   }
+  return "queued";
 }
 
+
+class VideoSocialQueueLeaseLostError extends Error {
+  constructor(requestId: string) {
+    super(`Social queue recovery lease was lost for video request ${requestId}.`);
+    this.name = "VideoSocialQueueLeaseLostError";
+  }
+}
+
+async function recoverPendingVideoSocialQueueEnqueues(
+  limit: number,
+  staleBefore: string,
+): Promise<{ recovered: number; deferred: number }> {
+  if (!engineConfig().autoPublishEnabled || engineConfig().requiresApproval) {
+    return { recovered: 0, deferred: 0 };
+  }
+  const candidateLimit = Math.max(1, Math.min(10, Math.floor(limit) || 1));
+  const selectFields = "id,title,description,category,content,status,automation_key,error_message,error_details,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms";
+  const [pendingRows, staleRows] = await Promise.all([
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=eq.processing&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.pending&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=eq.processing&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
+  ]);
+  const candidates = [...new Map(
+    [...(pendingRows ?? []), ...(staleRows ?? [])]
+      .filter((request) => request && typeof request.id === "string")
+      .map((request) => [request.id, request]),
+  ).values()].slice(0, candidateLimit);
+
+  let recovered = 0;
+  let deferred = 0;
+  for (const request of candidates) {
+    const videoUrl = request.video_url?.trim() ?? "";
+    const claimFilter = buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore);
+    if (!claimFilter || !videoUrl) continue;
+    const claimNow = new Date().toISOString();
+    const claimContent = {
+      ...(request.content ?? {}),
+      socialQueueEnqueueStatus: "processing",
+      socialQueueEnqueueAttemptedAt: claimNow,
+      socialQueueEnqueueLastError: null,
+    };
+    const claimedRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      updated_at: string | null;
+      content: Record<string, unknown> | null;
+    }>>(
+      `/rest/v1/video_generation_requests?${claimFilter}&select=id,updated_at,content`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ content: claimContent, updated_at: claimNow }),
+      },
+    );
+    const claimed = claimedRows?.[0];
+    if (!claimed?.id) continue;
+    let leaseUpdatedAt = claimed.updated_at?.trim();
+    if (!leaseUpdatedAt) throw new VideoSocialQueueLeaseLostError(request.id);
+    let leaseContent = claimed.content ?? claimContent;
+
+    const patchWithLease = async (patch: Record<string, unknown>) => {
+      const leaseFilter = buildVideoSocialQueueRecoveryLeaseFilter(
+        request.id,
+        videoUrl,
+        leaseUpdatedAt,
+      );
+      if (!leaseFilter) throw new VideoSocialQueueLeaseLostError(request.id);
+      const updated = await supabaseServerAdminRequest<Array<{
+        id: string;
+        updated_at: string | null;
+        content: Record<string, unknown> | null;
+      }>>(
+        `/rest/v1/video_generation_requests?${leaseFilter}&select=id,updated_at,content`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+        },
+      );
+      const row = updated?.[0];
+      if (!row?.id) throw new VideoSocialQueueLeaseLostError(request.id);
+      const nextLeaseAt = row.updated_at?.trim();
+      if (!nextLeaseAt) throw new Error(`Social queue recovery for ${request.id} did not return an updated_at lease.`);
+      leaseUpdatedAt = nextLeaseAt;
+      if (patch.content && typeof patch.content === "object" && !Array.isArray(patch.content)) {
+        leaseContent = patch.content as Record<string, unknown>;
+      } else if (row.content) {
+        leaseContent = row.content;
+      }
+      return row;
+    };
+
+    try {
+      const queueResult = await withVideoRequestLeaseHeartbeat(
+        {
+          intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
+          renew: () => patchWithLease({}),
+          isLeaseLost: (error) => error instanceof VideoSocialQueueLeaseLostError,
+          onRenewalError: (error) => console.warn(
+            `[template-video] Social queue recovery heartbeat failed for ${request.id}; retrying before stale recovery:`,
+            error,
+          ),
+        },
+        (signal) => queueSocialItems(request, videoUrl, signal),
+      );
+      await patchWithLease({
+        status: "completed",
+        content: {
+          ...leaseContent,
+          socialQueueEnqueueStatus: queueResult,
+          socialQueueEnqueueLastError: null,
+        },
+        error_message: null,
+        error_details: null,
+        next_retry_at: null,
+      });
+      recovered += 1;
+      console.info(`[template-video] Recovered durable social queue handoff for video request ${request.id} (${queueResult}).`);
+    } catch (error) {
+      if (error instanceof VideoSocialQueueLeaseLostError) {
+        deferred += 1;
+        console.warn(`[template-video] Social queue recovery lease changed for ${request.id}; the newer owner was left untouched.`);
+        continue;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        await patchWithLease({
+          content: {
+            ...leaseContent,
+            socialQueueEnqueueStatus: "pending",
+            socialQueueEnqueueLastError: message.slice(0, 500),
+          },
+          error_message: "Social queue enqueue pending",
+          error_details: message.slice(0, 2000),
+        });
+      } catch (leaseError) {
+        if (leaseError instanceof VideoSocialQueueLeaseLostError) {
+          deferred += 1;
+          console.warn(`[template-video] Did not reset a newer social queue recovery lease for ${request.id}.`);
+          continue;
+        }
+        throw leaseError;
+      }
+      deferred += 1;
+      console.error(`[template-video] Social queue handoff remains pending for ${request.id}:`, message);
+    }
+  }
+  return { recovered, deferred };
+}
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
@@ -2265,6 +2424,13 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     return { processed: 0, succeeded: 0, failed: 0, skipped: 0 };
   }
   const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
+  const socialQueueRecovery = await recoverPendingVideoSocialQueueEnqueues(
+    Math.max(1, Math.min(10, limit)),
+    staleBefore,
+  );
+  if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.deferred > 0) {
+    console.info("[template-video] Social queue handoff recovery:", JSON.stringify(socialQueueRecovery));
+  }
   const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null; updated_at?: string | null }>>(
     `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts,updated_at&limit=50`,
   );
@@ -2376,8 +2542,9 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     processed += 1;
     const attemptStartedAt = Date.now();
     let leaseUpdatedAt = claimUpdatedAt;
+    let leaseVideoUrl: string | null = null;
     const patchProcessingRequestWithLease = async (patch: Record<string, unknown>) => {
-      const leaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt);
+      const leaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt, leaseVideoUrl);
       if (!leaseFilter) throw new VideoRequestLeaseLostError(request.id);
       const rows = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
         `/rest/v1/video_generation_requests?${leaseFilter}&select=id,updated_at`,
@@ -2394,6 +2561,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         throw new Error(`Lease update for video request ${request.id} did not return an updated_at value.`);
       }
       leaseUpdatedAt = nextLeaseAt;
+      if (Object.prototype.hasOwnProperty.call(patch, "video_url")) {
+        leaseVideoUrl = typeof patch.video_url === "string" && patch.video_url.trim()
+          ? patch.video_url.trim()
+          : null;
+      }
       return row;
     };
     try {
@@ -2612,22 +2784,15 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
-      // Keep this request in "processing" until every optional social queue
-      // reference has been durably created. The purge preflight uses processing
-      // generation rows and unfinished social rows as media-retention guards;
-      // completing first would leave a race where purge deletes the asset before
-      // this worker inserts the queue row that references it.
-      await patchProcessingRequestWithLease({});
-      try {
-        await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal));
-      } catch (socialError) {
-        console.error(
-          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
-          socialError instanceof Error ? socialError.message : String(socialError),
-        );
-      }
-      await patchProcessingRequestWithLease({
-        status: "completed",
+      // Persist the generated media pointer and a handoff marker before the
+      // optional social enqueue. The processing row protects the asset from
+      // purge until the queue reference is durable or the handoff is recovered.
+      request.content = {
+        ...request.content,
+        socialQueueEnqueueStatus: "processing",
+        socialQueueEnqueueLastError: null,
+      };
+      const completedMediaFields = {
         video_url: rendered.videoUrl,
         scene: rendered.scene,
         render_duration_ms: rendered.renderDurationMs,
@@ -2641,6 +2806,47 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           typeof request.content.aiProviderJobId === "string"
             ? request.content.aiProviderJobId
             : null,
+      };
+      await patchProcessingRequestWithLease({
+        ...completedMediaFields,
+        content: request.content,
+        error_message: null,
+        error_details: null,
+      });
+
+      let socialQueueResult: "queued" | "not_required";
+      try {
+        socialQueueResult = await withLeaseHeartbeat(
+          (signal) => queueSocialItems(request, rendered.videoUrl, signal),
+        );
+      } catch (socialError) {
+        const message = socialError instanceof Error ? socialError.message : String(socialError);
+        request.content = {
+          ...request.content,
+          socialQueueEnqueueStatus: "pending",
+          socialQueueEnqueueLastError: message.slice(0, 500),
+        };
+        await patchProcessingRequestWithLease({
+          content: request.content,
+          error_message: "Social queue enqueue pending",
+          error_details: message.slice(0, 2000),
+        });
+        skipped += 1;
+        console.error(
+          `[template-video] Internal video succeeded; social queue handoff remains pending for ${request.id}:`,
+          message,
+        );
+        continue;
+      }
+
+      request.content = {
+        ...request.content,
+        socialQueueEnqueueStatus: socialQueueResult,
+        socialQueueEnqueueLastError: null,
+      };
+      await patchProcessingRequestWithLease({
+        status: "completed",
+        ...completedMediaFields,
         content: request.content,
         error_message: null,
         error_details: null,

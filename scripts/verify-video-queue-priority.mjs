@@ -116,6 +116,25 @@ assert(
   "video queue filters include optimistic row-version and retry-due predicates",
 );
 
+assert(
+  queue.includes("recoverPendingVideoSocialQueueEnqueues(") &&
+    queue.includes("content->>socialQueueEnqueueStatus=eq.pending") &&
+    queue.includes("content->>socialQueueEnqueueStatus=eq.processing") &&
+    queue.includes("buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore)") &&
+    queue.includes("buildVideoSocialQueueRecoveryLeaseFilter("),
+  "failed or interrupted social enqueue handoffs are retried under an exact-row-version lease",
+);
+assert(
+  queue.includes('socialQueueEnqueueStatus: "pending"') &&
+    queue.includes('socialQueueEnqueueStatus: "processing"') &&
+    queue.includes('socialQueueEnqueueStatus: "queued"'),
+  "video completion cannot hide a failed social queue handoff",
+);
+assert(
+  claim.includes("video_url=eq.") && claim.includes("content->>socialQueueEnqueueStatus=eq.processing"),
+  "social queue recovery leases are fenced by the exact generated media URL and processing marker",
+);
+
 if (process.exitCode) {
   console.error("[video-queue-priority] Regression check failed.");
   process.exit(process.exitCode);
