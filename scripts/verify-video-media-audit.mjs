@@ -94,13 +94,15 @@ for (const token of [
   '...textReferencePatterns("video_generation_requests", "video_url")',
   '...storagePathReferencePatterns("media_assets", "storage_path")',
   "const MAX_VIDEO_REFERENCE_ENCODING_DEPTH = 5;",
-  "const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(",
-  "Array.from({ length: MAX_VIDEO_REFERENCE_ENCODING_DEPTH + 1 }",
-  "encodedSlash = encodeURIComponent(encodedSlash)",
-  "return `%automated${encodedSlash}%`",
+  'const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(["%automated%"]);',
   "for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1)",
+  "for (const [key, item] of Object.entries(entry))",
+  "visit(key);",
+  "if (decoded.toLowerCase().includes(\"automated\"))",
+  "hasMoreEncoding = decodeURIComponent(decoded) !== decoded;",
+  "Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.",
 ]) {
-  if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded reference protection: " + token);
+  if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded and JSON-key reference protection: " + token);
 }
 if (/filter: \\(query\\) => query\\.(?:ilike|like)/.test(referenceScan)) {
   failures.push("Storage retention reference columns must use the shared raw/encoded filters instead of raw-only query predicates");
