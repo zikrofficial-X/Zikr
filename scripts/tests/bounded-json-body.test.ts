@@ -7,13 +7,13 @@ import {
 } from "../../src/lib/request/bounded-json-body";
 
 function createRequest(
-  chunks: Uint8Array[],
+  chunks: Uint8Array<ArrayBuffer>[],
   headers: Record<string, string> = {},
 ) {
   let index = 0;
   let reads = 0;
   let cancelled = false;
-  const body = new ReadableStream<Uint8Array>({
+  const body = new ReadableStream<Uint8Array<ArrayBuffer>>({
     pull(controller) {
       reads += 1;
       if (index < chunks.length) {
@@ -61,7 +61,7 @@ test("an oversized declared Content-Length is rejected without reading the strea
 
 test("a chunked or under-reported body is stopped as soon as streamed bytes exceed the limit", async () => {
   const { request, state } = createRequest(
-    [new Uint8Array(MAX_REQUEST_BODY_BYTES + 1), new TextEncoder().encode('{"ok":true}')],
+    [new TextEncoder().encode('x'.repeat(MAX_REQUEST_BODY_BYTES + 1)), new TextEncoder().encode('{"ok":true}')],
     { "content-length": "2" },
   );
   const result = await readBoundedJsonBody(request);
@@ -91,7 +91,9 @@ test("malformed JSON and invalid UTF-8 return HTTP 400 contracts", async () => {
     error: "Invalid JSON payload",
   });
 
-  const invalidUtf8 = createRequest([new Uint8Array([0xff, 0xfe, 0xfd])]);
+  const invalidUtf8Bytes = new Uint8Array(new ArrayBuffer(3));
+  invalidUtf8Bytes.set([0xff, 0xfe, 0xfd]);
+  const invalidUtf8 = createRequest([invalidUtf8Bytes]);
   assert.deepEqual(await readBoundedJsonBody(invalidUtf8.request), {
     ok: false,
     status: 400,
