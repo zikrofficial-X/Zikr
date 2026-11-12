@@ -159,11 +159,6 @@ assert.equal(
   3,
   "each notification kind must load current preferences for the claimed delivery owner",
 );
-const freshPreferenceReadPosition = deliverySourceForFencing.indexOf("getCurrentDeliveryPreferences(delivery)");
-assert.ok(
-  claimPosition >= 0 && freshPreferenceReadPosition > claimPosition && pushDeliveryPosition > freshPreferenceReadPosition,
-  "current opt-in, prayer offsets and quiet-hours settings must be re-read after the delivery claim and before push",
-);
 assert.doesNotMatch(
   deliverySourceForFencing,
   /prayerPreferenceByUser|prayerLocationByUser|backgroundPreferenceByUser/,
@@ -173,6 +168,11 @@ assert.doesNotMatch(
 const claimPosition = deliverySourceForFencing.indexOf("claimDueDelivery(candidate, deliveryNow)");
 const subscriptionReadPosition = deliverySourceForFencing.indexOf("getActiveSubscriptionForDelivery(delivery)");
 const pushDeliveryPosition = deliverySourceForFencing.indexOf(".pushTextMessage(");
+const freshPreferenceReadPosition = deliverySourceForFencing.indexOf("getCurrentDeliveryPreferences(delivery)");
+assert.ok(
+  claimPosition >= 0 && freshPreferenceReadPosition > claimPosition && pushDeliveryPosition > freshPreferenceReadPosition,
+  "current opt-in, prayer offsets and quiet-hours settings must be re-read after the delivery claim and before push",
+);
 assert.ok(
   claimPosition >= 0 && subscriptionReadPosition > claimPosition && pushDeliveryPosition > subscriptionReadPosition,
   "the active subscription must be revalidated after claiming and immediately before push delivery",
