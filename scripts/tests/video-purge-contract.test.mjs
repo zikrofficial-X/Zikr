@@ -234,7 +234,7 @@ const claimStatement = videoQueueSource.indexOf("const claimed = await", claimLo
 const preClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimLoopStart);
 const postClaimLockCheck = videoQueueSource.indexOf("if (await isVideoGenerationPaused())", claimStatement);
 const claimRestore = videoQueueSource.indexOf("status: request.status", postClaimLockCheck);
-const renderStart = videoQueueSource.indexOf("const rendered = await withVideoRequestLeaseHeartbeat(", claimStatement);
+const renderStart = videoQueueSource.indexOf("const rendered = await withLeaseHeartbeat(() => renderVideo(request));", claimStatement);
 const renderCallback = videoQueueSource.indexOf("() => renderVideo(request)", renderStart);
 assert.ok(
   queueStartLockCheck >= 0 && queueStartLockCheck < staleRecoveryStart &&
@@ -244,7 +244,7 @@ assert.ok(
     renderCallback > renderStart,
   "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
 );
-const socialQueueEnqueuePosition = videoQueueSource.indexOf("await queueSocialItems(request, rendered.videoUrl);");
+const socialQueueEnqueuePosition = videoQueueSource.indexOf("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl));");
 const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        video_url: rendered.videoUrl');
 assert.ok(
   socialQueueEnqueuePosition >= 0 &&

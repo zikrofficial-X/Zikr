@@ -155,7 +155,7 @@ test("a lost processing lease prevents a completed render from advancing to publ
 });
 
 test("the video worker wraps rendering in the lease heartbeat before claiming the content hash", () => {
-  const renderPosition = videoWorkerSource.indexOf("const rendered = await withVideoRequestLeaseHeartbeat({");
+  const renderPosition = videoWorkerSource.indexOf("const rendered = await withLeaseHeartbeat(() => renderVideo(request));");
   const hashClaimPosition = videoWorkerSource.indexOf(
     "await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });",
   );
