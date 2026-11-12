@@ -669,13 +669,15 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
+        inProgress?: number;
+        staleSkipped?: number;
         results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
-      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من المنصات. الفشل الخارجي: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من المنصات. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
       const issues = (payload.results ?? []).filter(result =>
-        result.status === "failed" || result.status === "missing_remote_id"
+        result.status === "failed" || result.status === "missing_remote_id" || result.status === "in_progress" || result.status === "stale"
       );
       if (issues.length) {
         setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));

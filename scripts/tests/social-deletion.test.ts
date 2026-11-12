@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { deleteSocialPlatformPost } from "../../src/features/social/services/social-deletion";
+import { claimSocialQueuePlatformDeletion } from "../../src/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
 
@@ -150,6 +151,88 @@ await assert.rejects(
 );
 
 console.log("Social remote deletion tests passed.");
+
+const deletionQueueRow: {
+  id: string;
+  status: string;
+  video_url: string | null;
+  metadata: Record<string, unknown>;
+  updated_at: string;
+} = {
+  id: "queue-delete-1",
+  status: "published",
+  video_url: "https://cdn.example.test/published.mp4",
+  metadata: { platformDeletions: {} },
+  updated_at: "2026-11-12T18:00:00.000Z",
+};
+const deletionClaimCalls: Array<{ path: string; init?: RequestInit }> = [];
+const deletionClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  deletionClaimCalls.push({ path, init });
+  if (!init) return [{ ...deletionQueueRow, metadata: { ...deletionQueueRow.metadata } }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected deletion-claim method.");
+  const expectedVersion = encodeURIComponent(deletionQueueRow.updated_at);
+  if (!path.includes("updated_at=eq." + expectedVersion)) return [] as T;
+  const payload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  deletionQueueRow.metadata = payload.metadata;
+  deletionQueueRow.updated_at = payload.updated_at;
+  return [{ id: deletionQueueRow.id }] as T;
+};
+const deletionClaimInput = {
+  id: deletionQueueRow.id,
+  expectedStatus: "published",
+  expectedVideoUrl: deletionQueueRow.video_url,
+  platform: "youtube",
+  now: new Date("2026-11-12T18:00:00.000Z"),
+};
+const deletionClaimRequestTyped = deletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest;
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, deletionClaimRequestTyped),
+  "claimed",
+  "the first administrator must atomically reserve the platform deletion before calling the provider",
+);
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, deletionClaimRequestTyped),
+  "in_progress",
+  "a concurrent administrator must observe the reservation and must not send a second provider delete",
+);
+assert.equal(
+  deletionClaimCalls.filter((call) => call.init?.method === "PATCH").length,
+  1,
+  "only one competing deletion request may acquire the row-version reservation",
+);
+assert.equal(
+  ((deletionQueueRow.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube).status,
+  "deleting",
+  "the durable reservation must remain until the provider outcome is persisted",
+);
+
+const alreadyDeletedRequest = async <T>(): Promise<T> => [{
+  ...deletionQueueRow,
+  metadata: { platformDeletions: { youtube: { status: "deleted" } } },
+}] as T;
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, alreadyDeletedRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "already_deleted",
+  "a confirmed remote deletion must never be claimed again",
+);
+
+const staleQueueRow = {
+  ...deletionQueueRow,
+  metadata: { platformDeletions: {} },
+  updated_at: "2026-11-12T18:00:00.000Z",
+};
+const staleClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...staleQueueRow, metadata: { ...staleQueueRow.metadata } }] as T;
+  staleQueueRow.updated_at = "2026-11-12T18:00:00.010Z";
+  return [] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, staleClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "stale",
+  "a concurrent queue edit must win the CAS and prevent a remote deletion from starting",
+);
+
+
 
 assert.equal(LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, 50, "local queue cleanup must remain bounded to a small, auditable batch");
 

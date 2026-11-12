@@ -15,7 +15,7 @@ import { getFacebookPageAudienceSnapshot } from "@/features/social/services/face
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
-import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
+import { claimSocialQueuePlatformDeletion, patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
@@ -856,7 +856,9 @@ export async function POST(request: NextRequest) {
       let deleted = 0;
       let failed = 0;
       let missingRemoteId = 0;
-      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted"; error?: string }> = [];
+      let inProgress = 0;
+      let staleSkipped = 0;
+      const results: Array<{ id: string; title: string; platform: string; status: "deleted" | "failed" | "missing_remote_id" | "already_deleted" | "in_progress" | "stale"; error?: string }> = [];
 
       for (const item of selectedItems ?? []) {
         if (!isVideoContentType(item.content_type)) {
@@ -901,6 +903,39 @@ export async function POST(request: NextRequest) {
             continue;
           }
 
+          const claim = await claimSocialQueuePlatformDeletion({
+            id: item.id,
+            expectedStatus: "published",
+            expectedVideoUrl: item.video_url,
+            platform,
+          });
+          if (claim === "already_deleted") {
+            results.push({ id: item.id, title: item.title, platform, status: "already_deleted" });
+            continue;
+          }
+          if (claim === "in_progress") {
+            inProgress += 1;
+            results.push({
+              id: item.id,
+              title: item.title,
+              platform,
+              status: "in_progress",
+              error: "A remote deletion is already reserved; no second provider request was sent. Reconcile the existing attempt before retrying.",
+            });
+            continue;
+          }
+          if (claim === "stale") {
+            staleSkipped += 1;
+            results.push({
+              id: item.id,
+              title: item.title,
+              platform,
+              status: "stale",
+              error: "The queue row changed during deletion preflight; no provider request was sent.",
+            });
+            continue;
+          }
+
           try {
             const deletion = await deleteSocialPlatformPost(platform as SocialDeletionPlatform, remoteId);
             existingDeletions[platform] = { status: "deleted", remoteId: deletion.remoteId, deletedAt: deletion.deletedAt };
@@ -937,9 +972,9 @@ export async function POST(request: NextRequest) {
         action: "social.queue.delete_published_remote",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId },
+        metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId, inProgress, staleSkipped },
       });
-      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, results });
+      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, inProgress, staleSkipped, results });
     }
 
     return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });

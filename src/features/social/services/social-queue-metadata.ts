@@ -80,6 +80,95 @@ export function buildSocialQueueMetadataCasFilter(
 }
 
 /**
+ * Atomically reserve one remote platform deletion before making the provider call.
+ * A competing request sees "deleting" or loses the row-version CAS and must not
+ * send a second destructive request to the provider.
+ */
+export type SocialQueuePlatformDeletionClaim =
+  | "claimed"
+  | "already_deleted"
+  | "in_progress"
+  | "stale";
+
+export async function claimSocialQueuePlatformDeletion(
+  input: {
+    id: string;
+    expectedStatus: string;
+    expectedVideoUrl: string | null;
+    platform: string;
+    now?: Date;
+  },
+  request: SocialQueueMetadataRequest = supabaseServerAdminRequest,
+): Promise<SocialQueuePlatformDeletionClaim> {
+  if (!input.id.trim()) throw new Error("Remote social deletion requires a queue item ID.");
+  if (!input.expectedStatus.trim()) throw new Error("Remote social deletion requires an expected queue status.");
+  if (!input.platform.trim()) throw new Error("Remote social deletion requires a platform.");
+  const now = input.now ?? new Date();
+  if (!Number.isFinite(now.getTime())) throw new Error("Remote social deletion requires a valid claim time.");
+
+  const lookupFilter = [
+    `id=eq.${encodeURIComponent(input.id)}`,
+    `status=eq.${encodeURIComponent(input.expectedStatus)}`,
+    input.expectedVideoUrl === null
+      ? "video_url=is.null"
+      : `video_url=eq.${encodeURIComponent(input.expectedVideoUrl)}`,
+    "select=id,status,video_url,metadata,updated_at&limit=2",
+  ].join("&");
+  const rows = await request<SocialQueueMetadataRow[]>(
+    `/rest/v1/social_publish_queue?${lookupFilter}`,
+  );
+  if (!Array.isArray(rows)) {
+    throw new Error("Remote social deletion claim lookup returned an invalid row set.");
+  }
+  if (rows.length !== 1) return "stale";
+
+  const row = rows[0];
+  if (
+    row.status !== input.expectedStatus ||
+    row.video_url !== input.expectedVideoUrl ||
+    typeof row.updated_at !== "string" ||
+    !Number.isFinite(Date.parse(row.updated_at))
+  ) {
+    return "stale";
+  }
+
+  const metadata = isRecord(row.metadata) ? row.metadata : {};
+  const deletions = isRecord(metadata.platformDeletions) ? metadata.platformDeletions : {};
+  const previous = isRecord(deletions[input.platform])
+    ? deletions[input.platform] as Record<string, unknown>
+    : {};
+  if (previous.status === "deleted") return "already_deleted";
+  if (previous.status === "deleting") return "in_progress";
+
+  const attemptedAt = now.toISOString();
+  const nextMetadata = mergeSocialQueueMetadata(row.metadata, {
+    platformDeletions: {
+      [input.platform]: { status: "deleting", attemptedAt },
+    },
+  });
+  const updated = await request<Array<{ id: string }>>(
+    `/rest/v1/social_publish_queue?${buildSocialQueueMetadataCasFilter(
+      input.id,
+      input.expectedStatus,
+      row.updated_at,
+      input.expectedVideoUrl,
+    )}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({
+        metadata: nextMetadata,
+        updated_at: buildNextSocialQueueMetadataUpdatedAt(row.updated_at, now),
+      }),
+    },
+  );
+  if (!Array.isArray(updated)) {
+    throw new Error("Remote social deletion claim update returned an invalid row set.");
+  }
+  return updated.some((item) => item.id === input.id) ? "claimed" : "stale";
+}
+
+/**
  * Merge a metadata patch into the latest queue row with bounded compare-and-set
  * retries. This prevents worker cleanup and admin remote-deletion writes from
  * replacing each other's platformDeletions, insights, or retention markers.
