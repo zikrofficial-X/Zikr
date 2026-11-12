@@ -606,6 +606,49 @@ async function updateDeliveryIfLease(
   return Boolean(data?.id);
 }
 
+async function getCurrentDeliveryPreferences(delivery: Delivery): Promise<{
+  prayerPreference: Pick<PrayerPreference, "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null;
+  prayerLocation: Pick<PrayerLocation, "timezone"> | null;
+  backgroundPreference: BackgroundReminderPreference | null;
+}> {
+  if (delivery.notification_kind === "prayer") {
+    const [preferenceResult, locationResult] = await Promise.all([
+      supabase
+        .from("prayer_preferences")
+        .select("notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
+        .eq("user_id", delivery.user_id)
+        .maybeSingle(),
+      supabase
+        .from("prayer_locations")
+        .select("timezone")
+        .eq("user_id", delivery.user_id)
+        .eq("is_default", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (preferenceResult.error) throw preferenceResult.error;
+    if (locationResult.error) throw locationResult.error;
+    return {
+      prayerPreference: (preferenceResult.data ?? null) as Pick<PrayerPreference, "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null,
+      prayerLocation: (locationResult.data ?? null) as Pick<PrayerLocation, "timezone"> | null,
+      backgroundPreference: null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("background_reminder_preferences")
+    .select("user_id, dhikr_enabled, salawat_enabled, quiet_hours_start, quiet_hours_end, timezone")
+    .eq("user_id", delivery.user_id)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    prayerPreference: null,
+    prayerLocation: null,
+    backgroundPreference: (data ?? null) as BackgroundReminderPreference | null,
+  };
+}
+
 async function deliverDue(
   bundle: VapidBundle,
   now: Date
@@ -613,63 +656,6 @@ async function deliverDue(
   await recoverStaleClaims(now);
   const candidates = await getDueDeliveryCandidates(now);
   if (!candidates.length) return { sent: 0, failed: 0, deactivated: 0 };
-
-  const prayerUserIds = [
-    ...new Set(
-      candidates
-        .filter(delivery => delivery.notification_kind === "prayer")
-        .map(delivery => delivery.user_id),
-    ),
-  ];
-  const backgroundUserIds = [
-    ...new Set(
-      candidates
-        .filter(delivery => delivery.notification_kind !== "prayer")
-        .map(delivery => delivery.user_id),
-    ),
-  ];
-
-  let prayerPreferences: PrayerPreference[] = [];
-  let prayerLocations: PrayerLocation[] = [];
-  let backgroundPreferences: BackgroundReminderPreference[] = [];
-
-  if (prayerUserIds.length) {
-    const [{ data: preferenceRows, error: preferenceError }, { data: locationRows, error: locationError }] =
-      await Promise.all([
-        supabase
-          .from("prayer_preferences")
-          .select("user_id, calculation_method, madhab, notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
-          .in("user_id", prayerUserIds),
-        supabase
-          .from("prayer_locations")
-          .select("id, user_id, latitude, longitude, timezone, is_default")
-          .in("user_id", prayerUserIds)
-          .eq("is_default", true),
-      ]);
-    if (preferenceError) throw preferenceError;
-    if (locationError) throw locationError;
-    prayerPreferences = (preferenceRows ?? []) as PrayerPreference[];
-    prayerLocations = (locationRows ?? []) as PrayerLocation[];
-  }
-
-  if (backgroundUserIds.length) {
-    const { data, error: preferenceError } = await supabase
-      .from("background_reminder_preferences")
-      .select("user_id, dhikr_enabled, salawat_enabled, quiet_hours_start, quiet_hours_end, timezone")
-      .in("user_id", backgroundUserIds);
-    if (preferenceError) throw preferenceError;
-    backgroundPreferences = (data ?? []) as BackgroundReminderPreference[];
-  }
-
-  const prayerPreferenceByUser = new Map(
-    prayerPreferences.map(preference => [preference.user_id, preference]),
-  );
-  const prayerLocationByUser = new Map(
-    prayerLocations.map(location => [location.user_id, location]),
-  );
-  const backgroundPreferenceByUser = new Map(
-    backgroundPreferences.map(preference => [preference.user_id, preference]),
-  );
 
   const vapidKeys = await importVapidKeys(bundle.keys);
   const applicationServer = await ApplicationServer.new({
@@ -682,77 +668,84 @@ async function deliverDue(
   let deactivated = 0;
   for (const candidate of candidates) {
     // Do not hold a whole batch in "processing" while earlier pushes are sent.
-    const deliveryNow = new Date();
+    let deliveryNow = new Date();
     const delivery = await claimDueDelivery(candidate, deliveryNow);
     if (!delivery) continue;
 
     const scheduledAt = new Date(delivery.scheduled_at);
-    let skipReason: string | null = null;
-
-    if (delivery.notification_kind === "prayer") {
-      const preference = prayerPreferenceByUser.get(delivery.user_id);
-      const location = prayerLocationByUser.get(delivery.user_id);
-      if (
-        !preference ||
-        preference.notifications_enabled !== true ||
-        !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
-        !location?.timezone
-      ) {
-        skipReason = "Prayer reminder is no longer enabled or configured";
-      } else if (
-        inQuietHours(
-          scheduledAt,
-          safeTimeZone(location.timezone),
-          preference.quiet_hours_start,
-          preference.quiet_hours_end,
-        ) ||
-        inQuietHours(
-          deliveryNow,
-          safeTimeZone(location.timezone),
-          preference.quiet_hours_start,
-          preference.quiet_hours_end,
-        )
-      ) {
-        skipReason = "Skipped during quiet hours";
-      }
-    } else {
-      const preference = backgroundPreferenceByUser.get(delivery.user_id);
-      const enabled =
-        delivery.notification_kind === "dhikr"
-          ? preference?.dhikr_enabled
-          : preference?.salawat_enabled;
-      if (!preference || enabled !== true) {
-        skipReason = "Background reminder is no longer enabled";
-      } else if (
-        inQuietHours(
-          scheduledAt,
-          safeTimeZone(preference.timezone),
-          preference.quiet_hours_start,
-          preference.quiet_hours_end,
-        ) ||
-        inQuietHours(
-          deliveryNow,
-          safeTimeZone(preference.timezone),
-          preference.quiet_hours_start,
-          preference.quiet_hours_end,
-        )
-      ) {
-        skipReason = "Skipped during quiet hours";
-      }
-    }
-
-    if (skipReason) {
-      await updateDeliveryIfLease(delivery, {
-        status: "cancelled",
-        processed_at: deliveryNow.toISOString(),
-        retry_after: null,
-        error_message: skipReason,
-      });
-      continue;
-    }
-
     let subscription: PushSubscriptionRow | null = null;
     try {
+      // Preferences and locations are intentionally re-read after this row is
+      // claimed. A batch snapshot can become stale while earlier pushes are sent,
+      // which could deliver after a user opts out or changes quiet hours.
+      const currentPreferences = await getCurrentDeliveryPreferences(delivery);
+      deliveryNow = new Date();
+      let skipReason: string | null = null;
+
+      if (delivery.notification_kind === "prayer") {
+        const preference = currentPreferences.prayerPreference;
+        const location = currentPreferences.prayerLocation;
+        if (
+          !preference ||
+          preference.notifications_enabled !== true ||
+          !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
+          !location?.timezone
+        ) {
+          skipReason = "Prayer reminder is no longer enabled or configured";
+        } else if (
+          inQuietHours(
+            scheduledAt,
+            safeTimeZone(location.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ) ||
+          inQuietHours(
+            deliveryNow,
+            safeTimeZone(location.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          )
+        ) {
+          skipReason = "Skipped during quiet hours";
+        }
+      } else {
+        const preference = currentPreferences.backgroundPreference;
+        const enabled =
+          delivery.notification_kind === "dhikr"
+            ? preference?.dhikr_enabled
+            : preference?.salawat_enabled;
+        if (!preference || enabled !== true) {
+          skipReason = "Background reminder is no longer enabled";
+        } else if (
+          inQuietHours(
+            scheduledAt,
+            safeTimeZone(preference.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ) ||
+          inQuietHours(
+            deliveryNow,
+            safeTimeZone(preference.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          )
+        ) {
+          skipReason = "Skipped during quiet hours";
+        }
+      }
+
+      if (skipReason) {
+        const finalized = await updateDeliveryIfLease(delivery, {
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: skipReason,
+        });
+        if (!finalized) {
+          console.warn("[prayer-notification-worker] Preference skip arrived after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        }
+        continue;
+      }
       // Re-read after claiming each delivery. A batch snapshot can become stale
       // while earlier pushes are sent, allowing an opted-out device or replaced
       // endpoint to receive a later notification from the same batch.

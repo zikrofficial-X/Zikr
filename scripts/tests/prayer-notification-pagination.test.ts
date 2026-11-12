@@ -147,6 +147,29 @@ assert.match(subscriptionLoader, /\.eq\("user_id", delivery\.user_id\)/);
 assert.match(subscriptionLoader, /\.eq\("is_active", true\)/,
   "each delivery must re-read only its current active subscription after the claim");
 
+const preferenceLoaderStart = worker.indexOf("async function getCurrentDeliveryPreferences");
+const preferenceLoaderEnd = worker.indexOf("async function deliverDue", preferenceLoaderStart);
+const preferenceLoader = worker.slice(preferenceLoaderStart, preferenceLoaderEnd);
+assert.ok(preferenceLoaderStart >= 0 && preferenceLoaderEnd > preferenceLoaderStart);
+assert.match(preferenceLoader, /\.from\("prayer_preferences"\)/);
+assert.match(preferenceLoader, /\.from\("prayer_locations"\)/);
+assert.match(preferenceLoader, /\.from\("background_reminder_preferences"\)/);
+assert.equal(
+  (preferenceLoader.match(/\.eq\("user_id", delivery\.user_id\)/g) ?? []).length,
+  3,
+  "each notification kind must load current preferences for the claimed delivery owner",
+);
+const freshPreferenceReadPosition = deliverySourceForFencing.indexOf("getCurrentDeliveryPreferences(delivery)");
+assert.ok(
+  claimPosition >= 0 && freshPreferenceReadPosition > claimPosition && pushDeliveryPosition > freshPreferenceReadPosition,
+  "current opt-in, prayer offsets and quiet-hours settings must be re-read after the delivery claim and before push",
+);
+assert.doesNotMatch(
+  deliverySourceForFencing,
+  /prayerPreferenceByUser|prayerLocationByUser|backgroundPreferenceByUser/,
+  "a due batch must not send using stale preference snapshots loaded before individual claims",
+);
+
 const claimPosition = deliverySourceForFencing.indexOf("claimDueDelivery(candidate, deliveryNow)");
 const subscriptionReadPosition = deliverySourceForFencing.indexOf("getActiveSubscriptionForDelivery(delivery)");
 const pushDeliveryPosition = deliverySourceForFencing.indexOf(".pushTextMessage(");
