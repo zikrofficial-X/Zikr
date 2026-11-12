@@ -87,7 +87,7 @@ const workerStart = queue.indexOf("export async function processTemplateVideoQue
 const postClaimWorker = workerStart >= 0 ? queue.slice(workerStart) : "";
 const hasRollingVideoLease =
   /let\s+leaseUpdatedAt\s*=\s*claimUpdatedAt\s*;/.test(postClaimWorker) &&
-  /const\s+patchProcessingRequestWithLease\s*=\s*async/.test(postClaimWorker) &&
+  /const\s+patchProcessingRequestWithLease\s*=\s*createSerializedLeaseMutation\s*\(\s*async/.test(postClaimWorker) &&
   /buildProcessingVideoRequestLeaseFilter\s*\(\s*request\.id\s*,\s*leaseUpdatedAt\s*,\s*leaseVideoUrl\s*\)/.test(postClaimWorker);
 assert(hasRollingVideoLease, "post-claim writes use a rolling exact-row-version lease");
 const hasLeaseFencedTransitions =

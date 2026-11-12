@@ -12,6 +12,7 @@ import {
   buildVideoSocialQueueRecoveryLeaseFilter,
 } from "../../src/features/videos/services/video-queue-claim";
 import {
+  createSerializedLeaseMutation,
   getVideoRequestLeaseHeartbeatIntervalMs,
   withVideoRequestLeaseHeartbeat,
 } from "../../src/features/videos/services/video-lease-heartbeat";
@@ -20,6 +21,43 @@ const videoWorkerSource = readFileSync("scripts/jobs/template-video-automation.t
 
 const now = "2026-11-11T22:59:00.000Z";
 const updatedAt = "2026-11-11T22:40:00.000Z";
+
+test("foreground lease writes and heartbeat renewals serialize on the latest row revision", async () => {
+  let revision = 1;
+  let activeWrites = 0;
+  let maxConcurrentWrites = 0;
+  const observedRevisions: number[] = [];
+
+  const mutateLease = createSerializedLeaseMutation(async () => {
+    const expectedRevision = revision;
+    activeWrites += 1;
+    maxConcurrentWrites = Math.max(maxConcurrentWrites, activeWrites);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(
+      revision,
+      expectedRevision,
+      "a concurrent lease write must not race another write using the same row revision",
+    );
+    revision += 1;
+    observedRevisions.push(expectedRevision);
+    activeWrites -= 1;
+    return revision;
+  });
+
+  const [heartbeatResult, foregroundResult] = await Promise.all([
+    mutateLease(),
+    mutateLease(),
+  ]);
+
+  assert.deepEqual(observedRevisions, [1, 2]);
+  assert.equal(maxConcurrentWrites, 1);
+  assert.deepEqual([heartbeatResult, foregroundResult], [2, 3]);
+  assert.match(
+    videoWorkerSource,
+    /const patchProcessingRequestWithLease = createSerializedLeaseMutation\(async/,
+    "the worker must serialize heartbeat and foreground compare-and-set writes",
+  );
+});
 
 test("pending video claim is fenced by the exact selected row version", () => {
   assert.equal(

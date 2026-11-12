@@ -26,7 +26,7 @@ import {
   buildVideoSocialQueueRecoveryClaimFilter,
   buildVideoSocialQueueRecoveryLeaseFilter,
 } from "../../src/features/videos/services/video-queue-claim";
-import { getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
+import { createSerializedLeaseMutation, getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
 import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
@@ -2572,7 +2572,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
     const attemptStartedAt = Date.now();
     let leaseUpdatedAt = claimUpdatedAt;
     let leaseVideoUrl: string | null = null;
-    const patchProcessingRequestWithLease = async (patch: Record<string, unknown>) => {
+    const patchProcessingRequestWithLease = createSerializedLeaseMutation(async (patch: Record<string, unknown>) => {
       const leaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt, leaseVideoUrl);
       if (!leaseFilter) throw new VideoRequestLeaseLostError(request.id);
       const rows = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
@@ -2596,7 +2596,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           : null;
       }
       return row;
-    };
+    });
     try {
       const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>) =>
         withVideoRequestLeaseHeartbeat(

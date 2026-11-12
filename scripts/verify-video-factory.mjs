@@ -70,7 +70,7 @@ for (const token of ["scene text", "render_duration_ms integer", "video_generati
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("function isContentHashConflict(error: unknown)")) failures.push("video worker must recognize content-hash uniqueness conflicts consistently");
-const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLease = async");
+const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLease = createSerializedLeaseMutation(async");
 const leaseFencePosition = template.indexOf("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt, leaseVideoUrl)", leaseHelperPosition);
 const renderedHashWritePosition = template.indexOf("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });", leaseHelperPosition);
 const leaseHeartbeatPosition = template.indexOf("const withLeaseHeartbeat = <T>", leaseHelperPosition);

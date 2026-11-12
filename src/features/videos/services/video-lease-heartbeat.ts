@@ -73,3 +73,25 @@ export async function withVideoRequestLeaseHeartbeat<T>(
     throw error;
   }
 }
+
+
+/**
+ * Serialize heartbeat renewals and foreground writes that share a compare-and-set
+ * lease revision. Without this queue, two concurrent PATCH requests can both use
+ * the same updated_at value; the loser then mistakes the winning write for a
+ * genuinely lost lease and abandons work owned by this worker.
+ */
+export function createSerializedLeaseMutation<TArgs extends unknown[], TResult>(
+  mutation: (...args: TArgs) => Promise<TResult>,
+): (...args: TArgs) => Promise<TResult> {
+  let tail: Promise<void> = Promise.resolve();
+
+  return (...args: TArgs) => {
+    const result = tail.then(() => mutation(...args));
+    tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
+    return result;
+  };
+}
