@@ -249,6 +249,46 @@ export function indexManagedBackupReferences(rows, candidatePaths, getValue, get
   return references;
 }
 
+export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME), cloudinaryProbeStatus = "unknown") {
+  if (!item || item.status !== "published" || cloudinaryProbeStatus !== "available") return false;
+  if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
+  if (!hasConfirmedPlatformResults(item.target_platforms, item.metadata)) return false;
+  const backupUrl = asString(asObject(item.metadata).supabaseOriginalVideoUrl);
+  // Only the redundant Supabase staging object is eligible. The public Cloudinary
+  // master remains the durable playback source and is never deleted by retention.
+  return Boolean(
+    extractCloudinaryVideoPublicId(item.video_url, cloudName) &&
+    extractManagedVideoPath(backupUrl, supabaseUrl)
+  );
+}
+
+export function compareSemverTags(a, b) {
+  const parse = (value) => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(value ?? ""));
+    return match ? match.slice(1).map(Number) : null;
+  };
+  const left = parse(a);
+  const right = parse(b);
+  if (!left || !right) return 0;
+  for (let index = 0; index < 3; index += 1) {
+    if (left[index] !== right[index]) return left[index] - right[index];
+  }
+  return 0;
+}
+
+export function selectProtectedAndroidTags(availableTags, pinnedTag, referencedTags = []) {
+  const valid = [...new Set(availableTags.filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag)))];
+  valid.sort((a, b) => compareSemverTags(b, a));
+  const protectedTags = new Set(valid.slice(0, 2));
+  if (pinnedTag) protectedTags.add(pinnedTag);
+  for (const tag of referencedTags) {
+    if (/^v\d+\.\d+\.\d+$/.test(tag)) protectedTags.add(tag);
+  }
+  // v1.1.3 has no GitHub Release binaries; keep it until an external backup exists.
+  protectedTags.add("v1.1.3");
+  return protectedTags;
+}
+
 function assertEnv() {
   const supabaseUrl = asString(process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceRoleKey = asString(process.env.SUPABASE_SERVICE_ROLE_KEY);
