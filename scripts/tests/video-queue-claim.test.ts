@@ -55,10 +55,19 @@ test("foreground lease writes and heartbeat renewals serialize on the latest row
   assert.deepEqual(observedRevisions, [1, 2]);
   assert.equal(maxConcurrentWrites, 1);
   assert.deepEqual([heartbeatResult, foregroundResult], [2, 3]);
-  assert.match(
-    videoWorkerSource,
-    /const patchProcessingRequestWithLease = createSerializedLeaseMutation\(async/,
-    "the worker must serialize heartbeat and foreground compare-and-set writes",
+  assert.ok(
+    videoWorkerSource.includes("content_publish_queue?content_table=eq.videos") &&
+      videoWorkerSource.includes("select=id,status,updated_at"),
+    "the worker must read the revision that it will compare-and-set",
+  );
+  assert.ok(
+    videoWorkerSource.includes("buildContentPublishQueueRecoveryFilter(existingQueue)"),
+    "the worker must use the selected queue revision for recovery",
+  );
+  assert.ok(
+    videoWorkerSource.includes('Prefer: "return=representation"') &&
+      videoWorkerSource.includes("if (!recoveredQueue?.[0]?.id)"),
+    "a lost recovery compare-and-set must be detected rather than reported as queued",
   );
 });
 
