@@ -244,6 +244,8 @@ const storageRetentionSource = readFileSync(new URL("../cleanup-supabase-storage
 assert.equal(getReferenceOrderColumn("youtube_feed_cache"), "video_id");
 assert.equal(getReferenceOrderColumn("social_platform_profiles"), "platform");
 assert.equal(getReferenceOrderColumn("content_library"), "id");
+assert.equal(getReferenceOrderColumn("admin_settings"), "key");
+assert.equal(getReferenceOrderColumn("push_runtime_settings"), "key");
 assert.equal(getReferenceOrderColumn("site_settings"), "key");
 assert.throws(() => getReferenceOrderColumn("unknown_table"), /No deterministic primary-key order/);
 const orderMapStart = storageRetentionSource.indexOf("const REFERENCE_ORDER_COLUMNS = Object.freeze({");
@@ -283,9 +285,12 @@ for (const [table, column] of [
 }
 for (const [table, column] of [
   ["admin_audit_events", "metadata"],
+  ["admin_settings", "value"],
   ["articles", "metadata"],
   ["content_library", "metadata"],
   ["kids_content", "metadata"],
+  ["push_runtime_settings", "value"],
+  ["quran_audio", "metadata"],
   ["video_automation_runs", "metadata"],
   ["content_translation_queue", "source_payload"],
   ["site_settings", "value"],
