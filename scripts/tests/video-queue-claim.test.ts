@@ -345,7 +345,7 @@ test("the video worker wraps rendering in the lease heartbeat before claiming th
   assert.match(videoWorkerSource, /onRenewalError: \(error\) => console\.warn/);
 });
 
-test("post-render catalog and social queue work renews the processing lease", () => {
+test("normal post-render catalog and social queue work renews the processing lease", () => {
   assert.ok(videoWorkerSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)"));
   assert.ok(videoWorkerSource.includes("renew: () => patchProcessingRequestWithLease({})"));
 
@@ -359,15 +359,8 @@ test("post-render catalog and social queue work renews the processing lease", ()
     videoWorkerSource.includes("withLeaseHeartbeat(\n          (signal) => queueSocialItems(request, rendered.videoUrl, signal),\n        )"),
     "social queue insertion must keep the processing lease alive until durable",
   );
-  const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(");
-  const recoveryOperationPosition = videoWorkerSource.indexOf(
-    "restoreMissingMediaSocialQueueItems(",
-    recoveryHeartbeatPosition,
-  );
-  assert.ok(
-    recoveryHeartbeatPosition >= 0 && recoveryOperationPosition > recoveryHeartbeatPosition,
-    "recovered social queue rows must also be protected by the active lease",
-  );
+  // Duplicate canonical-media recovery intentionally runs after the candidate request is
+  // cancelled and is covered separately by the row-level CAS contract below.
 });
 
 test("duplicate media recovery releases held rows after cancellation using per-row compare-and-set", () => {
