@@ -6,7 +6,7 @@ import { PRODUCTION_URL } from "../../src/lib/site";
 
 const productionOrigin = new URL(PRODUCTION_URL).origin;
 
-assert.equal(productionHost, "zikrmediaofficial.vercel.app");
+assert.equal(productionOrigin, "https://zikrmediaofficial.vercel.app");
 assert.equal(
   getServiceWorkerScriptUrl({
     isNative: true,
