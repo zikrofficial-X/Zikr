@@ -138,7 +138,7 @@ const automationSettingActionStart = adminSystemActions.indexOf("export async fu
 const automationSettingActionEnd = adminSystemActions.indexOf("export async function requestVideoAutomationRunAction", automationSettingActionStart);
 const automationSettingAction = adminSystemActions.slice(automationSettingActionStart, automationSettingActionEnd);
 assert.ok(automationSettingActionStart >= 0 && automationSettingActionEnd > automationSettingActionStart, "the guarded automation settings action must remain present");
-assert.match(automationSettingAction, /key === "video_automation_enabled"[\s\S]*?video_purge_in_progress[\s\S]*?value === true[\s\S]*?throw new Error/, "admin settings must not overwrite the purge route's saved automation state while the purge lock is active");
+assert.match(automationSettingAction, /key === "video_automation_enabled"[\s\S]*?video_purge_in_progress[\s\S]*?isVideoPurgeInProgress\(purgeRows\?\.\[0\]\?\.value\)[\s\S]*?throw new Error/, "admin settings must reject changes while the shared fail-closed purge-lock policy reports an active or malformed lock");
 assert.match(videoGenerationRoute, /deleteFailed\s*=\s*body !== null[\s\S]*?typeof body === "object"[\s\S]*?deleteFailed === true/, "bulk deletion must require an explicit boolean true, not truthy strings such as \"false\"");
 assert.ok(
   route.includes("async function acquirePurgeLock(token: string)") &&
