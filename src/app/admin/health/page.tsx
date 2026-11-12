@@ -55,7 +55,7 @@ export default async function AdminHealthPage() {
       <header>
         <p className="text-xs tracking-[0.18em] text-brand-cream/30">صحة النظام</p>
         <h1 className="mt-2 text-3xl font-bold text-brand-gold">صحة وتشغيل النظام</h1>
-        <p className="mt-2 text-sm leading-7 text-brand-cream/50">فحص قاعدة البيانات والجداول وتوليد الفيديو وطوابير النشر داخل الموقع وخارجه. النشر الخارجي يتم تلقائيًا بعد اجتياز فحوص الجودة الآلية والتحقق من صلاحيات القنوات.</p>
+        <p className="mt-2 text-sm leading-7 text-brand-cream/50">فحص قاعدة البيانات والجداول وتوليد الفيديو ومهام النشر داخل الموقع وخارجه. تُنشأ مهام النشر بعد فحوص الجودة؛ التنفيذ الخارجي يعتمد أيضًا على إعداد GitHub واتصال القنوات وحدود المنصات.</p>
       </header>
 
       {automationEnabled === false && (
@@ -65,7 +65,7 @@ export default async function AdminHealthPage() {
       )}
       {automationEnabled === true && aiEnabled === true && (
         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-7 text-emerald-100/80">
-          التوليد الآلي مفعّل. تُحفظ الفيديوهات في مكتبة ZIKR، ثم تُرسل تلقائيًا عند اجتياز فحوص المصدر والصوت والمشهد والترجمة والحقوق والتحقق من اتصال المنصة؛ لا توجد خطوة موافقة بشرية.
+          التوليد الآلي مفعّل. تُحفظ الفيديوهات في مكتبة ZIKR، وتُضاف مهام النشر إلى الطابور بعد اجتياز فحوص المصدر والصوت والمشهد والترجمة والحقوق؛ يتولى عامل النشر تنفيذها عندما يكون إعداد GitHub واعتماد القناة متاحين، دون خطوة موافقة بشرية بعد اجتياز QA.
         </div>
       )}
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -83,11 +83,11 @@ export default async function AdminHealthPage() {
           <p className="mt-1 text-xs text-brand-cream/35">مسار منفصل عن النشر الاجتماعي الخارجي.</p>
         </div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
-          <p className="text-xs text-brand-cream/35">النشر الاجتماعي الخارجي</p>
+          <p className="text-xs text-brand-cream/35">إدراج منشورات الفيديو في طابور النشر</p>
           <p className="mt-1 text-sm font-bold text-brand-cream/75">
-            {socialAutoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : socialAutoPublishEnabled ? "مفعّل بعد اجتياز فحوص الجودة الآلية" : "متوقف من إعدادات الإدارة"}
+            {socialAutoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : socialAutoPublishEnabled ? "مفعّل — إنشاء مهام النشر بعد اجتياز فحوص الجودة" : "متوقف من إعدادات الإدارة"}
           </p>
-          <p className="mt-1 text-xs text-brand-cream/35">يتطلب سجل فحص آلي مطابقًا لبصمة المصدر والمحتوى والملف، وفحص OAuth لكل قناة؛ لا تُطلب صلاحية حذف الفيديوهات.</p>
+          <p className="mt-1 text-xs text-brand-cream/35">هذا إعداد إنشاء المهام؛ التنفيذ الخارجي يعتمد أيضًا على SOCIAL_PUBLISH_ENABLED في GitHub واعتماد OAuth وحدود مزودي الخدمة. لا تُطلب صلاحية حذف الفيديوهات.</p>
         </div>
         <div className={`rounded-2xl border p-5 ${health.database === 'healthy' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-red-500/25 bg-red-500/10'}`}>
           <p className="text-xs text-brand-cream/40">قاعدة البيانات</p>
@@ -195,7 +195,7 @@ export default async function AdminHealthPage() {
             <h3 className="text-sm font-bold text-brand-cream/75">آخر تشغيلات الأتمتة</h3>
             {health.github.workflows.length === 0 ? (
               <p className="text-sm text-brand-cream/40">لا توجد تشغيلات حديثة مسجلة لهذه المهام.</p>
-            ) : health.github.workflows.slice(0, 8).map((run, index) => (
+            ) : health.github.workflows.slice(0, 12).map((run, index) => (
               <div key={run.name + run.createdAt + index} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-brand-cream/75">{run.name}</p>

@@ -57,8 +57,23 @@ if (!health.includes("queuesAvailable: { video: video.available }")) {
 if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
   throw new Error("Admin health must expose read-only GitHub commit and workflow status");
 }
-if (!platform.includes("GITHUB_WORKFLOW_PATHS") || !platform.includes("storage-retention.yml") || !platform.includes(".github/workflows/publish-social.yml")) {
-  throw new Error("Admin health must inventory active production workflows only, including approval-gated social delivery");
+const monitoredWorkflowPaths = [
+  ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/generate-written-content.yml",
+  ".github/workflows/english-content-sync.yml",
+  ".github/workflows/sync-social-insights.yml",
+  ".github/workflows/audit-video-media.yml",
+  ".github/workflows/refresh-offline-content.yml",
+  ".github/workflows/publish-social.yml",
+  ".github/workflows/storage-retention.yml",
+  ".github/workflows/dispatch-android-release-recovery.yml",
+];
+if (!platform.includes("GITHUB_WORKFLOW_PATHS") || monitoredWorkflowPaths.some((path) => !platform.includes(path))) {
+  throw new Error("Admin health must inventory the scheduled production content, video, social, storage and health workflows");
+}
+if (!platform.includes("latestRunByWorkflow") || !platform.includes("new Map")) {
+  throw new Error("Admin health must retain the latest run per workflow so frequent publishers cannot hide daily jobs");
 }
 
 if (!page.includes("حالة النشر والتكاملات") || !page.includes("health.github.statuses") || !page.includes("health.github.workflows")) {
@@ -74,7 +89,13 @@ if (!page.includes("getAdminSettings") || !page.includes("video_automation_ai_en
   throw new Error("Admin health must read canonical internal worker settings from admin_settings");
 }
 if (!page.includes("video_automation_auto_publish") || !page.includes("socialAutoPublishEnabled")) {
-  throw new Error("Admin health must expose the canonical social auto-publish setting from admin_settings");
+  throw new Error("Admin health must expose the canonical social queueing setting from admin_settings");
+}
+if (!page.includes("إدراج منشورات الفيديو في طابور النشر") || !page.includes("SOCIAL_PUBLISH_ENABLED") || page.includes("النشر الاجتماعي الخارجي</p>")) {
+  throw new Error("Admin health must distinguish queue creation from the separately configured external publisher");
+}
+if (!page.includes("slice(0, 12)")) {
+  throw new Error("Admin health must display enough latest-per-workflow results to cover the monitored production jobs");
 }
 if (!page.includes("النشر داخل الموقع") || !page.includes("النشر الاجتماعي الخارجي") ||
     !page.includes("فحوص الجودة الآلية") || !page.includes("صلاحيات القنوات") ||
