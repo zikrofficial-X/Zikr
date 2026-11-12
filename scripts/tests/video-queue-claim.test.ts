@@ -18,6 +18,8 @@ import {
 } from "../../src/features/videos/services/video-lease-heartbeat";
 
 const videoWorkerSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+const socialWorkerSource = readFileSync("scripts/jobs/social-publishing.ts", "utf8");
+const backgroundJobsSource = readFileSync("scripts/run-background-jobs.ts", "utf8");
 
 const now = "2026-11-11T22:59:00.000Z";
 const updatedAt = "2026-11-11T22:40:00.000Z";
@@ -389,6 +391,42 @@ test("failed social enqueue remains recoverable and cannot complete the video re
   assert.ok(videoWorkerSource.includes("status=in.(processing,retry_wait)"));
   assert.ok(videoWorkerSource.includes("catch (handoffPersistError)"));
   assert.ok(videoWorkerSource.includes("catch (completionError)"));
+});
+
+
+test("social publisher recovers durable video handoffs even while new video generation is disabled", () => {
+  assert.match(
+    videoWorkerSource,
+    /export async function recoverPendingVideoSocialQueueEnqueues\(/,
+    "the durable handoff recovery must be reusable by the independent social worker",
+  );
+  assert.ok(
+    socialWorkerSource.includes('import { recoverPendingVideoSocialQueueEnqueues } from "./template-video-automation";'),
+    "the social worker must import the durable video handoff recovery",
+  );
+  const start = socialWorkerSource.indexOf("export async function processSocialPublishQueue");
+  const body = socialWorkerSource.slice(start);
+  const purgeLock = body.indexOf("if (await isVideoPurgeInProgress())");
+  const recovery = body.indexOf("recoverPendingVideoSocialQueueEnqueues(");
+  const cleanup = body.indexOf("retryPendingPublishedVideoCleanup(");
+  const claim = body.indexOf("claimPendingSocialPublishItems(limit, enabledPlatforms)");
+  assert.ok(
+    start >= 0 && purgeLock >= 0 && recovery > purgeLock && cleanup > recovery && claim > cleanup,
+    "the independent social worker must recover handoffs after the purge guard and before cleanup or queue claims",
+  );
+  assert.ok(
+    !body.slice(purgeLock, recovery).includes("isVideoGenerationPaused") &&
+      !body.slice(purgeLock, recovery).includes("video_automation_enabled"),
+    "social handoff recovery must not be gated by the new-video generation toggle",
+  );
+  const processSocialStart = backgroundJobsSource.indexOf("async function processSocial");
+  const processSocialEnd = backgroundJobsSource.indexOf("async function recordAutomationRun", processSocialStart);
+  const processSocial = backgroundJobsSource.slice(processSocialStart, processSocialEnd);
+  assert.ok(
+    processSocial.includes('if (!settings.autoPublish || process.env.SOCIAL_PUBLISH_ENABLED !== "true")') &&
+      processSocial.indexOf("processSocialPublishQueue(batchSize)") > processSocial.indexOf("if (!settings.autoPublish"),
+    "handoff recovery remains inside the explicitly enabled social-publishing path",
+  );
 });
 
 test("video social queue expansion preserves active publisher leases and compare-and-sets mutable rows", () => {

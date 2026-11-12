@@ -2298,9 +2298,9 @@ class VideoSocialQueueLeaseLostError extends Error {
   }
 }
 
-async function recoverPendingVideoSocialQueueEnqueues(
-  limit: number,
-  staleBefore: string,
+export async function recoverPendingVideoSocialQueueEnqueues(
+  limit = 10,
+  staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString(),
 ): Promise<{ recovered: number; deferred: number }> {
   // queueSocialItems classifies disabled or approval-held publishing as
   // not_required, allowing the processing row to close without creating a

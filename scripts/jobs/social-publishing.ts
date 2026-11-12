@@ -3,6 +3,7 @@ import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { syncFacebookReelsInsights } from "../../src/features/social/services/facebook-reels-insights";
 import { getFacebookPageProfile } from "../../src/features/social/integrations/facebook";
 import { getEnabledSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { recoverPendingVideoSocialQueueEnqueues } from "./template-video-automation";
 import {
   claimPendingSocialPublishItems,
   processSocialPublishItem,
@@ -75,6 +76,17 @@ export async function processSocialPublishQueue(limit = 10) {
   if (await isVideoPurgeInProgress()) {
     console.log("[social-worker] Video purge lock is active; no social queue item will be claimed.");
     return { processed: 0, succeeded: 0, deferred: 0, authBlocked: 0, approvalBlocked: 0, failed: 0, purgeLocked: true };
+  }
+  // A completed render can outlive the generation toggle. Recover its durable
+  // social handoff here as well as in the video worker so the separate social
+  // workflow can finish it while new video generation is paused.
+  try {
+    const handoffRecovery = await recoverPendingVideoSocialQueueEnqueues(Math.max(1, Math.min(10, limit)));
+    if (handoffRecovery.recovered > 0 || handoffRecovery.deferred > 0) {
+      console.log("[social-worker] Video social handoff recovery:", JSON.stringify(handoffRecovery));
+    }
+  } catch (error) {
+    console.error("[social-worker] Video social handoff recovery is unavailable; continuing existing queue processing:", error);
   }
   // Reconcile deferred staging-cleanup metadata for posts already confirmed
   // on every target. The 48-hour retention worker removes only the redundant
