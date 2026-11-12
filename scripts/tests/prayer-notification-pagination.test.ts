@@ -139,27 +139,30 @@ const subscriptionLoaderStart = worker.indexOf("async function getActiveSubscrip
 const subscriptionLoaderEnd = worker.indexOf("async function updateDeliveryIfLease", subscriptionLoaderStart);
 const subscriptionLoader = worker.slice(subscriptionLoaderStart, subscriptionLoaderEnd);
 assert.ok(subscriptionLoaderStart >= 0 && subscriptionLoaderEnd > subscriptionLoaderStart);
+const deliverySourceStartForFencing = worker.indexOf("async function deliverDue");
+const deliverySourceEndForFencing = worker.indexOf("function constantTimeEqual", deliverySourceStartForFencing);
+const deliverySourceForFencing = worker.slice(deliverySourceStartForFencing, deliverySourceEndForFencing);
 assert.match(subscriptionLoader, /\.eq\("id", delivery\.push_subscription_id\)/);
 assert.match(subscriptionLoader, /\.eq\("user_id", delivery\.user_id\)/);
 assert.match(subscriptionLoader, /\.eq\("is_active", true\)/,
   "each delivery must re-read only its current active subscription after the claim");
 
-const claimPosition = deliverDueSource.indexOf("claimDueDelivery(candidate, deliveryNow)");
-const subscriptionReadPosition = deliverDueSource.indexOf("getActiveSubscriptionForDelivery(delivery)");
-const pushDeliveryPosition = deliverDueSource.indexOf(".pushTextMessage(");
+const claimPosition = deliverySourceForFencing.indexOf("claimDueDelivery(candidate, deliveryNow)");
+const subscriptionReadPosition = deliverySourceForFencing.indexOf("getActiveSubscriptionForDelivery(delivery)");
+const pushDeliveryPosition = deliverySourceForFencing.indexOf(".pushTextMessage(");
 assert.ok(
   claimPosition >= 0 && subscriptionReadPosition > claimPosition && pushDeliveryPosition > subscriptionReadPosition,
   "the active subscription must be revalidated after claiming and immediately before push delivery",
 );
-assert.doesNotMatch(deliverDueSource, /\.in\("id", subscriptionIds\)/,
+assert.doesNotMatch(deliverySourceForFencing, /\.in\("id", subscriptionIds\)/,
   "deliveries must not use a batch subscription snapshot that can become stale while earlier pushes are sent");
 
-const endpointSnapshotFilters = (deliverDueSource.match(/\.eq\("endpoint", subscription\.endpoint\)/g) ?? []).length;
-const keySnapshotFilters = (deliverDueSource.match(/\.eq\("p256dh", subscription\.p256dh\)/g) ?? []).length;
-const authSnapshotFilters = (deliverDueSource.match(/\.eq\("auth", subscription\.auth\)/g) ?? []).length;
+const endpointSnapshotFilters = (deliverySourceForFencing.match(/\.eq\("endpoint", subscription\.endpoint\)/g) ?? []).length;
+const keySnapshotFilters = (deliverySourceForFencing.match(/\.eq\("p256dh", subscription\.p256dh\)/g) ?? []).length;
+const authSnapshotFilters = (deliverySourceForFencing.match(/\.eq\("auth", subscription\.auth\)/g) ?? []).length;
 assert.ok(endpointSnapshotFilters >= 3 && keySnapshotFilters >= 3 && authSnapshotFilters >= 3,
   "deactivation and last-used updates must compare the exact endpoint/key snapshot before touching a subscription");
-const subscriptionOwnershipGuardPosition = deliverDueSource.indexOf("isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)");
+const subscriptionOwnershipGuardPosition = deliverySourceForFencing.indexOf("isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)");
 assert.ok(subscriptionOwnershipGuardPosition >= 0 && pushDeliveryPosition > subscriptionOwnershipGuardPosition, "subscription ownership must be validated before any push is sent");
 assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
