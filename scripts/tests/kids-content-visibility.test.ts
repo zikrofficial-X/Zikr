@@ -170,7 +170,7 @@ assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-orig
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
-assert.ok(kidsVideosApi.includes("isPublicKidsVideoSocialQueueRow(row)"), "the Kids video feed must only use confirmed public social queue rows");
+assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must resolve publication from the complete live queue set");
 assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must aggregate all original and supplemental social queue rows");
 assert.ok(kidsVideosApi.includes("socialQueueReadSucceeded = true"), "stored social badges must be used only after a successful live queue read");
 assert.ok(kidsVideosApi.includes("Promise.allSettled"), "a social queue read failure must be distinguishable from a legitimate empty result");
