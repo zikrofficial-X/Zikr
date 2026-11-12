@@ -113,7 +113,7 @@ AS $function$
       pg_catalog.pg_get_functiondef(
         'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
       )
-    ) ~ 'video_url\\s*=\\s*case\\s+when\\s+p_finalize\\s+then\\s+null'
+    ) ~ 'video_url\s*=\s*case\s+when\s+p_finalize\s+then\s+null'
   );
 $function$;
 

@@ -409,25 +409,37 @@ assert.equal(
 );
 assert.match(retentionRpcMigration, /Cloudinary playback URL remains intact/i,
   "the retention RPC must document that the durable playback reference is preserved");
-assert.match(retentionRpcMigration, /CREATE OR REPLACE FUNCTION public\\.video_storage_retention_contract_ready\\(\\)/,
-  "the migration must install a read-only preflight contract for destructive cleanup");
-assert.match(retentionRpcMigration, /pg_catalog\\.pg_get_functiondef/,
-  "the preflight must inspect the active retention RPC definition rather than trust a version flag");
-assert.match(retentionRpcMigration, /GRANT EXECUTE ON FUNCTION public\\.video_storage_retention_contract_ready\\(\\)\\s+TO service_role/,
-  "only the service role may call the retention contract preflight");
-assert.match(storageRetentionSource, /async function assertRetentionRpcContractReady\\(client\\)/,
-  "the cleanup script must fail closed when the safe retention RPC is unavailable");
-assert.match(storageRetentionSource, /client\\.rpc\\("video_storage_retention_contract_ready"\\)/,
-  "the cleanup script must verify the live database retention contract");
+assert.ok(
+  retentionRpcMigration.includes("CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()"),
+  "the migration must install a read-only preflight contract for destructive cleanup",
+);
+assert.ok(
+  retentionRpcMigration.includes("pg_catalog.pg_get_functiondef"),
+  "the preflight must inspect the active retention RPC definition rather than trust a version flag",
+);
+assert.ok(
+  retentionRpcMigration.includes("video_url\\s*=\\s*case\\s+when\\s+p_finalize\\s+then\\s+null"),
+  "the preflight must reject the old URL-clearing RPC implementation",
+);
+assert.ok(
+  retentionRpcMigration.includes("GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()\n  TO service_role;"),
+  "only the service role may call the retention contract preflight",
+);
+assert.ok(
+  storageRetentionSource.includes("async function assertRetentionRpcContractReady(client)"),
+  "the cleanup script must fail closed when the safe retention RPC is unavailable",
+);
+assert.ok(
+  storageRetentionSource.includes('client.rpc("video_storage_retention_contract_ready")'),
+  "the cleanup script must verify the live database retention contract",
+);
 const retentionMainBody = storageRetentionSource.slice(storageRetentionSource.indexOf("async function main()"));
-const retentionPreflightIndex = retentionMainBody.indexOf("await assertRetentionRpcContractReady(client)");
+const retentionPreflightIndex = retentionMainBody.indexOf("if (apply) await assertRetentionRpcContractReady(client);");
 const retentionInventoryIndex = retentionMainBody.indexOf("collectPaginatedRows(");
 assert.ok(
   retentionPreflightIndex >= 0 && retentionInventoryIndex > retentionPreflightIndex,
   "manual apply must verify the safe RPC contract before scanning or mutating retention candidates",
 );
-assert.match(retentionMainBody, /if \\(apply\\) await assertRetentionRpcContractReady\\(client\\)/,
-  "dry runs must remain read-only while manual apply requires the live safe-RPC preflight");
 assert.match(
   storageRetentionSource,
   /table: "videos",[\s\S]*?column: "metadata"[\s\S]*?query\.not\("metadata", "is", null\)/,
