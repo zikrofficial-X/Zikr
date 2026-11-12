@@ -1,6 +1,6 @@
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch } from "@/features/social/services/facebook-queue-recovery-policy";
+import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -589,6 +589,7 @@ type FacebookAuthBlockedQueueRow = {
   metadata: Record<string, unknown> | null;
   status: string;
   updated_at: string | null;
+  created_at: string | null;
 };
 
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
@@ -600,8 +601,11 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
   // a row removes it from this query, so offset pagination would skip later rows.
   while (true) {
     const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const publishAfter = resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER);
     const rows: FacebookAuthBlockedQueueRow[] = await supabaseServerAdminRequest<FacebookAuthBlockedQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status,updated_at&order=id.asc&limit=" +
+      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&created_at=gte." +
+        encodeURIComponent(publishAfter) +
+        "&select=id,target_platforms,metadata,status,updated_at,created_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
@@ -610,7 +614,7 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
       cursor = item.id;
       const now = new Date().toISOString();
       const patch = buildFacebookQueueRecoveryPatch(item.metadata, item.target_platforms ?? [], now);
-      const filter = buildFacebookQueueRecoveryFilter(item);
+      const filter = buildFacebookQueueRecoveryFilter(item, publishAfter);
       if (!patch || !filter) continue;
       const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
         "/rest/v1/social_publish_queue?" + filter,
