@@ -325,3 +325,19 @@ test("failed social enqueue remains recoverable and cannot complete the video re
   assert.ok(videoWorkerSource.includes("catch (handoffPersistError)"));
   assert.ok(videoWorkerSource.includes("catch (completionError)"));
 });
+
+test("video social queue expansion preserves active publisher leases and compare-and-sets mutable rows", () => {
+  const processingBranch = videoWorkerSource.match(
+    /if\\s*\\(\\s*existing\\.status\\s*===\\s*["']processing["']\\s*\\)\\s*\\{([\\s\\S]*?)\\n\\s*\\}/,
+  )?.[1] ?? "";
+  assert.match(processingBranch, /newlyEnabledTargets\\.length\\s*>\\s*0/);
+  assert.match(processingBranch, /queueSupplementalTargets\\(newlyEnabledTargets\\)/);
+  assert.match(processingBranch, /return\\s+["']queued["']/);
+  assert.match(videoWorkerSource, /buildVideoSocialQueueUpdateFilter\\s*\\(\\s*existing\\.id,\\s*existing\\.status,\\s*existing\\.updated_at\\s*\\)/);
+  assert.match(videoWorkerSource, /const\\s+latest\\s*=\\s*await\\s+findSocialQueueByAutomationKey\\(socialKey,\\s*signal\\)/);
+  assert.match(videoWorkerSource, /queueSupplementalTargets\\(latestNewTargets\\)/);
+  assert.match(
+    videoWorkerSource,
+    /await\\s+withLeaseHeartbeat\\s*\\(\\s*\\(signal\\)\\s*=>\\s*queueSocialItems\\s*\\(\\s*request,\\s*rendered\\.videoUrl,\\s*signal\\s*\\)\\s*,?\\s*\\)/,
+  );
+});
