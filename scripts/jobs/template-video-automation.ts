@@ -44,14 +44,28 @@ const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTP
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
 
-async function isVideoGenerationPaused(): Promise<boolean> {
+function throwIfVideoLeaseAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  const reason = signal.reason;
+  if (reason instanceof Error) throw reason;
+  throw new Error("Video processing lease was lost; operation aborted.");
+}
+
+function videoOperationSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+}
+
+async function isVideoGenerationPaused(signal?: AbortSignal): Promise<boolean> {
   try {
     const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
       "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
+      signal ? { signal } : undefined,
     );
     const settings = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
     return settings.video_purge_in_progress === true || settings.video_automation_enabled === false;
   } catch (error) {
+    throwIfVideoLeaseAborted(signal);
     console.error("[video-worker] Could not verify the production video-generation lock:", error);
     return true;
   }
@@ -62,8 +76,9 @@ async function isVideoGenerationPaused(): Promise<boolean> {
  * Supabase remains the database/queue only; generated public videos are never
  * staged in Supabase Storage where Cloudinary and Meta reads consume Egress.
  */
-async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string) {
-  if (await isVideoGenerationPaused()) throw new Error("Video generation is paused by the administrator; upload was blocked before storage.");
+async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string, signal?: AbortSignal) {
+  if (await isVideoGenerationPaused(signal)) throw new Error("Video generation is paused by the administrator; upload was blocked before storage.");
+  throwIfVideoLeaseAborted(signal);
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
   const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -88,7 +103,7 @@ async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: s
     method: "POST",
     headers: { Authorization: authorization },
     body: form,
-    signal: AbortSignal.timeout(120_000),
+    signal: videoOperationSignal(signal, 120_000),
   });
   const payload = await response.json().catch(() => ({})) as {
     secure_url?: string;
@@ -301,21 +316,21 @@ function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, u
   return map[scene] || map.calm;
 }
 
-async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>) {
+async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>, signal?: AbortSignal) {
   const source = path.join(process.cwd(), backgroundAsset(scene, content));
   const output = path.join(temp, "background.png");
-  await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024 });
+  await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024, signal });
   return output;
 }
 
-async function probeMedia(pathname: string) {
+async function probeMedia(pathname: string, signal?: AbortSignal) {
   const { stdout } = await execFileAsync("ffprobe", [
     "-v", "error",
     "-show_entries",
     "format=duration:stream=codec_type,codec_name,width,height,bit_rate,sample_rate,channels",
     "-of", "json",
     pathname,
-  ], { maxBuffer: 2 * 1024 * 1024 });
+  ], { maxBuffer: 2 * 1024 * 1024, signal });
   return JSON.parse(stdout) as {
     streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number; bit_rate?: string; sample_rate?: string; channels?: number }>;
     format?: { duration?: string };
@@ -951,7 +966,7 @@ function parseGeminiJson(raw: string): unknown {
   }
 }
 
-async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
+async function generateAiVideoPlan(request: GeneratedRequest, signal?: AbortSignal): Promise<AiVideoPlan> {
   if (request.category === "other" && request.content?.audience !== "kids") return { ...DEFAULT_AI_VIDEO_PLAN };
   if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
@@ -985,7 +1000,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.12, maxOutputTokens: 260 },
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: videoOperationSignal(signal, 30_000),
   });
   if (!response.ok) throw new Error(`Gemini HTTP ${response.status} for ${model}`);
 
@@ -1115,21 +1130,23 @@ export async function validateSourceContent(request: GeneratedRequest) {
   }
 }
 
-async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number) {
+async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number, signal?: AbortSignal) {
   const url = QURAN_AYAH_AUDIO_BASE_URL.replace(/\/$/, "") + "/" + String(surahId).padStart(3, "0") + String(ayahNumber).padStart(3, "0") + ".mp3";
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: { Range: "bytes=0-1023", Accept: "audio/mpeg" },
-      signal: AbortSignal.timeout(15_000),
+      signal: videoOperationSignal(signal, 15_000),
     });
     if (response.ok || response.status === 206) return url;
-  } catch {}
+  } catch {
+    throwIfVideoLeaseAborted(signal);
+  }
   return null;
 }
 
-async function assertPlayableOutput(outputPath: string, expectedWidth: number, expectedHeight: number) {
-  const probe = await probeMedia(outputPath);
+async function assertPlayableOutput(outputPath: string, expectedWidth: number, expectedHeight: number, signal?: AbortSignal) {
+  const probe = await probeMedia(outputPath, signal);
   const streams = probe.streams ?? [];
   const video = streams.find((stream) => stream.codec_type === "video");
   const audio = streams.find((stream) => stream.codec_type === "audio");
@@ -1146,10 +1163,10 @@ async function assertPlayableOutput(outputPath: string, expectedWidth: number, e
   if (Number.isFinite(bitrate) && bitrate > 0 && bitrate < 350_000) throw new Error("Rendered output video bitrate is too low: " + bitrate + "bps.");
 }
 
-async function assertAudibleAudio(pathname: string) {
+async function assertAudibleAudio(pathname: string, signal?: AbortSignal) {
   const { stderr } = await execFileAsync("ffmpeg", [
     "-hide_banner", "-i", pathname, "-vn", "-af", "volumedetect", "-f", "null", "-",
-  ], { maxBuffer: 4 * 1024 * 1024 });
+  ], { maxBuffer: 4 * 1024 * 1024, signal });
   const maximum = stderr.match(/max_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/i);
   const peakDb = maximum ? Number(maximum[1]) : Number.NEGATIVE_INFINITY;
   if (!Number.isFinite(peakDb) || peakDb < -50) {
@@ -1157,8 +1174,8 @@ async function assertAudibleAudio(pathname: string) {
   }
 }
 
-async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown) {
-  const probe = await probeMedia(pathname);
+async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown, signal?: AbortSignal) {
+  const probe = await probeMedia(pathname, signal);
   const duration = Number(probe.format?.duration ?? 0);
   if (!Number.isFinite(duration) || duration < 0.8) {
     throw new Error("Narration audio duration is invalid.");
@@ -1193,7 +1210,7 @@ async function assertNarrationQuality(pathname: string, text: string, category: 
     "-af", "silencedetect=noise=-42dB:d=2.5",
     "-f", "null",
     "-",
-  ], { maxBuffer: 4 * 1024 * 1024 });
+  ], { maxBuffer: 4 * 1024 * 1024, signal });
   const longSilences = [...stderr.matchAll(/silence_duration:\s*([0-9.]+)/g)]
     .map((match) => Number(match[1]))
     .filter((value) => Number.isFinite(value) && value >= 2.5);
@@ -1208,10 +1225,13 @@ function requestedVideoShape(request: GeneratedRequest) {
   return request.content?.videoFormat === "horizontal" ? "1920x1080" : "1080x1920";
 }
 
-async function renderVideo(request: GeneratedRequest) {
+async function renderVideo(request: GeneratedRequest, signal?: AbortSignal) {
+  throwIfVideoLeaseAborted(signal);
   const renderStartedAt = Date.now();
   await validateSourceContent(request);
+  throwIfVideoLeaseAborted(signal);
   const boundTemplate = await bindTemplateVersion(request);
+  throwIfVideoLeaseAborted(signal);
   assertKidsStoryContract(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
@@ -1253,7 +1273,8 @@ async function renderVideo(request: GeneratedRequest) {
     const isTemplatePreview = request.content.templatePreview === true;
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
-      if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request);
+      if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request, signal);
+      throwIfVideoLeaseAborted(signal);
       request.content = {
         ...request.content,
         ai: {
@@ -1269,6 +1290,7 @@ async function renderVideo(request: GeneratedRequest) {
         },
       };
     } catch (error) {
+      throwIfVideoLeaseAborted(signal);
       console.warn("[template-video] Gemini plan skipped for " + request.id + ": " + (error instanceof Error ? error.message : String(error)));
     }
 
@@ -1306,7 +1328,9 @@ async function renderVideo(request: GeneratedRequest) {
       const verifiedAyahAudio = await getVerifiedQuranAyahAudioUrl(
         Number(request.content?.surahId),
         Number(request.content?.ayahNumber),
+        signal,
       );
+      throwIfVideoLeaseAborted(signal);
       if (verifiedAyahAudio) {
         audioUrl = verifiedAyahAudio;
         request.content = { ...request.content, audioUrl: verifiedAyahAudio, audioSource: "quran-ayah-cdn" };
@@ -1365,11 +1389,12 @@ async function renderVideo(request: GeneratedRequest) {
         style: scene,
         preferredProvider,
       });
+      throwIfVideoLeaseAborted(signal);
       if (aiResult.ok && aiResult.localPath) {
         aiVideoPath = aiResult.localPath;
       } else if (aiResult.ok && aiResult.videoUrl) {
         const response = await fetch(aiResult.videoUrl, {
-          signal: AbortSignal.timeout(60_000),
+          signal: videoOperationSignal(signal, 60_000),
         });
         if (!response.ok) {
           throw new Error("AI provider returned a video URL that could not be downloaded.");
@@ -1392,10 +1417,11 @@ async function renderVideo(request: GeneratedRequest) {
         aiFallbackReason: "AI per-run budget exhausted; deterministic template fallback used.",
       };
     }
-    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content);
+    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content, signal);
+    throwIfVideoLeaseAborted(signal);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
-      const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: videoOperationSignal(signal, 60_000) });
       if (!response.ok) throw new Error("Audio download failed (HTTP " + response.status + ").");
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.length < 1024) throw new Error("Audio download was empty or invalid.");
@@ -1415,7 +1441,7 @@ async function renderVideo(request: GeneratedRequest) {
             `--rate=${process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate}`,
             `--pitch=${process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch}`,
           ],
-          { maxBuffer: 4 * 1024 * 1024 },
+          { maxBuffer: 4 * 1024 * 1024, signal },
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -1426,8 +1452,9 @@ async function renderVideo(request: GeneratedRequest) {
       audioKind = "arabic_tts_narration";
     }
 
-    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience);
-    const audioProbe = await probeMedia(audioPath);
+    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience, signal);
+    throwIfVideoLeaseAborted(signal);
+    const audioProbe = await probeMedia(audioPath, signal);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS);
     const composition = resolveVideoComposition({
@@ -1514,14 +1541,16 @@ async function renderVideo(request: GeneratedRequest) {
       "-metadata", "comment=ZIKR template " + VIDEO_TEMPLATE_VERSION,
       outputPath,
     ];
-    await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
-    await assertPlayableOutput(outputPath, width, height);
-    await assertAudibleAudio(outputPath);
+    await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024, signal });
+    await assertPlayableOutput(outputPath, width, height, signal);
+    await assertAudibleAudio(outputPath, signal);
+    throwIfVideoLeaseAborted(signal);
     const renderDurationMs = Date.now() - renderStartedAt;
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
-    const uploadedMedia = await uploadGeneratedVideoToCloudinary(bytes, storageKey);
+    const uploadedMedia = await uploadGeneratedVideoToCloudinary(bytes, storageKey, signal);
+    throwIfVideoLeaseAborted(signal);
     request.content = {
       ...request.content,
       audio: {
