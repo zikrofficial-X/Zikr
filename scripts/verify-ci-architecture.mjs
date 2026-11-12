@@ -174,8 +174,16 @@ assert.ok(
     articleTranslation.includes("if (!article.title_en?.trim())") &&
     articleTranslation.includes("if (!article.summary_en?.trim())") &&
     articleTranslation.includes("if (!article.content_en?.trim())") &&
-    articleTranslation.includes("&or=(${field}.is.null,${field}.eq.)"),
-  "English article sync must include empty fields and conditionally preserve concurrent human translations.",
+    articleTranslation.includes("or(${field}.is.null,${field}.eq.)") &&
+    articleTranslation.includes("and=(${emptyFieldFilters})") &&
+    articleTranslation.includes("updated_at=eq.${encodeURIComponent(article.updated_at)}"),
+  "English article sync must preserve concurrent human translations and compare the exact source row version.",
+);
+assert.ok(
+  articleTranslation.includes("on_conflict=content_type,content_id,target_locale,source_hash") &&
+    articleTranslation.includes("status=eq.processing&updated_at=eq.${encodeURIComponent(claim.updatedAt)}") &&
+    articleTranslation.includes("TRANSLATION_QUEUE_LEASE_MS = 60 * 60_000"),
+  "English article sync must use a unique, leased queue claim and compare-and-set terminal writes.",
 );
 assert.ok(
   articleTranslation.includes("Number.isInteger(value)") &&
