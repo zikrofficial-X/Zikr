@@ -1,14 +1,14 @@
 export function getServiceWorkerScriptUrl(input: {
   isNative: boolean;
-  hostname: string;
+  origin: string;
   productionUrl: string;
 }): string {
   if (input.isNative) return "/sw.js?native=1";
 
   try {
     const productionUrl = new URL(input.productionUrl);
-    const hostname = input.hostname.trim().toLowerCase().replace(/\.$/, "");
-    if (productionUrl.protocol === "https:" && hostname === productionUrl.hostname.toLowerCase()) {
+    const currentUrl = new URL(input.origin);
+    if (productionUrl.protocol === "https:" && currentUrl.origin === productionUrl.origin) {
       return "/sw.js?monetag=1";
     }
   } catch {

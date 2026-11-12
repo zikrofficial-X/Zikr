@@ -7,7 +7,7 @@ const isNativeCapacitorWorker =
 const isCanonicalMonetagWorker =
   !isNativeCapacitorWorker &&
   serviceWorkerLocation.searchParams.get("monetag") === "1" &&
-  serviceWorkerLocation.hostname.toLowerCase() === "zikrmediaofficial.vercel.app";
+  serviceWorkerLocation.origin === "https://zikrmediaofficial.vercel.app";
 
 if (isCanonicalMonetagWorker) {
   self.options = {

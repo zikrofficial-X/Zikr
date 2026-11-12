@@ -94,7 +94,7 @@ export function ServiceWorkerRegister() {
       try {
         const serviceWorkerUrl = getServiceWorkerScriptUrl({
           isNative: Capacitor.isNativePlatform(),
-          hostname: window.location.hostname,
+          origin: window.location.origin,
           productionUrl: PRODUCTION_URL,
         });
         registration = await navigator.serviceWorker.register(serviceWorkerUrl, {
@@ -115,7 +115,13 @@ export function ServiceWorkerRegister() {
         // Check for updates periodically and retry the offline pack if the
         // connection was initially too slow or Data Saver was enabled.
         updateInterval = setInterval(() => {
-          registration?.update();
+          if (registration) {
+            void registration.update().catch((error: unknown) => {
+              if (process.env.NODE_ENV === 'production') {
+                console.warn('[PWA] Service Worker update check failed:', error);
+              }
+            });
+          }
           handleNetworkChange();
         }, 60000); // Check every minute
 

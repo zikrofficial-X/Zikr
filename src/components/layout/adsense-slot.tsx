@@ -21,7 +21,7 @@ declare global {
 
 function isCanonicalProductionHost(): boolean {
   try {
-    return window.location.hostname.toLowerCase() === new URL(PRODUCTION_URL).hostname.toLowerCase();
+    return window.location.origin === new URL(PRODUCTION_URL).origin;
   } catch {
     return false;
   }
