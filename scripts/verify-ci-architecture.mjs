@@ -237,12 +237,16 @@ assert.ok(
     !insightsWorkflow.includes("youtube.upload"),
   "Daily insights workflow must use the isolated insights target, disable publishing, and receive no unused publishing-only credentials or upload scopes",
 );
+const backgroundJobOutcome = read("src/features/videos/services/background-job-outcome.ts");
 assert.ok(
   backgroundRunner.includes('const videos = target === "all" || target === "videos"') &&
-    backgroundRunner.includes('const sitePublishing = target === "all" || target === "videos"') &&
+    backgroundRunner.includes("const shouldPublishScheduledContent = shouldRunScheduledContentPublishing({") &&
+    backgroundRunner.includes("videoDryRun: VIDEO_DRY_RUN") &&
+    backgroundRunner.includes("const sitePublishing = shouldPublishScheduledContent") &&
+    backgroundJobOutcome.includes('return !input.videoDryRun && (input.target === "videos" || input.target === "all")') &&
     backgroundRunner.includes('const social = target === "all" || target === "social"') &&
     backgroundRunner.includes('const insights = target === "insights" ? await syncSocialInsights() : null'),
-  "The insights target must not invoke video generation, site-content publishing, or social queue processing",
+  "The insights target must not invoke video generation, dry-run site-content publishing, or social queue processing",
 );
 const insightsService = socialWorker.slice(
   socialWorker.indexOf("export async function syncSocialInsights()"),
