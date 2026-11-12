@@ -85,7 +85,7 @@ export default async function AdminHealthPage() {
         <div className="rounded-2xl border border-brand-gold/10 bg-black/10 p-4">
           <p className="text-xs text-brand-cream/35">إدراج منشورات الفيديو في طابور النشر</p>
           <p className="mt-1 text-sm font-bold text-brand-cream/75">
-            {socialAutoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : socialAutoPublishEnabled ? "مفعّل — إنشاء مهام النشر بعد اجتياز فحوص الجودة" : "متوقف من إعدادات الإدارة"}
+            {socialAutoPublishEnabled === null ? "غير متاح — تعذر قراءة الإعداد" : socialAutoPublishEnabled ? "مفعّل — إنشاء مهام النشر بعد اجتياز فحوص الجودة الآلية" : "متوقف من إعدادات الإدارة"}
           </p>
           <p className="mt-1 text-xs text-brand-cream/35">هذا إعداد إنشاء المهام؛ التنفيذ الخارجي يعتمد أيضًا على SOCIAL_PUBLISH_ENABLED في GitHub واعتماد OAuth وحدود مزودي الخدمة. لا تُطلب صلاحية حذف الفيديوهات.</p>
         </div>
