@@ -370,6 +370,22 @@ test("post-render catalog and social queue work renews the processing lease", ()
   );
 });
 
+test("duplicate media recovery keeps the processing lease active until held social rows are restored", () => {
+  const duplicateRecoveryStart = videoWorkerSource.indexOf("if (canRecover && qaApproval)");
+  const duplicateRecoveryEnd = videoWorkerSource.indexOf("if (!qaApproval)", duplicateRecoveryStart);
+  const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(", duplicateRecoveryStart);
+  const restoreRowsPosition = videoWorkerSource.indexOf("restoreMissingMediaSocialQueueItems(", recoveryHeartbeatPosition);
+  const cancelStatusPosition = videoWorkerSource.indexOf('status: "cancelled"', duplicateRecoveryStart);
+
+  assert.ok(duplicateRecoveryStart >= 0 && duplicateRecoveryEnd > duplicateRecoveryStart);
+  assert.ok(recoveryHeartbeatPosition > duplicateRecoveryStart && recoveryHeartbeatPosition < duplicateRecoveryEnd);
+  assert.ok(restoreRowsPosition > recoveryHeartbeatPosition && restoreRowsPosition < duplicateRecoveryEnd);
+  assert.ok(
+    cancelStatusPosition > restoreRowsPosition && cancelStatusPosition < duplicateRecoveryEnd,
+    "the processing-only lease must remain valid until the held social queue rows finish reconciliation",
+  );
+});
+
 test("failed social enqueue remains recoverable and cannot complete the video request", () => {
   const queueCall = videoWorkerSource.indexOf("queueSocialItems(request, rendered.videoUrl, signal)");
   const failureHandler = videoWorkerSource.indexOf("catch (socialError)", queueCall);
