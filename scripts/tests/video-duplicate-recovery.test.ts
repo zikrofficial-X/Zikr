@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildDuplicateVideoOwnerRecoveryFilter, buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import type { DuplicateVideoHashOwner } from "../../src/features/videos/services/duplicate-video-recovery";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
@@ -35,6 +35,24 @@ assert.equal(
   buildDuplicateVideoOwnerVideoUrlFilter("https://not-cloudinary.test/video.mp4"),
   "or=(video_url.is.null,video_url.eq.)",
   "unexpected non-Cloudinary URLs must never be included in recovery updates",
+);
+
+const duplicateOwnerRevision = "2026-11-11T22:40:00.000Z";
+assert.equal(
+  buildDuplicateVideoOwnerRecoveryFilter(staleCloudinaryUrl, duplicateOwnerRevision),
+  "status=eq.completed&updated_at=eq.2026-11-11T22%3A40%3A00.000Z&or=(video_url.is.null,video_url.eq.,video_url.eq." +
+    encodeURIComponent(staleCloudinaryUrl) + ")",
+  "canonical recovery must compare-and-set both the exact row revision and the previously stored generated media URL",
+);
+assert.equal(
+  buildDuplicateVideoOwnerRecoveryFilter(null, null),
+  null,
+  "canonical recovery must fail closed when the selected row revision is missing",
+);
+assert.equal(
+  buildDuplicateVideoOwnerRecoveryFilter(null, "not-a-date"),
+  null,
+  "canonical recovery must fail closed when the selected row revision is invalid",
 );
 
 assert.equal(
@@ -269,8 +287,9 @@ assert.ok(
 assert.match(worker, /calculateDailyVideoQuotaState\(todaysRows \?\? \[\]\)/);
 assert.match(worker, /const slot = dailyQuota\.nextSlot \+ i/);
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
-assert.ok(worker.includes("buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)"), "canonical recovery must compare-and-set the exact previously stored Cloudinary URL");
-assert.ok(worker.includes("&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}"), "canonical recovery must retain the completed-state guard while matching the exact media pointer");
+assert.ok(worker.includes("buildDuplicateVideoOwnerRecoveryFilter(duplicate.video_url, duplicate.updated_at)"), "canonical recovery must compare-and-set the selected row revision and exact previously stored Cloudinary URL");
+assert.ok(worker.includes("updated_at, duration,source_hash") || worker.includes("updated_at,duration,source_hash"), "the duplicate owner query must fetch the row revision used by the compare-and-set filter");
+assert.ok(worker.includes("&${duplicateRecoveryFilter}"), "canonical recovery must apply the completed-state, row-revision, and media-pointer guards together");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
 const duplicateCancelIndex = worker.indexOf('await patchProcessingRequestWithLease({\n              status: "cancelled",\n              video_url: null');

@@ -14,7 +14,7 @@ import { listVideoSources, resolveVideoSource } from "../../src/features/videos/
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
-import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildDuplicateVideoOwnerRecoveryFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import { buildProcessingVideoRequestLeaseFilter, buildStaleVideoRequestRecoveryFilter, buildVideoRequestClaimFilter } from "../../src/features/videos/services/video-queue-claim";
@@ -2335,7 +2335,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       } catch (hashError) {
         if (!isContentHashConflict(hashError)) throw hashError;
         const duplicateRows = await supabaseServerAdminRequest<GeneratedRequest[]>(
-          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
+          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
         );
         const duplicate = duplicateRows?.[0];
         if (!duplicate) throw hashError;
@@ -2363,6 +2363,13 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         const attempts = (request.generation_attempts ?? 0) + 1;
 
         if (canRecover && qaApproval) {
+          const duplicateRecoveryFilter = buildDuplicateVideoOwnerRecoveryFilter(
+            duplicate.video_url,
+            duplicate.updated_at,
+          );
+          if (!duplicateRecoveryFilter) {
+            throw new Error(`Canonical duplicate request ${duplicate.id} has no valid row revision; refusing media recovery.`);
+          }
           const recoveredContent = {
             ...(duplicate.content ?? {}),
             ...qaApproval,
@@ -2384,7 +2391,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
 
           if (!recoveryResult.published) {
             const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}`,
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&${duplicateRecoveryFilter}`,
               {
                 method: "PATCH",
                 headers: { Prefer: "return=representation" },
