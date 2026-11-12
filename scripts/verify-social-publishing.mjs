@@ -180,6 +180,26 @@ if (!socialPublishingService.includes("requireSocialQueueRows") ||
     socialPublishingService.includes("Array.isArray(writtenCandidates) ? writtenCandidates : []")) {
   failures.push("social queue reads must reject malformed PostgREST row sets instead of silently returning an empty batch");
 }
+const kidsCatalogSyncStart = socialPublishingService.indexOf("async function syncKidsSocialPublicationToCatalog");
+const kidsCatalogSyncEnd = socialPublishingService.indexOf("async function syncYouTubeVideoReferenceToCatalog", kidsCatalogSyncStart);
+const kidsCatalogSync = kidsCatalogSyncStart >= 0 && kidsCatalogSyncEnd > kidsCatalogSyncStart
+  ? socialPublishingService.slice(kidsCatalogSyncStart, kidsCatalogSyncEnd)
+  : "";
+const youtubeCatalogSyncStart = socialPublishingService.indexOf("async function syncYouTubeVideoReferenceToCatalog");
+const youtubeCatalogSyncEnd = socialPublishingService.indexOf("async function disposePublishedVideo", youtubeCatalogSyncStart);
+const youtubeCatalogSync = youtubeCatalogSyncStart >= 0 && youtubeCatalogSyncEnd > youtubeCatalogSyncStart
+  ? socialPublishingService.slice(youtubeCatalogSyncStart, youtubeCatalogSyncEnd)
+  : "";
+if (!kidsCatalogSync.includes('typeof row.updated_at !== "string"') ||
+    !kidsCatalogSync.includes('"&updated_at=eq." + encodeURIComponent(row.updated_at)') ||
+    kidsCatalogSync.includes('(row.updated_at ? "&updated_at=eq."')) {
+  failures.push("Kids catalog social metadata writes must require an exact valid updated_at revision");
+}
+if (!youtubeCatalogSync.includes('typeof row.updated_at !== "string"') ||
+    !youtubeCatalogSync.includes('"&updated_at=eq." + encodeURIComponent(row.updated_at)') ||
+    youtubeCatalogSync.includes('(expectedUpdatedAt ? "&updated_at=eq."')) {
+  failures.push("YouTube catalog reference writes must require an exact valid updated_at revision");
+}
 if (!socialWorker.includes("isVideoPurgeLockResponseActive(rows)") ||
     socialWorker.includes("rows?.[0]?.value") ||
     !backgroundJobSettings.includes("export function isVideoPurgeLockResponseActive(")) {

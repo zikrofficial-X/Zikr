@@ -684,14 +684,18 @@ async function syncKidsSocialPublicationToCatalog(
         encodeURIComponent(item.content_id) +
         "&metadata->>audience=eq.kids&select=id,metadata,updated_at&limit=2",
     );
-    if (rows?.length !== 1) {
-      if ((rows?.length ?? 0) > 1) {
+    if (!Array.isArray(rows) || rows.length !== 1) {
+      if (Array.isArray(rows) && rows.length > 1) {
         console.error("[social-publishing] Kids catalog reconciliation stopped: request maps to multiple video rows:", item.content_id);
       }
       return;
     }
 
     const row = rows[0];
+    if (typeof row.updated_at !== "string" || !Number.isFinite(Date.parse(row.updated_at))) {
+      console.warn("[social-publishing] Kids catalog row has no valid updated_at; refusing an unversioned metadata update:", item.content_id);
+      return;
+    }
     const existing = row.metadata ?? {};
     if (
       existing.generator !== "zikr_internal_video_factory" ||
@@ -710,7 +714,7 @@ async function syncKidsSocialPublicationToCatalog(
       },
     };
     const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
-      (row.updated_at ? "&updated_at=eq." + encodeURIComponent(row.updated_at) : "");
+      "&updated_at=eq." + encodeURIComponent(row.updated_at);
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=representation" },
@@ -745,15 +749,19 @@ async function syncYouTubeVideoReferenceToCatalog(
         encodeURIComponent(item.content_id) +
         "&select=id,youtube_id,published,metadata,updated_at&limit=2",
     );
-    if (!rows?.length) {
-      console.warn("[social-publishing] YouTube upload succeeded but no matching public catalog record was found:", item.content_id);
-      return;
-    }
-    if (rows.length !== 1) {
-      console.error("[social-publishing] YouTube catalog reconciliation stopped: generation request maps to multiple video rows:", item.content_id);
+    if (!Array.isArray(rows) || rows.length !== 1) {
+      if (Array.isArray(rows) && rows.length > 1) {
+        console.error("[social-publishing] YouTube catalog reconciliation stopped: generation request maps to multiple video rows:", item.content_id);
+      } else {
+        console.warn("[social-publishing] YouTube upload succeeded but no matching public catalog record was found:", item.content_id);
+      }
       return;
     }
     const row = rows[0];
+    if (typeof row.updated_at !== "string" || !Number.isFinite(Date.parse(row.updated_at))) {
+      console.warn("[social-publishing] YouTube catalog row has no valid updated_at; refusing an unversioned catalog update:", item.content_id);
+      return;
+    }
     if (row.youtube_id && row.youtube_id !== youtubeId) {
       console.error("[social-publishing] YouTube catalog reconciliation stopped: existing YouTube ID differs from the confirmed platform result:", item.content_id);
       return;
@@ -780,9 +788,8 @@ async function syncYouTubeVideoReferenceToCatalog(
         },
       } : {}),
     };
-    const expectedUpdatedAt = row.updated_at;
     const query = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
-      (expectedUpdatedAt ? "&updated_at=eq." + encodeURIComponent(expectedUpdatedAt) : "");
+      "&updated_at=eq." + encodeURIComponent(row.updated_at);
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(query, {
       method: "PATCH",
       headers: { Prefer: "return=representation" },

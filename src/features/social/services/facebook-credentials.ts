@@ -79,6 +79,15 @@ export function isMissingFacebookReelsCooldownColumnError(error: unknown): boole
   );
 }
 
+export function buildFacebookCredentialValidationFilter(
+  credential: Pick<StoredFacebookCredential, "page_id" | "updated_at">,
+): string | null {
+  const pageId = credential.page_id.trim();
+  const updatedAt = credential.updated_at?.trim() ?? "";
+  if (!pageId || !updatedAt || !Number.isFinite(Date.parse(updatedAt))) return null;
+  return `platform=eq.facebook&page_id=eq.${encodeURIComponent(pageId)}&updated_at=eq.${encodeURIComponent(updatedAt)}`;
+}
+
 export async function readStoredFacebookCredential(
   request: FacebookCredentialRequest = supabaseServerAdminRequest,
 ): Promise<StoredFacebookCredential | null> {
@@ -94,10 +103,16 @@ export async function readStoredFacebookCredential(
     const legacyRows = await request<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
       `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
     );
-    const row = Array.isArray(legacyRows) ? legacyRows[0] : null;
+    if (!Array.isArray(legacyRows)) {
+      throw new Error("Legacy Facebook credential query returned an invalid row set.");
+    }
+    const row = legacyRows[0] ?? null;
     return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
   }
-  return Array.isArray(rows) ? rows[0] ?? null : null;
+  if (!Array.isArray(rows)) {
+    throw new Error("Facebook credential query returned an invalid row set.");
+  }
+  return rows[0] ?? null;
 }
 
 export async function getFacebookReelsNextAllowedAt(): Promise<string | null> {
@@ -206,8 +221,10 @@ async function persistValidation(
   code: string | null,
 ) {
   try {
+    const filter = buildFacebookCredentialValidationFilter(credential);
+    if (!filter) return;
     await supabaseServerAdminRequest(
-      "/rest/v1/social_platform_credentials?platform=eq.facebook",
+      `/rest/v1/social_platform_credentials?${filter}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
