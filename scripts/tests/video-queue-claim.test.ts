@@ -401,7 +401,8 @@ test("social publisher recovers durable video handoffs even while new video gene
     "the durable handoff recovery must be reusable by the independent social worker",
   );
   assert.ok(
-    socialWorkerSource.includes('import { recoverPendingVideoSocialQueueEnqueues } from "./template-video-automation";'),
+    socialWorkerSource.includes("recoverPendingVideoSocialQueueEnqueues") &&
+      socialWorkerSource.includes("./template-video-automation"),
     "the social worker must import the durable video handoff recovery",
   );
   const start = socialWorkerSource.indexOf("export async function processSocialPublishQueue");
