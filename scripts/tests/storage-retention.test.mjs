@@ -443,6 +443,11 @@ assert.ok(
   "the preflight must parse the active queue and request UPDATE statements",
 );
 assert.ok(
+  retentionRpcMigration.includes("regexp_count(queue_update[1]") &&
+    retentionRpcMigration.includes("regexp_count(request_update[1]"),
+  "the preflight must reject unexpected UPDATE SET columns, not only playback-URL assignments",
+);
+assert.ok(
   retentionRpcMigration.includes("queue_update[1] !~*") &&
     retentionRpcMigration.includes("request_update[1] !~*"),
   "the preflight must reject playback-URL assignments in both UPDATE SET clauses",

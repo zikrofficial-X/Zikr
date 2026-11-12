@@ -457,6 +457,74 @@ if (!extraWriteRejected) {
 }
 }
 
+
+if (failed === 0) {
+  // A playback-preserving RPC can still be unsafe if it changes queue/request
+  // state while recording retention metadata. The preflight must allow only
+  // metadata/content plus updated_at in the two UPDATE SET clauses.
+  await db.exec("BEGIN");
+  let extraColumnRejected = false;
+  try {
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
+        p_queue_id uuid,
+        p_request_id uuid,
+        p_expected_url text,
+        p_retention jsonb,
+        p_finalize boolean DEFAULT false
+      )
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY INVOKER
+      SET search_path = ''
+      AS $unsafe$
+      BEGIN
+        IF p_finalize IS DISTINCT FROM (p_retention->>'state' = 'purged') THEN
+          RAISE EXCEPTION 'Invalid retention finalization state';
+        END IF;
+        IF p_retention->>'bucket' IS DISTINCT FROM 'videos' THEN
+          RAISE EXCEPTION 'Invalid retention bucket';
+        END IF;
+
+        UPDATE public.social_publish_queue
+        SET metadata = coalesce(metadata, '{}'::jsonb)
+              || jsonb_build_object('storageRetention', p_retention),
+            status = 'failed',
+            updated_at = now()
+        WHERE id = p_queue_id
+          AND content_id = p_request_id::text
+          AND status = 'published'
+          AND video_url = p_expected_url
+          AND metadata->'storageRetention'->>'path' = p_retention->>'path';
+
+        UPDATE public.video_generation_requests
+        SET content = coalesce(content, '{}'::jsonb)
+              || jsonb_build_object('storageRetention', p_retention),
+            status = 'failed',
+            updated_at = now()
+        WHERE id = p_request_id
+          AND status = 'completed'
+          AND video_url = p_expected_url
+          AND content->'storageRetention'->>'path' = p_retention->>'path';
+      END;
+      $unsafe$;
+    `);
+    const extraColumnContract = await db.query(
+      "SELECT public.video_storage_retention_contract_ready() AS ready",
+    );
+    extraColumnRejected = extraColumnContract.rows[0]?.ready === false;
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+
+  if (!extraColumnRejected) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an unexpected status assignment.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_EXTRA_COLUMN_ASSIGNMENT");
+  }
+}
+
 const res = await db.query(`
   SELECT c.relname AS index, t.relname AS table
   FROM pg_index i

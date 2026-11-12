@@ -145,6 +145,8 @@ BEGIN
     ) = 0
     AND queue_update[1] ~* '\mmetadata\M\s*='
     AND queue_update[1] !~* '\mvideo_url\M\s*='
+    AND pg_catalog.regexp_count(queue_update[1], '(^|,)\s*[a-z_]+\s*=', 1, 'i') = 2
+    AND queue_update[1] ~* ',\s*updated_at\s*=\s*now\(\)\s*$'
     AND queue_update[2] ~* '\mid\M\s*=\s*p_queue_id'
     AND queue_update[2] ~* '\mcontent_id\M\s*=\s*p_request_id::text'
     AND queue_update[2] ~* '\mstatus\M\s*=\s*''published'''
@@ -152,6 +154,8 @@ BEGIN
     AND queue_update[2] ~* 'metadata->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
     AND request_update[1] ~* '\mcontent\M\s*='
     AND request_update[1] !~* '\mvideo_url\M\s*='
+    AND pg_catalog.regexp_count(request_update[1], '(^|,)\s*[a-z_]+\s*=', 1, 'i') = 2
+    AND request_update[1] ~* ',\s*updated_at\s*=\s*now\(\)\s*$'
     AND request_update[2] ~* '\mid\M\s*=\s*p_request_id'
     AND request_update[2] ~* '\mstatus\M\s*=\s*''completed'''
     AND request_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
