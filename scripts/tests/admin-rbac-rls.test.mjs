@@ -385,6 +385,26 @@ assert.match(videoVisualsPage, /hasAdminPermission\(admin\.role, "system\.manage
 
 
 assert.ok(
+const saveVideoAutomationAction = systemActions.match(
+  /export async function saveVideoAutomationSettingAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+const runVideoAutomationAction = systemActions.match(
+  /export async function requestVideoAutomationRunAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+for (const [name, action] of [
+  ["video automation settings", saveVideoAutomationAction],
+  ["video automation run-now", runVideoAutomationAction],
+]) {
+  const stepUpPosition = action.indexOf('requireAdminStepUp("system.manage", "/admin/automation")');
+  const firstMutationPosition = action.indexOf("supabaseServerAdminRequest(");
+  assert.ok(stepUpPosition >= 0 && firstMutationPosition > stepUpPosition, name + " must complete configured MFA step-up before any database mutation");
+  assert.doesNotMatch(action, /requireAdminPermission\("system\.manage"\)/, name + " must not bypass the destructive-action MFA policy");
+}
+assert.ok(
+  runVideoAutomationAction.indexOf("requireAdminStepUp(") < runVideoAutomationAction.indexOf('dispatchGitHubWorkflow("generate-ai-video.yml"'),
+  "run-now must step up before dispatching generation that may auto-publish",
+);
+
   rlsEventTriggerMigration.includes("to_regprocedure('public.rls_auto_enable()')") &&
     rlsEventTriggerMigration.includes(
       "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",

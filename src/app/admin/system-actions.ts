@@ -60,7 +60,7 @@ export async function saveAdminSettingAction(formData: FormData) {
 }
 
 export async function saveVideoAutomationSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("system.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/automation");
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
 
@@ -139,7 +139,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 }
 
 export async function requestVideoAutomationRunAction() {
-  const profile = await requireAdminPermission("system.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/automation");
   const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
   ).catch(() => []);
