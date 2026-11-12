@@ -216,6 +216,65 @@ GROUP BY to_char(now(), 'YYYY-MM');
 await db.exec(stubs);
 console.log('Supabase stubs installed');
 
+// Recreate the production non-DML ACL baseline before replaying migrations.
+// The live project currently has these browser-role grants on existing public
+// tables and in both owners' public-schema default ACLs. The final hardening
+// migration must remove them without relying on an empty PGlite starting state.
+await db.exec(`
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES
+    TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES
+    TO PUBLIC, anon, authenticated;
+
+  CREATE TABLE public.__audit_existing_non_dml_privilege_probe (
+    id integer PRIMARY KEY
+  );
+  GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+    ON TABLE public.__audit_existing_non_dml_privilege_probe
+    TO PUBLIC, anon, authenticated;
+
+  SET ROLE supabase_admin;
+  CREATE TABLE public.__audit_supabase_admin_non_dml_privilege_probe (
+    id integer PRIMARY KEY
+  );
+  RESET ROLE;
+`);
+
+const seededNonDmlPrivileges = await db.query(`
+  SELECT count(*) AS grant_count
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+  CROSS JOIN unnest(ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN']::text[]) AS p(privilege)
+  WHERE n.nspname = 'public'
+    AND c.relname IN (
+      '__audit_existing_non_dml_privilege_probe',
+      '__audit_supabase_admin_non_dml_privilege_probe'
+    )
+    AND has_table_privilege(r.role_name, c.oid, p.privilege)
+`);
+if (Number(seededNonDmlPrivileges.rows[0]?.grant_count ?? 0) !== 16) {
+  throw new Error(
+    "CLIENT_NON_DML_BASELINE_SETUP_FAILED: expected 16 browser-role table grants before migration replay.",
+  );
+}
+
+const seededDefaultAclOwners = await db.query(`
+  SELECT count(DISTINCT d.defaclrole) AS owner_count
+  FROM pg_default_acl d
+  JOIN pg_namespace n ON n.oid = d.defaclnamespace
+  WHERE n.nspname = 'public'
+    AND d.defaclobjtype = 'r'
+`);
+if (Number(seededDefaultAclOwners.rows[0]?.owner_count ?? 0) < 2) {
+  throw new Error(
+    "CLIENT_NON_DML_DEFAULT_ACL_BASELINE_SETUP_FAILED: expected postgres and supabase_admin public defaults.",
+  );
+}
+console.log("CLIENT_NON_DML_BASELINE_SEEDED: existing tables and both owner default ACLs contain browser-role grants.");
+
 const versions = new Map();
 const duplicateVersions = new Set();
 const activePolicies = new Map();
