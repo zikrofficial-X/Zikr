@@ -166,6 +166,11 @@ const providerCallPosition = socialPublisherSource.indexOf("const results = awai
 assert.ok(inFlightMarkerPosition >= 0 && providerCallPosition > inFlightMarkerPosition, "the durable in-flight marker must be written before any provider call");
 assert.match(socialPublisherSource, /buildStaleSocialPublishRecoveryMetadata/, "stale recovery must convert interrupted calls into manual reconciliation");
 assert.match(socialPublisherSource, /Failed to recover stale social publish items; refusing to continue with an incomplete queue state/, "stale recovery failures must fail the job instead of silently skipping ambiguous rows");
+assert.match(
+  socialPublisherSource,
+  /resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/,
+  "queue selection and stale recovery must use the same validated publishing cutoff as Facebook auth-block recovery",
+);
 
 
 const metadata = {
