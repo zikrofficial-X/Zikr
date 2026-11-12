@@ -22,6 +22,7 @@ const facebookProfileIntegration = read("src/features/social/integrations/facebo
 const facebookProfileSyncPolicy = read("src/features/social/services/social-insights-sync-status.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
+const socialQueueMetadataService = read("src/features/social/services/social-queue-metadata.ts");
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoPublishApproval = read("src/features/videos/services/video-publish-approval.ts");

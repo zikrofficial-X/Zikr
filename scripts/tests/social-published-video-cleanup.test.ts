@@ -18,7 +18,6 @@ assert.equal(shouldRetryPublishedVideoCleanup({ stagingCleanupDeferred: true }),
 assert.equal(shouldRetryPublishedVideoCleanup({ stagingCleanupDeferred: true, videoCleanupPending: false }), false);
 assert.equal(shouldRetryPublishedVideoCleanup({ stagingCleanupDeferred: true, videoCleanupPending: true }), true, "explicitly pending cleanup must be retried");
 
-console.log("Published video cleanup idempotency checks passed.");
 
 assert.equal(
   buildSocialQueueMetadataCasFilter(
@@ -127,7 +126,6 @@ assert.equal(
   "a queue row that is no longer published or no longer matches its media URL must not be overwritten",
 );
 
-console.log("Published social queue metadata compare-and-set checks passed.");
 
 
 
@@ -149,3 +147,6 @@ assert.equal(
   "or=(metadata->>stagingCleanupDeferred.neq.true,metadata->>stagingCleanupDeferred.is.null,metadata->>videoCleanupPending.eq.true)",
   "cleanup polling must filter retryable rows before applying its page limit so already-deferred rows cannot starve later items",
 );
+
+console.log("Published video cleanup idempotency checks passed.");
+console.log("Published social queue metadata compare-and-set checks passed.");
