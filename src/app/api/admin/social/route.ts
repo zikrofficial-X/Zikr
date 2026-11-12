@@ -501,41 +501,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }
     if (action === "adopt_server_facebook_token") {
-      // No token is accepted from the browser. The server-only Vercel value is validated,
-      // stored only after verification, and then old auth-blocked queue entries are released.
+      // No token is accepted from the browser. Validate and store the server-only Vercel value;
+      // queue recovery remains a separate explicit action with confirmation and MFA.
       const adopted = await adoptServerConfiguredFacebookPageToken();
-      let released = 0;
-      let queueUpdateFailed = false;
-      try {
-        released = await unblockFacebookAuthBlockedQueue();
-      } catch {
-        queueUpdateFailed = true;
-      }
-
-      let workerDispatched = false;
-      if (released > 0) {
-        try {
-          await triggerSocialWorker();
-          workerDispatched = true;
-        } catch {
-          // The scheduled publisher remains the fallback if manual dispatch is unavailable.
-        }
-      }
-
       const health = await getFacebookPageConnectionHealth();
       await recordAdminAuditEvent({
         action: "social.facebook.token_adopt",
         permission: "social.publish",
-        resourceType: "social_publish_queue",
-        metadata: { released, queueUpdateFailed, workerDispatched, pageName: adopted.pageName },
+        resourceType: "facebook_page",
+        resourceId: adopted.pageId,
+        metadata: {
+          pageName: adopted.pageName,
+          queueRecoveryRequiresExplicitPublishStepUp: true,
+        },
       });
       return NextResponse.json({
         ok: true,
         adopted: true,
         pageName: adopted.pageName,
-        released,
-        queueUpdateFailed,
-        workerDispatched,
         health,
       }, { headers: { "Cache-Control": "no-store" } });
     }
