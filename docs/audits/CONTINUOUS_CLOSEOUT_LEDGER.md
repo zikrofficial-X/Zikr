@@ -1131,3 +1131,47 @@ No content generation, Gemini request, social publication, production database m
 - Continue the unreviewed paths in the refreshed overlay, including the remaining admin/API/RLS/auth/OAuth/Kids/media/mobile/SEO/CI/CD consumers. Keep all unread files `REVIEW_REQUIRED`.
 - Obtain CODEOWNERS approval; have the owner review the 11 pending migrations and apply them through the approved migration procedure; supply Apple identifiers and complete device acceptance; investigate the main-only content-sync failure and the historical runtime-error clusters.
 - Only after those gates are satisfied: merge safely, deploy through the manual Vercel release workflow, verify READY on the merged SHA, and run production smoke checks against that deployed SHA. The audit remains OPEN.
+
+
+## 2026-11-12T16:57Z — PR #320 source review continuation and read-only Supabase ACL verification
+
+### Exact repository and CI checkpoint
+
+- Repository `zikrofficial-X/Zikr`; PR #320; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Source-code head: `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. The branch is 923 commits ahead, 0 behind; 284 changed files (98 added, 186 modified, 0 removed). Recursive inventory: 2,256 entries (1,760 files, 496 directories); no deleted paths.
+- GitHub ZIKR Quality Gate run `43262109824` / job `131335866393` completed SUCCESS on PR merge result `453eb2d072612393dcaaf40e78d6848e51dfe62d`, which combines base `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` and source head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. The job log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, production build, and `QUALITY_GATE=PASSED_FULL`.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs` report SUCCESS on source head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. The subsequent documentation-only reconciliation commit must receive its own exact-head checks.
+- PR #320 is open and mergeable but unmerged. It has zero submitted reviews and zero review threads. CODEOWNERS assigns all paths to `@Zikrmediaofficial`; connected repository permission is null.
+
+### Review batch: native/web advertising isolation
+
+- Read the complete contents and relevant import/consumer paths for 14 PR files: `public/sw.js`, `scripts/tests/service-worker-ads-scope.test.ts`, `scripts/verify-adsense-readiness.mjs`, `scripts/verify-consent-mode.mjs`, `scripts/verify-google-search-console.mjs`, `scripts/verify-mobile-ads-free.mjs`, `src/app/layout.tsx`, `src/components/layout/adsense-slot.tsx`, `src/components/layout/deferred-runtime.tsx`, `src/components/layout/runtime-effects.tsx`, `src/components/layout/service-worker-register.tsx`, `src/components/layout/web-advertising-runtime.tsx`, `src/lib/ads/runtime-policy.ts`, and `src/lib/site.ts`. The consumer trace additionally read `src/components/layout/adsense.tsx` and `src/app/articles/[slug]/page.tsx`.
+- Findings: no reproducible defect in this batch. The root layout no longer emits AdSense publisher metadata or Consent Mode globals; native and non-canonical-origin guards precede all web ad/analytics injection; the service-worker URL policy distinguishes native, canonical production, and preview; native activation purges legacy cached HTML containing ad markup; AdSense script loading and slot rendering are limited to canonical web article routes. No source-code repair was required.
+- The exact PR merge-result gate emitted `Service-worker advertising scope contract passed`, `MOBILE_ADS_FREE_CHECK_PASSED`, `ADSENSE_SOURCE_CHECKS_PASSED`, `GOOGLE_SEARCH_CONSOLE_VERIFICATION_PASSED`, and `Consent-mode contract passed`.
+- The AdSense source verifier explicitly cannot establish publisher approval, live ad serving, Funding Choices/CMP configuration, or Search Console account status. The canonical origin is still a shared `.vercel.app` hostname; account-level/custom-domain review remains owner acceptance.
+- Fourteen corresponding overlay rows were moved from `REVIEW_REQUIRED` to `CONTENT_READ_TESTED_PASS` with exact branch blob SHAs and UTF-8 byte counts. The overlay also records the video-retention RPC migration as `FIXED_TESTED_PENDING_LIVE_APPLY` after its SQL and PostgreSQL 17 contract were read and passed.
+
+### Supabase migration and live ACL evidence
+
+- Read-only migration listing: 418 remote versions, latest applied `20261110170000`. Eleven branch-only migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, and `20261112103200`.
+- A read-only `pg_catalog.has_table_privilege` query on PostgreSQL 17 confirmed the live non-DML privilege gap: `anon` has MAINTAIN on 46 public tables; `authenticated` has MAINTAIN on 75 and REFERENCES/TRIGGER/TRUNCATE on 74 tables each. `service_role` retains those elevated privileges on 92 tables as intended.
+- A read-only `pg_default_acl` query found browser-role non-DML defaults for both `postgres` and `supabase_admin` in the public schema; no matching global default ACL row was returned. Migration `20261112103200_revoke_client_non_dml_table_privileges.sql` revokes TRUNCATE/REFERENCES/TRIGGER/MAINTAIN from PUBLIC/anon/authenticated on existing public tables and from the two public-schema default ACL owners, while leaving ordinary DML and service_role grants intact.
+- `scripts/validate-migrations.mjs` seeds existing-table and default-ACL browser grants, replays the full chain, checks both owner roles, and rejects residual client non-DML grants. `scripts/verify-security-hardening.mjs` checks the migration contract. The full gate passed. The migration is not applied; the live ACL gap remains open until the owner-approved application.
+- Migration `20261111153000_harden_video_storage_retention_rpc.sql` was read with its retention-contract validator. The full gate passed the PostgreSQL 17 storage-retention RPC contract. It remains unapplied and is now classified `FIXED_TESTED_PENDING_LIVE_APPLY`, not fully closed.
+
+### Production baseline and safety
+
+- Vercel production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Read-only `GET /api/health` returned HTTP 200 and reported the main SHA. Production `/.well-known/apple-app-site-association` returned HTTP 200 but has empty `applinks.details` and `webcredentials.apps`; owner-supplied Apple identifiers and physical iOS acceptance remain necessary.
+- Main's separate `ci/circleci: english-content-sync` status remains FAILURE. It was not rerun; its job may trigger content synchronization/generation and must be diagnosed from existing logs first.
+- No content generation, Gemini request, social publication, push notification, production database mutation, migration application, Storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment occurred.
+
+### Remaining work
+
+1. Continue the 213 PR `REVIEW_REQUIRED` paths and 13 `CONTENT_READ_PENDING_TRACE` paths, plus the 1,525 main-baseline review backlog; do not infer closure from CI.
+2. Obtain CODEOWNERS approval from `@Zikrmediaofficial`.
+3. Owner-review and apply the 11 pending migrations through the approved migration procedure.
+4. Complete authenticated admin and physical Android/iOS deep-link, OAuth, notification, and signing acceptance; supply the Apple app/team identifiers needed for AASA.
+5. Diagnose the main-only `english-content-sync` failure without rerunning content generation.
+6. After all reviewable defects and approvals close, merge safely, deploy through the manual Vercel workflow, verify READY at the merged SHA, and run production smoke checks.
+
+Audit status remains OPEN; no project-wide error-free or closed certification is made.

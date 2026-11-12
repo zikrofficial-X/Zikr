@@ -6,16 +6,17 @@
 - PR: [#320](https://github.com/zikrofficial-X/Zikr/pull/320)
 - Branch: `audit/zikr-kids-daily-priority-20261110`
 - Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
-- Source code snapshot head: `94b15fdc310efc35d68862752e0234c0e656d252` (code checkpoint); current documentation branch head before this overlay refresh: `26808946ce9aac4e9f5ad8c36c901d834b529e88`.
-- Full PR comparison at current branch head: 921 commits ahead, 0 behind; 284 changed files (98 added, 186 modified, 0 removed).
+- Source-code checkpoint: `4bf2a0ae9257699240d5a99460e603abcf62ff4a`; branch head immediately before this documentation reconciliation: `4bf2a0ae9257699240d5a99460e603abcf62ff4a` (the following commit changes audit records only).
+- Full PR comparison at the source-code checkpoint: 923 commits ahead, 0 behind; 284 changed files (98 added, 186 modified, 0 removed).
 - Recursive Git tree inventory: main = 2,154 entries (1,662 files, 492 directories); branch = 2,256 entries (1,760 files, 496 directories). The current counts reconcile from the complete main manifest and PR comparison; no paths were deleted.
 - The overlay contains 283 rows because it excludes its own file (one of the 98 added paths); its table delta is 97 added and 186 modified rows.
 - Main-baseline manifest: 2,153 records (1,661 blobs and 492 directories), pinned to `main@c4560d9`. The PR-branch copy has the same 2,153-path set; its only three record-value differences are null `docs` / `docs/audits` directory SHAs to avoid self-reference and a corrected main-ledger blob row (`31c64dc29e01e9d92a2a2ae82ae103e8d6521076`, 99,259 bytes). The main copy still carries the older ledger row (`057c5b9ffb16691abfc6e245e583c908a0dbe73d`, 93,248 bytes).
-- Exact code-head verification: GitHub ZIKR Quality Gate run `43254527275` / job `131309034626` passed full on `94b15fdc310efc35d68862752e0234c0e656d252`; the log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all passed on that code head. Documentation commits `9a5719babe647fc073da9c66b7e496db13299a65`, `305bdc91abf03864dbc940ee3cff6c12ea56fa61`, and `26808946ce9aac4e9f5ad8c36c901d834b529e88` were added afterward and require a new exact-head full gate.
+- Latest PR merge-result verification: GitHub ZIKR Quality Gate run `43262109824` / job `131335866393` passed on synthetic merge commit `453eb2d072612393dcaaf40e78d6848e51dfe62d` (base `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` plus source head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`). The log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all passed on source head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. The documentation reconciliation commit that follows requires a new exact-head gate.
 - Since prior source checkpoint `9b887bc7b092ff2d0a0881853adc0088fdb412a6`, 75 commits touched 59 paths (8 added, 51 modified), including the overlay itself. Excluding the overlay, 58 paths (8 added, 50 modified) were re-indexed with current blob SHAs and byte sizes. They remain `REVIEW_REQUIRED` unless separately evidenced below.
-- Status counts: `CONTENT_READ_PENDING_TRACE` 13; `CONTENT_READ_TESTED_PASS` 30; `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` 2; `FIXED_TESTED_PENDING_LIVE_APPLY` 10; `REVIEW_REQUIRED` 228.
+- Status counts after this review batch: `CONTENT_READ_PENDING_TRACE` 13; `CONTENT_READ_TESTED_PASS` 44; `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` 2; `FIXED_TESTED_PENDING_LIVE_APPLY` 11; `REVIEW_REQUIRED` 213.
+- Latest review batch details: the root layout has no server-rendered AdSense/Consent Mode globals; native and exact-origin guards precede web tag injection; native service-worker activation purges legacy ad-marked HTML; the article page is the explicit AdSense slot consumer. Focused full-gate outputs: `Service-worker advertising scope contract passed`, `MOBILE_ADS_FREE_CHECK_PASSED`, `ADSENSE_SOURCE_CHECKS_PASSED`, `GOOGLE_SEARCH_CONSOLE_VERIFICATION_PASSED`, and `Consent-mode contract passed`. Account approval, live ad serving, Funding Choices/CMP, Search Console account state, and physical device acceptance remain unverified.
 - Status semantics: `REVIEW_REQUIRED` means the complete source/import/consumer/runtime trace is still open. `CONTENT_READ_TESTED_PASS` means the file was read and its focused test ran in the full gate. `FIXED_TESTED_PENDING_LIVE_APPLY` means CI passed but production migration application remains owner-gated. `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE` means code/test checks passed but production/device acceptance remains. `CONTENT_READ_PENDING_TRACE` means source was inspected but its complete consumer trace remains open.
-- This overlay is reconciled to the current PR documentation head `26808946ce9aac4e9f5ad8c36c901d834b529e88` and code checkpoint `94b15fdc310efc35d68862752e0234c0e656d252`. The overlay refresh itself creates another documentation-only commit; no exact-head CI result exists for these documentation descendants yet. The overlay does not claim repository-wide completion.
+- Since source checkpoint `4bf2a0ae9257699240d5a99460e603abcf62ff4a`, the latest review batch read 14 PR paths across the native/web advertising runtime, service-worker selection/activation, AdSense article-slot consumer, and associated verification contracts. The seven code/test paths changed since the prior source checkpoint were re-read at their current blob SHAs. No reproducible defect was found in this batch. The 14 rows are now `CONTENT_READ_TESTED_PASS`; the video-retention RPC migration is now `FIXED_TESTED_PENDING_LIVE_APPLY` after its SQL and PostgreSQL 17 contract were read and passed. This overlay is reconciled to source checkpoint `4bf2a0ae9257699240d5a99460e603abcf62ff4a`; the next commit changes audit records only and requires its own exact-head checks. The overlay does not claim repository-wide completion.
 
 ## Changed-file inventory
 
@@ -32,8 +33,8 @@
 | `android/app/src/main/AndroidManifest.xml` | MODIFIED | `4090657e7b7de1b16c0d653a0663e50d6846bcbb` | 3457 | REVIEW_REQUIRED |
 | `capacitor.config.json` | MODIFIED | `a7e77c6caf9a31a90a590c78b0a4ad99a846db0f` | 2029 | REVIEW_REQUIRED |
 | `docs/admin/ADMIN_API_PERMISSION_MATRIX_2026-11-06.md` | MODIFIED | `2703ef6f06c6e1b60b15cf15e421478572a08146` | 6173 | CONTENT_READ_PENDING_TRACE |
-| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `b6b714281c8ec7b6f5723fc432c537532f7679b6` | 180103 | REVIEW_REQUIRED |
-| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `87b10607765cbc7bd76fe5dc534d3774a7fe6546` | 672441 | REVIEW_REQUIRED |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `c540ddb47031d054d31693a6b4e90d07d8d9ed7d` | 187206 | REVIEW_REQUIRED |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `24acf8045685703856d034b1f19e2037f729d53c` | 672657 | REVIEW_REQUIRED |
 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | MODIFIED | `ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2` | 311031 | CONTENT_READ_TESTED_PASS |
 | `docs/background-jobs.md` | MODIFIED | `a03f31cd2498a8adf3eeef89574b72a1bca97a52` | 11119 | REVIEW_REQUIRED |
 | `docs/circleci-supabase-environment.md` | MODIFIED | `1dabaf72209c8faf7bdd8d1d0c245e9eeb2901a3` | 7248 | REVIEW_REQUIRED |
@@ -48,11 +49,11 @@
 | `mobile/capacitor-dependencies.json` | MODIFIED | `dc9b7955207c96b7aadb8893cd23e9c67abe56e2` | 809 | REVIEW_REQUIRED |
 | `mobile/README.md` | MODIFIED | `fc3584fbb947a09a8c5ae9ef0e34363a1a2e8fa2` | 3561 | REVIEW_REQUIRED |
 | `package.json` | MODIFIED | `d44c877611056a44c6d7bb09cba79cedbd3f819a` | 17375 | REVIEW_REQUIRED |
-| `PROJECT_STATUS.md` | MODIFIED | `7d2a77ed776276455ebe4d4c8bcd1b7037a2ae41` | 135885 | REVIEW_REQUIRED |
+| `PROJECT_STATUS.md` | MODIFIED | `b787dcd4b65e61d922223edd4159eab4cb7f5d0f` | 143310 | REVIEW_REQUIRED |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | `ef1cad9d7db75ee6677edc9dba3387debb95695a` | 30421 | REVIEW_REQUIRED |
 | `public/offline-content/v1/kids.json` | MODIFIED | `dc32c0bdbd722f0f920d7db2a690074de0194fcc` | 52752 | REVIEW_REQUIRED |
 | `public/offline-content/v1/manifest.json` | MODIFIED | `9d95f4df6b9e85227aed64e171a207a89da787ad` | 8419 | REVIEW_REQUIRED |
-| `public/sw.js` | MODIFIED | `ab231576712d15811e84285be9ed4b38eca20d09` | 20234 | REVIEW_REQUIRED |
+| `public/sw.js` | MODIFIED | `ab231576712d15811e84285be9ed4b38eca20d09` | 20234 | CONTENT_READ_TESTED_PASS |
 | `scripts/cleanup-supabase-storage.mjs` | MODIFIED | `d95e8073cf771621a716aa7bd2ffd592d8b2c04d` | 46750 | REVIEW_REQUIRED |
 | `scripts/export-offline-content.mjs` | MODIFIED | `bae5e6a4e1892cc7490e4425953a839c8f9e9998` | 10456 | REVIEW_REQUIRED |
 | `scripts/jobs/audit-video-media.ts` | MODIFIED | `11c14d7b63897b7bba3c24c7e5823213f92c32f6` | 13283 | REVIEW_REQUIRED |
@@ -110,7 +111,7 @@
 | `scripts/tests/prophet-sections-rls.integration.sh` | ADDED | `f00aeabb64dd30128efa74c49d7c0b19e7a93dd6` | 1323 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/prophet-sections-rls.integration.sql` | ADDED | `41729cbbf33526905c4f95e90b53743ed1b0f4bb` | 1119 | REVIEW_REQUIRED |
 | `scripts/tests/safe-redirect.test.ts` | ADDED | `4c35d8d5ce880dc4bd75f1c45622e7beb5304df0` | 5117 | REVIEW_REQUIRED |
-| `scripts/tests/service-worker-ads-scope.test.ts` | ADDED | `001bdcd4a9b4b8e717f9fdaecef9e1c8da0d4c32` | 5571 | REVIEW_REQUIRED |
+| `scripts/tests/service-worker-ads-scope.test.ts` | ADDED | `76a8d632a2b3dac7da2ab155cdd32cbc89a9e1fe` | 7398 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/social-deletion.test.ts` | MODIFIED | `023a4556f1b85249f117efe3bf34415c938e97ea` | 11015 | REVIEW_REQUIRED |
 | `scripts/tests/social-insights-worker-status.test.ts` | ADDED | `1651deeb245aafef23d0cfc656a80480f72be4a0` | 1901 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/social-platform-isolation.test.ts` | MODIFIED | `fb35bcf5b35c907f16f6932e032a8d3178d2d585` | 31388 | REVIEW_REQUIRED |
@@ -139,15 +140,15 @@
 | `scripts/verify-admin-architecture.mjs` | MODIFIED | `9a10c6acce503e0dacbd05bb7a86b7aa434e3f12` | 12537 | REVIEW_REQUIRED |
 | `scripts/verify-admin-governance.mjs` | MODIFIED | `b5302d3609e9bba0c4ff946d6fa7859586f87296` | 17130 | REVIEW_REQUIRED |
 | `scripts/verify-admin-video-factory.mjs` | MODIFIED | `803be2c1d3313435c8db110cde19647e59bfd6df` | 20947 | REVIEW_REQUIRED |
-| `scripts/verify-adsense-readiness.mjs` | MODIFIED | `c61dfd78243cdd382fa9ed8b9ce0ceb16aa812c3` | 9952 | REVIEW_REQUIRED |
+| `scripts/verify-adsense-readiness.mjs` | MODIFIED | `a75371e68af4b8c6bbf7a1daa15bdec26145ec34` | 11062 | CONTENT_READ_TESTED_PASS |
 | `scripts/verify-auth-config.mjs` | MODIFIED | `19aa13dfef18d104352cf25c2fee323060294952` | 6025 | REVIEW_REQUIRED |
 | `scripts/verify-ci-architecture.mjs` | MODIFIED | `c4279f505209fbc5253050465be3138e69b22ac3` | 34355 | REVIEW_REQUIRED |
-| `scripts/verify-consent-mode.mjs` | MODIFIED | `f0ef76ac1bbfae8a881ba6fa45847db30777befb` | 2716 | REVIEW_REQUIRED |
-| `scripts/verify-google-search-console.mjs` | MODIFIED | `037b80a6c4211b1fb3e704c2324b7ba59d152d78` | 5287 | REVIEW_REQUIRED |
+| `scripts/verify-consent-mode.mjs` | MODIFIED | `e8ae89328973818aabc7353efb2008505c7141d9` | 2978 | CONTENT_READ_TESTED_PASS |
+| `scripts/verify-google-search-console.mjs` | MODIFIED | `e66b1c88db77c6d7e79abb850f6327efeee05325` | 6022 | CONTENT_READ_TESTED_PASS |
 | `scripts/verify-information-architecture.mjs` | MODIFIED | `39668458402fa5f61a6378b2229e610ba21f8df6` | 9843 | REVIEW_REQUIRED |
 | `scripts/verify-kids-games-final.ts` | MODIFIED | `5c42f4f3245511c15d5aea3b18b14fc8810f6510` | 21683 | CONTENT_READ_TESTED_PASS |
 | `scripts/verify-kids-video-factory.mjs` | MODIFIED | `60d6e39ec8d7d81598317da26538d398061a4089` | 9297 | REVIEW_REQUIRED |
-| `scripts/verify-mobile-ads-free.mjs` | MODIFIED | `2cff6187a5e45a35a019fd2a4c917b5211d386b9` | 6914 | REVIEW_REQUIRED |
+| `scripts/verify-mobile-ads-free.mjs` | MODIFIED | `99ac7f69e4a814ab1e0e5162b6286c30e4a2870a` | 7783 | CONTENT_READ_TESTED_PASS |
 | `scripts/verify-mobile-readiness.mjs` | MODIFIED | `a7ee99616761cc12a6f1418d8dd2afe81e44a9c8` | 19420 | REVIEW_REQUIRED |
 | `scripts/verify-platform-routes.mjs` | MODIFIED | `2b1307bfafc59d68d176c218f1b316a9b750110c` | 7942 | CONTENT_READ_PENDING_TRACE |
 | `scripts/verify-production-smoke.mjs` | MODIFIED | `257ece88f3d030c9aea1fbfd5f3724a190863a1e` | 9789 | REVIEW_REQUIRED |
@@ -197,15 +198,15 @@
 | `src/app/kids/[slug]/page.tsx` | MODIFIED | `7380d14bdd0fda2af0cccf21d86add7a713a702a` | 23061 | CONTENT_READ_PENDING_TRACE |
 | `src/app/kids/page.tsx` | MODIFIED | `bd5d064d83d54a72aef865b9195879111e08cf1c` | 29795 | REVIEW_REQUIRED |
 | `src/app/kids/videos/[slug]/page.tsx` | MODIFIED | `acc3c01b7b7d26b3669fcec904ea9c2e18184bb9` | 5239 | REVIEW_REQUIRED |
-| `src/app/layout.tsx` | MODIFIED | `ae0eaae1562899213ced4f616563f1fde750caf8` | 7367 | REVIEW_REQUIRED |
+| `src/app/layout.tsx` | MODIFIED | `3eba8c320e3c3ffb541c161a810bbe25b378bd2a` | 6589 | CONTENT_READ_TESTED_PASS |
 | `src/app/sitemap.ts` | MODIFIED | `be73250d48aadca9f86681fef6e5c4dfb70270b4` | 7798 | REVIEW_REQUIRED |
-| `src/components/layout/adsense-slot.tsx` | MODIFIED | `3a3aa137c4d2fa91bbda8197e7e0f83d48210b51` | 2091 | REVIEW_REQUIRED |
-| `src/components/layout/deferred-runtime.tsx` | MODIFIED | `06cdaa10a5e804c1a197b89374911fbbc0203c64` | 2016 | REVIEW_REQUIRED |
+| `src/components/layout/adsense-slot.tsx` | MODIFIED | `3a3aa137c4d2fa91bbda8197e7e0f83d48210b51` | 2091 | CONTENT_READ_TESTED_PASS |
+| `src/components/layout/deferred-runtime.tsx` | MODIFIED | `06cdaa10a5e804c1a197b89374911fbbc0203c64` | 2016 | CONTENT_READ_TESTED_PASS |
 | `src/components/layout/native-capacitor-bridge.tsx` | MODIFIED | `f2b10ba7fc166f889a04f82033cb699919c1d4f3` | 13909 | REVIEW_REQUIRED |
 | `src/components/layout/native-google-oauth-handler.tsx` | MODIFIED | `e2a144048c8764ab7695a9462027a8415b3e4faf` | 4549 | REVIEW_REQUIRED |
-| `src/components/layout/runtime-effects.tsx` | MODIFIED | `1d358572133816df8d64b68c3b3809672145e264` | 1670 | REVIEW_REQUIRED |
-| `src/components/layout/service-worker-register.tsx` | MODIFIED | `7554c65516997dca85be95e07108bd3a86e97086` | 7130 | REVIEW_REQUIRED |
-| `src/components/layout/web-advertising-runtime.tsx` | MODIFIED | `a13f66ea8cce261834180bc7b5d8efd4fe21874c` | 5160 | REVIEW_REQUIRED |
+| `src/components/layout/runtime-effects.tsx` | MODIFIED | `1d358572133816df8d64b68c3b3809672145e264` | 1670 | CONTENT_READ_TESTED_PASS |
+| `src/components/layout/service-worker-register.tsx` | MODIFIED | `7554c65516997dca85be95e07108bd3a86e97086` | 7130 | CONTENT_READ_TESTED_PASS |
+| `src/components/layout/web-advertising-runtime.tsx` | MODIFIED | `a13f66ea8cce261834180bc7b5d8efd4fe21874c` | 5160 | CONTENT_READ_TESTED_PASS |
 | `src/features/admin/actions/users.ts` | MODIFIED | `4a3262fda9bc1f6e68dc05c79e6d8f492a15494e` | 1885 | REVIEW_REQUIRED |
 | `src/features/admin/components/cloudinary-image-upload-field.tsx` | MODIFIED | `20ca0ab2a8dd8c05da40953667b31c6e49ff1ea9` | 3503 | REVIEW_REQUIRED |
 | `src/features/admin/components/kids-content-manager.tsx` | MODIFIED | `1f7eb3d0a3c1d15b364f716862b1427b22bdb29b` | 13020 | REVIEW_REQUIRED |
@@ -273,7 +274,7 @@
 | `src/features/videos/services/video-media-url.ts` | ADDED | `1bee3a9b2ff103905c433696649982255d072873` | 2768 | REVIEW_REQUIRED |
 | `src/features/videos/services/video-publish-approval.ts` | MODIFIED | `075972030389d03b4d324532efb3908db9bf7a8c` | 9598 | REVIEW_REQUIRED |
 | `src/features/videos/services/video-queue-claim.ts` | ADDED | `a7008672cc6be6cc4193d791031da1c8a3d2f21f` | 7279 | CONTENT_READ_TESTED_PASS |
-| `src/lib/ads/runtime-policy.ts` | ADDED | `bc5983b510df01b78e6cb129d39fc45d5c7ccb4b` | 520 | REVIEW_REQUIRED |
+| `src/lib/ads/runtime-policy.ts` | ADDED | `bc5983b510df01b78e6cb129d39fc45d5c7ccb4b` | 520 | CONTENT_READ_TESTED_PASS |
 | `src/lib/async-serial-queue.ts` | ADDED | `edbf8e7ccfc685996f3901617f36b0f1eeed7f75` | 303 | REVIEW_REQUIRED |
 | `src/lib/auth-enhanced.ts` | MODIFIED | `a64b46b73b1c3e6b50195311b225ad7fc8500d93` | 4859 | REVIEW_REQUIRED |
 | `src/lib/offline-pack.ts` | MODIFIED | `2d3feee223b2d8457f7462b326a326f1f7523b64` | 22058 | REVIEW_REQUIRED |
@@ -282,7 +283,7 @@
 | `src/lib/request/bounded-json-body.ts` | ADDED | `7839bc6dffff5a3543804ddd5027a13b64794941` | 2356 | CONTENT_READ_TESTED_PASS |
 | `src/lib/request/client-address.ts` | ADDED | `849173b46f1d2a514528e69f8a225305ebcd80ce` | 505 | REVIEW_REQUIRED |
 | `src/lib/safe-redirect.ts` | ADDED | `77d04c3dcbbb269be022e9394871f83d25de9b2f` | 957 | REVIEW_REQUIRED |
-| `src/lib/site.ts` | MODIFIED | `315027458e621b963e9b014e6d2d49fa23115f17` | 10486 | REVIEW_REQUIRED |
+| `src/lib/site.ts` | MODIFIED | `315027458e621b963e9b014e6d2d49fa23115f17` | 10486 | CONTENT_READ_TESTED_PASS |
 | `src/lib/smartlink.ts` | MODIFIED | `41410a919a5e4dc07c5d759d4adfa6c3267f7901` | 518 | REVIEW_REQUIRED |
 | `src/lib/supabase/admin-rest.ts` | MODIFIED | `f337127210ee819cfc515a2dc7ced302cf24f24f` | 6474 | CONTENT_READ_PENDING_TRACE |
 | `src/lib/timezone.ts` | ADDED | `9092f78dcca95190b15712d00aa124c6be3de516` | 497 | REVIEW_REQUIRED |
@@ -301,7 +302,7 @@
 | `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql` | ADDED | `cd4ded8e43abf387d8a43570efbb1419bca0b1c7` | 892 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql` | ADDED | `7e34fab2d82f9041508d90a32f7eb4d1ece4d4a6` | 1505 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql` | ADDED | `ed8db98ead1ee9d4ca3e3bc0687f1d9fe57a9615` | 1040 | FIXED_TESTED_PENDING_LIVE_APPLY |
-| `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql` | ADDED | `f552ee2d6aa3f62af18366fc307e32e3e65f19cc` | 6925 | REVIEW_REQUIRED |
+| `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql` | ADDED | `f552ee2d6aa3f62af18366fc307e32e3e65f19cc` | 6925 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql` | ADDED | `f82ded75be503f24cdbf7ca2fab2a5421f0efb70` | 1328 | FIXED_TESTED_PENDING_LIVE_APPLY |
 | `supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql` | ADDED | `62aac500644bff871612b0fe0cc776611b589c77` | 898 | FIXED_TESTED_PENDING_LIVE_APPLY |
 

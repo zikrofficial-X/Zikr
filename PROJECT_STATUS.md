@@ -1,6 +1,37 @@
 # ZIKR — Project Status
 
-## Latest verified audit checkpoint — 2026-11-12
+## Latest verified audit checkpoint — 2026-11-12T16:57Z
+
+**State: IN PROGRESS.** PR #320 is open and unmerged. The audit branch has not been deployed.
+
+- **Repository / PR:** `zikrofficial-X/Zikr`, [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320).
+- **Branch / base:** `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Current source-code checkpoint:** `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. GitHub comparison at this checkpoint: 923 commits ahead, 0 behind; 284 changed files (98 added, 186 modified, 0 removed). Recursive branch inventory remains 2,256 entries (1,760 files, 496 directories); no paths were deleted. The 283-row PR overlay excludes itself.
+- **PR merge-result verification:** GitHub ZIKR Quality Gate run `43262109824`, job `131335866393`, passed on synthetic merge result `453eb2d072612393dcaaf40e78d6848e51dfe62d` (base `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` plus source head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`). The log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all passed on branch head `4bf2a0ae9257699240d5a99460e603abcf62ff4a`. This is the last code-bearing head; the documentation reconciliation commit that follows requires its own exact-head checks.
+- **Review batch — native/web advertising isolation:** read and traced 14 PR paths: `public/sw.js`, `scripts/tests/service-worker-ads-scope.test.ts`, `scripts/verify-adsense-readiness.mjs`, `scripts/verify-consent-mode.mjs`, `scripts/verify-google-search-console.mjs`, `scripts/verify-mobile-ads-free.mjs`, `src/app/layout.tsx`, `src/components/layout/adsense-slot.tsx`, `src/components/layout/deferred-runtime.tsx`, `src/components/layout/runtime-effects.tsx`, `src/components/layout/service-worker-register.tsx`, `src/components/layout/web-advertising-runtime.tsx`, `src/lib/ads/runtime-policy.ts`, and `src/lib/site.ts`. The consumer trace also read `src/components/layout/adsense.tsx` and `src/app/articles/[slug]/page.tsx`.
+- **Review result:** the server-rendered root layout contains no AdSense publisher metadata or Consent Mode globals; the web advertising runtime exits on native and non-canonical origins before injecting tags; service-worker registration selects distinct native/canonical-production/preview URLs; native worker activation removes legacy cached ad markup; AdSense slots and deferred script loading are restricted to canonical web article routes. The article page is the explicit slot consumer. No reproducible code defect was found in this batch, so no source-code change was made.
+- **Focused evidence in the full gate:** `Service-worker advertising scope contract passed`, `MOBILE_ADS_FREE_CHECK_PASSED`, `ADSENSE_SOURCE_CHECKS_PASSED`, `GOOGLE_SEARCH_CONSOLE_VERIFICATION_PASSED`, and `Consent-mode contract passed`. The overlay now marks 14 reviewed paths `CONTENT_READ_TESTED_PASS`. The AdSense verifier explicitly does not prove account approval, live ad serving, Funding Choices/CMP configuration, or Search Console account status; those remain owner-level acceptance.
+- **Video worker / queue lifecycle:** the previously recorded ID-only post-render write warning is superseded by the current lease heartbeat and row-version/CAS filters. The worker records a pending social handoff and the independent social worker has a recovery path. This targeted lifecycle finding is not a full module closeout; the worker, social consumers, and media-audit paths remain open in the overlay where not separately reviewed.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` has 418 remote migrations, latest applied `20261110170000`. Eleven branch-only migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, and `20261112103200`. Read-only PostgreSQL 17 ACL inspection found `anon` MAINTAIN on 46 public tables; `authenticated` MAINTAIN on 75 and REFERENCES/TRIGGER/TRUNCATE on 74 tables each. Public-schema default ACLs for `postgres` and `supabase_admin` also grant browser-role non-DML privileges. The branch migration `20261112103200` revokes those privileges for PUBLIC/anon/authenticated while preserving ordinary DML and service_role access; migration replay seeds existing-table and default-ACL grants and verifies their removal. No migration was applied. The separate video-retention RPC migration was read and its PostgreSQL 17 contract passed; it is now recorded as `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- **Production baseline:** Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Read-only `GET /api/health` returned HTTP 200 and reported that main SHA. The production iOS AASA endpoint returned HTTP 200 but still has empty `applinks.details` and `webcredentials.apps`; owner-provided Apple Team/App identifiers and physical iOS acceptance remain required. No audit-branch Preview or production deployment was created.
+- **Governance / independent CI:** PR #320 has zero submitted reviews and zero review threads; `.github/CODEOWNERS` assigns all paths to `@Zikrmediaofficial`, and the connected identity's repository permission is null. Main's separate scheduled CircleCI `english-content-sync` context remains FAILURE; it was not rerun because it may perform content/Gemini work.
+- **Review coverage:** the PR overlay now has 44 `CONTENT_READ_TESTED_PASS`, 13 `CONTENT_READ_PENDING_TRACE`, 2 `CONTENT_READ_TESTED_PENDING_LIVE_ACCEPTANCE`, 11 `FIXED_TESTED_PENDING_LIVE_APPLY`, and 213 `REVIEW_REQUIRED` rows. The main-baseline matrix remains 1,525 `REVIEW_REQUIRED` rows and zero closed modules. The 2,153-record repository manifest remains pinned to `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; it was not rewritten from the unmerged branch.
+- **Safety:** no content generation, Gemini request, social publication, push notification, production database mutation, migration application, Storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered.
+
+### Remaining work
+
+1. Continue source/import/consumer/runtime review for the 213 PR paths still `REVIEW_REQUIRED`, the 13 paths whose consumer trace remains pending, and the main-baseline review backlog.
+2. Obtain `@Zikrmediaofficial` CODEOWNERS review; the connected identity cannot provide it.
+3. Owner-review and apply the 11 pending migrations only through the approved migration procedure; the live non-DML ACL gap remains until then.
+4. Complete authenticated admin acceptance, Apple AASA configuration, and physical Android/iOS deep-link, OAuth, notification, and signing acceptance.
+5. Diagnose the independent main-only `english-content-sync` failure from its existing logs without triggering content generation.
+6. Only after all reviewable defects and owner gates are closed: merge under protected-branch rules, deploy through the manual Vercel release workflow, verify READY on the merged SHA, and run production smoke checks against that deployed SHA.
+
+The audit remains OPEN. No repository-wide error-free or project-closed claim is made.
+
+---
+
+## Previous verified audit checkpoint — 2026-11-12 (source head `9b887bc7b092ff2d0a0881853adc0088fdb412a6`)
 
 **State: IN PROGRESS.** PR #320 remains open and unmerged. The audit branch has not been deployed.
 
