@@ -627,6 +627,18 @@ const adminSocialRouteSource = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
   "utf8",
 );
+const adoptionActionStart = adminSocialRouteSource.indexOf('if (action === "adopt_server_facebook_token")');
+const adoptionActionEnd = adminSocialRouteSource.indexOf('if (action === "release_auth_blocked_queue")', adoptionActionStart);
+const adoptionActionBlock = adoptionActionStart >= 0 && adoptionActionEnd > adoptionActionStart
+  ? adminSocialRouteSource.slice(adoptionActionStart, adoptionActionEnd)
+  : "";
+assert.ok(adoptionActionStart >= 0 && adoptionActionEnd > adoptionActionStart, "server token adoption must remain a distinct action");
+assert.match(adoptionActionBlock, /adoptServerConfiguredFacebookPageToken\(\)/, "server token adoption must validate and store the server-only token");
+assert.doesNotMatch(
+  adoptionActionBlock,
+  /unblockFacebookAuthBlockedQueue|triggerSocialWorker/,
+  "server token adoption must not resume or dispatch queued posts; only the separate confirmed action may do that",
+);
 const socialPublishGateStart = adminSocialRouteSource.indexOf('if (["retry"');
 const socialPublishGateEnd = adminSocialRouteSource.indexOf("const ids", socialPublishGateStart);
 const socialPublishGate = socialPublishGateStart >= 0 && socialPublishGateEnd > socialPublishGateStart
