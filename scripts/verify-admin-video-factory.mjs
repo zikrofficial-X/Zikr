@@ -217,8 +217,8 @@ if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("co
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
-const leaseWrappedSocialEnqueue = /await\\s+withLeaseHeartbeat\\s*\\(\\s*\\(signal\\)\\s*=>\\s*queueSocialItems\\s*\\(\\s*request\\s*,\\s*rendered\\.videoUrl\\s*,\\s*signal\\s*\\)\\s*,?\\s*\\)/.test(worker);
-if (!/async\\s+function\\s+queueSocialItems\\s*\\(/.test(worker) ||
+const leaseWrappedSocialEnqueue = /await\s+withLeaseHeartbeat\s*\(\s*\(signal\)\s*=>\s*queueSocialItems\s*\(\s*request\s*,\s*rendered\.videoUrl\s*,\s*signal\s*\)\s*,?\s*\)/.test(worker);
+if (!/async\s+function\s+queueSocialItems\s*\(/.test(worker) ||
     !leaseWrappedSocialEnqueue ||
     !worker.includes('status: "queued"') ||
     !worker.includes("automation_key: queueAutomationKey") ||
@@ -226,15 +226,15 @@ if (!/async\\s+function\\s+queueSocialItems\\s*\\(/.test(worker) ||
   failures.push("new generated videos may create only idempotent queued social candidates");
 }
 const processingSocialQueueBranch = worker.match(
-  /if\\s*\\(\\s*existing\\.status\\s*===\\s*["']processing["']\\s*\\)\\s*\\{([\\s\\S]*?)\\n\\s*\\}/,
+  /if\s*\(\s*existing\.status\s*===\s*["']processing["']\s*\)\s*\{([\s\S]*?)\n\s*\}/,
 )?.[1] ?? "";
-if (!/newlyEnabledTargets\\.length\\s*>\\s*0/.test(processingSocialQueueBranch) ||
-    !/queueSupplementalTargets\\(newlyEnabledTargets\\)/.test(processingSocialQueueBranch) ||
-    !/return\\s+["']queued["']/.test(processingSocialQueueBranch) ||
+if (!/newlyEnabledTargets\.length\s*>\s*0/.test(processingSocialQueueBranch) ||
+    !/queueSupplementalTargets\(newlyEnabledTargets\)/.test(processingSocialQueueBranch) ||
+    !/return\s+["']queued["']/.test(processingSocialQueueBranch) ||
     !worker.includes(":late:${target}") ||
-    !/buildVideoSocialQueueUpdateFilter\\s*\\(\\s*existing\\.id,\\s*existing\\.status,\\s*existing\\.updated_at\\s*\\)/.test(worker) ||
-    !/const\\s+latest\\s*=\\s*await\\s+findSocialQueueByAutomationKey\\(socialKey,\\s*signal\\)/.test(worker) ||
-    !/queueSupplementalTargets\\(latestNewTargets\\)/.test(worker)) {
+    !/buildVideoSocialQueueUpdateFilter\s*\(\s*existing\.id,\s*existing\.status,\s*existing\.updated_at\s*\)/.test(worker) ||
+    !/const\s+latest\s*=\s*await\s+findSocialQueueByAutomationKey\(socialKey,\s*signal\)/.test(worker) ||
+    !/queueSupplementalTargets\(latestNewTargets\)/.test(worker)) {
   failures.push("video social queue expansion must preserve active publisher leases and use compare-and-set for non-processing rows");
 }
 if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
