@@ -54,7 +54,7 @@ if (health.includes("social_publish_queue") || health.includes("queuesAvailable:
 if (!health.includes("queuesAvailable: { video: video.available }")) {
   throw new Error("Admin health must distinguish unavailable video queue counts from real zeros");
 }
-if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main")) {
+if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/main/status") || !platform.includes("/actions/runs?branch=main&per_page=100")) {
   throw new Error("Admin health must expose read-only GitHub commit and workflow status");
 }
 const monitoredWorkflowPaths = [

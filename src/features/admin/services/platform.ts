@@ -251,7 +251,7 @@ async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
     }),
-    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=30", {
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=100", {
       headers,
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
