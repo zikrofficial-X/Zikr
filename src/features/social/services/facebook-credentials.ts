@@ -75,7 +75,7 @@ export function isMissingFacebookReelsCooldownColumnError(error: unknown): boole
   return message.includes("facebook_reels_next_allowed_at") && (
     message.includes("42703") ||
     message.includes("pgrst204") ||
-    /column[\\s\\S]*(does not exist|schema cache)/.test(message)
+    /column[\s\S]*(does not exist|schema cache)/.test(message)
   );
 }
 

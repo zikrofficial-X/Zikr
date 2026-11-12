@@ -206,10 +206,15 @@ const credentialSource = readFileSync(
   new URL("../../src/features/social/services/youtube-oauth-credentials.ts", import.meta.url),
   "utf8",
 );
-assert.equal(
-  (credentialSource.match(/matchesConfiguredYouTubeChannel\(row\?\.channel_id\)/g) ?? []).length,
-  2,
-  "analytics and publishing credentials must both validate the stored channel identity",
+assert.match(
+  credentialSource,
+  /matchesConfiguredYouTubeChannel\(row\?\.channel_id\)/,
+  "analytics credentials must validate the stored channel identity",
+);
+assert.match(
+  credentialSource,
+  /matchesConfiguredYouTubeChannel\(row\.channel_id,\s*configuredChannelId\)/,
+  "upload credentials must validate the stored channel identity against the configured channel",
 );
 assert.equal(
   (credentialSource.match(/select=refresh_token,granted_scopes,channel_id/g) ?? []).length,

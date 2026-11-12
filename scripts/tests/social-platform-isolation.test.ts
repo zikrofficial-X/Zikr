@@ -488,6 +488,13 @@ assert.equal(
   isMissingFacebookReelsCooldownColumnError(new Error("PGRST204: Could not find the 'facebook_reels_next_allowed_at' column in the schema cache")),
   true,
 );
+assert.equal(
+  isMissingFacebookReelsCooldownColumnError(
+    new Error("column social_platform_credentials.facebook_reels_next_allowed_at does not exist"),
+  ),
+  true,
+  "a plain PostgreSQL missing-column message must also permit the legacy projection",
+);
 assert.equal(isMissingFacebookReelsCooldownColumnError(transientFacebookCredentialRead), false);
 
 let legacyReadCalls = 0;
