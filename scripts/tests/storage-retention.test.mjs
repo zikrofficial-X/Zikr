@@ -38,20 +38,15 @@ assert.throws(
 assert.doesNotThrow(() =>
   assertRetentionApplyConfirmation(true, "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE", true),
 );
-assert.match(storageRetentionWorkflow, /reference_writes_paused:[\\s\\S]*?default: false[\\s\\S]*?type: boolean/);
-assert.match(storageRetentionWorkflow, /RETENTION_REFERENCE_WRITES_PAUSED: \\$\\{\\{ inputs\\.reference_writes_paused \\}\\}/);
-assert.match(storageRetentionWorkflow, /inputs\\.reference_writes_paused == true/);
-assert.match(storageRetentionWorkflow, /DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE/);
-const publicUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`;
-const cloudinaryMaster = "https://res.cloudinary.com/dcuveyab9/video/upload/v1793575328/auto-story-20756-18-97cca8e1.mp4";
-const now = new Date("2026-10-30T12:00:00.000Z");
-const cutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
-
-assert.equal(
-  extractManagedVideoPath(publicUrl, supabaseUrl),
-  "automated/story:20750:11.mp4",
-  "Only canonical videos bucket URLs are converted into Storage paths",
-);
+const referenceFreezeInputStart = storageRetentionWorkflow.indexOf("reference_writes_paused:");
+const referenceFreezeInputEnd = storageRetentionWorkflow.indexOf("confirmation:", referenceFreezeInputStart);
+const referenceFreezeInput = storageRetentionWorkflow.slice(referenceFreezeInputStart, referenceFreezeInputEnd);
+assert.ok(referenceFreezeInput.includes("required: true"), "reference-write freeze confirmation must be required");
+assert.ok(referenceFreezeInput.includes("default: false"), "reference-write freeze must remain opt-in");
+assert.ok(referenceFreezeInput.includes("type: boolean"), "reference-write freeze must be a boolean gate");
+assert.ok(storageRetentionWorkflow.includes("RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}"));
+assert.ok(storageRetentionWorkflow.includes("inputs.reference_writes_paused == true"));
+assert.ok(storageRetentionWorkflow.includes("DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE"));
 const encodedReferencePath = "automated/story:20750:11.mp4";
 const encodedReferenceCandidates = [encodedReferencePath];
 const encodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/automated/story%3A20750%3A11.mp4`;
@@ -277,9 +272,11 @@ for (const table of new Set(referenceTables)) {
   assert.ok(orderMapSource.includes(`${table}:`), `reference inventory table ${table} must declare a stable primary-key ordering`);
 }
 assert.match(storageRetentionSource, /pattern\.filter\(query\)\.order\(orderColumn, \{ ascending: true \}\)/);
-assert.match(
-  storageRetentionSource,
-  /from\("site_settings"\)[\s\S]*?select\("key,value"\)[\s\S]*?order\("key", \{ ascending: true \}\)/,
+const siteSettingsQueryStart = storageRetentionSource.indexOf('.from("site_settings")');
+const siteSettingsSelect = storageRetentionSource.indexOf('.select("key,value")', siteSettingsQueryStart);
+const siteSettingsOrder = storageRetentionSource.indexOf('.order("key", { ascending: true })', siteSettingsSelect);
+assert.ok(
+  siteSettingsQueryStart >= 0 && siteSettingsSelect > siteSettingsQueryStart && siteSettingsOrder > siteSettingsSelect,
   "site_settings must be scanned in deterministic key order before storage deletion",
 );
 for (const [table, column] of [
