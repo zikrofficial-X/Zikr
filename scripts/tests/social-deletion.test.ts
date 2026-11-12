@@ -195,7 +195,7 @@ assert.equal(
   "in_progress",
   "a concurrent administrator must observe the reservation and must not send a second provider delete",
 );
-const expiredDeletionClaimRow = {
+const expiredDeletionClaimRow: typeof deletionQueueRow = {
   ...deletionQueueRow,
   updated_at: "2026-11-12T18:00:00.000Z",
   metadata: { platformDeletions: { youtube: { status: "deleting", attemptedAt: "2026-11-12T17:45:00.000Z" } } },
