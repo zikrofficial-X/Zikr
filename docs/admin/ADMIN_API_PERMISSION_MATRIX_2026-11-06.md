@@ -27,6 +27,8 @@
 | GET | `/api/admin/social/written` | `social.manage` — written queue read |
 | POST | `/api/admin/social/written` | `social.manage` + `social.publish` — MFA step-up before generation dispatch |
 | POST | `/api/admin/video-generation/narration-upload` | `video.manage` |
+| GET | `/api/admin/video-purge` | `video.delete` — dry-run preview only |
+| POST | `/api/admin/video-purge` | `video.delete` — MFA step-up before destructive cleanup |
 | GET | `/api/admin/video-generation` | `video.manage` |
 | DELETE | `/api/admin/video-generation` | `video.delete` |
 | PATCH | `/api/admin/video-generation` | `video.manage` — external publish retry returns HTTP 410 |
