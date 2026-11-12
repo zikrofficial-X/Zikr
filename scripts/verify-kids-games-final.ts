@@ -24,11 +24,13 @@ const boundedJsonBodyReader = readFileSync(
   "utf8",
 );
 const boundedBodyCall = "readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES)";
+const hasUnboundedBodyRead = (source: string) =>
+  ["request.text(", "request.json(", "request.arrayBuffer("].some((marker) => source.includes(marker));
 if (
   !legacySubmitResultRoute.includes(boundedBodyCall) ||
   !currentScoreRoute.includes(boundedBodyCall) ||
-  /request\\.(?:text|json|arrayBuffer)\\s*\\(/.test(legacySubmitResultRoute) ||
-  /request\\.(?:text|json|arrayBuffer)\\s*\\(/.test(currentScoreRoute) ||
+  hasUnboundedBodyRead(legacySubmitResultRoute) ||
+  hasUnboundedBodyRead(currentScoreRoute) ||
   !boundedJsonBodyReader.includes("MAX_REQUEST_BODY_BYTES = 16_384") ||
   !boundedJsonBodyReader.includes("request.body.getReader()") ||
   !boundedJsonBodyReader.includes("totalBytes > maxBytes") ||
