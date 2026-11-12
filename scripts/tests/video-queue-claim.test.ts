@@ -341,3 +341,15 @@ test("video social queue expansion preserves active publisher leases and compare
     /await\s+withLeaseHeartbeat\s*\(\s*\(signal\)\s*=>\s*queueSocialItems\s*\(\s*request,\s*rendered\.videoUrl,\s*signal\s*\)\s*,?\s*\)/,
   );
 });
+
+test("Video queue priority verifier accepts rolling leases and recoverable social handoffs", () => {
+  const result = spawnSync(process.execPath, ["scripts/verify-video-queue-priority.mjs"], {
+    encoding: "utf8",
+  });
+  assert.equal(
+    result.status,
+    0,
+    [result.stdout, result.stderr].filter(Boolean).join("\n") ||
+      "Video queue priority verifier must accept the current lease-fenced worker contract",
+  );
+});

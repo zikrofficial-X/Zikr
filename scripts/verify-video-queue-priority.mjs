@@ -85,18 +85,16 @@ assert(
 );
 const workerStart = queue.indexOf("export async function processTemplateVideoQueue");
 const postClaimWorker = workerStart >= 0 ? queue.slice(workerStart) : "";
-assert(
-  postClaimWorker.includes("let leaseUpdatedAt = claimUpdatedAt;") &&
-    postClaimWorker.includes("const patchProcessingRequestWithLease = async") &&
-    postClaimWorker.includes("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt)"),
-  "post-claim writes use a rolling exact-row-version lease",
-);
-assert(
-  postClaimWorker.includes("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });") &&
-    postClaimWorker.includes("await patchProcessingRequestWithLease({\n        status: \"completed\",") &&
-    postClaimWorker.includes("await patchProcessingRequestWithLease({\n          status: terminalStatus,"),
-  "hash claim, completion and failure updates are fenced by the processing lease",
-);
+const hasRollingVideoLease =
+  /let\\s+leaseUpdatedAt\\s*=\\s*claimUpdatedAt\\s*;/.test(postClaimWorker) &&
+  /const\\s+patchProcessingRequestWithLease\\s*=\\s*async/.test(postClaimWorker) &&
+  /buildProcessingVideoRequestLeaseFilter\\s*\\(\\s*request\\.id\\s*,\\s*leaseUpdatedAt\\s*,\\s*leaseVideoUrl\\s*\\)/.test(postClaimWorker);
+assert(hasRollingVideoLease, "post-claim writes use a rolling exact-row-version lease");
+const hasLeaseFencedTransitions =
+  /await\\s+patchProcessingRequestWithLease\\s*\\(\\s*\\{\\s*content_hash:\\s*rendered\\.contentHash\\s*\\}\\s*\\)/.test(postClaimWorker) &&
+  /await\\s+patchProcessingRequestWithLease\\s*\\(\\s*\\{\\s*status:\\s*["']completed["']\\s*,/.test(postClaimWorker) &&
+  /await\\s+patchProcessingRequestWithLease\\s*\\(\\s*\\{\\s*status:\\s*terminalStatus\\s*,/.test(postClaimWorker);
+assert(hasLeaseFencedTransitions, "hash claim, completion and failure updates are fenced by the processing lease");
 assert(
   !postClaimWorker.includes("/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}"),
   "no post-claim ID-only PATCH can overwrite a newer worker",
@@ -124,10 +122,12 @@ assert(
     queue.includes("buildVideoSocialQueueRecoveryLeaseFilter("),
   "failed or interrupted social enqueue handoffs are retried under an exact-row-version lease",
 );
+const socialQueueHandoffContract =
+  /let\\s+socialQueueResult:\\s*["']queued["']\\s*\\|\\s*["']not_required["']\\s*;/.test(postClaimWorker) &&
+  /socialQueueEnqueueStatus:\\s*socialQueueResult/.test(postClaimWorker) &&
+  /catch\\s*\\(socialError\\)[\\s\\S]*?socialQueueEnqueueStatus:\\s*["']pending["'][\\s\\S]*?continue\\s*;/.test(postClaimWorker);
 assert(
-  queue.includes('socialQueueEnqueueStatus: "pending"') &&
-    queue.includes('socialQueueEnqueueStatus: "processing"') &&
-    queue.includes('socialQueueEnqueueStatus: "queued"'),
+  socialQueueHandoffContract,
   "video completion cannot hide a failed social queue handoff",
 );
 assert(
