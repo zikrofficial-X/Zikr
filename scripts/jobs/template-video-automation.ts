@@ -2274,9 +2274,9 @@ async function recoverPendingVideoSocialQueueEnqueues(
   limit: number,
   staleBefore: string,
 ): Promise<{ recovered: number; deferred: number }> {
-  if (!engineConfig().autoPublishEnabled || engineConfig().requiresApproval) {
-    return { recovered: 0, deferred: 0 };
-  }
+  // queueSocialItems classifies disabled or approval-held publishing as
+  // not_required, allowing the processing row to close without creating a
+  // social queue item or invoking an external provider.
   const candidateLimit = Math.max(1, Math.min(10, Math.floor(limit) || 1));
   const selectFields = "id,title,description,category,content,status,automation_key,error_message,error_details,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms";
   const [pendingRows, staleRows, retryWaitRows] = await Promise.all([

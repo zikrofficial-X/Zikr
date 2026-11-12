@@ -103,9 +103,13 @@ if (!videoWorkflow.includes('AUTO_VIDEO_PUBLISH_ENABLED: "true"') ||
   failures.push("video generation must enqueue only automated-QA-approved social candidates without a manual review gate");
 }
 if (!videoGenerator.includes("async function queueSocialItems") ||
-    !videoGenerator.includes("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal))") ||
+    !videoGenerator.includes("socialQueueResult = await withLeaseHeartbeat(") ||
+    !videoGenerator.includes("queueSocialItems(request, rendered.videoUrl, signal)") ||
+    !videoGenerator.includes('socialQueueEnqueueStatus: "processing"') ||
+    !videoGenerator.includes('socialQueueEnqueueStatus: "pending"') ||
+    !videoGenerator.includes("recoverPendingVideoSocialQueueEnqueues(") ||
     videoGenerator.includes("reconcileCompletedVideoSocialQueue")) {
-  failures.push("only newly generated videos may create social queue items; historical generation requests must not be reconciled");
+  failures.push("only new renders and their explicit pending handoff marker may create social queue items; historical completed requests must not be reconciled");
 }
 if (!videoPublishApproval.includes("export function hasCompleteKidsVideoSeriesMetadata") ||
     !videoPublishApproval.includes('content.contentFormat === "series_episode"') ||

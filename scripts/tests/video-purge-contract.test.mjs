@@ -248,7 +248,7 @@ const persistedMediaHandoffPosition = videoQueueSource.indexOf('socialQueueEnque
 const socialQueueEnqueuePosition = videoQueueSource.indexOf("queueSocialItems(request, rendered.videoUrl, signal)");
 const pendingHandoffPosition = videoQueueSource.indexOf('socialQueueEnqueueStatus: "pending"', socialQueueEnqueuePosition);
 const failedHandoffContinuePosition = videoQueueSource.indexOf("continue;", pendingHandoffPosition);
-const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        ...completedMediaFields');
+const completedRequestPatchPosition = videoQueueSource.indexOf('status: "completed"', failedHandoffContinuePosition);
 assert.ok(
   persistedMediaHandoffPosition >= 0 &&
     socialQueueEnqueuePosition > persistedMediaHandoffPosition &&
