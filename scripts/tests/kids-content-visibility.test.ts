@@ -321,6 +321,9 @@ assert.equal(
 );
 
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
+assert.match(kidsSocialPostsApi, /process\.env\.VERCEL_ENV === "production"/, "a missing service-role key must be visible in production");
+assert.match(kidsSocialPostsApi, /status: 503/, "a missing production service-role key must not silently produce an empty Kids posts feed");
+assert.match(kidsSocialPostsApi, /return NextResponse\.json\(\[\]/, "preview and development may retain their intentional empty-feed fallback");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
@@ -328,6 +331,9 @@ const kidsLevelsAdminPage = readFileSync("src/app/admin/kids/levels/page.tsx", "
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
 
 assert.match(adminAction, /age_appropriate: ageAppropriate/);
+assert.match(adminAction, /if \(!Array\.isArray\(existingSlug\)/, "Kids slug preflight must reject malformed PostgREST responses before media upload");
+assert.match(adminAction, /!Array\.isArray\(saved\)\s*\|\|\s*saved\.length !== 1/, "Kids inserts must verify exactly one returned row before reporting success");
+assert.match(adminManager, /if \(!Array\.isArray\(rowsResult\.value\)\)/, "Kids admin list must not treat malformed row data as a successful empty list");
 const imageUploadPosition = adminAction.indexOf("await uploadCloudinaryImage");
 assert.ok(imageUploadPosition > 0, "Kids image upload path must remain present");
 const storyApprovalPosition = adminAction.indexOf('if (type === "story" && published && !ageAppropriate)');

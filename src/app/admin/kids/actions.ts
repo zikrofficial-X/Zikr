@@ -64,7 +64,10 @@ export async function saveKidsContentAction(formData: FormData) {
     "/rest/v1/kids_content?select=id&slug=eq." + encodeURIComponent(slug) + "&limit=1",
     { method: "GET" },
   );
-  if (existingSlug[0]?.id) {
+  if (!Array.isArray(existingSlug) || existingSlug.some((row) => typeof row?.id !== "string" || !row.id.trim())) {
+    throw new Error("تعذر التحقق من الرابط المختصر. حاول مرة أخرى.");
+  }
+  if (existingSlug.length > 0) {
     throw new Error("الرابط المختصر مستخدم بالفعل. اختر رابطًا جديدًا.");
   }
   if (type === "game" && !isRegisteredGameId(gameId)) {
@@ -111,7 +114,15 @@ export async function saveKidsContentAction(formData: FormData) {
       updated_at: new Date().toISOString(),
     }),
   });
-  if (!saved[0]?.id) throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
+  if (
+    !Array.isArray(saved) ||
+    saved.length !== 1 ||
+    typeof saved[0]?.id !== "string" ||
+    !saved[0].id.trim() ||
+    saved[0].slug !== slug
+  ) {
+    throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
+  }
   try {
     await recordAdminAuditEvent({
       action: "kids.content.save",

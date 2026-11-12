@@ -85,6 +85,10 @@ async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean; totalCo
     console.error("[admin/kids] failed to load database content:", rowsResult.reason);
     return { rows: [], ok: false, totalCount: null };
   }
+  if (!Array.isArray(rowsResult.value)) {
+    console.error("[admin/kids] database content query returned an invalid row set.");
+    return { rows: [], ok: false, totalCount: null };
+  }
   const totalCount = countResult.status === "fulfilled" ? countResult.value : null;
   if (countResult.status === "rejected") {
     console.error("[admin/kids] failed to count database content:", countResult.reason);

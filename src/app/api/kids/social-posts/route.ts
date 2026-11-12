@@ -13,8 +13,15 @@ const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 export async function GET() {
   // Preview and Development intentionally omit the production service-role key.
-  // This is an optional public feed: return an empty list instead of a 503 or noisy error.
+  // Keep those environments quiet, but surface a production misconfiguration instead of
+  // presenting a broken Kids feed as a legitimate empty result.
   if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) {
+    if (process.env.VERCEL_ENV === "production") {
+      return NextResponse.json(
+        { error: "Kids written-post feed is not configured." },
+        { status: 503, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
     return NextResponse.json([], {
       headers: { "Cache-Control": "private, no-store" },
     });
