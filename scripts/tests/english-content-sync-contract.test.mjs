@@ -57,4 +57,17 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
+const circleCi = readFileSync(".circleci/config.yml", "utf8");
+const circleEnglishSync = circleCi.slice(
+  circleCi.indexOf("  english-content-sync:"),
+  circleCi.indexOf("  android-release-draft:"),
+);
+assert.ok(
+  circleEnglishSync.includes("timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en"),
+  "the scheduled CircleCI article worker must have a hard 40-minute limit below its 60-minute queue lease",
+);
+assert.ok(
+  circleEnglishSync.includes("if ! command -v timeout >/dev/null 2>&1; then"),
+  "the scheduled worker must fail closed when its hard-timeout utility is unavailable",
+);
 console.log("English content sync concurrency and retry contracts passed.");
