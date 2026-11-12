@@ -20,7 +20,7 @@
 | PATCH | `/api/admin/site-audio` | `audio.manage` |
 | DELETE | `/api/admin/site-audio` | `audio.manage` |
 | POST | `/api/admin/site-audio/upload` | `audio.manage` |
-| GET | `/api/admin/social/facebook/callback` | `social.manage` + `social.publish` MFA step-up before releasing auth-blocked queue rows after OAuth credential storage |
+| GET | `/api/admin/social/facebook/callback` | `social.manage` — validates OAuth state and stores the verified Page credential only; it never resumes queued posts |
 | GET | `/api/admin/social/facebook/connect` | `social.manage` + `social.publish` MFA step-up — Page publishing + Insights permissions |
 | GET | `/api/admin/social` | `social.manage` — queue and connection management |
 | POST | `/api/admin/social` | `social.manage` + `social.publish` — step-up required for sensitive actions |
@@ -51,7 +51,7 @@
 ## ثوابت إضافية
 
 - مسارات OAuth الخاصة بـFacebook وYouTube ومسارات إدارة طابور النشر الاجتماعي فعّالة ومحمية بالصلاحيات المدرجة أعلاه؛ عمليات النشر/التوليد الحساسة تتطلب `social.publish` مع MFA step-up.
-- بدء OAuth الخاص بـFacebook يتطلب `social.manage` و`social.publish` مع MFA step-up. بعد حفظ اعتماد الصفحة والتحقق منه، يعيد callback فتح عناصر auth-blocked فقط إذا ظل مستوى MFA صالحًا؛ لا يطلق النشر مباشرة ويترك dispatch للناشر المجدول. إذا انتهت خطوة MFA، يظل الطابور محجوبًا ويتيح إجراء `release_auth_blocked_queue` داخل POST `/api/admin/social` استئنافًا صريحًا يتطلب `social.publish` وMFA وتأكيدًا، مع التحقق من اتصال الصفحة.
+- بدء OAuth الخاص بـFacebook يتطلب `social.manage` و`social.publish` مع MFA step-up. Callback يتحقق من state ويحفظ اعتماد الصفحة فقط؛ لا يعيد فتح عناصر الطابور ولا يطلق النشر. استئناف العناصر المحجوبة حصريًا عبر `release_auth_blocked_queue` داخل POST `/api/admin/social`، ويتطلب `social.publish` وMFA وتأكيدًا صريحًا والتحقق من اتصال الصفحة.
 - مسارا استيراد الوسائط القديمان `/api/admin/youtube-facebook/register-media` و`/api/admin/youtube-facebook/upload-url` فقط يعيدان HTTP 410 بعد التحقق من `media.manage`.
 - ربط YouTube يتطلب `social.manage` ويطلب `youtube.upload` و`youtube.readonly` و`yt-analytics.readonly`؛ صلاحية تنفيذ النشر `social.publish` تظل منفصلة.
 - نشر الفيديو داخل موقع ZIKR يستخدم `content_publish_queue` و`video.manage`، ولا يحتاج صلاحيات النشر الاجتماعي.
