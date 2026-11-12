@@ -1,7 +1,7 @@
 -- Harden the service-only video retention bookkeeping RPC.
 -- The cleanup worker must prove the queue/request relationship and use matching
--- pending/final states before the public playback master can be left untouched
--- while only the redundant Supabase staging copy is removed.
+-- pending/final states while retaining the Cloudinary playback URL in both records;
+-- only the redundant Supabase staging copy recorded in p_retention.path is removed.
 
 BEGIN;
 
@@ -46,7 +46,6 @@ BEGIN
 
   UPDATE public.social_publish_queue
   SET
-    video_url = CASE WHEN p_finalize THEN NULL ELSE video_url END,
     metadata = coalesce(metadata, '{}'::jsonb)
       || jsonb_build_object('storageRetention', p_retention),
     updated_at = now()
@@ -70,7 +69,6 @@ BEGIN
 
   UPDATE public.video_generation_requests
   SET
-    video_url = CASE WHEN p_finalize THEN NULL ELSE video_url END,
     content = coalesce(content, '{}'::jsonb)
       || jsonb_build_object('storageRetention', p_retention),
     updated_at = now()
@@ -99,6 +97,6 @@ GRANT EXECUTE ON FUNCTION public.update_video_storage_retention(uuid, uuid, text
   TO service_role;
 
 COMMENT ON FUNCTION public.update_video_storage_retention(uuid, uuid, text, jsonb, boolean)
-  IS 'Atomically records or finalizes a video Storage-retention operation for a published queue row linked to its completed video request. Storage object deletion must use the Supabase Storage API.';
+  IS 'Atomically records or finalizes a video Storage-retention operation for a published queue row linked to its completed video request. The Cloudinary playback URL remains intact; only the Supabase staging object is removed through the Storage API.';
 
 COMMIT;

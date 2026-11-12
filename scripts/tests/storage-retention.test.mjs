@@ -390,6 +390,25 @@ assert.match(retentionRpcMigration, /metadata->'storageRetention'->>'path' = p_r
   "recovery finalization must match the exact path previously marked purge_pending");
 assert.match(retentionRpcMigration, /p_retention->>'bucket' IS DISTINCT FROM 'videos'/,
   "the video-retention RPC must not record a purge for a different bucket");
+const queueRetentionSet = retentionRpcMigration.match(
+  /UPDATE public\\.social_publish_queue\\s+SET([\\s\\S]*?)\\bWHERE\\b/i,
+)?.[1] ?? "";
+const requestRetentionSet = retentionRpcMigration.match(
+  /UPDATE public\\.video_generation_requests\\s+SET([\\s\\S]*?)\\bWHERE\\b/i,
+)?.[1] ?? "";
+assert.ok(queueRetentionSet.length > 0 && requestRetentionSet.length > 0,
+  "the retention RPC must keep explicit queue and request update contracts");
+assert.doesNotMatch(queueRetentionSet, /\\bvideo_url\\s*=/i,
+  "purging the Supabase staging copy must not clear the Cloudinary playback URL from the published queue");
+assert.doesNotMatch(requestRetentionSet, /\\bvideo_url\\s*=/i,
+  "purging the Supabase staging copy must not clear the Cloudinary playback URL from the generation request");
+assert.equal(
+  (retentionRpcMigration.match(/video_url = p_expected_url/g) ?? []).length,
+  2,
+  "both records must still be fenced by the exact Cloudinary playback URL"
+);
+assert.match(retentionRpcMigration, /Cloudinary playback URL remains intact/i,
+  "the retention RPC must document that the durable playback reference is preserved");
 assert.match(
   storageRetentionSource,
   /table: "videos",[\s\S]*?column: "metadata"[\s\S]*?query\.not\("metadata", "is", null\)/,
