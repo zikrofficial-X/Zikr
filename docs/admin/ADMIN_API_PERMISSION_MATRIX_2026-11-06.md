@@ -51,7 +51,7 @@
 ## ثوابت إضافية
 
 - مسارات OAuth الخاصة بـFacebook وYouTube ومسارات إدارة طابور النشر الاجتماعي فعّالة ومحمية بالصلاحيات المدرجة أعلاه؛ عمليات النشر/التوليد الحساسة تتطلب `social.publish` مع MFA step-up.
-- بدء OAuth الخاص بـFacebook يتطلب `social.manage` و`social.publish` مع MFA step-up. Callback يتحقق من state ويحفظ اعتماد الصفحة فقط؛ لا يعيد فتح عناصر الطابور ولا يطلق النشر. استئناف العناصر المحجوبة حصريًا عبر `release_auth_blocked_queue` داخل POST `/api/admin/social`، ويتطلب `social.publish` وMFA وتأكيدًا صريحًا والتحقق من اتصال الصفحة.
+- بدء OAuth الخاص بـFacebook يتطلب `social.manage` و`social.publish` مع MFA step-up. Callback يتحقق من state ويحفظ اعتماد الصفحة فقط؛ لا يعيد فتح عناصر الطابور ولا يطلق النشر. اعتماد توكن الخادم يتحقق من التوكن ويحفظه فقط، ولا يستأنف الطابور. استئناف العناصر المحجوبة حصريًا عبر `release_auth_blocked_queue` داخل POST `/api/admin/social`، ويتطلب `social.publish` وMFA وتأكيدًا صريحًا والتحقق من اتصال الصفحة.
 - مسارا استيراد الوسائط القديمان `/api/admin/youtube-facebook/register-media` و`/api/admin/youtube-facebook/upload-url` فقط يعيدان HTTP 410 بعد التحقق من `media.manage`.
 - ربط YouTube يتطلب `social.manage` ويطلب `youtube.upload` و`youtube.readonly` و`yt-analytics.readonly`؛ صلاحية تنفيذ النشر `social.publish` تظل منفصلة.
 - نشر الفيديو داخل موقع ZIKR يستخدم `content_publish_queue` و`video.manage`، ولا يحتاج صلاحيات النشر الاجتماعي.
