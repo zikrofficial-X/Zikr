@@ -266,7 +266,6 @@ test("long-running render renews its exact processing lease while the provider i
   const task = withVideoRequestLeaseHeartbeat({
     intervalMs: 5,
     renew: async () => { renewals += 1; },
-    isLeaseLost: (error) => error instanceof Error && error.message === "lease lost",
   }, () => operation);
 
   await new Promise((resolve) => setTimeout(resolve, 25));
@@ -281,7 +280,6 @@ test("lease loss aborts an in-flight worker operation immediately", async () => 
   const task = withVideoRequestLeaseHeartbeat({
     intervalMs: 5,
     renew: async () => { throw leaseLost; },
-    isLeaseLost: (error) => error === leaseLost,
   }, async (signal) => {
     observedSignal = signal;
     await new Promise<never>((_resolve, reject) => {
@@ -296,12 +294,40 @@ test("lease loss aborts an in-flight worker operation immediately", async () => 
   assert.ok(observedSignal?.aborted, "lease loss must abort the active operation immediately");
 });
 
+test("an uncertain heartbeat transport failure aborts the active operation and stops retries", async () => {
+  const transportError = new Error("temporary database outage");
+  let renewalAttempts = 0;
+  let reportedErrors = 0;
+  let observedSignal: AbortSignal | undefined;
+  const task = withVideoRequestLeaseHeartbeat({
+    intervalMs: 5,
+    renew: async () => {
+      renewalAttempts += 1;
+      throw transportError;
+    },
+    onRenewalError: () => { reportedErrors += 1; },
+  }, async (signal) => {
+    observedSignal = signal;
+    await new Promise<never>((_resolve, reject) => {
+      const abort = () => reject(signal.reason);
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+    });
+  });
+
+  const rejected = assert.rejects(task, transportError);
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  await rejected;
+  assert.ok(observedSignal?.aborted, "an uncertain renewal must abort provider work immediately");
+  assert.equal(renewalAttempts, 1, "the worker must not continue retrying an unconfirmed lease");
+  assert.equal(reportedErrors, 1, "the renewal failure must be reported once");
+});
+
 test("a lost processing lease prevents a completed render from advancing to publication", async () => {
   const leaseLost = new Error("lease lost");
   const task = withVideoRequestLeaseHeartbeat({
     intervalMs: 5,
     renew: async () => { throw leaseLost; },
-    isLeaseLost: (error) => error === leaseLost,
   }, () => new Promise<string>((resolve) => setTimeout(() => resolve("rendered"), 25)));
 
   await assert.rejects(task, leaseLost);
@@ -314,7 +340,7 @@ test("the video worker wraps rendering in the lease heartbeat before claiming th
   );
   assert.ok(renderPosition >= 0 && hashClaimPosition > renderPosition);
   assert.match(videoWorkerSource, /renew: \(\) => patchProcessingRequestWithLease\(\{\}\)/);
-  assert.match(videoWorkerSource, /isLeaseLost: \(error\) => error instanceof VideoRequestLeaseLostError/);
+  assert.match(videoWorkerSource, /onRenewalError: \(error\) => console\.warn/);
 });
 
 test("post-render catalog and social queue work renews the processing lease", () => {

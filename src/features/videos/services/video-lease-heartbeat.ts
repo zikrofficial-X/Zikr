@@ -9,7 +9,6 @@ export async function withVideoRequestLeaseHeartbeat<T>(
   options: {
     intervalMs: number;
     renew: () => Promise<unknown>;
-    isLeaseLost: (error: unknown) => boolean;
     onRenewalError?: (error: unknown) => void;
   },
   operation: (signal: AbortSignal) => Promise<T>,
@@ -29,25 +28,17 @@ export async function withVideoRequestLeaseHeartbeat<T>(
       .then(() => options.renew())
       .then(() => undefined)
       .catch((error: unknown) => {
-        let isLost = false;
-        try {
-          isLost = options.isLeaseLost(error);
-        } catch {
-          // A broken classifier must not turn a transient renewal error into
-          // permission to publish without a confirmed lease.
-        }
-        if (isLost) {
-          leaseLost = true;
-          leaseLostError = error;
-          stopped = true;
-          controller.abort(error);
-          clearInterval(timer);
-          return;
-        }
+        // A failed renewal cannot prove whether the compare-and-set reached
+        // Supabase. Treat transport and lease errors as uncertain ownership.
+        leaseLost = true;
+        leaseLostError = error;
+        stopped = true;
+        controller.abort(error);
+        clearInterval(timer);
         try {
           options.onRenewalError?.(error);
         } catch {
-          // Logging/telemetry must not break the worker's lease loop.
+          // Logging/telemetry must not interrupt fail-closed lease handling.
         }
       })
       .finally(() => {

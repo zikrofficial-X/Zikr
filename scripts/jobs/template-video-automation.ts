@@ -2392,9 +2392,8 @@ async function recoverPendingVideoSocialQueueEnqueues(
         {
           intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
           renew: () => patchWithLease({}),
-          isLeaseLost: (error) => error instanceof VideoSocialQueueLeaseLostError,
           onRenewalError: (error) => console.warn(
-            `[template-video] Social queue recovery heartbeat failed for ${request.id}; retrying before stale recovery:`,
+            `[template-video] Social queue recovery heartbeat failed for ${request.id}; ownership is uncertain and recovery is aborting:`,
             error,
           ),
         },
@@ -2605,9 +2604,8 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
           {
             intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
             renew: () => patchProcessingRequestWithLease({}),
-            isLeaseLost: (error) => error instanceof VideoRequestLeaseLostError,
             onRenewalError: (error) => console.warn(
-              `[template-video] Processing lease heartbeat failed for ${request.id}; retrying before stale recovery:`,
+              `[template-video] Processing lease heartbeat failed for ${request.id}; ownership is uncertain and active work is aborting:`,
               error,
             ),
           },
