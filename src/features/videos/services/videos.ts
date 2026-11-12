@@ -133,7 +133,8 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
   }
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&order=created_at.desc&limit=" + safeLimit,
+    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&metadata->>generator=eq.zikr_internal_video_factory&metadata->>kidsVideoQaStatus=eq.passed&metadata->automatedVideoQa->>status=eq.passed&order=created_at.desc&limit=" + safeLimit,
+    { cache: "no-store" },
   );
   if (!Array.isArray(rows)) {
     throw new Error("Kids generated video query returned an invalid row set.");

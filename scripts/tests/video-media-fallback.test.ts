@@ -197,6 +197,27 @@ const socialPublisher = readFileSync("src/features/social/services/social-publis
 assert.ok(socialPublisher.includes("shouldRestorePurgedPublishedVideo(row)"), "confirmed YouTube sync must consult the prior-publication and QA recovery gate");
 assert.ok(socialPublisher.includes("published: true"), "eligible late YouTube fallback sync must restore the previously public catalog row");
 
+
+const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
+const kidsListStart = kidsVideoService.indexOf("export async function getKidsGeneratedVideos");
+const kidsListEnd = kidsVideoService.indexOf("type KidsVideoSocialQueueRow", kidsListStart);
+assert.ok(kidsListStart >= 0 && kidsListEnd > kidsListStart, "Kids video list query must remain in its dedicated service");
+const kidsListSource = kidsVideoService.slice(kidsListStart, kidsListEnd);
+for (const filter of [
+  "published=eq.true",
+  "metadata->>audience=eq.kids",
+  "metadata->>generator=eq.zikr_internal_video_factory",
+  "metadata->>kidsVideoQaStatus=eq.passed",
+  "metadata->automatedVideoQa->>status=eq.passed",
+]) {
+  assert.ok(kidsListSource.includes(filter), "Kids list must apply the " + filter + " eligibility filter before its row limit");
+}
+assert.ok(kidsListSource.includes('{ cache: "no-store" }'), "Kids publication changes must not remain hidden behind the generic 15-minute Supabase read cache");
+assert.ok(
+  kidsListSource.indexOf("metadata->automatedVideoQa->>status=eq.passed") < kidsListSource.indexOf("&order=created_at.desc&limit="),
+  "QA eligibility must be applied by PostgREST before the candidate limit so rejected rows cannot crowd out valid episodes",
+);
+
 console.log("Purged video YouTube fallback contract tests passed.");
 
 

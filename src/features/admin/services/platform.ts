@@ -216,6 +216,7 @@ export async function getAdminOverview() {
 
 const GITHUB_WORKFLOW_PATHS = new Set([
   ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/quality-gate.yml",
   ".github/workflows/generate-ai-video.yml",
   ".github/workflows/generate-written-content.yml",
   ".github/workflows/english-content-sync.yml",

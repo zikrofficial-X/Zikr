@@ -59,6 +59,7 @@ if (!platform.includes("getAdminGitHubHealth") || !platform.includes("/commits/m
 }
 const monitoredWorkflowPaths = [
   ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/quality-gate.yml",
   ".github/workflows/generate-ai-video.yml",
   ".github/workflows/generate-written-content.yml",
   ".github/workflows/english-content-sync.yml",
