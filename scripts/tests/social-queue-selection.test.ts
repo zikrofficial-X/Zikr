@@ -194,7 +194,7 @@ assert.equal(
   "the batch publisher claim must advance the row-version token",
 );
 assert.equal(
-  (socialPublisher.match(/claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/g) ?? []).length,
+  (socialPublisher.match(/^\s*claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/gm) ?? []).length,
   1,
   "the single-item publisher claim must advance the outer lease token before the server response is applied",
 );
