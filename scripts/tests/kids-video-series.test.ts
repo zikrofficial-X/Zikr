@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   buildKidsSeriesEpisode,
   KIDS_SERIES_EPISODES_PER_SEASON,
@@ -57,4 +58,15 @@ for (const [hour, expected] of [[3, 3], [9, 6], [15, 9], [21, 12]] as const) {
   const window = Math.min(4, Math.max(1, Math.floor(hour / 6) + 1));
   assert.equal(Math.ceil((12 * window) / 4), expected, "the six-hour schedule must release its expected quota at " + hour + " UTC");
 }
+const automationSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+const genericStoryStart = automationSource.indexOf('key = `story:${day}:${slot}`');
+const kidsSeriesStart = automationSource.indexOf('key = `kids-series:${day}:${slot}`');
+assert.ok(genericStoryStart >= 0 && kidsSeriesStart > genericStoryStart, "generic story and Kids series automation branches must remain distinct");
+const genericStoryBranch = automationSource.slice(genericStoryStart, kidsSeriesStart);
+assert.match(genericStoryBranch, /audience:\s*"general"/, "verified public story sources must not be misclassified as Kids series episodes");
+const kidsSeriesEnd = automationSource.indexOf("const reminders =", kidsSeriesStart);
+assert.ok(kidsSeriesEnd > kidsSeriesStart, "Kids series branch must end before general reminder seeding");
+const kidsSeriesBranch = automationSource.slice(kidsSeriesStart, kidsSeriesEnd);
+assert.match(kidsSeriesBranch, /audience:\s*"kids"/, "only the canonical Kids series factory may seed Kids-audience video requests");
+assert.match(kidsSeriesBranch, /generationMode:\s*episode\.generationMode/, "Kids series requests must retain their deterministic factory provenance");
 console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota checks passed.");
