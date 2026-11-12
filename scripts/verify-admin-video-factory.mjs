@@ -218,10 +218,16 @@ if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("co
 }
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
 if (!worker.includes("async function queueSocialItems") ||
-    !worker.includes("await queueSocialItems(request, rendered.videoUrl)") ||
+    !worker.includes("await withLeaseHeartbeat(() => queueSocialItems(request, rendered.videoUrl))") ||
     !worker.includes('status: "queued"') ||
-    !worker.includes("automation_key: socialKey")) {
+    !worker.includes("automation_key: queueAutomationKey") ||
+    !worker.includes("buildQueuePayload(targets, socialKey)")) {
   failures.push("new generated videos may create only idempotent queued social candidates");
+}
+if (!worker.includes('existing.status === "processing" && newlyEnabledTargets.length > 0') ||
+    !worker.includes(":late:${target}") ||
+    !worker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)")) {
+  failures.push("video social queue expansion must preserve active publisher leases and use compare-and-set for non-processing rows");
 }
 if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
     worker.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||
