@@ -57,7 +57,6 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
-
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
 const articleCandidateIndex = articleSync.indexOf('const rows = await supabase<ArticleRow[]>(');
 assert.ok(
@@ -65,7 +64,7 @@ assert.ok(
   "stale translation claims must be reconciled before selecting new article candidates",
 );
 assert.ok(
-  articleSync.includes("status=eq.processing&updated_at=eq.\\${encodeURIComponent(queueRow.updated_at)}"),
+  articleSync.includes("status=eq.processing&updated_at=eq.${encodeURIComponent(queueRow.updated_at)}"),
   "stale queue recovery must compare the exact processing-row revision before finalizing",
 );
 assert.ok(

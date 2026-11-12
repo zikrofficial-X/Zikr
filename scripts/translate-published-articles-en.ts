@@ -230,7 +230,6 @@ async function updateTranslationQueueClaim(
   return Boolean(updated?.id);
 }
 
-
 type StaleTranslationQueueRow = {
   id: string;
   content_id: string;
