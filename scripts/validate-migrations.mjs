@@ -392,6 +392,7 @@ if (failed === 0) {
 
 
  
+if (failed === 0) {
 // Keep the two required playback-preserving UPDATEs but inject an additional
 // INSERT. The contract must reject the unreviewed side effect without executing it.
 await db.exec("BEGIN");
@@ -453,6 +454,7 @@ if (!extraWriteRejected) {
   console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an extra INSERT side effect.");
 } else {
   console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_EXTRA_INSERT");
+}
 }
 
 const res = await db.query(`
