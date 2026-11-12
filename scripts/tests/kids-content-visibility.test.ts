@@ -178,7 +178,7 @@ assert.doesNotMatch(kidsVideosApi, /status=in\.\(published,partial\)/, "queued, 
 // All queue states are read so live failed/pending rows can override stale catalog metadata.
 
 
-assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", published_at: "2026-11-11T12:00:00.000Z", metadata: { audience: "kids" } }), true);
+assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", target_platforms: ["youtube"], published_at: "2026-11-11T12:00:00.000Z", metadata: { audience: "kids" } }), true);
 assert.equal(isPublicKidsVideoSocialQueueRow({
   content_type: "kids_video",
   status: "partial",
@@ -240,7 +240,7 @@ assert.deepEqual(
   getConfirmedPublicKidsVideoSocialPlatforms({
     status: "published",
     target_platforms: ["youtube", "facebook"],
-    metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted" } } },
+    metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted", deletedAt: "2026-11-11T12:06:00.000Z" } } },
   }),
   ["facebook"],
   "legacy published rows without a result ledger must still exclude platforms with confirmed deletion records",
@@ -296,6 +296,39 @@ assert.equal(
   resolveKidsVideoSocialPublication([originalYoutubeQueueRow, deletedYoutubeSupplementalRow], null, true),
   null,
   "a confirmed deletion in any supplemental row must override an older success for that platform",
+);
+const republishedYoutubeQueueRow = {
+  ...originalYoutubeQueueRow,
+  published_at: "2026-11-11T12:10:00.000Z",
+  metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-789" } } },
+};
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([
+    republishedYoutubeQueueRow,
+    originalYoutubeQueueRow,
+    deletedYoutubeSupplementalRow,
+  ], null, true),
+  { status: "published", platforms: ["youtube"], publishedAt: "2026-11-11T12:10:00.000Z" },
+  "a later confirmed republish must supersede an older confirmed deletion for the same platform",
+);
+const republishedAfterDeletionSameRow = {
+  ...originalYoutubeQueueRow,
+  published_at: "2026-11-11T12:10:00.000Z",
+  metadata: {
+    audience: "kids",
+    platformResults: { youtube: { ok: true, remoteId: "yt-video-789" } },
+    platformDeletions: { youtube: { status: "deleted", deletedAt: "2026-11-11T12:06:00.000Z" } },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(republishedAfterDeletionSameRow),
+  ["youtube"],
+  "a later publication on a reused queue row must supersede an older deletion record",
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([republishedAfterDeletionSameRow], null, true),
+  { status: "published", platforms: ["youtube"], publishedAt: "2026-11-11T12:10:00.000Z" },
+  "same-row republishing must preserve the latest confirmed remote publication",
 );
 const storedLegacyPublication = { status: "published", platforms: ["youtube"], publishedAt: "2026-11-10T12:00:00.000Z" };
 assert.equal(

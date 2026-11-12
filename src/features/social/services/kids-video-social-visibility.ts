@@ -17,8 +17,14 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   const metadata = asRecord(row.metadata);
   const platformResults = asRecord(metadata.platformResults);
   const platformDeletions = asRecord(metadata.platformDeletions);
-  const isDeleted = (platform: string) =>
-    asRecord(platformDeletions[platform]).status === "deleted";
+  const rowPublishedAt = typeof row.published_at === "string" ? Date.parse(row.published_at) : Number.NaN;
+  const isDeleted = (platform: string) => {
+    const deletion = asRecord(platformDeletions[platform]);
+    if (deletion.status !== "deleted") return false;
+    const deletedAt = typeof deletion.deletedAt === "string" ? Date.parse(deletion.deletedAt) : Number.NaN;
+    // If either side lacks a timestamp, keep the deletion authoritative.
+    return !Number.isFinite(rowPublishedAt) || !Number.isFinite(deletedAt) || deletedAt >= rowPublishedAt;
+  };
 
   const delivered = Object.entries(platformResults)
     .filter(([platform, value]) => {
@@ -47,21 +53,18 @@ export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
   const row = value as Record<string, unknown>;
   if (row.status !== "published" && row.status !== "partial") return false;
   if (typeof row.content_type !== "string" || !row.content_type.endsWith("_video")) return false;
-  if (typeof row.published_at !== "string" || !Number.isFinite(Date.parse(row.published_at))) return false;
 
   const metadata = asRecord(row.metadata);
   if (metadata.audience !== "kids") return false;
-  if (row.status === "published") return true;
-
-  const platformResults = asRecord(metadata.platformResults);
-  const platformDeletions = asRecord(metadata.platformDeletions);
-  const hasConfirmedDelivery = Object.values(platformResults).some((value) => {
-    const result = asRecord(value);
-    return result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
-  });
-  const hasConfirmedDeletion = Object.values(platformDeletions).some((value) =>
+  const hasConfirmedDelivery = getConfirmedPublicKidsVideoSocialPlatforms(row).length > 0;
+  const hasConfirmedDeletion = Object.values(asRecord(metadata.platformDeletions)).some((value) =>
     asRecord(value).status === "deleted",
   );
+  if (row.status === "published") {
+    return typeof row.published_at === "string" &&
+      Number.isFinite(Date.parse(row.published_at)) &&
+      hasConfirmedDelivery;
+  }
   // Keep a partially deleted row available to override stale catalog badges,
   // but never expose an ordinary partial row with no confirmed remote result.
   return hasConfirmedDelivery || hasConfirmedDeletion;
@@ -114,15 +117,22 @@ export function resolveKidsVideoSocialPublication(
     };
   }
 
+  type PublicationEvent = {
+    state: "published" | "deleted";
+    timestamp: number;
+    publishedAt: string | null;
+  };
   const targets = new Set<string>();
-  const delivered = new Set<string>();
-  const deleted = new Set<string>();
-  let publishedAt: string | null = null;
-  let latestPublishedAt = Number.NEGATIVE_INFINITY;
+  const latestByPlatform = new Map<string, PublicationEvent>();
 
   for (const row of rows) {
     const record = row as Record<string, unknown>;
     const metadata = asRecord(record.metadata);
+    const rowPublishedAt = typeof record.published_at === "string" ? record.published_at : null;
+    const parsedPublishedAt = rowPublishedAt ? Date.parse(rowPublishedAt) : Number.NaN;
+    const publicationTimestamp = Number.isFinite(parsedPublishedAt)
+      ? parsedPublishedAt
+      : Number.NEGATIVE_INFINITY;
     const rowTargets = Array.isArray(record.target_platforms)
       ? record.target_platforms.filter(
           (platform): platform is string =>
@@ -132,35 +142,55 @@ export function resolveKidsVideoSocialPublication(
     for (const platform of rowTargets) targets.add(platform);
 
     for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
-      delivered.add(platform);
+      const current = latestByPlatform.get(platform);
+      if (
+        !current ||
+        publicationTimestamp > current.timestamp ||
+        (publicationTimestamp === current.timestamp && current.state === "deleted")
+      ) {
+        latestByPlatform.set(platform, {
+          state: "published",
+          timestamp: publicationTimestamp,
+          publishedAt: Number.isFinite(parsedPublishedAt) ? rowPublishedAt : null,
+        });
+      }
     }
 
     const deletions = asRecord(metadata.platformDeletions);
     for (const [platform, value] of Object.entries(deletions)) {
-      if (SOCIAL_PLATFORMS.has(platform) && asRecord(value).status === "deleted") {
-        deleted.add(platform);
-      }
-    }
-
-    const rowPublishedAt = record.published_at;
-    if (
-      getConfirmedPublicKidsVideoSocialPlatforms(record).length > 0 &&
-      typeof rowPublishedAt === "string" &&
-      Number.isFinite(Date.parse(rowPublishedAt))
-    ) {
-      const timestamp = Date.parse(rowPublishedAt);
-      if (timestamp > latestPublishedAt) {
-        latestPublishedAt = timestamp;
-        publishedAt = rowPublishedAt;
+      if (!SOCIAL_PLATFORMS.has(platform) || asRecord(value).status !== "deleted") continue;
+      const deletedAt = asRecord(value).deletedAt;
+      const parsedDeletedAt = typeof deletedAt === "string" ? Date.parse(deletedAt) : Number.NaN;
+      // Missing deletion timestamps fail closed and cannot be superseded by an
+      // unversioned or otherwise unprovable publication.
+      const deletionTimestamp = Number.isFinite(parsedDeletedAt)
+        ? parsedDeletedAt
+        : Number.POSITIVE_INFINITY;
+      const current = latestByPlatform.get(platform);
+      if (!current || deletionTimestamp >= current.timestamp) {
+        // A confirmed deletion wins ties; only a later confirmed publication
+        // can make the platform visible again.
+        latestByPlatform.set(platform, {
+          state: "deleted",
+          timestamp: deletionTimestamp,
+          publishedAt: null,
+        });
       }
     }
   }
 
   const platforms = [...SOCIAL_PLATFORMS].filter(
-    (platform) => delivered.has(platform) && !deleted.has(platform),
+    (platform) => latestByPlatform.get(platform)?.state === "published",
   );
   if (platforms.length === 0) return null;
 
+  const activePublicationTimes = platforms
+    .map((platform) => latestByPlatform.get(platform))
+    .filter((event): event is PublicationEvent => Boolean(event) && Number.isFinite(event.timestamp));
+  const latestPublication = activePublicationTimes.reduce<PublicationEvent | null>(
+    (latest, event) => !latest || event.timestamp > latest.timestamp ? event : latest,
+    null,
+  );
   const allTargetsPublished = targets.size > 0
     ? [...targets].every((platform) => platforms.includes(platform))
     : rows.some((row) => (row as Record<string, unknown>).status === "published");
@@ -168,6 +198,6 @@ export function resolveKidsVideoSocialPublication(
   return {
     status: allTargetsPublished ? "published" : "partial",
     platforms,
-    publishedAt,
+    publishedAt: latestPublication?.publishedAt ?? null,
   };
 }
