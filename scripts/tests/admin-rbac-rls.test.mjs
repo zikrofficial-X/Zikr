@@ -384,7 +384,6 @@ assert.match(customSpacesAction, /permission: "system\.manage"/);
 assert.match(videoVisualsPage, /hasAdminPermission\(admin\.role, "system\.manage"\)/);
 
 
-assert.ok(
 const saveVideoAutomationAction = systemActions.match(
   /export async function saveVideoAutomationSettingAction[\s\S]*?(?=\nexport async function |$)/,
 )?.[0] ?? "";
@@ -405,6 +404,7 @@ assert.ok(
   "run-now must step up before dispatching generation that may auto-publish",
 );
 
+assert.ok(
   rlsEventTriggerMigration.includes("to_regprocedure('public.rls_auto_enable()')") &&
     rlsEventTriggerMigration.includes(
       "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",
