@@ -38,7 +38,7 @@ if (layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID') || layout.includes(approved
 if (!webAdvertisingRuntime.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID')) failures.push('متغير GA4 canonical غير موجود في web-only runtime.');
 if (!webAdvertisingRuntime.includes(approvedGaId)) failures.push(`معرّف GA4 المعتمد غير موجود: ${approvedGaId}`);
 if (!webAdvertisingRuntime.includes('googletagmanager.com/gtag/js?id=')) failures.push('مصدر GA4 gtag.js غير موجود في web-only runtime.');
-if (!webAdvertisingRuntime.includes('canonicalWebRuntime && validAnalyticsId')) failures.push('يجب ألا يُحمّل GA4 إلا بعد اجتياز فحص مضيف الإنتاج canonical.');
+if (!webAdvertisingRuntime.includes('canonicalWebRuntime && validAnalyticsId')) failures.push('يجب ألا يُحمّل GA4 إلا بعد اجتياز فحص أصل الإنتاج canonical.');
 
 if (layout.includes(approvedGtmId) || layout.includes('NEXT_PUBLIC_GTM_ID') || layout.includes('googletagmanager.com/gtm.js')) {
   failures.push('يجب إبقاء GTM خارج root layout حتى لا يُحقن في HTML الخاص بتطبيق Capacitor.');
@@ -49,13 +49,13 @@ if (!webAdvertisingRuntime.includes(approvedGtmId)) failures.push(`معرّف GT
 if (!webAdvertisingRuntime.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغير GTM canonical غير موجود في web-only runtime.');
 if (!webAdvertisingRuntime.includes('https://www.googletagmanager.com/gtm.js?id=')) failures.push('مصدر GTM غير موجود في web-only runtime.');
 const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
-const canonicalHostGuardIndex = webAdvertisingRuntime.indexOf('if (!isCanonicalProductionHost())');
+const canonicalOriginGuardIndex = webAdvertisingRuntime.indexOf('if (!isCanonicalProductionOrigin())');
 const gtmInjectionIndex = webAdvertisingRuntime.indexOf('"google-tag-manager"');
 const monetagInjectionIndex = webAdvertisingRuntime.indexOf('document.head.appendChild(primary)');
 const fundingChoicesInjectionIndex = webAdvertisingRuntime.indexOf('"google-funding-choices"');
 if (
   nativeGuardIndex < 0 ||
-  canonicalHostGuardIndex < 0 ||
+  canonicalOriginGuardIndex < 0 ||
   gtmInjectionIndex < 0 ||
   monetagInjectionIndex < 0 ||
   fundingChoicesInjectionIndex < 0 ||
@@ -63,9 +63,9 @@ if (
   nativeGuardIndex > monetagInjectionIndex ||
   nativeGuardIndex > fundingChoicesInjectionIndex ||
   nativeGuardIndex > analytics ||
-  canonicalHostGuardIndex > analytics
+  canonicalOriginGuardIndex > analytics
 ) {
-  failures.push('يجب أن يسبق خروج Capacitor وفحص المضيف canonical كل حقن فعلي لإعلانات الويب وGA4 وGTM وFunding Choices.');
+  failures.push('يجب أن يسبق خروج Capacitor وفحص الأصل canonical كل حقن فعلي لإعلانات الويب وGA4 وGTM وFunding Choices.');
 }
 if (layout.includes('G-G9DPYTK78')) failures.push('المعرّف القديم G-G9DPYTK78 ما زال موجودًا في root layout.');
 if (!webAdvertisingRuntime.includes('strategy="lazyOnload"')) failures.push('GA4 لا يستخدم lazyOnload في web-only runtime.');
