@@ -54,10 +54,10 @@ for (const token of [
     throw new Error("Web-only third-party tag loader is missing: " + token);
   }
 }
-const canonicalHostGuard = advertisingRuntime.indexOf("if (!isCanonicalProductionHost())");
-if (analytics < 0 || consentDefault < 0 || canonicalHostGuard < 0 || analytics < canonicalHostGuard) {
+const canonicalOriginGuard = advertisingRuntime.indexOf("if (!isCanonicalProductionOrigin())");
+if (analytics < 0 || consentDefault < 0 || canonicalOriginGuard < 0 || analytics < canonicalOriginGuard) {
   throw new Error(
-    "Google Analytics must load only after the denied-by-default consent state and canonical production-host guard are established",
+    "Google Analytics must load only after the denied-by-default consent state and canonical production-origin guard are established",
   );
 }
 if (
