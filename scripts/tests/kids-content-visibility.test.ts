@@ -311,6 +311,9 @@ assert.match(adminManager, /"text":"من ربك؟","options":\["الله","غي�
 assert.doesNotMatch(adminManager, /"q":|"answers":/, "the admin quiz example must not use unsupported question keys");
 assert.doesNotMatch(kidsDetailPage, /getKidsItemBySlug/, "the client must not resurrect a static fallback after the visibility-aware API returns 404");
 assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");
+assert.match(kidsDetailPage, /if \(!contentSlug\)/, "the detail loader must use its normalized slug consistently");
+assert.match(kidsDetailPage, /encodeURIComponent\(contentSlug\)/, "the detail request must use the normalized slug");
+assert.match(kidsDetailPage, /\}, \[contentSlug, isEnglish\]\);/, "the detail loader dependencies must include every captured slug and locale value");
 assert.match(kidsDetailPage, /setContent\(null\)/, "a hidden or unavailable database slug must remain unavailable in the detail page");
 assert.match(kidsQuizValidation, /Number\.isInteger\(correctAnswer\)[\s\S]*?correctAnswer >= options\.length/, "the shared Kids quiz validator must reject out-of-range answers");
 assert.match(kidsDetailPage, /getKidsQuizQuestions/, "the detail page must use the tested localized quiz validator");

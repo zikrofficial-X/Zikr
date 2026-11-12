@@ -101,7 +101,7 @@ export default function KidsDetailPage() {
   const safeVideoUrl = normalizeKidsVideoEmbedUrl(content?.video_url);
 
   useEffect(() => {
-    if (!slug) {
+    if (!contentSlug) {
       setLoading(false);
       return;
     }
@@ -117,7 +117,7 @@ export default function KidsDetailPage() {
         setQuizSubmitted(false);
 
         const response = await fetch(
-          `/api/kids/content/${encodeURIComponent(slug)}`,
+          `/api/kids/content/${encodeURIComponent(contentSlug)}`,
           {
             signal: controller.signal,
             headers: { Accept: "application/json" },
@@ -150,7 +150,7 @@ export default function KidsDetailPage() {
       active = false;
       controller.abort();
     };
-  }, [slug, isEnglish]);
+  }, [contentSlug, isEnglish]);
 
   const handleQuizAnswer = (questionIndex: number, answerIndex: number) => {
     if (!quizSubmitted) {
