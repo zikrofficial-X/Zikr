@@ -201,6 +201,27 @@ assert.deepEqual(
   ["queue-a", "queue-b", "queue-c"],
   "backup ownership must be indexed across every queue/request row before deletion",
 );
+const encodedNestedBackupReferences = indexManagedBackupReferences(
+  [{
+    id: "queue-encoded",
+    metadata: {
+      nested: {
+        sourceVideoUrl: encodeURIComponent(
+          `${supabaseUrl}/storage/v1/object/public/videos/automated/story:20750:11.mp4`,
+        ),
+      },
+    },
+  }],
+  ["automated/story:20750:11.mp4"],
+  (row) => ({ metadata: row.metadata }),
+  (row) => row.id,
+  supabaseUrl,
+);
+assert.deepEqual(
+  [...encodedNestedBackupReferences.get("automated/story:20750:11.mp4")],
+  ["queue-encoded"],
+  "fully URL-encoded nested queue/request references must block staging-object deletion",
+);
 
 await assert.rejects(
   () => collectPaginatedRows(async () => [1, 2], "truncated fixture", 2, 4),
