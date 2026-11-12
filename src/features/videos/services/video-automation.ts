@@ -1,5 +1,4 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
-import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
 import { getServerEnv } from '@/lib/env';
 import { getYouTubeUploadRefreshToken } from '@/features/social/services/youtube-oauth-credentials';
 import { assertCloudinaryVideoUrl } from '@/features/videos/services/video-media-url';
@@ -117,7 +116,7 @@ function sourceSocialCaption(request: VideoGenerationRequest) {
     ? String((ai as Record<string, unknown>).socialCaption).trim()
     : '';
   const baseCaption = [caption || request.description || '', growthCallToAction()].filter(Boolean).join('\n\n').slice(0, 800);
-  return appendSmartLinkDisclosure(baseCaption, content.audience !== 'kids');
+  return baseCaption;
 }
 
 /** Create a durable video-generation request for the canonical template worker. */
@@ -318,7 +317,7 @@ export function generateYoutubeMetadata(request: VideoGenerationRequest) {
   return {
     title,
     description: [sourceSocialCaption(request), qualityNote, sourceLabel, isShort ? '#Shorts' : '', '#ذكر #تدبر #اسلاميات'].filter(Boolean).join('\n\n'),
-    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : []), ...(content.audience === 'kids' ? [] : [...MONETAG_SMARTLINK_YOUTUBE_TAGS])],
+    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : [])],
     categoryId: '27',
     isShort,
   };

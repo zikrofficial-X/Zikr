@@ -27,6 +27,23 @@ const voice = readFileSync("scripts/generate-arabic-voice.py", "utf8");
 assert.ok(!voice.includes("ZariyahNeural"), "default Arabic TTS voice must be male (Zariyah is female)");
 assert.ok(voice.includes("ar-SA-HamedNeural"), "male MSA profile required");
 
+const videoAutomation = readFileSync("src/features/videos/services/video-automation.ts", "utf8");
+const socialPublishing = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+for (const [sourceName, source] of [
+  ["video metadata generator", videoAutomation],
+  ["social publishing worker", socialPublishing],
+]) {
+  assert.doesNotMatch(
+    source,
+    /appendSmartLinkDisclosure|MONETAG_SMARTLINK_YOUTUBE_TAGS|MONETAG_SMARTLINK_URL|uplcm\.com\/4\/12171895/,
+    `${sourceName} must never inject website advertising into external platform metadata`,
+  );
+}
+const smartLinkPromo = readFileSync("src/components/smartlink-promo.tsx", "utf8");
+const footer = readFileSync("src/components/layout/footer.tsx", "utf8");
+assert.ok(smartLinkPromo.includes("MONETAG_SMARTLINK_URL"));
+assert.ok(footer.includes("MONETAG_SMARTLINK_URL"));
+
 const videoCatalog = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const videoDetailPage = readFileSync("src/app/videos/[slug]/page.tsx", "utf8");
 assert.ok(videoCatalog.includes('metadata.generator === "zikr_internal_video_factory"'), "internal generated video catalog must use a distinct generator marker");

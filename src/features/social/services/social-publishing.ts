@@ -18,7 +18,6 @@ import {
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
-import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from "@/lib/smartlink";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
@@ -447,16 +446,9 @@ async function publishFacebookVideoItem(
   const mediaUrl = assertPublishableVideoUrl(item.video_url, "facebook");
   // Both feed videos and Reels use the verified OAuth-managed Page token stored in Supabase.
   // GitHub Actions must never need a duplicate Facebook Page token secret.
-  let kidsAudience = true;
-  try {
-    kidsAudience = (await getYouTubeVideoDisclosure(item)).selfDeclaredMadeForKids;
-  } catch (error) {
-    // Do not add an external advertising link when the audience cannot be verified.
-    console.warn("[social-publishing] SmartLink omitted because video audience could not be verified:", item.id, error);
-  }
   const metadata = {
     title: item.title,
-    description: appendSmartLinkDisclosure(item.body ?? "", !kidsAudience),
+    description: item.body ?? "",
   };
   if (asReel) {
     return publishFacebookReelWithIds(item.id, metadata, mediaUrl, credentials.pageId);
@@ -503,15 +495,11 @@ async function publishYoutubeItem(item: SocialPublishQueueItem): Promise<string 
     item.id,
     {
       title: item.title,
-      description: appendSmartLinkDisclosure(
-        [item.body ?? "", publicUrl(item)].filter(Boolean).join("\n\n"),
-        !disclosure.selfDeclaredMadeForKids,
-      ),
+      description: [item.body ?? "", publicUrl(item)].filter(Boolean).join("\n\n"),
       tags: [
         "zikr",
         "islamic",
         item.content_type,
-        ...(disclosure.selfDeclaredMadeForKids ? [] : [...MONETAG_SMARTLINK_YOUTUBE_TAGS]),
       ],
       categoryId: "27",
       isShort: item.metadata?.videoFormat !== "horizontal",

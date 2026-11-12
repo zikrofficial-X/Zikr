@@ -12,8 +12,8 @@ Its UI label must clearly identify it as an advertisement or external sponsored 
 
 The disclosed link is placed in:
 - The homepage promotional section.
-- The public video hub.
 - The shared footer on eligible general public pages.
+- The public video hub and individual video-detail routes are excluded from the footer and do not render a SmartLink component.
 
 The footer placement is suppressed on administration/authentication, child-directed, sacred-text, worship-tool, and individual video-detail routes. Keep the external link separate from Quran, Hadith, dua, adhkar, prayer, Qibla, and children's learning interfaces.
 
@@ -51,7 +51,7 @@ The website continues to use its approved, disclosed Monetag placements.
 
 ## Social video metadata
 
-Social captions use approved platform metadata. Monetag SmartLinks remain website-only and are not appended to YouTube descriptions, Facebook/Reels captions, or any external platform metadata. Existing historical posts are not edited or republished.
+Social captions use approved platform metadata. Monetag SmartLinks are website-only and must not be appended to YouTube descriptions, Facebook/Reels captions, tags, or any external platform metadata. Existing historical posts are not edited or republished.
 
 ## Publishing behavior
 
