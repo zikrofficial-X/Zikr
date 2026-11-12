@@ -4,6 +4,7 @@ import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import {
   adoptServerConfiguredFacebookPageToken,
@@ -634,6 +635,9 @@ export async function POST(request: NextRequest) {
           const allTargetsSucceeded =
             targets.length > 0 && targets.every(platform => succeeded.has(platform));
           if (allTargetsSucceeded) {
+            const now = new Date();
+            const nowIso = now.toISOString();
+            const updatedAt = buildNextRowVersionUpdatedAt(expectedUpdatedAt, now);
             const updated = await supabaseServerAdminRequest<QueueItem[]>(
               `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
               {
@@ -645,8 +649,8 @@ export async function POST(request: NextRequest) {
                 body: JSON.stringify({
                   status: "published",
                   error_message: null,
-                  published_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
+                  published_at: nowIso,
+                  updated_at: updatedAt,
                 }),
               }
             );
@@ -681,6 +685,9 @@ export async function POST(request: NextRequest) {
           !Array.isArray(item.metadata?.permanentFailurePlatforms) &&
           item.metadata?.permanentFailure === true &&
           platforms.length < item.target_platforms.length;
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const updatedAt = buildNextRowVersionUpdatedAt(expectedUpdatedAt, now);
         const updated = await supabaseServerAdminRequest<QueueItem[]>(
           `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`,
           {
@@ -695,8 +702,8 @@ export async function POST(request: NextRequest) {
               // unresolved targets are cleared after the administrator confirms
               // that no corresponding remote post exists.
               error_message: null,
-              updated_at: new Date().toISOString(),
-              scheduled_at: new Date().toISOString(),
+              updated_at: updatedAt,
+              scheduled_at: nowIso,
               metadata: {
                 ...(item.metadata ?? {}),
                 attempts: 0,

@@ -3,6 +3,7 @@ import { deleteSocialPlatformPost } from "../../src/features/social/services/soc
 import { claimSocialQueuePlatformDeletion } from "../../src/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
 assert.match(
@@ -373,7 +374,19 @@ assert.match(
   "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
 );
 assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
-assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
+
+assert.equal(
+  (socialAdminRoute.match(/buildNextRowVersionUpdatedAt\\(expectedUpdatedAt, now\\)/g) ?? []).length,
+  2,
+  "both admin retry transitions must advance the exact row-version token used by their compare-and-set filters",
+);
+assert.doesNotMatch(socialAdminRoute, /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+  "admin queue CAS updates must not reuse the observed timestamp within the same millisecond");
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
+  "2026-11-13T01:30:00.124Z",
+  "admin queue retry row versions must advance even when the write occurs in the same millisecond",
+);assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
 assert.match(
   socialAdminRoute,
   /retry_all_failed[\s\S]*?id=in\.\(.*?ids\.map\(encodeURIComponent\)/,

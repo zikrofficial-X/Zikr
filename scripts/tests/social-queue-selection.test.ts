@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
@@ -180,6 +181,23 @@ assert.match(socialPublisher, /const finalized = await markQueueItem\(item\.id, 
 assert.match(socialPublisher, /Provider result arrived after the worker lease was recovered/, "a stale provider result must leave the newer recovery state untouched");
 assert.match(socialPublisher, /expectedLease\s*\?\s*buildSocialPublishLeaseFilter\(itemId, expectedLease\.status, expectedLease\.updatedAt\)/, "status updates with a lease must use the versioned compare-and-set filter");
 
+const markQueueItemStart = socialPublisher.indexOf("async function markQueueItem(");
+const markQueueItemEnd = socialPublisher.indexOf("async function hasVideoApprovalForQueueItem", markQueueItemStart);
+const markQueueItemSource = socialPublisher.slice(markQueueItemStart, markQueueItemEnd);
+assert.match(markQueueItemSource, /buildNextRowVersionUpdatedAt\\(expectedLease\\.updatedAt, now\\)/,
+  "a leased queue transition must advance updated_at strictly beyond the lease it consumes");
+assert.doesNotMatch(markQueueItemSource, /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+  "a same-millisecond queue transition must not leave an old publisher lease reusable");
+assert.equal(
+  (socialPublisher.match(/const claimUpdatedAt = buildNextRowVersionUpdatedAt\\(item\\.updated_at, claimNow\\)/g) ?? []).length,
+  2,
+  "both batch and single-item publisher claims must advance the row-version token",
+);
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
+  "2026-11-13T01:30:00.124Z",
+  "a row updated in the same millisecond must still receive a strictly newer CAS token",
+);
 const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
 assert.ok(adminRoute.includes('Prefer: "return=representation"'));

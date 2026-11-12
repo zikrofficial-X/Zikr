@@ -112,6 +112,10 @@ async function markQueueItem(
   patch: Record<string, unknown> = {},
   expectedLease?: { status: SocialQueueStatus; updatedAt: string },
 ): Promise<boolean> {
+  const now = new Date();
+  const updatedAt = expectedLease
+    ? buildNextRowVersionUpdatedAt(expectedLease.updatedAt, now)
+    : now.toISOString();
   const filter = expectedLease
     ? buildSocialPublishLeaseFilter(itemId, expectedLease.status, expectedLease.updatedAt)
     : `id=eq.${encodeURIComponent(itemId)}`;
@@ -121,9 +125,9 @@ async function markQueueItem(
       method: "PATCH",
       headers: { Prefer: expectedLease ? "return=representation" : "return=minimal" },
       body: JSON.stringify({
-        status,
-        updated_at: new Date().toISOString(),
         ...patch,
+        status,
+        updated_at: updatedAt,
       }),
     }
   );
@@ -374,10 +378,12 @@ export async function claimPendingSocialPublishItems(
   // requests. Admin can manually requeue them after credentials are repaired.
   const items = normalItems;
   const claimed: SocialPublishQueueItem[] = [];
-  const claimAt = new Date().toISOString();
 
   for (const item of items) {
     try {
+      const claimNow = new Date();
+      const claimAt = claimNow.toISOString();
+      const claimUpdatedAt = buildNextRowVersionUpdatedAt(item.updated_at, claimNow);
       const claimStatus = item.status === "partial" ? "partial" : item.status === "failed" ? "failed" : "queued";
       // Atomic claim compares the exact updated_at value returned with this candidate.
       // This prevents a concurrent edit from publishing stale title/body/media metadata;
@@ -393,7 +399,7 @@ export async function claimPendingSocialPublishItems(
           body: JSON.stringify({
             status: "processing",
             error_message: null,
-            updated_at: new Date().toISOString(),
+            updated_at: claimUpdatedAt,
           }),
         }
       );
@@ -1051,13 +1057,15 @@ export async function processSocialPublishItem(
     ) {
       return "deferred";
     }
-    const claimAt = new Date().toISOString();
+    const claimNow = new Date();
+    const claimAt = claimNow.toISOString();
+    const claimUpdatedAt = buildNextRowVersionUpdatedAt(item.updated_at, claimNow);
     const claimed = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
       `/rest/v1/social_publish_queue?${buildDueSocialQueueClaimFilter(item.id, item.status, claimAt, item.updated_at)}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify({ status: "processing", updated_at: claimAt }),
+        body: JSON.stringify({ status: "processing", updated_at: claimUpdatedAt }),
       },
     );
     if (!Array.isArray(claimed) || !claimed[0] || !Number.isFinite(Date.parse(claimed[0].updated_at))) {
