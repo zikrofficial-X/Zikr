@@ -77,6 +77,14 @@ const videoAutomation = readFileSync(
   resolve(process.cwd(), "src/features/videos/services/video-automation.ts"),
   "utf8",
 );
+const systemActions = readFileSync(
+  resolve(process.cwd(), "src/app/admin/system-actions.ts"),
+  "utf8",
+);
+const videoVisualsPage = readFileSync(
+  resolve(process.cwd(), "src/app/admin/video/visuals/page.tsx"),
+  "utf8",
+);
 
 function requireMatch(pattern, description) {
   assert.match(migration, pattern, `Missing admin RLS invariant: ${description}`);
@@ -362,6 +370,19 @@ assert.equal(socialManagerPermissions?.[1].includes("'video.delete'"), false);
 assert.ok(videoManagerPermissions?.[1].includes("'video.manage'"));
 assert.equal(videoManagerPermissions?.[1].includes("'social.publish'"), false);
 assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
+assert.equal(videoManagerPermissions?.[1].includes("'system.manage'"), false);
+
+const customSpacesAction = systemActions.match(
+  /export async function saveCustomVideoSpacesAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+assert.match(
+  customSpacesAction,
+  /requireAdminStepUp\("system\.manage", "\/admin\/video\/visuals"\)/,
+  "custom Hugging Face Space configuration must require system-level permission and MFA step-up",
+);
+assert.match(customSpacesAction, /permission: "system\.manage"/);
+assert.match(videoVisualsPage, /hasAdminPermission\(admin\.role, "system\.manage"\)/);
+
 
 assert.ok(
   rlsEventTriggerMigration.includes("to_regprocedure('public.rls_auto_enable()')") &&

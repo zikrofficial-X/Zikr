@@ -280,7 +280,7 @@ export async function markAdminNotificationsReadAction() {
 
 
 export async function saveCustomVideoSpacesAction(formData: FormData) {
-  const profile = await requireAdminPermission("video.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/video/visuals");
   const entries: Array<{ space: string; variant: "wan2_2_fast" | "ltx_fast"; enabled: true }> = [];
   const seen = new Set<string>();
 
@@ -315,7 +315,7 @@ export async function saveCustomVideoSpacesAction(formData: FormData) {
 
   await recordAdminAuditEvent({
     action: "admin.video_custom_spaces.update",
-    permission: "video.manage",
+    permission: "system.manage",
     resourceType: "admin_settings",
     resourceId: "video_custom_spaces",
     metadata: {

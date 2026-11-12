@@ -157,12 +157,20 @@ export class HuggingFaceSpaceVideoProvider implements VideoProvider {
 
       if (conditioningImage) args.push("--image", conditioningImage);
 
-      const token = process.env.HF_TOKEN?.trim();
-      if (token) args.push("--hf-token", token);
+      const childEnv: NodeJS.ProcessEnv = { ...process.env };
+      if (this.customSpace) {
+        // Admin-configured Spaces are public and untrusted. Never expose the
+        // server HF token or a cached Hugging Face login to a custom Space.
+        args.push("--public-space");
+        childEnv.HF_TOKEN = "";
+        childEnv.HF_HOME = path.join(tempDir, "hf-home");
+        childEnv.HF_HUB_DISABLE_IMPLICIT_TOKEN = "1";
+      }
 
       const { stdout, stderr } = await execFileAsync(configuredPython(), args, {
         timeout: PYTHON_TIMEOUT_MS,
         maxBuffer: 4 * 1024 * 1024,
+        env: childEnv,
       });
 
       if (stdout.trim()) console.log("[" + this.name + "] " + stdout.trim());
