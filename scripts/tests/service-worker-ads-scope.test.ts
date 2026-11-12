@@ -98,6 +98,21 @@ assert.match(
 );
 const webAdsRuntime = readFileSync("src/components/layout/web-advertising-runtime.tsx", "utf8");
 const adsenseSlot = readFileSync("src/components/layout/adsense-slot.tsx", "utf8");
+const integrityVerifier = readFileSync("scripts/verify-project-integrity.mjs", "utf8");
+assert.ok(
+  integrityVerifier.includes("'window.location.origin'"),
+  "project integrity must verify the origin-aware service-worker registration",
+);
+assert.ok(
+  integrityVerifier.includes("'serviceWorkerLocation.origin === \"https://zikrmediaofficial.vercel.app\"'"),
+  "project integrity must verify the exact canonical service-worker origin",
+);
+assert.ok(
+  !integrityVerifier.includes("'window.location.hostname'") &&
+    !integrityVerifier.includes("'hostname.toLowerCase() === \"zikrmediaofficial.vercel.app\"'"),
+  "project integrity must not regress to hostname-only advertising gates",
+);
+
 assert.ok(webAdsRuntime.includes("window.location.origin === new URL(PRODUCTION_URL).origin"));
 assert.ok(adsenseSlot.includes("window.location.origin === new URL(PRODUCTION_URL).origin"));
 
