@@ -84,6 +84,8 @@ export function buildSocialQueueMetadataCasFilter(
  * A competing request sees "deleting" or loses the row-version CAS and must not
  * send a second destructive request to the provider.
  */
+export const SOCIAL_QUEUE_PLATFORM_DELETION_CLAIM_LEASE_MS = 10 * 60 * 1000;
+
 export type SocialQueuePlatformDeletionClaim =
   | "claimed"
   | "already_deleted"
@@ -138,7 +140,15 @@ export async function claimSocialQueuePlatformDeletion(
     ? deletions[input.platform] as Record<string, unknown>
     : {};
   if (previous.status === "deleted") return "already_deleted";
-  if (previous.status === "deleting") return "in_progress";
+  if (previous.status === "deleting") {
+    const previousAttemptAt = typeof previous.attemptedAt === "string"
+      ? Date.parse(previous.attemptedAt)
+      : Number.NaN;
+    const leaseExpired = Number.isFinite(previousAttemptAt) &&
+      now.getTime() - previousAttemptAt >= SOCIAL_QUEUE_PLATFORM_DELETION_CLAIM_LEASE_MS;
+    // Invalid/missing timestamps fail closed; only a clearly expired lease is reclaimable.
+    if (!leaseExpired) return "in_progress";
+  }
 
   const attemptedAt = now.toISOString();
   const nextMetadata = mergeSocialQueueMetadata(row.metadata, {

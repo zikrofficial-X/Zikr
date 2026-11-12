@@ -195,6 +195,43 @@ assert.equal(
   "in_progress",
   "a concurrent administrator must observe the reservation and must not send a second provider delete",
 );
+const expiredDeletionClaimRow = {
+  ...deletionQueueRow,
+  updated_at: "2026-11-12T18:00:00.000Z",
+  metadata: { platformDeletions: { youtube: { status: "deleting", attemptedAt: "2026-11-12T17:45:00.000Z" } } },
+};
+const expiredDeletionClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...expiredDeletionClaimRow }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected expired deletion-claim method.");
+  const expectedVersion = encodeURIComponent(expiredDeletionClaimRow.updated_at);
+  if (!path.includes("updated_at=eq." + expectedVersion)) return [] as T;
+  const payload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  expiredDeletionClaimRow.metadata = payload.metadata;
+  expiredDeletionClaimRow.updated_at = payload.updated_at;
+  return [{ id: expiredDeletionClaimRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, expiredDeletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "claimed",
+  "a deletion claim whose timestamp is older than the lease must be safely reclaimable after a crashed request",
+);
+
+const invalidDeletionClaimRow = {
+  ...deletionQueueRow,
+  metadata: { platformDeletions: { youtube: { status: "deleting", attemptedAt: "not-a-timestamp" } } },
+};
+let invalidDeletionPatchCalls = 0;
+const invalidDeletionClaimRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") invalidDeletionPatchCalls += 1;
+  return [{ ...invalidDeletionClaimRow }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, invalidDeletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "in_progress",
+  "a deleting reservation with an invalid timestamp must fail closed rather than risk a duplicate remote delete",
+);
+assert.equal(invalidDeletionPatchCalls, 0, "invalid lease timestamps must never be reclaimed automatically");
+
 assert.equal(
   deletionClaimCalls.filter((call) => call.init?.method === "PATCH").length,
   1,
