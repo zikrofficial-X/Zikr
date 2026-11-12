@@ -2761,22 +2761,6 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
 
 
 
-            // Keep this request in processing while the held social rows are
-            // reconciled. The lease heartbeat below uses a processing-only CAS
-            // filter; cancelling first would make the next renewal look like
-            // lease loss and abort a long-running reconciliation.
-            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
-            try {
-              socialQueueRecovery = await withLeaseHeartbeat((signal) =>
-                restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt, signal),
-              );
-            } catch (queueRecoveryError) {
-              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
-            }
-            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
-              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
-            }
-
             await patchProcessingRequestWithLease({
               status: "cancelled",
               video_url: null,
@@ -2788,6 +2772,21 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               error_message: "Duplicate render recovered into the canonical request",
               error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
             });
+            let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
+            try {
+              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(
+                duplicate.id,
+                rendered.videoUrl,
+                duplicateAt,
+              );
+            } catch (queueRecoveryError) {
+              console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
+            }
+            if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.failedUpdates > 0) {
+              console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
+            }
+
+
 
             succeeded += 1;
             console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
