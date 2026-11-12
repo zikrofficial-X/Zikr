@@ -170,14 +170,13 @@ assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-orig
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
 
 assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
-assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must resolve publication from the complete live queue set");
 assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must aggregate all original and supplemental social queue rows");
 assert.ok(kidsVideosApi.includes("socialQueueReadSucceeded = true"), "stored social badges must be used only after a successful live queue read");
 assert.ok(kidsVideosApi.includes("Promise.allSettled"), "a social queue read failure must be distinguishable from a legitimate empty result");
 assert.doesNotMatch(kidsVideosApi, /status=in\.\(published,partial\)/, "queued, processing and failed supplemental rows must participate in live publication reconciliation");
 
-assert.ok(kidsVideosApi.includes("status=in.(published,partial)"), "the public Kids video feed must not select queued, processing, or failed social posts");
-assert.ok(kidsVideosApi.includes("published_at=not.is.null"), "the public Kids video feed must require a confirmed publication timestamp");
+// All queue states are read so live failed/pending rows can override stale catalog metadata.
+
 
 assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", status: "published", published_at: "2026-11-11T12:00:00.000Z", metadata: { audience: "kids" } }), true);
 assert.equal(isPublicKidsVideoSocialQueueRow({
