@@ -258,15 +258,10 @@ if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
 }
-const facebookCallbackSaveIndex = facebookCallback.indexOf("await saveFacebookPageCredential(");
-const facebookCallbackStepUpIndex = facebookCallback.indexOf('requireAdminStepUpApi("social.publish"');
-const facebookCallbackReleaseIndex = facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(");
-if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
-    facebookCallbackSaveIndex < 0 ||
-    facebookCallbackStepUpIndex <= facebookCallbackSaveIndex ||
-    facebookCallbackReleaseIndex <= facebookCallbackStepUpIndex ||
+if (!facebookCallback.includes("await saveFacebookPageCredential(") ||
+    facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
     facebookCallback.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
-  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and passing social.publish MFA step-up; dispatch remains scheduled");
+  failures.push("Facebook OAuth callback must persist the verified Page credential only; queue recovery remains a separate confirmed social.publish action");
 }
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("hasYouTubeUploadScopes(scopes)") ||
