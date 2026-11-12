@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { readAdminRows } from "@/features/admin/services/safe-read";
 import { requireAdminPermission } from "@/features/admin/services/admin";
-import { hasAdminPermission } from "@/features/admin/services/permissions";
+import { hasAdminPermission, resolveAdminRole } from "@/features/admin/services/permissions";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
@@ -62,13 +62,22 @@ async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
     return {
       rows: (users || []).map((user) => ({
         ...user,
-        effective_role: roleByUser.get(user.id) ?? user.role ?? "user",
+        effective_role: resolveAdminRole(user.role, roleByUser.get(user.id)),
       })),
       ok: true,
     };
   } catch (error) {
     console.error("Failed to fetch users:", error);
     return { rows: [], ok: false };
+  }
+}
+
+async function getTotalUsers(): Promise<number | null> {
+  try {
+    return await supabaseServerAdminCount("profiles");
+  } catch (error) {
+    console.error("Failed to count users:", error);
+    return null;
   }
 }
 
@@ -82,7 +91,7 @@ export default async function AdminUsersPage() {
 
   const [users, totalUsers, recentActions, adminAssignments, legacyAdmins, recentProfiles] = await Promise.all([
     getUsers(),
-    supabaseServerAdminCount("profiles"),
+    getTotalUsers(),
     canReadAudit ? getRecentAdminActions() : Promise.resolve({ rows: [], ok: false }),
     readAdminRows<{ user_id: string }>(
       "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
@@ -118,7 +127,7 @@ export default async function AdminUsersPage() {
       <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <p className="text-sm arabic-muted">إجمالي المستخدمين</p>
-          <strong className="text-3xl text-brand-gold">{totalUsers}</strong>
+          <strong className="text-3xl text-brand-gold">{totalUsers ?? "غير متاح"}</strong>
         </Card>
         <Card>
           <p className="text-sm arabic-muted">مسجلون خلال 30 يومًا</p>
