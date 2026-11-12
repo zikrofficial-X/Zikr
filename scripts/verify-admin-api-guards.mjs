@@ -10,6 +10,7 @@ const actionRoots = [
   join(root, "src/features/admin/actions"),
 ].filter((dir) => existsSync(dir));
 const failures = [];
+const permissionMatrix = readFileSync(join(root, "docs/admin/ADMIN_API_PERMISSION_MATRIX_2026-11-06.md"), "utf8");
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
 
 if (!existsSync(apiRoot) || actionRoots.length === 0) {
@@ -120,6 +121,68 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/youtube-facebook/register-media/route.ts POST": ["media.manage"],
   "src/app/api/admin/youtube-facebook/upload-url/route.ts POST": ["media.manage"],
 };
+
+const documentedHandlers = new Map();
+for (const line of permissionMatrix.split(/\r?\n/)) {
+  const row = /^\|\s*(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s*\|\s*`([^`]+)`\s*\|\s*(.+?)\s*\|$/.exec(line);
+  if (!row) continue;
+  const permissions = [...row[3].matchAll(/`([^`]+)`/g)].map((match) => match[1]).sort();
+  documentedHandlers.set(`${row[1]} ${row[2]}`, { permissions, cell: row[3] });
+}
+
+for (const [handlerKey, expectedPermissions] of Object.entries(CANONICAL_API_GUARDS)) {
+  const [route, method] = handlerKey.split(" ");
+  const apiPath = route.replace("src/app", "").replace(/\/route\.ts$/, "");
+  const documented = documentedHandlers.get(`${method} ${apiPath}`);
+  if (!documented) {
+    failures.push(handlerKey + ": missing from the human-readable Admin API permission matrix.");
+    continue;
+  }
+  const expected = [...expectedPermissions].sort();
+  if (expected.length === 0) {
+    if (!documented.cell.includes("405") || documented.permissions.length > 0) {
+      failures.push(handlerKey + ": documentation must identify an explicit side-effect-free HTTP 405 response.");
+    }
+  } else if (documented.permissions.join("|") !== expected.join("|")) {
+    failures.push(handlerKey + ": documented permissions do not match the executable canonical permission matrix.");
+  }
+}
+if (documentedHandlers.size !== Object.keys(CANONICAL_API_GUARDS).length) {
+  failures.push("Human-readable Admin API permission matrix contains missing or extra HTTP handler rows.");
+}
+
+const activeSocialHandlers = [
+  "GET /api/admin/social/facebook/callback",
+  "GET /api/admin/social/facebook/connect",
+  "GET /api/admin/social",
+  "POST /api/admin/social",
+  "GET /api/admin/social/written",
+  "POST /api/admin/social/written",
+  "GET /api/admin/social/youtube/connect",
+  "GET /api/admin/social/youtube/callback",
+];
+for (const key of activeSocialHandlers) {
+  const row = documentedHandlers.get(key);
+  if (!row || /retired|HTTP 410/i.test(row.cell)) {
+    failures.push(key + ": active OAuth/social queue route must not be documented as retired.");
+  }
+}
+for (const key of [
+  "POST /api/admin/youtube-facebook/register-media",
+  "POST /api/admin/youtube-facebook/upload-url",
+]) {
+  const row = documentedHandlers.get(key);
+  if (!row || !/retired|HTTP 410/i.test(row.cell)) {
+    failures.push(key + ": retired external media-import route must remain documented as HTTP 410.");
+  }
+}
+if (
+  !permissionMatrix.includes("youtube.upload") ||
+  !permissionMatrix.includes("youtube.readonly") ||
+  !permissionMatrix.includes("yt-analytics.readonly")
+) {
+  failures.push("YouTube OAuth documentation must disclose all requested upload, channel-read, and analytics-read scopes.");
+}
 
 const videoPurgeSource = readFileSync(join(apiRoot, "video-purge/route.ts"), "utf8");
 const videoPurgePostStart = videoPurgeSource.indexOf("export async function POST(");

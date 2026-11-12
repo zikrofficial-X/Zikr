@@ -1,4 +1,4 @@
-# مصفوفة صلاحيات واجهات Admin API — 6 نوفمبر 2026
+# مصفوفة صلاحيات واجهات Admin API — 12 نوفمبر 2026
 
 هذه المصفوفة هي المرجع التنفيذي لصلاحيات معالجات HTTP في `src/app/api/admin`. يجب أن يتطابق كل مسار وطريقة HTTP مع الصلاحيات المدرجة حرفيًا. لا تكفي صلاحية عامة أو صلاحية أعلى غير لازمة بدلًا منها.
 
@@ -20,19 +20,19 @@
 | PATCH | `/api/admin/site-audio` | `audio.manage` |
 | DELETE | `/api/admin/site-audio` | `audio.manage` |
 | POST | `/api/admin/site-audio/upload` | `audio.manage` |
-| GET | `/api/admin/social/facebook/callback` | `social.manage` — retired, HTTP 410 |
-| GET | `/api/admin/social/facebook/connect` | `social.manage` — retired, HTTP 410 |
-| GET | `/api/admin/social` | `social.manage` — retired, HTTP 410 |
-| POST | `/api/admin/social` | `social.manage` + `social.publish` — retired, HTTP 410 |
-| GET | `/api/admin/social/written` | `social.manage` — retired, HTTP 410 |
-| POST | `/api/admin/social/written` | `social.manage` + `social.publish` — retired, HTTP 410 |
+| GET | `/api/admin/social/facebook/callback` | `social.manage` — OAuth Page credential callback |
+| GET | `/api/admin/social/facebook/connect` | `social.manage` — Page publishing + Insights permissions |
+| GET | `/api/admin/social` | `social.manage` — queue and connection management |
+| POST | `/api/admin/social` | `social.manage` + `social.publish` — step-up required for sensitive actions |
+| GET | `/api/admin/social/written` | `social.manage` — written queue read |
+| POST | `/api/admin/social/written` | `social.manage` + `social.publish` — MFA step-up before generation dispatch |
 | POST | `/api/admin/video-generation/narration-upload` | `video.manage` |
 | GET | `/api/admin/video-generation` | `video.manage` |
 | DELETE | `/api/admin/video-generation` | `video.delete` |
 | PATCH | `/api/admin/video-generation` | `video.manage` — external publish retry returns HTTP 410 |
 | GET | `/api/admin/video-generation/sources` | `video.manage` |
-| GET | `/api/admin/social/youtube/connect` | `analytics.read` — read-only OAuth |
-| GET | `/api/admin/social/youtube/callback` | `analytics.read` — read-only OAuth |
+| GET | `/api/admin/social/youtube/connect` | `social.manage` — OAuth requests upload, channel-read and analytics-read scopes |
+| GET | `/api/admin/social/youtube/callback` | `social.manage` — validates upload/read scopes and stores the publishing refresh token |
 | GET | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/videos/[id]/retry` | `video.manage` |
@@ -48,8 +48,9 @@
 
 ## ثوابت إضافية
 
-- واجهات النشر الاجتماعي القديمة مغلقة وتعيد HTTP 410 بعد التحقق من الصلاحيات؛ لا تُنشئ عمليات نشر أو تعدّل الطابور التاريخي.
-- OAuth الخاص بـYouTube محصور في `analytics.read` ويطلب `youtube.readonly` و`yt-analytics.readonly` فقط.
+- مسارات OAuth الخاصة بـFacebook وYouTube ومسارات إدارة طابور النشر الاجتماعي فعّالة ومحمية بالصلاحيات المدرجة أعلاه؛ عمليات النشر/التوليد الحساسة تتطلب `social.publish` مع MFA step-up.
+- مسارا استيراد الوسائط القديمان `/api/admin/youtube-facebook/register-media` و`/api/admin/youtube-facebook/upload-url` فقط يعيدان HTTP 410 بعد التحقق من `media.manage`.
+- ربط YouTube يتطلب `social.manage` ويطلب `youtube.upload` و`youtube.readonly` و`yt-analytics.readonly`؛ صلاحية تنفيذ النشر `social.publish` تظل منفصلة.
 - نشر الفيديو داخل موقع ZIKR يستخدم `content_publish_queue` و`video.manage`، ولا يحتاج صلاحيات النشر الاجتماعي.
 - إعادة محاولة النشر الخارجي للفيديو متوقفة وتعيد HTTP 410.
 - حذف طلب فيديو أو سجل فيديو يحتاج `video.delete`، وليس `video.manage` وحدها.
@@ -60,4 +61,4 @@
 
 ## نطاق الفحص
 
-آخر جرد ناجح على `main` اكتشف 24 ملف API و39 معالج HTTP، منها معالجان GET يرفضان الطريقة صراحةً بـ405. كما اكتشف 14 وحدة Server Actions تضم 29 إجراءً محميًا. لا تتضمن هذه المصفوفة Server Actions؛ تظل خاضعة لفحص AST المنفصل في نفس الأداة.
+آخر جرد ناجح على `main` اكتشف 24 ملف API و43 معالج HTTP، منها معالجان GET يرفضان الطريقة صراحةً بـ405. كما اكتشف 14 وحدة Server Actions تضم 29 إجراءً محميًا. أصبح فاحص الصلاحيات يقارن صفوف هذه الوثيقة مباشرةً بالمصفوفة التنفيذية حتى لا تنحرف الوثيقة عن حراس المسارات. لا تتضمن هذه المصفوفة Server Actions؛ تظل خاضعة لفحص AST المنفصل في نفس الأداة.
