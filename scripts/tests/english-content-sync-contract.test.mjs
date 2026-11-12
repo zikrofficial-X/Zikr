@@ -57,6 +57,22 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
+
+const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
+const articleCandidateIndex = articleSync.indexOf('const rows = await supabase<ArticleRow[]>(');
+assert.ok(
+  recoveryCallIndex >= 0 && recoveryCallIndex < articleCandidateIndex,
+  "stale translation claims must be reconciled before selecting new article candidates",
+);
+assert.ok(
+  articleSync.includes("status=eq.processing&updated_at=eq.\\${encodeURIComponent(queueRow.updated_at)}"),
+  "stale queue recovery must compare the exact processing-row revision before finalizing",
+);
+assert.ok(
+  articleSync.includes("sourceHashMatches: article !== null && hashSource(article) === queueRow.source_hash"),
+  "stale queue recovery must verify the current Arabic source hash before marking a translation generated",
+);
+
 const circleCi = readFileSync(".circleci/config.yml", "utf8");
 const circleEnglishSync = circleCi.slice(
   circleCi.indexOf("  english-content-sync:"),

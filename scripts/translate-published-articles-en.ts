@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { resolveStaleTranslationQueueRecovery } from "../src/features/articles/services/translation-queue-recovery";
 
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -229,6 +230,100 @@ async function updateTranslationQueueClaim(
   return Boolean(updated?.id);
 }
 
+
+type StaleTranslationQueueRow = {
+  id: string;
+  content_id: string;
+  source_hash: string;
+  updated_at: string;
+};
+
+async function recoverStaleTranslationQueueRows(): Promise<void> {
+  const staleBefore = new Date(Date.now() - TRANSLATION_QUEUE_LEASE_MS).toISOString();
+  const staleRows = await supabase<StaleTranslationQueueRow[]>(
+    `/rest/v1/content_translation_queue?select=id,content_id,source_hash,updated_at&content_type=eq.article&target_locale=eq.en&status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&order=updated_at.asc&limit=${batchSize}`,
+  );
+  let recovered = 0;
+  let deferred = 0;
+
+  for (const queueRow of staleRows ?? []) {
+    if (
+      !queueRow.id ||
+      !queueRow.content_id ||
+      !queueRow.updated_at ||
+      !Number.isFinite(Date.parse(queueRow.updated_at))
+    ) {
+      continue;
+    }
+
+    let article: (ArticleRow & { published: boolean }) | null = null;
+    try {
+      const [found] = await supabase<Array<ArticleRow & { published: boolean }>>(
+        `/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en,updated_at,published&id=eq.${encodeURIComponent(queueRow.content_id)}&limit=1`,
+      );
+      article = found ?? null;
+    } catch (error) {
+      console.warn(
+        `Could not inspect stale translation ${queueRow.content_id}; leaving its lease unchanged for a later recovery:`,
+        error,
+      );
+      continue;
+    }
+
+    const decision = resolveStaleTranslationQueueRecovery({
+      article,
+      sourceHashMatches: article !== null && hashSource(article) === queueRow.source_hash,
+    });
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const patch = decision.status === "generated"
+      ? {
+          status: "generated",
+          draft_payload: decision.draftPayload,
+          processed_at: nowIso,
+          error_message: null,
+          available_at: nowIso,
+          updated_at: nowIso,
+        }
+      : {
+          status: "failed",
+          processed_at: nowIso,
+          error_message: decision.errorMessage,
+          available_at: new Date(now.getTime() + 15 * 60_000).toISOString(),
+          updated_at: nowIso,
+        };
+
+    try {
+      const [updated] = await supabase<Array<{ id: string }>>(
+        `/rest/v1/content_translation_queue?id=eq.${encodeURIComponent(queueRow.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(queueRow.updated_at)}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        },
+      );
+      if (!updated?.id) {
+        console.warn(`Preserved a newer translation queue state for ${queueRow.content_id}.`);
+        continue;
+      }
+      if (decision.status === "generated") {
+        recovered += 1;
+        console.info(`Recovered completed translation queue state for ${queueRow.content_id}.`);
+      } else {
+        deferred += 1;
+        console.warn(`Deferred stale translation queue row ${queueRow.content_id}: ${decision.errorMessage}`);
+      }
+    } catch (error) {
+      console.error(`Could not reconcile stale translation queue row ${queueRow.content_id}:`, error);
+    }
+  }
+
+  if (recovered > 0 || deferred > 0) {
+    console.info(
+      `[translation] Stale queue reconciliation: ${recovered} completed, ${deferred} deferred for retry or review.`,
+    );
+  }
+}
+
 function buildPrompt(article: ArticleRow): string {
   return `Translate this Islamic editorial article from Arabic to natural, publication-quality English.
 
@@ -251,6 +346,8 @@ ${article.content_ar ?? ""}`;
 }
 
 async function main() {
+  await recoverStaleTranslationQueueRows();
+
   const rows = await supabase<ArticleRow[]>(
     "/rest/v1/articles?select=id,title_ar,summary_ar,content_ar,title_en,summary_en,content_en,updated_at&published=eq.true&or=(title_en.is.null,title_en.eq.,summary_en.is.null,summary_en.eq.,content_en.is.null,content_en.eq.)&order=created_at.asc&limit=" + batchSize,
   );
