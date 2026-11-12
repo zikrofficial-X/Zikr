@@ -8,12 +8,16 @@ import { pageMetadata } from "@/lib/site";
 import { resolveVideoMediaUrl } from "@/features/videos/services/video-media-contract";
 
 export const dynamic = "force-dynamic";
-const loadVideo = cache(async (slug: string) => {
+type KidsVideoLookup =
+  | { status: "loaded"; video: Awaited<ReturnType<typeof getKidsGeneratedVideoBySlug>> }
+  | { status: "error" };
+
+const loadVideo = cache(async (slug: string): Promise<KidsVideoLookup> => {
   try {
-    return await getKidsGeneratedVideoBySlug(slug);
+    return { status: "loaded", video: await getKidsGeneratedVideoBySlug(slug) };
   } catch (error) {
     console.warn("[kids/videos] detail lookup failed:", error instanceof Error ? error.message : String(error));
-    return null;
+    return { status: "error" };
   }
 });
 
@@ -21,10 +25,11 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const video = await loadVideo(slug);
+  const result = await loadVideo(slug);
+  const video = result.status === "loaded" ? result.video : null;
   return pageMetadata({
-    title: video?.title ?? "فيديو أطفال غير موجود",
-    description: video?.description ?? "فيديو من مكتبة الأطفال في ذِكر.",
+    title: result.status === "error" ? "الفيديو غير متاح مؤقتًا" : video?.title ?? "فيديو أطفال غير موجود",
+    description: result.status === "error" ? "تعذر تحميل بيانات الفيديو مؤقتًا. حاول مرة أخرى لاحقًا." : video?.description ?? "فيديو من مكتبة الأطفال في ذِكر.",
     path: "/kids/videos/" + slug,
     noindex: true,
     images: video?.thumbnailUrl ? [video.thumbnailUrl] : undefined,
@@ -33,12 +38,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function KidsVideoDetailPage({ params }: Props) {
   const { slug } = await params;
-  const video = await loadVideo(slug);
+  const result = await loadVideo(slug);
+  if (result.status === "error") {
+    return (
+      <Container className="py-14">
+        <Card className="space-y-4 p-8 text-center">
+          <h1 className="text-xl font-bold text-brand-gold">تعذر تحميل الفيديو مؤقتًا</h1>
+          <p className="text-sm leading-7 text-brand-cream/70">حدثت مشكلة أثناء الاتصال بمكتبة الفيديوهات. لم يتم اعتبار المحتوى محذوفًا؛ حاول مرة أخرى لاحقًا.</p>
+          <Link href="/kids/videos" className="font-bold text-brand-cream">العودة إلى مكتبة الأطفال</Link>
+        </Card>
+      </Container>
+    );
+  }
+  const video = result.video;
   if (!video) {
     return (
       <Container className="py-14">
         <Card className="space-y-4 p-8 text-center">
-          <h1 className="text-xl font-bold text-brand-gold">الفيديو غير متاح</h1>
+          <h1 className="text-xl font-bold text-brand-gold">الفيديو غير موجود</h1>
           <Link href="/kids/videos" className="font-bold text-brand-cream">العودة إلى مكتبة الأطفال</Link>
         </Card>
       </Container>

@@ -168,7 +168,10 @@ const kidsVideoListPage = readFileSync("src/app/kids/videos/page.tsx", "utf8");
 const kidsVideoDetailPage = readFileSync("src/app/kids/videos/[slug]/page.tsx", "utf8");
 assert.ok(kidsVideoListPage.includes("getKidsGeneratedVideos(60)") && kidsVideoListPage.includes(".catch((error) => {"), "the public Kids video list must recover from Supabase read failures instead of returning HTTP 500");
 assert.ok(kidsVideoListPage.includes("videosUnavailable") && kidsVideoListPage.includes("مكتبة الفيديوهات غير متاحة مؤقتًا"), "the Kids video list must distinguish an unavailable backend from a genuinely empty library");
-assert.ok(kidsVideoDetailPage.includes("const loadVideo = cache(async (slug: string) => {") && kidsVideoDetailPage.includes("return await getKidsGeneratedVideoBySlug(slug)") && kidsVideoDetailPage.includes("catch (error)"), "the Kids video detail page and metadata loader must convert transient service failures into the unavailable state");
+assert.ok(kidsVideoDetailPage.includes("type KidsVideoLookup =") && kidsVideoDetailPage.includes("status: \"loaded\"") && kidsVideoDetailPage.includes("status: \"error\""), "the Kids detail loader must distinguish a database miss from a backend failure");
+assert.ok(kidsVideoDetailPage.includes("return { status: \"loaded\", video: await getKidsGeneratedVideoBySlug(slug) }") && kidsVideoDetailPage.includes("return { status: \"error\" }"), "the detail loader must preserve successful null results and report thrown service failures separately");
+assert.ok(kidsVideoDetailPage.includes("if (result.status === \"error\")") && kidsVideoDetailPage.includes("تعذر تحميل الفيديو مؤقتًا") && kidsVideoDetailPage.includes("الفيديو غير موجود"), "the public detail page must not disguise backend outages as missing content");
+assert.ok(kidsVideoDetailPage.includes("result.status === \"error\" ? \"الفيديو غير متاح مؤقتًا\""), "metadata must distinguish transient lookup errors from genuine missing videos");
 
 assert.match(kidsVideoDetailPage, /sandbox="allow-scripts allow-same-origin allow-presentation"/, "the public Kids video detail iframe must be sandboxed to the trusted player capabilities");
 assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-origin"/, "the public Kids video detail iframe must not leak full referrer paths");
