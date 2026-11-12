@@ -33,7 +33,7 @@
 | DELETE | `/api/admin/video-generation` | `video.delete` |
 | PATCH | `/api/admin/video-generation` | `video.manage` — external publish retry returns HTTP 410 |
 | GET | `/api/admin/video-generation/sources` | `video.manage` |
-| GET | `/api/admin/social/youtube/connect` | `social.manage` + `social.publish` MFA step-up — OAuth requests upload, channel-read and analytics-read scopes |
+| GET | `/api/admin/social/youtube/connect` | `social.manage` + `social.publish` MFA step-up — OAuth requests `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly`; no delete-capable scope |
 | GET | `/api/admin/social/youtube/callback` | `social.manage` — validates upload/read scopes and stores the publishing refresh token |
 | GET | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/video/templates` | `video.manage` |
@@ -53,7 +53,7 @@
 - مسارات OAuth الخاصة بـFacebook وYouTube ومسارات إدارة طابور النشر الاجتماعي فعّالة ومحمية بالصلاحيات المدرجة أعلاه؛ عمليات النشر/التوليد الحساسة تتطلب `social.publish` مع MFA step-up.
 - بدء OAuth الخاص بـFacebook يتطلب `social.manage` و`social.publish` مع MFA step-up. Callback يتحقق من state ويحفظ اعتماد الصفحة فقط؛ لا يعيد فتح عناصر الطابور ولا يطلق النشر. اعتماد توكن الخادم يتحقق من التوكن ويحفظه فقط، ولا يستأنف الطابور. استئناف العناصر المحجوبة حصريًا عبر `release_auth_blocked_queue` داخل POST `/api/admin/social`، ويتطلب `social.publish` وMFA وتأكيدًا صريحًا والتحقق من اتصال الصفحة؛ ولا يعيد إلا العناصر التي تقع ضمن `SOCIAL_PUBLISH_AFTER`، وتظل العناصر التاريخية الأقدم محجوبة.
 - مسارا استيراد الوسائط القديمان `/api/admin/youtube-facebook/register-media` و`/api/admin/youtube-facebook/upload-url` فقط يعيدان HTTP 410 بعد التحقق من `media.manage`.
-- بدء OAuth الخاص بـYouTube يتطلب `social.manage` و`social.publish` مع MFA step-up قبل طلب نطاق `youtube.upload`؛ Callback يتحقق من state والنطاقات ويخزن refresh token فقط ولا يطلق النشر. صلاحية النشر تظل منفصلة عن مجرد حفظ الاعتماد.
+- بدء OAuth الخاص بـYouTube يتطلب `social.manage` و`social.publish` مع MFA step-up قبل طلب النطاقات `youtube.upload` و`youtube.readonly` و`yt-analytics.readonly`، مع رفض أي نطاق قادر على حذف الفيديوهات؛ Callback يتحقق من state والنطاقات ويخزن refresh token فقط ولا يطلق النشر. صلاحية النشر تظل منفصلة عن مجرد حفظ الاعتماد.
 - نشر الفيديو داخل موقع ZIKR يستخدم `content_publish_queue` و`video.manage`، ولا يحتاج صلاحيات النشر الاجتماعي.
 - إعادة محاولة النشر الخارجي للفيديو متوقفة وتعيد HTTP 410.
 - حذف طلب فيديو أو سجل فيديو يحتاج `video.delete`، وليس `video.manage` وحدها.
