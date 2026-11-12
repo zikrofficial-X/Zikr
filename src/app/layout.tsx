@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
@@ -145,27 +144,8 @@ export default async function RootLayout({
       suppressHydrationWarning={true}
     >
       <head>
-        <Script id="google-consent-mode-default" strategy="beforeInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-window.adsbygoogle = window.adsbygoogle || [];
-window.adsbygoogle.requestNonPersonalizedAds = 1;
-gtag('consent', 'default', {
-  ad_storage: 'denied',
-  analytics_storage: 'denied',
-  ad_user_data: 'denied',
-  ad_personalization: 'denied',
-  personalization_storage: 'denied',
-  functionality_storage: 'granted',
-  security_storage: 'granted',
-  wait_for_update: 500
-});
-gtag('set', 'ads_data_redaction', true);`}
-        </Script>
-        <meta
-          name="google-adsense-account"
-          content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2457467624248791"}
-        />
+        
+        
         <meta name="theme-color" content="#061322" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

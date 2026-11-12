@@ -143,4 +143,44 @@ assert.ok(
 assert.ok(webAdsRuntime.includes("window.location.origin === new URL(PRODUCTION_URL).origin"));
 assert.ok(adsenseSlot.includes("window.location.origin === new URL(PRODUCTION_URL).origin"));
 
+
+const rootLayout = readFileSync("src/app/layout.tsx", "utf8");
+assert.ok(
+  !rootLayout.includes('name="google-adsense-account"') &&
+    !rootLayout.includes("google-consent-mode-default") &&
+    !rootLayout.includes("window.adsbygoogle") &&
+    !rootLayout.includes("requestNonPersonalizedAds = 1"),
+  "the server-rendered root layout must not emit AdSense publisher metadata or Consent Mode globals into native HTML",
+);
+const nativeGuardIndex = webAdsRuntime.indexOf("if (Capacitor.isNativePlatform())");
+const canonicalGuardIndex = webAdsRuntime.indexOf("if (!isCanonicalProductionOrigin())");
+const consentDefaultIndex = webAdsRuntime.indexOf("installConsentModeDefaults();");
+const monetagInjectionIndex = webAdsRuntime.indexOf("document.head.appendChild(primary)");
+const fundingChoicesIndex = webAdsRuntime.indexOf('"google-funding-choices"');
+const tagManagerIndex = webAdsRuntime.indexOf('"google-tag-manager"');
+assert.ok(
+  nativeGuardIndex >= 0 &&
+    canonicalGuardIndex > nativeGuardIndex &&
+    consentDefaultIndex > canonicalGuardIndex &&
+    consentDefaultIndex < monetagInjectionIndex &&
+    consentDefaultIndex < fundingChoicesIndex &&
+    consentDefaultIndex < tagManagerIndex,
+  "Consent Mode defaults must be installed only after native and canonical-origin guards, before any web ad/analytics tags",
+);
+for (const token of [
+  "ad_storage: 'denied'",
+  "analytics_storage: 'denied'",
+  "ad_user_data: 'denied'",
+  "ad_personalization: 'denied'",
+  "personalization_storage: 'denied'",
+  "ads_data_redaction",
+  "requestNonPersonalizedAds = 1",
+]) {
+  assert.ok(webAdsRuntime.includes(token), "web-only Consent Mode default missing: " + token);
+}
+assert.ok(
+  webAdsRuntime.includes('script#google-consent-mode-default'),
+  "native cleanup must remove a legacy server-rendered Consent Mode script",
+);
+
 console.log("Service-worker advertising scope contract passed.");

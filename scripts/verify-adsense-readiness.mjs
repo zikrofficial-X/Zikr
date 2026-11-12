@@ -72,13 +72,19 @@ const adsenseSlot = read('src/components/layout/adsense-slot.tsx');
 const articlePage = read('src/app/articles/[slug]/page.tsx');
 const envExample = read('.env.example');
 
-if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
-const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
+if (!/google-adsense-account/.test(webAdvertisingRuntime)) fail('AdSense publisher meta tag is missing from the web-only advertising runtime.');
+if (
+  layout.includes('google-adsense-account') ||
+  layout.includes('google-consent-mode-default') ||
+  layout.includes('window.adsbygoogle') ||
+  layout.includes('requestNonPersonalizedAds = 1')
+) fail('AdSense publisher metadata and Consent Mode globals must not be emitted in the server-rendered native layout.');
+const runtimePublisher = webAdvertisingRuntime.match(/ca-pub-\d{8,}/)?.[0] ?? null;
 const adsTxtPublisher = adsTxt.match(/google\.com,\s*(pub-\d{8,})\s*,\s*DIRECT\s*,\s*f08c47fec0942fa0/i)?.[1] ?? null;
 if (!adsTxtPublisher) fail('public/ads.txt does not contain a valid Google direct-seller entry.');
 const normalizedAdsTxtPublisher = adsTxtPublisher?.replace(/^pub-/, 'ca-pub-') ?? null;
-if (layoutPublisher && normalizedAdsTxtPublisher && layoutPublisher !== normalizedAdsTxtPublisher) {
-  fail(`Publisher mismatch: layout=${layoutPublisher}, ads.txt=${adsTxtPublisher}.`);
+if (runtimePublisher && normalizedAdsTxtPublisher && runtimePublisher !== normalizedAdsTxtPublisher) {
+  fail(`Publisher mismatch: runtime=${runtimePublisher}, ads.txt=${adsTxtPublisher}.`);
 }
 if (!adsense.includes('NEXT_PUBLIC_ADSENSE_ENABLED === "true"') || !envExample.includes('NEXT_PUBLIC_ADSENSE_ENABLED=false')) {
   fail('AdSense must remain explicitly disabled by default until account review and consent settings are confirmed.');
@@ -109,8 +115,19 @@ if (
 ) {
   fail('Monetization scripts must load only on the canonical production host, never on Vercel Preview aliases.');
 }
-if (!layout.includes('requestNonPersonalizedAds = 1')) {
-  fail('AdSense requests must default to non-personalized before the Google tag is loaded.');
+const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
+const canonicalOriginGuardIndex = webAdvertisingRuntime.indexOf('if (!isCanonicalProductionOrigin())');
+const consentDefaultsIndex = webAdvertisingRuntime.indexOf('installConsentModeDefaults();');
+const adsenseMetaCreateIndex = webAdvertisingRuntime.indexOf('meta.name = "google-adsense-account"');
+if (
+  !webAdvertisingRuntime.includes('requestNonPersonalizedAds = 1') ||
+  !webAdvertisingRuntime.includes('installConsentModeDefaults') ||
+  nativeGuardIndex < 0 ||
+  canonicalOriginGuardIndex < nativeGuardIndex ||
+  consentDefaultsIndex < canonicalOriginGuardIndex ||
+  adsenseMetaCreateIndex < consentDefaultsIndex
+) {
+  fail('Consent Mode and AdSense publisher metadata must be installed only after native/canonical-origin guards, with non-personalized defaults before publisher scripts.');
 }
 
 if (!/sitemap\.xml/.test(read('src/app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');

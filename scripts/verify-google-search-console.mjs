@@ -32,6 +32,15 @@ for (const token of expectedTokens) {
   if (!layout.includes(token)) failures.push(`رمز تحقق غير موجود في src/app/layout.tsx: ${token}`);
 }
 
+if (
+  layout.includes('name="google-adsense-account"') ||
+  layout.includes('google-consent-mode-default') ||
+  layout.includes('window.adsbygoogle') ||
+  layout.includes('requestNonPersonalizedAds = 1')
+) {
+  failures.push('يجب ألا يحتوي HTML الخاص بتطبيق Capacitor على بيانات ناشر AdSense أو Consent Mode globals.');
+}
+
 if (layout.includes('NEXT_PUBLIC_GA_MEASUREMENT_ID') || layout.includes(approvedGaId) || layout.includes('googletagmanager.com/gtag/js')) {
   failures.push('يجب ألا يُحقن GA4 من root layout قبل فحص المضيف والبيئة.');
 }
@@ -50,6 +59,7 @@ if (!webAdvertisingRuntime.includes('NEXT_PUBLIC_GTM_ID')) failures.push('متغ
 if (!webAdvertisingRuntime.includes('https://www.googletagmanager.com/gtm.js?id=')) failures.push('مصدر GTM غير موجود في web-only runtime.');
 const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
 const canonicalOriginGuardIndex = webAdvertisingRuntime.indexOf('if (!isCanonicalProductionOrigin())');
+const consentDefaultsIndex = webAdvertisingRuntime.indexOf('installConsentModeDefaults();');
 const gtmInjectionIndex = webAdvertisingRuntime.indexOf('"google-tag-manager"');
 const monetagInjectionIndex = webAdvertisingRuntime.indexOf('document.head.appendChild(primary)');
 const fundingChoicesInjectionIndex = webAdvertisingRuntime.indexOf('"google-funding-choices"');
@@ -62,6 +72,12 @@ if (
   nativeGuardIndex > gtmInjectionIndex ||
   nativeGuardIndex > monetagInjectionIndex ||
   nativeGuardIndex > fundingChoicesInjectionIndex ||
+  consentDefaultsIndex < 0 ||
+  nativeGuardIndex > consentDefaultsIndex ||
+  canonicalOriginGuardIndex > consentDefaultsIndex ||
+  consentDefaultsIndex > gtmInjectionIndex ||
+  consentDefaultsIndex > monetagInjectionIndex ||
+  consentDefaultsIndex > fundingChoicesInjectionIndex ||
   nativeGuardIndex > analytics ||
   canonicalOriginGuardIndex > analytics
 ) {

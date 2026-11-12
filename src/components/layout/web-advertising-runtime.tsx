@@ -34,10 +34,34 @@ function isCanonicalProductionOrigin(): boolean {
   }
 }
 
+function installConsentModeDefaults() {
+  if (document.getElementById("google-consent-mode-default")) return;
+
+  const script = document.createElement("script");
+  script.id = "google-consent-mode-default";
+  script.textContent = `window.dataLayer = window.dataLayer || [];
+function gtag(){window.dataLayer.push(arguments);}
+window.adsbygoogle = window.adsbygoogle || [];
+window.adsbygoogle.requestNonPersonalizedAds = 1;
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  analytics_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  personalization_storage: 'denied',
+  functionality_storage: 'granted',
+  security_storage: 'granted',
+  wait_for_update: 500
+});
+gtag('set', 'ads_data_redaction', true);`;
+  document.head.appendChild(script);
+}
+
 function removeAdvertisingElements() {
   const selectors = [
     'meta[name="monetag"]',
     'meta[name="google-adsense-account"]',
+    "script#google-consent-mode-default",
     'script[src*="al5sm.com"]',
     'script[src*="5gvci.com"]',
     'script[src*="fundingchoicesmessages.google.com"]',
@@ -85,6 +109,7 @@ export function WebAdvertisingRuntime() {
       return;
     }
 
+    installConsentModeDefaults();
     setCanonicalWebRuntime(true);
 
     const monetagMeta = document.querySelector('meta[name="monetag"]');

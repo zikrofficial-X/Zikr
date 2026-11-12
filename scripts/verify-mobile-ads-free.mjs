@@ -29,7 +29,7 @@ requireCondition(
   "The root layout must mount the environment-aware advertising runtime.",
 );
 requireCondition(
-  !/al5sm\.com|5gvci\.com|name="monetag"|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js/.test(
+  !/al5sm\.com|5gvci\.com|name="monetag"|name="google-adsense-account"|google-consent-mode-default|window\.adsbygoogle|requestNonPersonalizedAds|fundingchoicesmessages\.google\.com|googletagmanager\.com\/gtm\.js/.test(
     layout,
   ),
   "The root layout must not emit advertising scripts or verification markup into native HTML.",
@@ -120,11 +120,21 @@ for (const providerMarker of [
   );
 }
 
+const nativeGuardIndex = advertisingRuntime.indexOf("if (Capacitor.isNativePlatform())");
+const canonicalOriginGuardIndex = advertisingRuntime.indexOf("if (!isCanonicalProductionOrigin())");
+const consentDefaultsIndex = advertisingRuntime.indexOf("installConsentModeDefaults();");
 requireCondition(
-  layout.includes("window.adsbygoogle") &&
+  !layout.includes("window.adsbygoogle") &&
+    !layout.includes('name="google-adsense-account"') &&
+    !layout.includes("google-consent-mode-default") &&
+    !layout.includes("requestNonPersonalizedAds = 1") &&
     advertisingRuntime.includes('meta[name="google-adsense-account"]') &&
-    advertisingRuntime.includes("delete windowWithAds.adsbygoogle"),
-  "The native runtime must clear the SSR AdSense queue and account metadata.",
+    advertisingRuntime.includes("delete windowWithAds.adsbygoogle") &&
+    advertisingRuntime.includes("script#google-consent-mode-default") &&
+    nativeGuardIndex >= 0 &&
+    canonicalOriginGuardIndex > nativeGuardIndex &&
+    consentDefaultsIndex > canonicalOriginGuardIndex,
+  "The server-rendered native layout must not contain AdSense metadata or Consent Mode globals; the web-only runtime may install them only after native and canonical-origin guards.",
 );
 requireCondition(
   adsenseSlot.includes("Capacitor.isNativePlatform()") &&
