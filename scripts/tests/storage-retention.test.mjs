@@ -366,10 +366,10 @@ assert.equal(
   "text references must be queried from raw through five-times-encoded path forms",
 );
 const encodedReferenceUrls = [rawReferenceUrl];
-let encodedReferenceUrl = rawReferenceUrl;
+let encodedReferenceUrlAtDepth = rawReferenceUrl;
 for (let depth = 0; depth < 5; depth += 1) {
-  encodedReferenceUrl = encodeURIComponent(encodedReferenceUrl);
-  encodedReferenceUrls.push(encodedReferenceUrl);
+  encodedReferenceUrlAtDepth = encodeURIComponent(encodedReferenceUrlAtDepth);
+  encodedReferenceUrls.push(encodedReferenceUrlAtDepth);
 }
 for (const value of encodedReferenceUrls) {
   assert.ok(
