@@ -241,6 +241,27 @@ const youtubeCallbackSource = readFileSync(
   "utf8",
 );
 assert.match(youtubeCallbackSource, /hasYouTubeUploadScopes\(scopes\)/, "OAuth callback must reject a grant that includes delete-capable scopes");
+
+const youtubeConnectSource = readFileSync(
+  new URL("../../src/app/api/admin/social/youtube/connect/route.ts", import.meta.url),
+  "utf8",
+);
+assert.match(
+  youtubeConnectSource,
+  /const clientSecret = env\\.YOUTUBE_CLIENT_SECRET\\?\\.trim\\(\\);/,
+  "OAuth initiation must preflight the client secret required by the callback token exchange",
+);
+assert.match(
+  youtubeConnectSource,
+  /if \\(!clientId \\|\\| !clientSecret\\) return adminStatusRedirect\\("configuration_missing"\\);/,
+  "OAuth initiation must reject an incomplete client ID/secret pair before consent",
+);
+const oauthConfigGuard = youtubeConnectSource.indexOf("if (!clientId || !clientSecret)");
+const googleConsentRedirect = youtubeConnectSource.indexOf('new URL("https://accounts.google.com/o/oauth2/v2/auth")');
+assert.ok(
+  oauthConfigGuard >= 0 && googleConsentRedirect > oauthConfigGuard,
+  "Google consent must not start until both server-side OAuth credentials are configured",
+);
 const credentialSaveStart = youtubeCallbackSource.indexOf("await saveYouTubeOAuthCredential(");
 const credentialSaveEnd = youtubeCallbackSource.indexOf(");", credentialSaveStart);
 assert.ok(credentialSaveStart >= 0 && credentialSaveEnd > credentialSaveStart, "YouTube OAuth callback must persist its verified credential");

@@ -43,7 +43,10 @@ export async function GET() {
 
   const env = getServerEnv();
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
-  if (!clientId) return adminStatusRedirect("configuration_missing");
+  const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
+  // Google requires the client secret during the authorization-code exchange.
+  // Fail before redirecting to consent when the server configuration is incomplete.
+  if (!clientId || !clientSecret) return adminStatusRedirect("configuration_missing");
 
   const state = randomBytes(32).toString("hex");
   const redirectUri = YOUTUBE_REDIRECT_URI;
