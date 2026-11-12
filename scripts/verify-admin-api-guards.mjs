@@ -96,7 +96,7 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/youtube/callback/route.ts GET": ["social.manage"],
-  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/route.ts POST": ["social.manage", "social.publish"],
   "src/app/api/admin/social/written/route.ts GET": ["social.manage"],

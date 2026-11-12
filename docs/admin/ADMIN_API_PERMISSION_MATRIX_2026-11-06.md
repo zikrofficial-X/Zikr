@@ -33,7 +33,7 @@
 | DELETE | `/api/admin/video-generation` | `video.delete` |
 | PATCH | `/api/admin/video-generation` | `video.manage` — external publish retry returns HTTP 410 |
 | GET | `/api/admin/video-generation/sources` | `video.manage` |
-| GET | `/api/admin/social/youtube/connect` | `social.manage` — publishing-capable OAuth; MFA step-up is checked separately before authorization |
+| GET | `/api/admin/social/youtube/connect` | `social.manage` + `social.publish` MFA step-up — publishing-capable OAuth |
 | GET | `/api/admin/social/youtube/callback` | `social.manage` — validates upload/read scopes and stores the publishing refresh token |
 | GET | `/api/admin/video/templates` | `video.manage` |
 | POST | `/api/admin/video/templates` | `video.manage` |
