@@ -184,12 +184,12 @@ assert.match(socialPublisher, /expectedLease\s*\?\s*buildSocialPublishLeaseFilte
 const markQueueItemStart = socialPublisher.indexOf("async function markQueueItem(");
 const markQueueItemEnd = socialPublisher.indexOf("async function hasVideoApprovalForQueueItem", markQueueItemStart);
 const markQueueItemSource = socialPublisher.slice(markQueueItemStart, markQueueItemEnd);
-assert.match(markQueueItemSource, /buildNextRowVersionUpdatedAt\\(expectedLease\\.updatedAt, now\\)/,
+assert.match(markQueueItemSource, /buildNextRowVersionUpdatedAt\(expectedLease\.updatedAt, now\)/,
   "a leased queue transition must advance updated_at strictly beyond the lease it consumes");
-assert.doesNotMatch(markQueueItemSource, /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+assert.doesNotMatch(markQueueItemSource, /updated_at:\s*new Date\(\)\.toISOString\(\)/,
   "a same-millisecond queue transition must not leave an old publisher lease reusable");
 assert.equal(
-  (socialPublisher.match(/const claimUpdatedAt = buildNextRowVersionUpdatedAt\\(item\\.updated_at, claimNow\\)/g) ?? []).length,
+  (socialPublisher.match(/const claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/g) ?? []).length,
   2,
   "both batch and single-item publisher claims must advance the row-version token",
 );

@@ -374,19 +374,19 @@ assert.match(
   "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
 );
 assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
-
+assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
 assert.equal(
-  (socialAdminRoute.match(/buildNextRowVersionUpdatedAt\\(expectedUpdatedAt, now\\)/g) ?? []).length,
+  (socialAdminRoute.match(/buildNextRowVersionUpdatedAt\(expectedUpdatedAt, now\)/g) ?? []).length,
   2,
   "both admin retry transitions must advance the exact row-version token used by their compare-and-set filters",
 );
-assert.doesNotMatch(socialAdminRoute, /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+assert.doesNotMatch(socialAdminRoute, /updated_at:\s*new Date\(\)\.toISOString\(\)/,
   "admin queue CAS updates must not reuse the observed timestamp within the same millisecond");
 assert.equal(
   buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
   "2026-11-13T01:30:00.124Z",
   "admin queue retry row versions must advance even when the write occurs in the same millisecond",
-);assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
+);
 assert.match(
   socialAdminRoute,
   /retry_all_failed[\s\S]*?id=in\.\(.*?ids\.map\(encodeURIComponent\)/,
