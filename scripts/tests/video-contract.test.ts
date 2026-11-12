@@ -73,22 +73,22 @@ assert.ok(
   "a 53.6-second narration must render with its full duration and audio tail",
 );
 assert.equal(
-  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "true", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "true", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
   false,
   "free-only mode must never call Gemini even when the AI feature flag is enabled",
 );
 assert.equal(
-  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "false", GEMINI_API_KEY: "test-key" }),
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "false", GEMINI_API_KEY: "test-key" }),
   false,
   "VIDEO_AI_ENABLED=false must prevent Gemini calls even when free-only mode is disabled",
 );
 assert.equal(
-  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
   true,
   "Gemini planning requires both explicit opt-in flags and a server key",
 );
 assert.equal(
-  isVideoAiPlanningEnabled({ VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "  " }),
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "  " }),
   false,
   "a blank Gemini key must not enable AI planning",
 );
