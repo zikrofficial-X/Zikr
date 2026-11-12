@@ -1943,6 +1943,7 @@ async function registerGeneratedVideoOnSite(
         body: JSON.stringify({
           ...record,
           created_at: undefined,
+          updated_at: buildNextRowVersionUpdatedAt(existingVideo?.updated_at ?? null),
         }),
       },
     );
@@ -2760,7 +2761,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
                   last_attempt_at: duplicateAt,
                   error_message: null,
                   error_details: null,
-                  updated_at: duplicateAt,
+                  updated_at: buildNextRowVersionUpdatedAt(duplicate.updated_at ?? null),
                 }),
               },
             );

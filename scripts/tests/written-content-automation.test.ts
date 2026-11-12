@@ -216,6 +216,55 @@ assert.equal(buildPublicKidsWrittenPost({ ...queueRow, body: "أرسل رقم ه
 assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, title_ar: "أرسل رقم هاتفك لي" }), null, "the public Kids feed must not expose a source title that solicits personal data");
 assert.equal(publicKidsPost?.publicPath, "/kids/story-kind-word");
 assert.equal(publicKidsPost?.ageGroup, "6-8");
+assert.deepEqual(publicKidsPost?.platforms, ["facebook"], "legacy published Kids posts may use their target list when no result ledger exists");
+const confirmedWrittenPost = {
+ ...queueRow,
+ metadata: {
+  ...queueRow.metadata,
+  platformResults: { facebook: { ok: true, remoteId: "fb-written-123" } },
+ },
+};
+assert.deepEqual(
+ buildPublicKidsWrittenPost(confirmedWrittenPost, liveKidsStory)?.platforms,
+ ["facebook"],
+ "new written posts must expose only a platform with a confirmed remote post ID",
+);
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...confirmedWrittenPost,
+  metadata: {
+   ...confirmedWrittenPost.metadata,
+   platformDeletions: { facebook: { status: "deleted", remoteId: "fb-written-123" } },
+  },
+ }, liveKidsStory),
+ null,
+ "a confirmed remote deletion must remove the written post from the public Kids feed",
+);
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...confirmedWrittenPost,
+  metadata: { ...confirmedWrittenPost.metadata, platformResults: { facebook: { ok: false, remoteId: null } } },
+ }, liveKidsStory),
+ null,
+ "an explicit failed delivery ledger must not fall back to optimistic target_platforms",
+);
+assert.deepEqual(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook", "facebook_reels"],
+  metadata: {
+   ...queueRow.metadata,
+   platformResults: {
+    facebook: { ok: true, remoteId: "fb-written-123" },
+    facebook_reels: { ok: true, remoteId: "reels-written-123" },
+   },
+   platformDeletions: { facebook: { status: "deleted", remoteId: "fb-written-123" } },
+  },
+ }, liveKidsStory)?.platforms,
+ ["facebook_reels"],
+ "deletion of one platform must not hide a still-confirmed platform",
+);
+
 assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, published: false }), null, "unpublished source stories must disappear from the public Kids feed");
 assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, is_active: false }), null, "inactive source stories must disappear from the public Kids feed");
 assert.equal(buildPublicKidsWrittenPost(queueRow, { ...liveKidsStory, metadata: { age_appropriate: false } }), null, "stories no longer marked age-appropriate must disappear from the public Kids feed");

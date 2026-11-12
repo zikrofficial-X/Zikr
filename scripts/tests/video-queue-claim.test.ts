@@ -50,6 +50,9 @@ test("CAS writes always advance their updated_at row-version token", () => {
     "both lease mutation paths must advance the exact lease revision",
   );
   assert.match(videoWorkerSource, /buildNextRowVersionUpdatedAt\(claimUpdatedAt\)/);
+  assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(existingVideo\?\.updated_at \?\? null\)/);
+  assert.match(videoWorkerSource, /updated_at:\s*buildNextRowVersionUpdatedAt\(duplicate\.updated_at \?\? null\)/);
+
 });
 
 test("foreground lease writes and heartbeat renewals serialize on the latest row revision", async () => {

@@ -377,6 +377,32 @@ export function isEligibleKidsWrittenPostForPublishing(
 }
 
 /** Re-check the live Kids source before exposing a previously published social post. */
+function getConfirmedPublicWrittenPlatforms(
+ row: KidsWrittenQueueRow,
+): PublicKidsWrittenPost["platforms"] {
+ const allowed = new Set(["facebook", "facebook_reels", "youtube"]);
+ const metadata = asWrittenRecord(row.metadata);
+ const results = asWrittenRecord(metadata.platformResults);
+ const deletions = asWrittenRecord(metadata.platformDeletions);
+ const targets = [...new Set((row.target_platforms ?? []).filter(
+  (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
+   typeof platform === "string" && allowed.has(platform),
+ ))];
+ const isDeleted = (platform: string) => asWrittenRecord(deletions[platform]).status === "deleted";
+ const hasResultLedger = Object.keys(results).length > 0;
+ if (hasResultLedger) {
+  return targets.filter((platform) => {
+   if (isDeleted(platform)) return false;
+   const result = asWrittenRecord(results[platform]);
+   return result.ok === true &&
+    typeof result.remoteId === "string" &&
+    result.remoteId.trim().length > 0;
+  });
+ }
+ if (row.status !== "published") return [];
+ return targets.filter((platform) => !isDeleted(platform));
+}
+
 export function buildPublicKidsWrittenPost(
  row: KidsWrittenQueueRow,
  source: CurrentKidsStory,
@@ -392,10 +418,7 @@ export function buildPublicKidsWrittenPost(
  const sourceTitle = typeof source.title_ar === "string" ? source.title_ar.trim() : "";
  const publishedAt = typeof row.published_at === "string" ? row.published_at.trim() : "";
  const publicPath = "/kids/" + slug;
- const platforms = (row.target_platforms ?? []).filter(
-  (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
-   platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
- );
+ const platforms = getConfirmedPublicWrittenPlatforms(row);
  if (
   row.content_type !== "written_post" ||
   row.status !== "published" ||
