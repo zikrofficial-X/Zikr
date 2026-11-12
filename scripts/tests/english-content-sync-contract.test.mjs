@@ -70,14 +70,19 @@ assert.ok(
   "English article writes must compare the Arabic source version and keep all originally missing fields empty",
 );
 
-const geminiKeyDeclarationIndex = articleSync.indexOf("const geminiApiKey = process.env.GEMINI_API_KEY?.trim();");
-const geminiGuardIndex = articleSync.indexOf("if (!geminiApiKey) {");
+const environmentGuardIndex = articleSync.indexOf("function requireEnvironmentValue(name: string): string");
+const geminiKeyDeclarationIndex = articleSync.indexOf('const geminiApiKey = requireEnvironmentValue("GEMINI_API_KEY");');
 const geminiFactoryIndex = articleSync.indexOf("async function generateGeminiTextForJob(");
 assert.ok(
-  geminiKeyDeclarationIndex >= 0 &&
-    geminiGuardIndex > geminiKeyDeclarationIndex &&
-    geminiFactoryIndex > geminiGuardIndex,
-  "Gemini credentials must be declared and narrowed before the model factory uses the key",
+  environmentGuardIndex >= 0 &&
+    geminiKeyDeclarationIndex > environmentGuardIndex &&
+    geminiFactoryIndex > geminiKeyDeclarationIndex,
+  "required Gemini credentials must be narrowed to a string before the model factory captures the key",
+);
+assert.ok(
+  articleSync.includes('const supabaseUrl = requireEnvironmentValue("SUPABASE_URL");') &&
+    articleSync.includes('const serviceRoleKey = requireEnvironmentValue("SUPABASE_SERVICE_ROLE_KEY");'),
+  "Supabase URL and service-role credentials must be validated and narrowed before any queue recovery request",
 );
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
 assert.ok(
