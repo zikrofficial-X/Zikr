@@ -86,7 +86,7 @@ assert.ok(
 );
 const recoveryCallIndex = articleSync.indexOf("await recoverStaleTranslationQueueRows();");
 assert.ok(
-  geminiGuardIndex >= 0 && geminiGuardIndex < recoveryCallIndex,
+  geminiKeyDeclarationIndex >= 0 && geminiKeyDeclarationIndex < recoveryCallIndex,
   "missing Gemini credentials must fail before stale translation queue recovery can write to production",
 );
 const articleCandidateIndex = articleSync.indexOf('const rows = await supabase<ArticleRow[]>(');
