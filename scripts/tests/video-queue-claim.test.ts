@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 import {
+  buildContentPublishQueueRecoveryFilter,
   buildProcessingVideoRequestLeaseFilter,
   buildUnpublishedVideoCatalogUpdateFilter,
   buildStaleVideoRequestRecoveryFilter,
@@ -511,4 +512,55 @@ test("purged catalog recovery rechecks media state and compare-and-sets the cata
   const normalizedWorker = videoWorkerSource.replace(/\s+/g, " ");
   assert.ok(normalizedWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))"));
   assert.ok(normalizedWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite( recoveredRequest, rendered, { recoverPurgedRecord: true }, signal, ))"));
+});
+
+
+test("site publication queue recovery compares the exact selected row revision", () => {
+  assert.equal(
+    buildContentPublishQueueRecoveryFilter({
+      id: "queue id/1",
+      status: "published",
+      updated_at: updatedAt,
+    }),
+    "id=eq.queue%20id%2F1&status=eq.published&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  );
+  assert.equal(
+    buildContentPublishQueueRecoveryFilter({
+      id: "queue-2",
+      status: "failed",
+      updated_at: updatedAt,
+    }),
+    "id=eq.queue-2&status=eq.failed&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  );
+  assert.equal(
+    buildContentPublishQueueRecoveryFilter({ id: "queue-3", status: "queued", updated_at: updatedAt }),
+    null,
+    "already queued or actively processing rows must not be reset by recovery",
+  );
+  assert.equal(
+    buildContentPublishQueueRecoveryFilter({ id: "queue-4", status: "failed", updated_at: null }),
+    null,
+    "a missing row revision must fail closed",
+  );
+  assert.equal(
+    buildContentPublishQueueRecoveryFilter({ id: "queue-5", status: "failed", updated_at: "invalid" }),
+    null,
+    "an invalid row revision must fail closed",
+  );
+
+  assert.match(
+    videoWorkerSource,
+    /content_publish_queue\\?content_table=eq\\.videos[\\s\\S]*?select=id,status,updated_at/,
+    "the worker must read the revision that it will compare-and-set",
+  );
+  assert.match(
+    videoWorkerSource,
+    /buildContentPublishQueueRecoveryFilter\\(existingQueue\\)/,
+    "the worker must use the selected queue revision for recovery",
+  );
+  assert.match(
+    videoWorkerSource,
+    /Prefer: "return=representation"[\\s\\S]*?if \\(!recoveredQueue\\?\\.\\[0\\]\\?\\.id\\)/,
+    "a lost recovery compare-and-set must be detected rather than reported as queued",
+  );
 });

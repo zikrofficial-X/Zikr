@@ -187,3 +187,35 @@ export function buildUnpublishedVideoCatalogUpdateFilter(
       : `updated_at=eq.${encodeURIComponent(normalizedUpdatedAt)}`,
   ].join("&");
 }
+
+
+export type ContentPublishQueueRecoveryCandidate = {
+  id: string;
+  status: string;
+  updated_at?: string | null;
+};
+
+/**
+ * Compare-and-set filter for re-queuing a previously failed or explicitly
+ * recovered published-content queue row. The selected revision prevents a
+ * concurrent scheduler/admin update from being overwritten.
+ */
+export function buildContentPublishQueueRecoveryFilter(
+  candidate: ContentPublishQueueRecoveryCandidate,
+): string | null {
+  const id = candidate.id.trim();
+  const updatedAt = candidate.updated_at?.trim();
+  if (
+    !id ||
+    (candidate.status !== "failed" && candidate.status !== "published") ||
+    timestamp(updatedAt) === null
+  ) {
+    return null;
+  }
+
+  return [
+    `id=eq.${encodeURIComponent(id)}`,
+    `status=eq.${encodeURIComponent(candidate.status)}`,
+    `updated_at=eq.${encodeURIComponent(updatedAt!)}`,
+  ].join("&");
+}

@@ -19,6 +19,7 @@ import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/s
 import { buildVideoSocialQueueUpdateFilter } from "../../src/features/social/services/social-queue-selection";
 import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
 import {
+  buildContentPublishQueueRecoveryFilter,
   buildProcessingVideoRequestLeaseFilter,
   buildUnpublishedVideoCatalogUpdateFilter,
   buildStaleVideoRequestRecoveryFilter,
@@ -1948,9 +1949,9 @@ async function registerGeneratedVideoOnSite(
     }
   }
 
-  const queueRows = await adminRequest<Array<{ id: string; status: string }>>(
+  const queueRows = await adminRequest<Array<{ id: string; status: string; updated_at: string | null }>>(
     "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
-      encodeURIComponent(videoId) + "&select=id,status&order=created_at.desc&limit=1",
+      encodeURIComponent(videoId) + "&select=id,status,updated_at&order=created_at.desc&limit=1",
   );
   const existingQueue = queueRows?.[0];
   if (!existingQueue) {
@@ -1970,12 +1971,15 @@ async function registerGeneratedVideoOnSite(
     existingQueue.status === "failed" ||
     (options.recoverPurgedRecord === true && existingQueue.status === "published")
   ) {
-    await adminRequest(
-      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) +
-        "&status=eq." + encodeURIComponent(existingQueue.status),
+    const recoveryFilter = buildContentPublishQueueRecoveryFilter(existingQueue);
+    if (!recoveryFilter) {
+      throw new Error(`Content publication queue row ${existingQueue.id} has no valid revision; refusing an unfenced recovery.`);
+    }
+    const recoveredQueue = await adminRequest<Array<{ id: string }>>(
+      `/rest/v1/content_publish_queue?${recoveryFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           status: "queued",
           scheduled_at: now,
@@ -1984,6 +1988,9 @@ async function registerGeneratedVideoOnSite(
         }),
       },
     );
+    if (!recoveredQueue?.[0]?.id) {
+      throw new Error(`Content publication queue row ${existingQueue.id} changed during recovery; preserving the newer queue state.`);
+    }
   }
 
   return { videoId, published: false, queued: true };
