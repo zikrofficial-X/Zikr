@@ -8,7 +8,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { buildRunNowRequestValueFilter } from "@/features/videos/services/background-job-outcome";
-import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "@/features/videos/services/background-job-settings";
+import { isVideoAutomationEnabled, isVideoPurgeLockResponseActive } from "@/features/videos/services/background-job-settings";
 
 function formValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -69,7 +69,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     const purgeRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
       "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
     );
-    if (isVideoPurgeInProgress(purgeRows?.[0]?.value)) {
+    if (isVideoPurgeLockResponseActive(purgeRows)) {
       throw new Error("لا يمكن تغيير تشغيل أتمتة الفيديو أثناء تنظيف ملفات التوليد.");
     }
   }

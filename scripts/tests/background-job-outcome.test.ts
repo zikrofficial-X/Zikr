@@ -157,7 +157,7 @@ const templateVideoWorkerSource = readFileSync(resolve(process.cwd(), "scripts/j
 const videoPurgeRouteSource = readFileSync(resolve(process.cwd(), "src/app/api/admin/video-purge/route.ts"), "utf8");
 assert.match(backgroundRunnerSource, /isVideoPurgeInProgress\(values\.video_purge_in_progress\) \|\| !isVideoAutomationEnabled\(values\.video_automation_enabled\)/, "a missing or malformed live enable flag must stop an in-flight background video worker");
 assert.match(templateVideoWorkerSource, /isVideoPurgeInProgress\(settings\.video_purge_in_progress\) \|\| !isVideoAutomationEnabled\(settings\.video_automation_enabled\)/, "the direct video worker must use the same fail-closed live lock policy");
-assert.match(adminSystemActionsSource, /if \(isVideoPurgeInProgress\(purgeRows\?\.\[0\]\?\.value\)\)/, "video settings must not change while a purge lock is active or malformed");
+assert.match(adminSystemActionsSource, /if \(isVideoPurgeLockResponseActive\(purgeRows\)\)/, "video settings must not change while a purge lock is active or malformed");
 assert.match(adminSystemActionsSource, /if \(!isVideoAutomationEnabled\(configuredEnabled\)\)/, "Run Now must not dispatch when the Admin enable flag is missing or invalid");
 assert.match(videoPurgeRouteSource, /return isVideoAutomationEnabled\(rows\?\.\[0\]\?\.value\)/, "purge restoration must preserve a missing or legacy-false automation setting as disabled");
 assert.match(adminSystemActionsSource, /requestId: randomUUID\(\)/, "each Run Now request must have a unique identity");
@@ -175,12 +175,12 @@ for (const [workerName, workerSource] of [
 ] as const) {
   assert.match(
     workerSource,
-    /import \{ isVideoPurgeInProgress as isVideoPurgeLockActive \} from ["']\.\.\/\.\.\/src\/features\/videos\/services\/background-job-settings["']/,
+    /import \{ isVideoPurgeLockResponseActive \} from ["']\.\.\/\.\.\/src\/features\/videos\/services\/background-job-settings["']/,
     `${workerName} must import the shared fail-closed purge-lock policy`,
   );
   assert.match(
     workerSource,
-    /return isVideoPurgeLockActive\(rows\?\.\[0\]\?\.value\)/,
+    /return isVideoPurgeLockResponseActive\(rows\)/,
     `${workerName} must fail closed for null or malformed purge-lock values`,
   );
   assert.doesNotMatch(
