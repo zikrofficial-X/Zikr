@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
@@ -228,4 +228,16 @@ assert.ok(
   templateVideoWorker.includes("const latest = await findSocialQueueByAutomationKey(socialKey, signal)") &&
     templateVideoWorker.includes("queueSupplementalTargets(latestNewTargets)"),
   "a publisher claim racing the initial compare-and-set must be reconciled without resetting its active lease or losing new targets",
+);
+
+assert.deepEqual(requireSocialQueueRows([], "empty queue"), []);
+assert.throws(
+  () => requireSocialQueueRows({}, "social publish queue"),
+  /invalid row set; refusing to report an empty successful batch/,
+  "a malformed PostgREST object must not be treated as an empty queue",
+);
+assert.throws(
+  () => requireSocialQueueRows(null, "written-post queue"),
+  /invalid row set; refusing to report an empty successful batch/,
+  "a null PostgREST payload must not be treated as an empty written-post queue",
 );

@@ -4,6 +4,13 @@ import {
   type SocialPlatform,
 } from "@/features/social/services/platform-availability";
 
+export function requireSocialQueueRows<T>(value: unknown, label: string): T[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${label || "Social queue query"} returned an invalid row set; refusing to report an empty successful batch.`);
+  }
+  return value as T[];
+}
+
 export type SocialQueueSelectionCandidate = {
   id: string;
   content_type: string;

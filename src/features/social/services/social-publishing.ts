@@ -14,6 +14,7 @@ import {
   buildDueSocialQueueClaimFilter,
   buildSocialPublishLeaseFilter,
   mergeUniqueSocialPublishCandidates,
+  requireSocialQueueRows,
   selectEligibleSocialPublishItems,
 } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
@@ -281,9 +282,16 @@ export async function getPendingSocialPublishItems(
         `/rest/v1/social_publish_queue?status=in.(${statusPriority.join(",")})&content_type=eq.written_post&${dueAndRecent}`,
       ),
     ]);
+    const validatedBatches = batches.map((batch, index) =>
+      requireSocialQueueRows<SocialPublishQueueItem>(batch, `social publish ${statusPriority[index] ?? "status"} query`),
+    );
+    const validatedWrittenCandidates = requireSocialQueueRows<SocialPublishQueueItem>(
+      writtenCandidates,
+      "written-post social publish query",
+    );
     const candidates = mergeUniqueSocialPublishCandidates(
-      ...batches.map((batch) => Array.isArray(batch) ? batch : []),
-      Array.isArray(writtenCandidates) ? writtenCandidates : [],
+      ...validatedBatches,
+      validatedWrittenCandidates,
     );
     const runnableCandidates = candidates.filter((item) =>
       item.target_platforms.some((platform) =>

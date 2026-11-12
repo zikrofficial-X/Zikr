@@ -17,6 +17,7 @@ import {
   getVideoRequestLeaseHeartbeatIntervalMs,
   withVideoRequestLeaseHeartbeat,
 } from "../../src/features/videos/services/video-lease-heartbeat";
+import { isVideoPurgeLockResponseActive } from "../../src/features/videos/services/background-job-settings";
 
 const videoWorkerSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
 const socialWorkerSource = readFileSync("scripts/jobs/social-publishing.ts", "utf8");
@@ -561,5 +562,23 @@ test("site publication queue recovery compares the exact selected row revision",
     videoWorkerSource.includes('Prefer: "return=representation"') &&
       videoWorkerSource.includes("if (!recoveredQueue?.[0]?.id)"),
     "a lost recovery compare-and-set must be detected rather than reported as queued",
+  );
+});
+
+test("social worker fails closed on malformed video-purge lock responses", () => {
+  assert.equal(isVideoPurgeLockResponseActive([]), false, "an absent lock row is the only empty response");
+  assert.equal(isVideoPurgeLockResponseActive([{ value: false }]), false);
+  assert.equal(isVideoPurgeLockResponseActive([{ value: "false" }]), false);
+  assert.equal(isVideoPurgeLockResponseActive([{ value: true }]), true);
+  assert.equal(isVideoPurgeLockResponseActive([{ value: null }]), true);
+  assert.equal(isVideoPurgeLockResponseActive([{ value: undefined }]), true);
+  assert.equal(isVideoPurgeLockResponseActive([{}]), true);
+  assert.equal(isVideoPurgeLockResponseActive([null]), true);
+  assert.equal(isVideoPurgeLockResponseActive({ value: false }), true);
+  assert.equal(isVideoPurgeLockResponseActive([{ value: false }, { value: false }]), true);
+  assert.ok(
+    socialWorkerSource.includes("isVideoPurgeLockResponseActive(rows)") &&
+      !socialWorkerSource.includes("rows?.[0]?.value"),
+    "the publisher must validate the complete PostgREST response before treating the purge lock as absent",
   );
 });

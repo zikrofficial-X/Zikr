@@ -26,6 +26,7 @@ const socialQueueMetadataService = read("src/features/social/services/social-que
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
 const videoPublishApproval = read("src/features/videos/services/video-publish-approval.ts");
+const backgroundJobSettings = read("src/features/videos/services/background-job-settings.ts");
 const videoAutomation = read("src/features/videos/services/video-automation.ts");
 const socialWorkflow = read(".github/workflows/publish-social.yml");
 const videoWorkflow = read(".github/workflows/generate-ai-video.yml");
@@ -173,6 +174,16 @@ if (!socialQueueMetadataService.includes("updated_at=eq.") ||
     !socialQueueMetadataService.includes("mergeSocialQueueMetadata") ||
     !socialQueueMetadataService.includes("for (let attempt = 0; attempt < maxAttempts; attempt += 1)")) {
   failures.push("social queue metadata updates must retry exact-row-version conflicts and merge nested platform deletion state");
+}
+if (!socialPublishingService.includes("requireSocialQueueRows") ||
+    socialPublishingService.includes("Array.isArray(batch) ? batch : []") ||
+    socialPublishingService.includes("Array.isArray(writtenCandidates) ? writtenCandidates : []")) {
+  failures.push("social queue reads must reject malformed PostgREST row sets instead of silently returning an empty batch");
+}
+if (!socialWorker.includes("isVideoPurgeLockResponseActive(rows)") ||
+    socialWorker.includes("rows?.[0]?.value") ||
+    !backgroundJobSettings.includes("export function isVideoPurgeLockResponseActive(")) {
+  failures.push("the social publisher must fail closed when the video-purge lock response is malformed");
 }
 if (!socialPublishingService.includes("created_at=gte.${createdSince}") ||
     (socialPublishingService.match(/resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/g) ?? []).length < 2) {
