@@ -29,15 +29,13 @@ function DeferredThirdPartyRuntime() {
   }, []);
 
   useEffect(() => {
-    let isCanonicalHost = false;
+    let isCanonicalOrigin = false;
     try {
-      isCanonicalHost =
-        window.location.hostname.toLowerCase() ===
-        new URL(PRODUCTION_URL).hostname.toLowerCase();
+      isCanonicalOrigin = window.location.origin === new URL(PRODUCTION_URL).origin;
     } catch {
-      isCanonicalHost = false;
+      isCanonicalOrigin = false;
     }
-    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalHost);
+    setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalOrigin);
   }, []);
 
   if (!ready) return null;
