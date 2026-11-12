@@ -93,13 +93,11 @@ for (const token of [
   '...textReferencePatterns("social_publish_queue", "video_url")',
   '...textReferencePatterns("video_generation_requests", "video_url")',
   '...storagePathReferencePatterns("media_assets", "storage_path")',
-  '"%automated/%"',
-  '"%automated%2F%"',
-  '"%automated%252F%"',
-  '"%automated%25252F%"',
-  '"%automated%2525252F%"',
-  '"%automated%252525252F%"',
-  "MAX_VIDEO_REFERENCE_ENCODING_DEPTH",
+  "const MAX_VIDEO_REFERENCE_ENCODING_DEPTH = 5;",
+  "const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(",
+  "Array.from({ length: MAX_VIDEO_REFERENCE_ENCODING_DEPTH + 1 }",
+  "encodedSlash = encodeURIComponent(encodedSlash)",
+  "return `%automated${encodedSlash}%`",
   "for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1)",
 ]) {
   if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded reference protection: " + token);
