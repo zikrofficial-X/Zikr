@@ -370,21 +370,38 @@ test("post-render catalog and social queue work renews the processing lease", ()
   );
 });
 
-test("duplicate media recovery keeps the processing lease active until held social rows are restored", () => {
+test("duplicate media recovery releases held rows after cancellation using per-row compare-and-set", () => {
   const duplicateRecoveryStart = videoWorkerSource.indexOf("if (canRecover && qaApproval)");
   const duplicateRecoveryEnd = videoWorkerSource.indexOf("if (!qaApproval)", duplicateRecoveryStart);
-  const recoveryHeartbeatPosition = videoWorkerSource.indexOf("socialQueueRecovery = await withLeaseHeartbeat(", duplicateRecoveryStart);
-  const restoreRowsPosition = videoWorkerSource.indexOf("restoreMissingMediaSocialQueueItems(", recoveryHeartbeatPosition);
   const cancelStatusPosition = videoWorkerSource.indexOf('status: "cancelled"', duplicateRecoveryStart);
+  const recoveryAssignmentPosition = videoWorkerSource.indexOf(
+    "socialQueueRecovery = await restoreMissingMediaSocialQueueItems(",
+    duplicateRecoveryStart,
+  );
+  const recoveryFunctionStart = videoWorkerSource.indexOf("async function restoreMissingMediaSocialQueueItems");
+  const recoveryFunctionEnd = videoWorkerSource.indexOf("async function findSocialQueueByAutomationKey", recoveryFunctionStart);
+  const recoveryFunction = videoWorkerSource.slice(recoveryFunctionStart, recoveryFunctionEnd);
 
   assert.ok(duplicateRecoveryStart >= 0 && duplicateRecoveryEnd > duplicateRecoveryStart);
-  assert.ok(recoveryHeartbeatPosition > duplicateRecoveryStart && recoveryHeartbeatPosition < duplicateRecoveryEnd);
-  assert.ok(restoreRowsPosition > recoveryHeartbeatPosition && restoreRowsPosition < duplicateRecoveryEnd);
-  assert.ok(
-    cancelStatusPosition > restoreRowsPosition && cancelStatusPosition < duplicateRecoveryEnd,
-    "the processing-only lease must remain valid until the held social queue rows finish reconciliation",
+  assert.ok(cancelStatusPosition > duplicateRecoveryStart && cancelStatusPosition < duplicateRecoveryEnd);
+  assert.ok(recoveryAssignmentPosition > cancelStatusPosition && recoveryAssignmentPosition < duplicateRecoveryEnd);
+  assert.match(
+    recoveryFunction,
+    /buildVideoSocialQueueUpdateFilter\(item\.id, item\.status, item\.updated_at\)/,
+    "each held social row must be restored only against its selected status and row revision",
+  );
+  assert.match(
+    recoveryFunction,
+    /metadata->>sourceMediaMissing=eq\.true/,
+    "recovery must continue to require the source-media hold marker",
+  );
+  assert.doesNotMatch(
+    videoWorkerSource.slice(recoveryAssignmentPosition, videoWorkerSource.indexOf(";", recoveryAssignmentPosition)),
+    /withLeaseHeartbeat/,
+    "a cancelled duplicate request cannot renew a processing-only lease while unrelated canonical queue rows are repaired",
   );
 });
+
 
 test("failed social enqueue remains recoverable and cannot complete the video request", () => {
   const queueCall = videoWorkerSource.indexOf("queueSocialItems(request, rendered.videoUrl, signal)");
