@@ -731,7 +731,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
               ربط Facebook عبر OAuth — يتطلب social.publish وMFA
             </Button>
             {health.facebookEnvironmentTokenConfigured && (
-              <Button disabled={busy} onClick={() => void adoptServerToken()}>
+              <Button disabled={busy || !canPublish} onClick={() => void adoptServerToken()}>
                 اعتماد توكن الخادم
               </Button>
             )}
@@ -881,7 +881,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
+            <Button variant="outline" size="sm" disabled={busy || !canPublish} onClick={() => void connectFacebook()}>
               تجديد الاتصال
             </Button>
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void testFacebook()}>
@@ -905,7 +905,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         >
           <p>
             يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
-            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد نجاح OAuth مع صلاحية social.publish ومستوى MFA صالح، يعاد فتح العناصر المحجوبة فقط؛ إذا انتهت خطوة MFA تظل العناصر محجوبة ويمكن استئنافها بزر صريح.
+            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. إعادة ربط Facebook تحفظ الاعتماد فقط ولا تستأنف العناصر المحجوبة تلقائيًا. استخدم زر الاستئناف الصريح بعد مراجعة العناصر؛ يتطلب تأكيدًا وMFA، وقد تُنشر العناصر بعد إعادتها إلى الطابور.
           </p>
           {canPublish ? (
             <Button
