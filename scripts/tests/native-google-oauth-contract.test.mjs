@@ -14,6 +14,22 @@ const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
 const authCallback = read("src/app/auth/callback/route.ts");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const capacitor = JSON.parse(read("capacitor.config.json"));
+const mobileDependencies = JSON.parse(read("mobile/capacitor-dependencies.json"));
+const packageDependencies = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+const manifestDependencies = { ...(mobileDependencies.dependencies || {}), ...(mobileDependencies.devDependencies || {}) };
+const nativeDependencyNames = name => /^(?:@capacitor|@capawesome|@capgo)\//.test(name);
+assert.deepEqual(
+  Object.keys(manifestDependencies).filter(nativeDependencyNames).sort(),
+  Object.keys(packageDependencies).filter(nativeDependencyNames).sort(),
+  "the mobile dependency manifest must contain every installed native package and no stale native packages",
+);
+for (const dependency of Object.keys(packageDependencies).filter(nativeDependencyNames)) {
+  assert.equal(
+    manifestDependencies[dependency],
+    packageDependencies[dependency],
+    `mobile dependency manifest version must match package.json for ${dependency}`,
+  );
+}
 const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
 const iosPodfile = read("ios/App/Podfile");
 assert.equal(

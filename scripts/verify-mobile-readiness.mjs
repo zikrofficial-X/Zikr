@@ -67,6 +67,23 @@ for (const dependency of ["@capacitor/core", "@capacitor/android", "@capacitor/i
   if (!packageDependencies[dependency]) failures.push(`package.json is missing installed mobile dependency ${dependency}`);
 }
 if (!packageDependencies["@capacitor/cli"]) failures.push("package.json is missing @capacitor/cli; native sync cannot run from the repository");
+
+const mobileDependencies = { ...(capacitorDeps.dependencies || {}), ...(capacitorDeps.devDependencies || {}) };
+const nativeDependencyNames = Object.keys(packageDependencies).filter(name =>
+  /^(?:@capacitor|@capawesome|@capgo)\//.test(name),
+);
+for (const dependency of nativeDependencyNames) {
+  if (!mobileDependencies[dependency]) {
+    failures.push(`Mobile dependency manifest missing ${dependency}`);
+  } else if (mobileDependencies[dependency] !== packageDependencies[dependency]) {
+    failures.push(`Mobile dependency manifest version for ${dependency} does not match package.json`);
+  }
+}
+for (const dependency of Object.keys(mobileDependencies)) {
+  if (!nativeDependencyNames.includes(dependency)) {
+    failures.push(`Mobile dependency manifest contains uninstalled native package ${dependency}`);
+  }
+}
 if (capacitorDeps.dependencies?.["@capacitor-community/biometric-auth"]) failures.push("Mobile dependency manifest references the nonexistent @capacitor-community/biometric-auth package");
 
 for (const host of ["*.supabase.co", "accounts.google.com", "api.alquran.cloud", "hadithapi.com"]) {
