@@ -119,7 +119,7 @@ def resolve_file_url(value, space_origin, encode_file_path):
 
 def materialize_output(value, destination, space_origin, token=None):
     source = extract_file_value(value)
-    if not isinstance(source, str) or not source:
+    if not isinstance(source, str) or not source or not source.startswith(("http://", "https://")):
         raise RuntimeError("Gradio output must include a remote file URL; local paths are not accepted.")
     if not is_allowed_space_file_url(source, space_origin):
         raise RuntimeError("Gradio output URL must remain on the configured HTTPS Hugging Face Space origin.")
