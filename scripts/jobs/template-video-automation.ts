@@ -2290,7 +2290,7 @@ async function recoverPendingVideoSocialQueueEnqueues(
   const candidates = [...new Map(
     [...(pendingRows ?? []), ...(staleRows ?? [])]
       .filter((request) => request && typeof request.id === "string")
-      .map((request) => [request.id, request]),
+      .map((request) => [request.id, request] as const),
   ).values()].slice(0, candidateLimit);
 
   let recovered = 0;

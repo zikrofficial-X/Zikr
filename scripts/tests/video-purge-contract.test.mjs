@@ -244,12 +244,21 @@ assert.ok(
     renderCallback > renderStart,
   "video queue processing must stop before claim and release any claim if the purge lock activates during the claim race.",
 );
-const socialQueueEnqueuePosition = videoQueueSource.indexOf("await withLeaseHeartbeat((signal) => queueSocialItems(request, rendered.videoUrl, signal));");
-const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        video_url: rendered.videoUrl');
+const persistedMediaHandoffPosition = videoQueueSource.indexOf('socialQueueEnqueueStatus: "processing"');
+const socialQueueEnqueuePosition = videoQueueSource.indexOf("queueSocialItems(request, rendered.videoUrl, signal)");
+const pendingHandoffPosition = videoQueueSource.indexOf('socialQueueEnqueueStatus: "pending"', socialQueueEnqueuePosition);
+const failedHandoffContinuePosition = videoQueueSource.indexOf("continue;", pendingHandoffPosition);
+const completedRequestPatchPosition = videoQueueSource.indexOf('await patchProcessingRequestWithLease({\n        status: "completed",\n        ...completedMediaFields');
 assert.ok(
-  socialQueueEnqueuePosition >= 0 &&
-    completedRequestPatchPosition > socialQueueEnqueuePosition,
-  "generated video requests must remain processing until any social queue row that references the media has been created, so purge preflight cannot miss the in-flight enqueue window.",
+  persistedMediaHandoffPosition >= 0 &&
+    socialQueueEnqueuePosition > persistedMediaHandoffPosition &&
+    pendingHandoffPosition > socialQueueEnqueuePosition &&
+    failedHandoffContinuePosition > pendingHandoffPosition &&
+    completedRequestPatchPosition > failedHandoffContinuePosition &&
+    videoWorker.includes("recoverPendingVideoSocialQueueEnqueues(") &&
+    videoWorker.includes("content->>socialQueueEnqueueStatus=eq.pending") &&
+    videoWorker.includes("content->>socialQueueEnqueueStatus=eq.processing"),
+  "the generated media pointer and processing lease must protect purge while social enqueue is pending; failed or interrupted handoffs must remain recoverable instead of being marked completed.",
 );
 assert.ok(
   videoQueueSource.includes("const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>)") &&
