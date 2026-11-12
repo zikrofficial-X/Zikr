@@ -126,13 +126,18 @@ function hasPassedKidsVideoQa(metadata: Record<string, unknown>): boolean {
 
 export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured; Kids generated videos are unavailable.");
+  }
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&order=created_at.desc&limit=" + safeLimit,
-  ).catch(() => []);
+  );
+  if (!Array.isArray(rows)) {
+    throw new Error("Kids generated video query returned an invalid row set.");
+  }
 
-  return (rows ?? [])
+  return rows
     .filter((row) => {
       const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
         ? row.metadata as Record<string, unknown>
@@ -160,13 +165,19 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
 
 export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video | null> {
   const safeSlug = encodeURIComponent(slug?.trim() ?? "");
-  if (!safeSlug || !isSupabaseConfigured()) return null;
+  if (!safeSlug) return null;
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured; Kids generated video details are unavailable.");
+  }
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&slug=eq." +
       safeSlug + "&published=eq.true&metadata->>audience=eq.kids&limit=1",
     { timeoutMs: 8000, retries: 1, cache: "no-store" },
-  ).catch(() => []);
-  const row = rows?.[0];
+  );
+  if (!Array.isArray(rows)) {
+    throw new Error("Kids generated video detail query returned an invalid row set.");
+  }
+  const row = rows[0];
   const metadata = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
     ? row.metadata as Record<string, unknown>
     : {};

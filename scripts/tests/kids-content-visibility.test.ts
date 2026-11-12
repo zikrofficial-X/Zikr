@@ -322,6 +322,7 @@ assert.equal(
 
 const kidsSocialPostsApi = readFileSync("src/app/api/kids/social-posts/route.ts", "utf8");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
+const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
 const kidsLevelsAdminPage = readFileSync("src/app/admin/kids/levels/page.tsx", "utf8");
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
@@ -421,6 +422,27 @@ assert.match(kidsHomePage, /visibleContent\.length < featuredContent\.length/, "
 assert.match(kidsHomePage, /setVisibleContentCount\(\(count\) => Math\.min\(count \+ 12, featuredContent\.length\)\)/, "the Kids home page must reveal the next bounded content batch");
 assert.doesNotMatch(kidsHomePage, /featuredContent\.map\(/, "the Kids home page must not bypass its bounded visible-content slice");
 assert.doesNotMatch(kidsHomePage, /\.slice\(0,\s*6\)/, "the Kids home page must not silently hide all but six database records");
+assert.match(kidsHomePage, /generatedKidsStatus/);
+assert.match(kidsHomePage, /kidsWrittenPostsStatus/);
+assert.match(kidsHomePage, /setGeneratedKidsStatus\("error"\)/);
+assert.match(kidsHomePage, /setKidsWrittenPostsStatus\("error"\)/);
+assert.match(kidsHomePage, /role="alert"/);
+assert.match(kidsHomePage, /if \(!response\.ok\) throw new Error/);
+const kidsVideoListStart = kidsVideoService.indexOf("export async function getKidsGeneratedVideos");
+const kidsVideoDetailStart = kidsVideoService.indexOf("export async function getKidsGeneratedVideoBySlug", kidsVideoListStart);
+const kidsVideoListSource = kidsVideoListStart >= 0 && kidsVideoDetailStart > kidsVideoListStart
+  ? kidsVideoService.slice(kidsVideoListStart, kidsVideoDetailStart)
+  : "";
+const kidsVideoDetailEnd = kidsVideoService.indexOf("export async function getInternalGeneratedVideos", kidsVideoDetailStart);
+const kidsVideoDetailSource = kidsVideoDetailStart >= 0 && kidsVideoDetailEnd > kidsVideoDetailStart
+  ? kidsVideoService.slice(kidsVideoDetailStart, kidsVideoDetailEnd)
+  : "";
+assert.match(kidsVideoListSource, /Supabase is not configured; Kids generated videos are unavailable/);
+assert.match(kidsVideoListSource, /Kids generated video query returned an invalid row set/);
+assert.doesNotMatch(kidsVideoListSource, /\.catch\(\(\) => \[\]\)/);
+assert.match(kidsVideoDetailSource, /Supabase is not configured; Kids generated video details are unavailable/);
+assert.match(kidsVideoDetailSource, /Kids generated video detail query returned an invalid row set/);
+assert.doesNotMatch(kidsVideoDetailSource, /\.catch\(\(\) => \[\]\)/);
 assert.ok(kidsGamesAdminPage.includes('supabaseServerAdminCount("kids_games")'), "the Kids games total must use an exact count rather than the 100-row sample");
 assert.ok(kidsGamesAdminPage.includes("ضمن آخر 100"), "published/featured game counts must disclose their sample scope");
 assert.ok(kidsGamesAdminPage.includes("آخر 100 سجل"), "the game comparison table must disclose its bounded sample size");

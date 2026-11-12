@@ -83,9 +83,13 @@ export default function KidsPage() {
   const [contentStatus, setContentStatus] = useState<"loading" | "ready" | "error">("loading");
   const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
   const [kidsWrittenPosts, setKidsWrittenPosts] = useState<KidsWrittenPost[]>([]);
+  const [generatedKidsStatus, setGeneratedKidsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [kidsWrittenPostsStatus, setKidsWrittenPostsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [visibleContentCount, setVisibleContentCount] = useState(12);
   useEffect(() => {
     let active = true;
+    setGeneratedKidsStatus("loading");
+    setKidsWrittenPostsStatus("loading");
     setContentStatus("loading");
     fetch("/api/kids/content", { cache: "no-store" })
       .then(async (response) => {
@@ -116,18 +120,40 @@ export default function KidsPage() {
           setContentStatus("error");
         }
       });
-    fetch("/api/kids/videos", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setGeneratedKidsItems(data);
-      })
-      .catch(() => undefined);
-    fetch("/api/kids/social-posts", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setKidsWrittenPosts(data);
-      })
-      .catch(() => undefined);
+    void (async () => {
+      try {
+        const response = await fetch("/api/kids/videos", { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error("Kids video feed request failed.");
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Kids video feed returned an invalid payload.");
+        if (active) {
+          setGeneratedKidsItems(data as KidsGeneratedItem[]);
+          setGeneratedKidsStatus("ready");
+        }
+      } catch {
+        if (active) {
+          setGeneratedKidsItems([]);
+          setGeneratedKidsStatus("error");
+        }
+      }
+    })();
+    void (async () => {
+      try {
+        const response = await fetch("/api/kids/social-posts", { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error("Kids written-post feed request failed.");
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Kids written-post feed returned an invalid payload.");
+        if (active) {
+          setKidsWrittenPosts(data as KidsWrittenPost[]);
+          setKidsWrittenPostsStatus("ready");
+        }
+      } catch {
+        if (active) {
+          setKidsWrittenPosts([]);
+          setKidsWrittenPostsStatus("error");
+        }
+      }
+    })();
     return () => { active = false; };
   }, [isEnglish]);
   const featuredContent = contentItems.filter((item) => isKidsContentType(item.type));
@@ -173,6 +199,16 @@ export default function KidsPage() {
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">{journeys.map((journey) => <Link key={journey.titleAr} href={journey.href} className="group"><Card className={`h-full border-brand-cream/10 bg-gradient-to-br ${journey.color} p-4 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/50 sm:p-6`}><span className="text-4xl" aria-hidden="true">{journey.icon}</span><h3 className="mt-5 text-xl font-bold text-brand-gold">{isEnglish ? journey.titleEn : journey.titleAr}</h3><p className="mt-2 leading-8 text-brand-cream/70">{isEnglish ? journey.descriptionEn : journey.descriptionAr}</p><span className="mt-5 inline-block text-sm font-bold text-brand-cream underline decoration-brand-gold/50 underline-offset-4 group-hover:text-brand-gold">{isEnglish ? "Open path →" : "افتح المسار ←"}</span></Card></Link>)}</div>
         </section>
 
+        {generatedKidsStatus === "error" && (
+          <p role="alert" className="text-sm text-amber-700">
+            {isEnglish ? "Kids videos are temporarily unavailable. Please try again later." : "فيديوهات الأطفال غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا."}
+          </p>
+        )}
+        {kidsWrittenPostsStatus === "error" && (
+          <p role="alert" className="text-sm text-amber-700">
+            {isEnglish ? "Kids written posts are temporarily unavailable. Please try again later." : "منشورات الأطفال غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا."}
+          </p>
+        )}
         {generatedKidsItems.length > 0 && (
           <>
             <section aria-labelledby="kids-generated-stories-heading" className="space-y-5">
