@@ -280,6 +280,15 @@ const pendingSupplementalRow = {
   published_at: null,
   metadata: { audience: "kids", platformResults: {} },
 };
+const partialWithoutPublishedAt = {
+  content_type: "kids_video",
+  status: "partial",
+  target_platforms: ["youtube"],
+  published_at: null,
+  metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-unversioned" } } },
+};
+assert.equal(isPublicKidsVideoSocialQueueRow(partialWithoutPublishedAt), false, "a partial row without a publication timestamp must remain private");
+assert.equal(resolveKidsVideoSocialPublication([partialWithoutPublishedAt], null, true), null, "an unversioned remote success must not create a public platform badge");
 assert.deepEqual(
   resolveKidsVideoSocialPublication([pendingSupplementalRow, originalYoutubeQueueRow], null, true),
   { status: "partial", platforms: ["youtube"], publishedAt: "2026-11-11T12:00:00.000Z" },

@@ -65,9 +65,10 @@ export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
       Number.isFinite(Date.parse(row.published_at)) &&
       hasConfirmedDelivery;
   }
-  // Keep a partially deleted row available to override stale catalog badges,
-  // but never expose an ordinary partial row with no confirmed remote result.
-  return hasConfirmedDelivery || hasConfirmedDeletion;
+  // Keep a partially deleted row available to override stale catalog badges.
+  // A delivery badge still requires a verifiable publication timestamp.
+  const hasValidPublishedAt = typeof row.published_at === "string" && Number.isFinite(Date.parse(row.published_at));
+  return hasConfirmedDeletion || (hasValidPublishedAt && hasConfirmedDelivery);
 }
 
 export type KidsVideoSocialPublication = {
@@ -141,18 +142,21 @@ export function resolveKidsVideoSocialPublication(
       : [];
     for (const platform of rowTargets) targets.add(platform);
 
-    for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
-      const current = latestByPlatform.get(platform);
+    // An unversioned success cannot supersede a deletion or become a public badge.
+    if (Number.isFinite(publicationTimestamp)) {
+      for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
+        const current = latestByPlatform.get(platform);
       if (
         !current ||
         publicationTimestamp > current.timestamp ||
         (publicationTimestamp === current.timestamp && current.state === "deleted")
       ) {
-        latestByPlatform.set(platform, {
-          state: "published",
-          timestamp: publicationTimestamp,
-          publishedAt: Number.isFinite(parsedPublishedAt) ? rowPublishedAt : null,
-        });
+          latestByPlatform.set(platform, {
+            state: "published",
+            timestamp: publicationTimestamp,
+            publishedAt: rowPublishedAt,
+          });
+        }
       }
     }
 
