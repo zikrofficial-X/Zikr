@@ -750,3 +750,37 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 
 - The repository-wide audit is still IN PROGRESS. The main-baseline matrix still has 1,525 `REVIEW_REQUIRED` rows and zero modules closed. This checkpoint closes neither the whole repository nor the manual/device/owner acceptance gates.
 - Manual work still required: CODEOWNERS owner review; apply the pending Supabase migration through the approved release path; review the 20 published stories for optional automation eligibility without bulk-changing their metadata; supply the real Apple Team ID/App ID and verify iOS Universal Link return on device; verify YouTube OAuth reconnection/audit attribution; complete Android/iOS device acceptance and public-route browser journeys.
+
+
+## Audit continuation — 2026-11-12 18:24 Africa/Cairo
+
+### PR #320 exact code-head verification
+
+- Repository: `zikrofficial-X/Zikr`; PR #320; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Exact code head inspected: `94b15fdc310efc35d68862752e0234c0e656d252`. GitHub comparison: 918 commits ahead, 0 behind; 284 changed paths (98 added, 186 modified, 0 removed). The current recursive inventory reconciles to 2,256 entries (1,760 files, 496 directories), derived from the verified main inventory and the PR comparison; no tracked path was removed.
+- GitHub Quality Gate run `43254527275`, canonical job `131309034626`: SUCCESS at that exact head. The log records `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, the optimized production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` are all SUCCESS at the same head.
+- The main-baseline inventory remains 2,154 entries (1,662 files, 492 directories). The checked-in manifest contains 2,153 records because it excludes its own file. The branch manifest retains the same 2,153-path set; its three deliberate differences from the main copy are the `docs` and `docs/audits` tree SHA values set to null to avoid self-referential directory hashes, and the closeout-ledger row corrected to the actual main-tree blob `31c64dc29e01e9d92a2a2ae82ae103e8d6521076` (99,259 bytes). The main-branch manifest still carries the older ledger row `057c5b9ffb16691abfc6e245e583c908a0dbe73d` (93,248 bytes); it was not modified on main.
+- The main-baseline matrix remains at 1,525 `REVIEW_REQUIRED` rows and zero closed modules. Its 129/1,662 minimum documented full-content reads are not equivalent to repository-wide review. The PR overlay is a separate branch-delta view and does not close the main baseline.
+
+### Confirmed source-path findings
+
+- The earlier open concern that a failed video-to-social enqueue could be marked completed is superseded by the current source. On enqueue failure, `scripts/jobs/template-video-automation.ts` persists `socialQueueEnqueueStatus: "pending"` and continues before the completed transition. `recoverPendingVideoSocialQueueEnqueues` claims pending/stale handoffs with the exact row version, media URL, and marker; the independent `scripts/jobs/social-publishing.ts` worker invokes recovery after the purge guard and before social queue claims, without depending on the new-video generation toggle. The live `social_publish_queue` has the partial unique index `idx_social_publish_queue_automation_key`, which enforces the idempotency key. Regression tests cover failed-enqueue recovery, independent social-worker recovery, and lease/CAS fencing. The exact-head full gate passed. This resolves that specific finding; full module and provider-consumer review remains open.
+- The branch migration `20261112103200_revoke_client_non_dml_table_privileges.sql` is present and included in the PGlite migration replay and security-hardening contracts. The validator seeds pre-migration grants for `postgres` and `supabase_admin`, replays the migration chain, and fails if browser roles retain non-DML table/default privileges. The exact-head full gate passed these checks. The migration has not been applied to production.
+
+### Production Supabase security state — read-only
+
+- Supabase project `zqtssvlvmkzeeyqghqfk` is PostgreSQL `17.11`. The remote ledger has 418 applied versions through `20261110170000`; 11 branch migrations remain unapplied: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, and `20261112103200`.
+- A read-only ACL query across public tables found: `anon` has MAINTAIN on 46 tables; `authenticated` has TRUNCATE on 74, REFERENCES on 74, TRIGGER on 74, and MAINTAIN on 75; `service_role` has TRUNCATE on 92 tables. The latter is retained intentionally by the branch migration. This is a live production privilege-hardening gap until the owner-approved migration is applied. No SQL write or migration application was performed.
+- The Supabase security advisor still reports `auth_leaked_password_protection` disabled. Health lints are empty. The social queue automation key is protected by a partial unique index. No index or database object was changed.
+
+### Production deployment, runtime, and mobile configuration
+
+- Vercel production remains READY at `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, sourced from `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. No audit-branch Preview deployment exists; automatic Git deployments are disabled and the release workflow is manual. No merge, deployment, or post-deploy smoke was attempted.
+- The 24-hour runtime-error view contains two `TypeError: fetch failed` events on `/` and Quran routes (last seen 2026-11-12 11:41:38Z; socket closed before response) and one React streaming-boundary error on an article route (last seen 2026-11-11 16:51:37Z). No matching errors appeared in the latest 30-minute runtime-log window. The 24-hour runtime-log request is unavailable on the Hobby retention tier, so these historical clusters were not reproduced or attributed to a code defect.
+- Vercel environment-variable metadata was inspected without decrypting values. Android keystore base64/password/alias variables exist for development, preview, and production. `IOS_ASSOCIATED_DOMAIN_APP_ID` and `APPLE_TEAM_ID` are absent; iOS Universal Link/OAuth return-to-app acceptance remains blocked on owner-supplied Apple identifiers and device testing.
+
+### Governance and outstanding blockers
+
+- `.github/CODEOWNERS` assigns all paths, including auth, APIs, admin, Supabase, Android/iOS, workflows, and Vercel configuration, to `@Zikrmediaofficial`. PR #320 still has zero submitted reviews and zero review threads; the connected identity's collaborator permission for that owner is null. Owner approval cannot be obtained autonomously.
+- Main's separate scheduled `ci/circleci: english-content-sync` context remains FAILURE on `main@c4560d9`. It is not a PR #320 check. It was not rerun because the job may sync or generate content.
+- No content generation, Gemini request, social publishing, push notification, production database mutation, migration application, Storage/media deletion, secret decryption/rotation, Android/iOS release, merge, or deployment was triggered. Repository-wide review remains IN PROGRESS.
