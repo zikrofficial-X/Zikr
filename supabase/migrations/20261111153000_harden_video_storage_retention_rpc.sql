@@ -137,7 +137,12 @@ BEGIN
 
   RETURN
     pg_catalog.regexp_count(definition, '\mUPDATE\M', 1, 'i') = 2
-    AND pg_catalog.regexp_count(definition, '\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M', 1, 'i') = 0
+    AND pg_catalog.regexp_count(
+      definition,
+      '\mINSERT\M|\mMERGE\M|\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M|\mCALL\M|\mPERFORM\M|\mSELECT\M|\mCOPY\M',
+      1,
+      'i'
+    ) = 0
     AND queue_update[1] ~* '\mmetadata\M\s*='
     AND queue_update[1] !~* '\mvideo_url\M\s*='
     AND queue_update[2] ~* '\mid\M\s*=\s*p_queue_id'
