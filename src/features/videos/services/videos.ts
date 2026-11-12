@@ -5,6 +5,8 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
 import { defaultOgImage } from "@/lib/site";
+import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { resolveKidsVideoSocialPublication } from "@/features/social/services/kids-video-social-visibility";
 import { resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "./video-media-contract";
 
 function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
@@ -163,6 +165,32 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
     }));
 }
 
+type KidsVideoSocialQueueRow = {
+  content_type: string;
+  target_platforms: string[] | null;
+  status: string;
+  published_at: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
+const VIDEO_GENERATION_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function resolveKidsVideoSocialPublicationForDetail(requestId: unknown, stored: unknown) {
+  if (typeof requestId !== "string" || !VIDEO_GENERATION_REQUEST_ID_PATTERN.test(requestId)) return null;
+
+  try {
+    const rows = await supabaseServerAdminRequest<KidsVideoSocialQueueRow[]>(
+      "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
+        "&metadata->>audience=eq.kids&select=content_type,target_platforms,status,published_at,metadata&order=created_at.desc&limit=100",
+      { timeoutMs: 8000, retries: 1, cache: "no-store" },
+    );
+    if (!Array.isArray(rows)) return null;
+    return resolveKidsVideoSocialPublication(rows, stored, true);
+  } catch (error) {
+    console.warn("[content] Failed to reconcile Kids video social publication:", error);
+    return null;
+  }
+}
 export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video | null> {
   const safeSlug = encodeURIComponent(slug?.trim() ?? "");
   if (!safeSlug) return null;
@@ -184,6 +212,7 @@ export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video |
   if (!row || !hasPassedKidsVideoQa(metadata) ||
       metadata.generator !== "zikr_internal_video_factory" ||
       !isPubliclyRenderableVideo(row)) return null;
+  const socialPublication = await resolveKidsVideoSocialPublicationForDetail(metadata.videoGenerationRequestId, metadata.socialPublication);
   return {
     id: row.id as string,
     title: row.title as string,
@@ -195,7 +224,7 @@ export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video |
     views: (row.views as number) || 0,
     published: row.published as boolean,
     categoryId: row.category_id as string | undefined,
-    metadata: row.metadata as Record<string, unknown>,
+    metadata: { ...metadata, socialPublication },
     createdAt: row.created_at as string,
   };
 }

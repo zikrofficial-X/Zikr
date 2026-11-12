@@ -89,12 +89,14 @@ export default async function KidsVideoDetailPage({ params }: Props) {
         {socialCaption ? (
           <Card className="space-y-3 border-brand-emerald/20 bg-brand-emerald/[.04] p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-xl font-black text-brand-gold">منشور السوشيال ميديا</h2>
-              {publishedPlatforms.length > 0 && (
+              <h2 className="text-xl font-black text-brand-gold">{publishedPlatforms.length > 0 ? "منشور السوشيال ميديا" : "نص منشور مُجهّز"}</h2>
+              {publishedPlatforms.length > 0 ? (
                 <span className="text-xs font-bold text-brand-emerald">
                   {socialPublication?.status === "published" ? "نُشر على " : "نُشر جزئيًا على "}
                   {publishedPlatforms.map((platform) => platform === "facebook_reels" ? "ريلز فيسبوك" : platform === "facebook" ? "فيسبوك" : platform === "youtube" ? "يوتيوب" : platform).join("، ")}
                 </span>
+              ) : (
+                <span className="text-xs font-bold text-brand-cream/70">لم يتم نشره بعد</span>
               )}
             </div>
             <p className="whitespace-pre-wrap text-sm leading-7 text-brand-cream/80">{socialCaption}</p>

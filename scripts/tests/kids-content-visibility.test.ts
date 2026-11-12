@@ -326,6 +326,12 @@ assert.match(kidsSocialPostsApi, /status: 503/, "a missing production service-ro
 assert.match(kidsSocialPostsApi, /return NextResponse\.json\(\[\]/, "preview and development may retain their intentional empty-feed fallback");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
+assert.match(kidsVideoService, /resolveKidsVideoSocialPublicationForDetail/);
+assert.match(kidsVideoService, /social_publish_queue\?content_id=eq\./, "the Kids video detail route must reconcile live social queue rows");
+assert.match(kidsVideoService, /metadata->>audience=eq\.kids/, "the Kids video detail route must never use general-audience social rows");
+assert.match(kidsVideoService, /metadata:\s*\{\s*\.\.\.metadata,\s*socialPublication,/, "the Kids video detail response must replace stale catalog social badges with the live result");
+assert.match(kidsVideoDetailPage, /نص منشور مُجهّز/, "unpublished generated copy must be labelled as prepared copy, not a published post");
+assert.match(kidsVideoDetailPage, /لم يتم نشره بعد/, "the Kids video detail page must state when a generated caption has no confirmed platform delivery");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
 const kidsLevelsAdminPage = readFileSync("src/app/admin/kids/levels/page.tsx", "utf8");
 const kidsContentData = readFileSync("src/features/kids/data/content.ts", "utf8");
