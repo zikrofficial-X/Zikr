@@ -2195,7 +2195,7 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string, sig
       // The publisher may have claimed the row between our read and PATCH.
       // Re-read once: if it is now processing, use supplemental rows; otherwise
       // retry the compare-and-set against the newer revision.
-      const latest = await findSocialQueueByAutomationKey(socialKey);
+      const latest = await findSocialQueueByAutomationKey(socialKey, signal);
       if (latest) {
         const latestTargets = Array.isArray(latest.target_platforms)
           ? latest.target_platforms.filter(Boolean)
