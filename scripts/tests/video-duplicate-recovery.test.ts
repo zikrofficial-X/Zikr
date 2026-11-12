@@ -287,7 +287,15 @@ assert.ok(
 assert.match(worker, /calculateDailyVideoQuotaState\(todaysRows \?\? \[\]\)/);
 assert.match(worker, /const slot = dailyQuota\.nextSlot \+ i/);
 assert.ok(worker.includes("canRecoverDuplicateVideoRender"), "the video worker must use the recovery decision contract");
-assert.ok(worker.includes("buildDuplicateVideoOwnerRecoveryFilter(duplicate.video_url, duplicate.updated_at)"), "canonical recovery must compare-and-set the selected row revision and exact previously stored Cloudinary URL");
+const duplicateRecoveryFilterCall = worker.indexOf("buildDuplicateVideoOwnerRecoveryFilter(");
+const duplicateUrlArgument = worker.indexOf("duplicate.video_url", duplicateRecoveryFilterCall);
+const duplicateRevisionArgument = worker.indexOf("duplicate.updated_at", duplicateUrlArgument);
+assert.ok(
+  duplicateRecoveryFilterCall >= 0 &&
+    duplicateUrlArgument > duplicateRecoveryFilterCall &&
+    duplicateRevisionArgument > duplicateUrlArgument,
+  "canonical recovery must compare-and-set the selected row revision and exact previously stored Cloudinary URL",
+);
 assert.ok(worker.includes("updated_at, duration,source_hash") || worker.includes("updated_at,duration,source_hash"), "the duplicate owner query must fetch the row revision used by the compare-and-set filter");
 assert.ok(worker.includes("&${duplicateRecoveryFilter}"), "canonical recovery must apply the completed-state, row-revision, and media-pointer guards together");
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
