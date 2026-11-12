@@ -186,7 +186,7 @@ export function resolveKidsVideoSocialPublication(
 
   const activePublicationTimes = platforms
     .map((platform) => latestByPlatform.get(platform))
-    .filter((event): event is PublicationEvent => Boolean(event) && Number.isFinite(event.timestamp));
+    .filter((event): event is PublicationEvent => event !== undefined && Number.isFinite(event.timestamp));
   const latestPublication = activePublicationTimes.reduce<PublicationEvent | null>(
     (latest, event) => !latest || event.timestamp > latest.timestamp ? event : latest,
     null,

@@ -290,7 +290,7 @@ const deletedYoutubeSupplementalRow = {
   status: "partial",
   target_platforms: ["youtube"],
   published_at: null,
-  metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted" } } },
+  metadata: { audience: "kids", platformDeletions: { youtube: { status: "deleted", deletedAt: "2026-11-11T12:06:00.000Z" } } },
 };
 assert.equal(
   resolveKidsVideoSocialPublication([originalYoutubeQueueRow, deletedYoutubeSupplementalRow], null, true),
