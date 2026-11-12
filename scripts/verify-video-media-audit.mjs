@@ -95,7 +95,12 @@ for (const token of [
   '...storagePathReferencePatterns("media_assets", "storage_path")',
   '"%automated/%"',
   '"%automated%2F%"',
-  "for (let pass = 0; pass < 5; pass += 1)",
+  '"%automated%252F%"',
+  '"%automated%25252F%"',
+  '"%automated%2525252F%"',
+  '"%automated%252525252F%"',
+  "MAX_VIDEO_REFERENCE_ENCODING_DEPTH",
+  "for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1)",
 ]) {
   if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded reference protection: " + token);
 }

@@ -17,6 +17,7 @@ const GITHUB_RELEASES_API =
   "https://api.github.com/repos/zikrofficial-X/Zikr/releases/tags";
 const SUPPORTED_RETENTION_PLATFORMS = new Set(["facebook", "facebook_reels", "youtube"]);
 const MAX_CLOUDINARY_PROBES = 1000;
+const MAX_VIDEO_REFERENCE_ENCODING_DEPTH = 5;
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -134,7 +135,7 @@ export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
     // protect the same candidate references.
     const variants = new Set([clean]);
     let decoded = clean;
-    for (let pass = 0; pass < 5; pass += 1) {
+    for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1) {
       try {
         const next = decodeURIComponent(decoded);
         if (next === decoded) break;
@@ -527,10 +528,15 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
 // Every managed video object is stored under automated/. These patterns cover
 // raw paths and percent-encoded slash separators, including encoded URL values.
 // They deliberately over-select; exact recursive matching filters false positives.
-const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
-  "%automated/%",
-  "%automated%2F%",
-]);
+const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(
+  Array.from({ length: MAX_VIDEO_REFERENCE_ENCODING_DEPTH + 1 }, (_, depth) => {
+    let encodedSlash = "/";
+    for (let pass = 0; pass < depth; pass += 1) {
+      encodedSlash = encodeURIComponent(encodedSlash);
+    }
+    return `%automated${encodedSlash}%`;
+  }),
+);
 
 export function textReferencePatterns(table, column) {
   return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
@@ -541,10 +547,11 @@ export function textReferencePatterns(table, column) {
 }
 
 export function storagePathReferencePatterns(table, column) {
-  return [
-    { table, column, filter: (query) => query.ilike(column, "%automated/%") },
-    { table, column, filter: (query) => query.ilike(column, "%automated%2F%") },
-  ];
+  return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
+    table,
+    column,
+    filter: (query) => query.ilike(column, pattern),
+  }));
 }
 
 function jsonReferencePattern(table, column) {

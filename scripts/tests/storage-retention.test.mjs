@@ -73,6 +73,36 @@ assert.deepEqual(
   [encodedReferencePath],
   "double-encoded Storage object URLs must remain visible to the reference inventory",
 );
+
+const expectedEncodedReferencePatterns = [
+  "%automated/%",
+  "%automated%2F%",
+  "%automated%252F%",
+  "%automated%25252F%",
+  "%automated%2525252F%",
+  "%automated%252525252F%",
+];
+function captureReferencePatterns(patterns) {
+  const captured = [];
+  const query = {
+    ilike(column, pattern) {
+      captured.push({ column, pattern });
+      return query;
+    },
+  };
+  for (const entry of patterns) entry.filter(query);
+  return captured;
+}
+assert.deepEqual(
+  captureReferencePatterns(textReferencePatterns("articles", "content")).map((entry) => entry.pattern),
+  expectedEncodedReferencePatterns,
+  "text-column prefilters must find raw through five-times-encoded Storage paths",
+);
+assert.deepEqual(
+  captureReferencePatterns(storagePathReferencePatterns("media_assets", "storage_path")).map((entry) => entry.pattern),
+  expectedEncodedReferencePatterns,
+  "storage-path prefilters must use the same bounded encoding-depth coverage",
+);
 assert.deepEqual(
   [...findManagedVideoReferences({ note: `legacy source ${publicUrl}` }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],
