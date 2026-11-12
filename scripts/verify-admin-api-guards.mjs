@@ -197,6 +197,17 @@ if (!/requireAdminStepUpApi\s*\(\s*['"]video\.manage['"]\s*,\s*['"]\/admin\/vide
 }
 
 const socialRouteSource = readFileSync(join(apiRoot, "social/route.ts"), "utf8");
+const adoptionActionStart = socialRouteSource.indexOf('if (action === "adopt_server_facebook_token")');
+const adoptionActionEnd = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")', adoptionActionStart);
+const adoptionActionBlock = adoptionActionStart >= 0 && adoptionActionEnd > adoptionActionStart
+  ? socialRouteSource.slice(adoptionActionStart, adoptionActionEnd)
+  : "";
+if (
+  !adoptionActionBlock.includes("adoptServerConfiguredFacebookPageToken()") ||
+  /unblockFacebookAuthBlockedQueue|triggerSocialWorker/.test(adoptionActionBlock)
+) {
+  failures.push("server Facebook token adoption must validate/store credentials only; it must not resume or dispatch queued posts");
+}
 const socialActionGateStart = socialRouteSource.indexOf("if ([");
 const socialActionGateEnd = socialRouteSource.indexOf("const ids", socialActionGateStart);
 const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > socialActionGateStart
