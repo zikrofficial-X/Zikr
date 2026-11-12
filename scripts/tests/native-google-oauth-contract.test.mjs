@@ -99,6 +99,11 @@ assert.match(
   /\{\s*'\/':\s*'\/auth\/callback\*',\s*exclude:\s*true\s*\}/,
   "iOS universal links must leave OAuth callbacks in the browser for the server handoff",
 );
+assert.match(appleAssociationRoute, /IOS_ASSOCIATED_DOMAIN_APP_ID/);
+assert.match(appleAssociationRoute, /status: 503/, "AASA must not return an empty success document when the Apple app ID is missing");
+assert.match(appleAssociationRoute, /\[A-Z0-9\]\{10\}\\\.com\\\.zikr\\\.app/, "AASA must validate the Apple Team ID plus the registered bundle ID");
+assert.match(appleAssociationRoute, /webcredentials:\s*\{\s*apps:\s*\[appId\]\s*\}/);
+assert.match(read(".env.example"), /^IOS_ASSOCIATED_DOMAIN_APP_ID=/m, "the Apple Team ID and bundle ID must be documented in the environment template");
 assert.ok(button.includes("Android OAuth غير مطابق"), "Credential Manager configuration errors must be explained accurately");
 assert.ok(activity.includes("ModifiedMainActivityForSocialLoginPlugin"), "MainActivity must implement the required plugin marker interface");
 assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forward Google activity results");

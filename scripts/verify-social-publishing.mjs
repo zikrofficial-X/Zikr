@@ -240,6 +240,10 @@ if (!socialWorkflow.includes("\n  schedule:") ||
 }
 for (const expected of [
   'SOCIAL_PUBLISH_ENABLED: "true"',
+  'echo "### Social publishing readiness"',
+  'echo "- YouTube client ID configured: $youtube_client_id_present"',
+  'echo "- YouTube client secret configured: $youtube_client_secret_present"',
+  'echo "::warning::No social provider has a verified publishing credential.',
   'SOCIAL_SYNC_INSIGHTS: "false"',
   'BACKGROUND_JOB_TARGET: "social"',
   'SOCIAL_PUBLISH_AFTER: "2026-11-06T20:00:00Z"',

@@ -120,13 +120,18 @@ jobs:
           fi
           echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
 
+          youtube_client_id_present=false
+          if [[ -n "${YOUTUBE_CLIENT_ID:-}" ]]; then youtube_client_id_present=true; fi
+          youtube_client_secret_present=false
+          if [[ -n "${YOUTUBE_CLIENT_SECRET:-}" ]]; then youtube_client_secret_present=true; fi
+          youtube_scopes_ready=false
           youtube_ready=false
-          if [[ "${YOUTUBE_PUBLISHING_REQUESTED,,}" == "true" && -n "${YOUTUBE_CLIENT_ID:-}" && -n "${YOUTUBE_CLIENT_SECRET:-}" ]]; then
+          if [[ "${YOUTUBE_PUBLISHING_REQUESTED,,}" == "true" && "$youtube_client_id_present" == "true" && "$youtube_client_secret_present" == "true" ]]; then
             youtube_json="$(curl -fsS \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
               "$SUPABASE_URL/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=granted_scopes&limit=1")"
-            youtube_ready="$(node -e '
+            youtube_scopes_ready="$(node -e '
               const rows = JSON.parse(process.argv[1]);
               const scopes = Array.isArray(rows?.[0]?.granted_scopes) ? rows[0].granted_scopes : [];
               const required = [
@@ -144,13 +149,28 @@ jobs:
                 !scopes.some(scope => deleteCapable.includes(scope))
               ));
             ' "$youtube_json")"
+            youtube_ready="$youtube_scopes_ready"
           fi
           echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_ready" >> "$GITHUB_ENV"
 
+          {
+            echo "### Social publishing readiness"
+            echo "- Facebook publishing requested: $FACEBOOK_PUBLISHING_REQUESTED"
+            echo "- Facebook credential ready: $facebook_ready"
+            echo "- YouTube publishing requested: $YOUTUBE_PUBLISHING_REQUESTED"
+            echo "- YouTube client ID configured: $youtube_client_id_present"
+            echo "- YouTube client secret configured: $youtube_client_secret_present"
+            echo "- YouTube OAuth scopes ready: $youtube_scopes_ready"
+            echo "- YouTube publishing ready: $youtube_ready"
+          } >> "$GITHUB_STEP_SUMMARY"
+
           echo "Facebook publishing readiness: $facebook_ready"
-          echo "YouTube upload-scope readiness: $youtube_ready"
+          echo "YouTube client ID configured: $youtube_client_id_present"
+          echo "YouTube client secret configured: $youtube_client_secret_present"
+          echo "YouTube OAuth scope readiness: $youtube_scopes_ready"
+          echo "YouTube upload readiness: $youtube_ready"
           if [[ "$facebook_ready" != "true" && "$youtube_ready" != "true" ]]; then
-            echo "::notice::No social provider has a verified publishing credential. No queue item will be claimed."
+            echo "::warning::No social provider has a verified publishing credential. Publishing is skipped; no queue item will be claimed."
             echo "SOCIAL_PUBLISH_ENABLED=false" >> "$GITHUB_ENV"
           fi
 
