@@ -31,7 +31,7 @@ if [[ "$ready" != "1" ]]; then
   exit 1
 fi
 
-psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zikr_video_retention_test)
+psql=(docker exec -i "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zikr_video_retention_test)
 "${psql[@]}" <<'SQL'
 CREATE ROLE anon NOLOGIN;
 CREATE ROLE authenticated NOLOGIN;
