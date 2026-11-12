@@ -1,8 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
-import { saveFacebookPageCredential, saveFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
+import { saveFacebookPageCredential, saveFacebookPublicProfile, unblockFacebookAuthBlockedQueue } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
 import { hasFacebookPagePublishingTask } from "@/features/social/services/facebook-oauth-policy";
 
@@ -172,8 +173,20 @@ export async function GET(request: NextRequest) {
       expiresAt: null,
       grantedPermissions,
     });
-    // Connecting credentials must not enqueue public posts. Queue release is a
-    // separate social.publish action protected by MFA step-up and explicit confirmation.
+    let releasedAuthBlockedQueueItems = 0;
+    let authBlockedQueueRecoveryFailed = false;
+    let authBlockedQueueRecoveryDeferred = false;
+    const publishStepUp = await requireAdminStepUpApi("social.publish", "/admin/social");
+    if (publishStepUp.ok) {
+      try {
+        releasedAuthBlockedQueueItems = await unblockFacebookAuthBlockedQueue();
+      } catch {
+        // Keep the verified OAuth connection; the explicit queue-recovery action remains available.
+        authBlockedQueueRecoveryFailed = true;
+      }
+    } else {
+      authBlockedQueueRecoveryDeferred = true;
+    }
     try {
       await saveFacebookPublicProfile({
         pageId: selectedPage.id,
@@ -193,6 +206,9 @@ export async function GET(request: NextRequest) {
           pageName: pageResult.data.name || selectedPage.name || "Facebook Page",
           grantedPermissions,
           tokenType: "page",
+          releasedAuthBlockedQueueItems,
+          authBlockedQueueRecoveryFailed,
+          authBlockedQueueRecoveryDeferred,
           queueRecoveryRequiresExplicitPublishStepUp: true,
         },
       });

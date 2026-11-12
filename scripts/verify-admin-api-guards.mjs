@@ -93,8 +93,8 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/site-audio/route.ts PATCH": ["audio.manage"],
   "src/app/api/admin/site-audio/route.ts DELETE": ["audio.manage"],
   "src/app/api/admin/site-audio/upload/route.ts POST": ["audio.manage"],
-  "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage"],
-  "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage", "social.publish"],
+  "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/youtube/callback/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/route.ts GET": ["social.manage"],
@@ -210,8 +210,17 @@ if (
   failures.push("social token adoption and auth-blocked queue release must require social.publish MFA step-up");
 }
 const facebookOAuthCallbackSource = readFileSync(join(apiRoot, "social/facebook/callback/route.ts"), "utf8");
-if (facebookOAuthCallbackSource.includes("unblockFacebookAuthBlockedQueue")) {
-  failures.push("Facebook OAuth callback must not release public queue items; queue recovery requires a separate social.publish step-up action");
+const facebookOAuthCallbackStepUpIndex = facebookOAuthCallbackSource.indexOf('requireAdminStepUpApi("social.publish"');
+const facebookOAuthCallbackReleaseIndex = facebookOAuthCallbackSource.indexOf("await unblockFacebookAuthBlockedQueue(");
+if (
+  facebookOAuthCallbackStepUpIndex < 0 ||
+  facebookOAuthCallbackReleaseIndex <= facebookOAuthCallbackStepUpIndex
+) {
+  failures.push("Facebook OAuth callback may release auth-blocked queue rows only after social.publish MFA step-up");
+}
+const facebookOAuthConnectSource = readFileSync(join(apiRoot, "social/facebook/connect/route.ts"), "utf8");
+if (!facebookOAuthConnectSource.includes('requireAdminStepUpApi("social.publish"')) {
+  failures.push("Facebook OAuth connect must require social.publish MFA step-up before beginning a publishing-capable OAuth flow");
 }
 const releaseActionStart = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")');
 const releaseActionEnd = socialRouteSource.indexOf('if (action === "run_worker")', releaseActionStart);

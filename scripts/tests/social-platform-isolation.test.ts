@@ -599,10 +599,23 @@ assert.doesNotMatch(
 );
 
 
-assert.doesNotMatch(
-  facebookOAuthCallbackSource,
-  /unblockFacebookAuthBlockedQueue/,
-  "OAuth credential connection must not release public queue items under social.manage alone",
+const facebookOAuthConnectSource = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/facebook/connect/route.ts"),
+  "utf8",
+);
+assert.match(
+  facebookOAuthConnectSource,
+  /requireAdminStepUpApi\("social\.publish"/,
+  "Facebook OAuth connect must require social.publish MFA step-up before starting a publishing-capable flow",
+);
+const facebookCallbackSaveIndex = facebookOAuthCallbackSource.indexOf("await saveFacebookPageCredential(");
+const facebookCallbackStepUpIndex = facebookOAuthCallbackSource.indexOf('requireAdminStepUpApi("social.publish"');
+const facebookCallbackReleaseIndex = facebookOAuthCallbackSource.indexOf("await unblockFacebookAuthBlockedQueue(");
+assert.ok(
+  facebookCallbackSaveIndex >= 0 &&
+  facebookCallbackStepUpIndex > facebookCallbackSaveIndex &&
+  facebookCallbackReleaseIndex > facebookCallbackStepUpIndex,
+  "OAuth reconnect may release auth-blocked queue rows only after saving the verified Page credential and passing social.publish MFA step-up",
 );
 const adminSocialRouteSource = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { getServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,14 @@ export async function GET() {
   const auth = await requireAdminApi("social.manage");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const publishStepUp = await requireAdminStepUpApi("social.publish", "/admin/social");
+  if (!publishStepUp.ok) {
+    const destination = publishStepUp.nextPath
+      ? new URL(publishStepUp.nextPath, CANONICAL_SITE_ORIGIN)
+      : new URL("/admin/social?facebook=step_up_unavailable", CANONICAL_SITE_ORIGIN);
+    return NextResponse.redirect(destination, { headers: { "Cache-Control": "no-store" } });
   }
 
   const env = getServerEnv();

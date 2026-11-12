@@ -727,8 +727,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
             <Button variant="outline" disabled={busy} onClick={() => void connectYouTube()}>
               إعادة تفويض YouTube للرفع والتحليلات
             </Button>
-            <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
-              ربط Facebook عبر OAuth
+            <Button variant="outline" disabled={busy || !canPublish} onClick={() => void connectFacebook()}>
+              ربط Facebook عبر OAuth — يتطلب social.publish وMFA
             </Button>
             {health.facebookEnvironmentTokenConfigured && (
               <Button disabled={busy} onClick={() => void adoptServerToken()}>
@@ -905,7 +905,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         >
           <p>
             يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
-            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد استعادة الاتصال تظل العناصر محجوبة؛ لا يعاد فتحها تلقائيًا.
+            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد نجاح OAuth مع صلاحية social.publish ومستوى MFA صالح، يعاد فتح العناصر المحجوبة فقط؛ إذا انتهت خطوة MFA تظل العناصر محجوبة ويمكن استئنافها بزر صريح.
           </p>
           {canPublish ? (
             <Button

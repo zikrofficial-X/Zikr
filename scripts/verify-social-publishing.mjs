@@ -244,6 +244,7 @@ if (facebookConnect.includes("pages_manage_engagement") || facebookCallback.incl
   failures.push("Facebook OAuth must not request comment-moderation scope for video publishing");
 }
 if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
+    !facebookConnect.includes('requireAdminStepUpApi("social.publish"') ||
     !facebookConnect.includes("dialog/oauth") ||
     !facebookConnect.includes("pages_manage_posts") ||
     facebookConnect.includes("FACEBOOK_INTEGRATION_RETIRED")) {
@@ -257,11 +258,15 @@ if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
 }
+const facebookCallbackSaveIndex = facebookCallback.indexOf("await saveFacebookPageCredential(");
+const facebookCallbackStepUpIndex = facebookCallback.indexOf('requireAdminStepUpApi("social.publish"');
+const facebookCallbackReleaseIndex = facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(");
 if (!facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
-    facebookCallback.indexOf("await saveFacebookPageCredential(") < 0 ||
-    facebookCallback.indexOf("await unblockFacebookAuthBlockedQueue(") <= facebookCallback.indexOf("await saveFacebookPageCredential(") ||
+    facebookCallbackSaveIndex < 0 ||
+    facebookCallbackStepUpIndex <= facebookCallbackSaveIndex ||
+    facebookCallbackReleaseIndex <= facebookCallbackStepUpIndex ||
     facebookCallback.includes('dispatchGitHubWorkflow("publish-social.yml"')) {
-  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and leave dispatch to the scheduled publisher");
+  failures.push("a successful Facebook OAuth reconnect must release only auth-blocked queue rows after storing the verified Page credential and passing social.publish MFA step-up; dispatch remains scheduled");
 }
 if (!youtubeCallback.includes('requireAdminApi("social.manage")') ||
     !youtubeCallback.includes("hasYouTubeUploadScopes(scopes)") ||
