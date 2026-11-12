@@ -331,7 +331,8 @@ assert.ok(inventoryBlock.includes("collectPaginatedRows"), "queue and request in
 assert.match(storageRetentionSource, /table: "social_publish_queue",[\s\S]*?column: "video_url"/);
 assert.match(storageRetentionSource, /table: "video_generation_requests",[\s\S]*?column: "video_url"/);
 assert.ok(storageRetentionSource.includes("await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName)"));
-assert.ok(storageRetentionSource.includes("assertRetentionApplyConfirmation(apply, process.env.RETENTION_CONFIRMATION)"));
+assert.ok(storageRetentionSource.includes("process.env.RETENTION_REFERENCE_WRITES_PAUSED === \"true\""));
+assert.ok(storageRetentionSource.includes("process.env.RETENTION_CONFIRMATION,"));
 assert.ok(storageRetentionSource.includes("assertExpectedSupabaseProject(supabaseUrl, process.env.EXPECTED_PROJECT_REF)"));
 const retentionRpcMigration = readFileSync(
   "supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql",
@@ -355,7 +356,14 @@ assert.match(
 assert.equal(inventoryBlock.includes('.not("video_url", "is", null)'), false, "all queue/request backup references must be inventoried, including rows without a current playback URL");
 
 const retentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");
-assert.ok(retentionWorkflow.includes("inputs.confirmation == 'DELETE_STAGING_COPIES'"), "destructive cleanup must require typed owner confirmation");
+assert.ok(
+  retentionWorkflow.includes("inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE'"),
+  "destructive cleanup must require an explicit reference-writer freeze and typed owner confirmation",
+);
+assert.ok(
+  retentionWorkflow.includes("RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}"),
+  "the workflow must pass the operator's reference-freeze confirmation into the cleanup script",
+);
 assert.ok(retentionWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true"), "destructive cleanup must require manual dispatch");
 assert.equal(retentionWorkflow.includes("github.event_name == 'schedule' ||"), false, "scheduled retention runs must never apply deletion");
 assert.ok(retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk"));
