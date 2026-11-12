@@ -146,9 +146,9 @@ assert.match(subscriptionLoader, /\.eq\("is_active", true\)/,
 
 const claimPosition = deliverDueSource.indexOf("claimDueDelivery(candidate, deliveryNow)");
 const subscriptionReadPosition = deliverDueSource.indexOf("getActiveSubscriptionForDelivery(delivery)");
-const pushDelivery = deliverDueSource.indexOf(".pushTextMessage(");
+const pushDeliveryPosition = deliverDueSource.indexOf(".pushTextMessage(");
 assert.ok(
-  claimPosition >= 0 && subscriptionReadPosition > claimPosition && pushDelivery > subscriptionReadPosition,
+  claimPosition >= 0 && subscriptionReadPosition > claimPosition && pushDeliveryPosition > subscriptionReadPosition,
   "the active subscription must be revalidated after claiming and immediately before push delivery",
 );
 assert.doesNotMatch(deliverDueSource, /\.in\("id", subscriptionIds\)/,
@@ -159,8 +159,8 @@ const keySnapshotFilters = (deliverDueSource.match(/\.eq\("p256dh", subscription
 const authSnapshotFilters = (deliverDueSource.match(/\.eq\("auth", subscription\.auth\)/g) ?? []).length;
 assert.ok(endpointSnapshotFilters >= 3 && keySnapshotFilters >= 3 && authSnapshotFilters >= 3,
   "deactivation and last-used updates must compare the exact endpoint/key snapshot before touching a subscription");
-const subscriptionOwnershipGuard = deliverDueSource.indexOf("isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)");
-assert.ok(subscriptionOwnershipGuard >= 0 && pushDelivery > subscriptionOwnershipGuard, "subscription ownership must be validated before any push is sent");
+const subscriptionOwnershipGuardPosition = deliverDueSource.indexOf("isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)");
+assert.ok(subscriptionOwnershipGuardPosition >= 0 && pushDeliveryPosition > subscriptionOwnershipGuardPosition, "subscription ownership must be validated before any push is sent");
 assert.equal(canSchedulePrayerSubscription(true, undefined), false, "a missing prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(true, null), false, "a null prayer preference must not be treated as opted in");
 assert.equal(canSchedulePrayerSubscription(false, { notifications_enabled: true }), false, "a subscription without a default location must not be scheduled");
