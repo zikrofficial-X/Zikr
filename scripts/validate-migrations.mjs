@@ -397,7 +397,7 @@ if (failed === 0) {
 await db.exec("BEGIN");
 let extraWriteRejected = false;
 try {
-  await db.exec(\`
+  await db.exec(`
     CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
       p_queue_id uuid,
       p_request_id uuid,
@@ -439,7 +439,7 @@ try {
       VALUES ('retention-contract-probe', 'true');
     END;
     $unsafe$;
-  \`);
+  `);
   const extraWriteContract = await db.query(
     "SELECT public.video_storage_retention_contract_ready() AS ready",
   );
