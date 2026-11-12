@@ -28,7 +28,9 @@ function isNativeGoogleCallback(rawUrl: string): boolean {
       url.protocol === "https:" &&
       url.origin === new URL(PRODUCTION_URL).origin &&
       url.pathname === "/auth/callback" &&
-      hasNativeFlowMarker;
+      hasNativeFlowMarker &&
+      url.username === "" &&
+      url.password === "";
     return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;

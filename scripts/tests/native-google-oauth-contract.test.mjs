@@ -129,6 +129,12 @@ assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/)
 assert.match(nativeBridge, /sanitizeInternalPath\(target\.pathname \+ target\.search \+ target\.hash\)/, "Universal-link paths must be sanitized before in-app navigation");
 assert.match(nativeBridge, /window\.location\.assign\(path\)/);
 assert.match(authCallback, /return redirectNoStore\(nativeUrl\)/, "native OAuth authorization codes must be handed off through a no-store redirect");
+assert.match(authCallback, /nativeUrl\.searchParams\.set\([\'"]native[\'"], [\'"]1[\'"]\)/, "the server must preserve the native flow marker on the custom-scheme deep link");
+const httpsBridgeStart = nativeHandler.indexOf("const isHttpsBridge =");
+const httpsBridgeEnd = nativeHandler.indexOf("return isAppDeepLink", httpsBridgeStart);
+const httpsBridgeSource = nativeHandler.slice(httpsBridgeStart, httpsBridgeEnd);
+assert.ok(httpsBridgeSource.includes('url.username === ""') && httpsBridgeSource.includes('url.password === ""'), "HTTPS callback validation must reject credential-bearing URLs even when their origin matches");
+
 assert.match(authCallback, /Cache-Control.*private, no-store, max-age=0/, "all OAuth callback redirects must be private and non-cacheable");
 assert.equal((authCallback.match(/NextResponse\.redirect\(/g) ?? []).length, 1, "only the no-store redirect helper may create callback redirects");
 assert.match(androidManifest, /android:scheme="com\.zikr\.app"/);

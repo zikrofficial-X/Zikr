@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const oauthError = searchParams.get('error');
     const oauthErrorDescription = searchParams.get('error_description');
     const nativeUrl = new URL('com.zikr.app://auth/callback');
+    nativeUrl.searchParams.set('native', '1');
     nativeUrl.searchParams.set('next', safePath);
     if (flowId) nativeUrl.searchParams.set('sb_flow_id', flowId);
 
