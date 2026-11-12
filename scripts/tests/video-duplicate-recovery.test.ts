@@ -301,10 +301,12 @@ assert.ok(worker.includes("&${duplicateRecoveryFilter}"), "canonical recovery mu
 assert.ok(worker.includes("recoverPurgedRecord: true"), "purged canonical records must use the controlled recovery queue path");
 assert.ok(worker.includes("restoreMissingMediaSocialQueueItems"), "restored canonical media must release only eligible held social queue rows");
 const duplicateCancelIndex = worker.indexOf('await patchProcessingRequestWithLease({\n              status: "cancelled",\n              video_url: null');
-const socialQueueReleaseIndex = worker.indexOf("socialQueueRecovery = await withLeaseHeartbeat(");
+const socialQueueReleaseIndex = worker.indexOf(
+  "socialQueueRecovery = await restoreMissingMediaSocialQueueItems(",
+);
 assert.ok(
   duplicateCancelIndex >= 0 && socialQueueReleaseIndex > duplicateCancelIndex,
-  "the duplicate request must be cancelled before previously held social queue rows are released",
+  "the duplicate request must be cancelled before previously held social queue rows are released through row-level compare-and-set",
 );
 assert.ok(
   worker.includes('existingQueue.status === "published"'),
