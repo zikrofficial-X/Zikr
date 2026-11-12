@@ -36,7 +36,8 @@ assert.ok(
   legacyRoute.includes('Link: \'</api/kids/games/score>; rel="successor-version"\''),
   "the legacy route must keep advertising its successor",
 );
-assert.ok(legacyRoute.includes("status: 413"), "oversized legacy submissions must return HTTP 413");
-assert.ok(legacyRoute.includes("status: 400"), "malformed legacy JSON must return HTTP 400");
+assert.ok(boundedReader.includes("status: 413"), "the shared parser must return HTTP 413 for oversized bodies");
+assert.ok(boundedReader.includes("status: 400"), "the shared parser must return HTTP 400 for malformed JSON");
+assert.ok(legacyRoute.includes("status: parsedBody.status"), "the legacy endpoint must preserve the parser HTTP status");
 
 console.log("Kids game result endpoints enforce streaming body limits.");
