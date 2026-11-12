@@ -99,4 +99,30 @@ GRANT EXECUTE ON FUNCTION public.update_video_storage_retention(uuid, uuid, text
 COMMENT ON FUNCTION public.update_video_storage_retention(uuid, uuid, text, jsonb, boolean)
   IS 'Atomically records or finalizes a video Storage-retention operation for a published queue row linked to its completed video request. The Cloudinary playback URL remains intact; only the Supabase staging object is removed through the Storage API.';
 
+-- The destructive cleanup worker calls this read-only contract check before any
+-- apply. A missing migration or a regression to the old URL-clearing body fails closed.
+CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = ''
+AS $function$
+  SELECT NOT (
+    pg_catalog.lower(
+      pg_catalog.pg_get_functiondef(
+        'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
+      )
+    ) ~ 'video_url\\s*=\\s*case\\s+when\\s+p_finalize\\s+then\\s+null'
+  );
+$function$;
+
+REVOKE ALL ON FUNCTION public.video_storage_retention_contract_ready()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()
+  TO service_role;
+
+COMMENT ON FUNCTION public.video_storage_retention_contract_ready() IS
+  'Returns true only when the active retention RPC preserves Cloudinary playback URLs; the cleanup script requires this preflight before any apply.';
+
 COMMIT;

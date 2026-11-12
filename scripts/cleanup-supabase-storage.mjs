@@ -913,6 +913,18 @@ async function updateAndroidBucketRows(client, paths) {
   console.log(`Verified ${verifiedCount} Android release Storage paths are absent.`);
 }
 
+async function assertRetentionRpcContractReady(client) {
+  const { data, error } = await client.rpc("video_storage_retention_contract_ready");
+  if (error) {
+    throw new Error(
+      `Refusing destructive Storage retention because the safe RPC contract is not installed: ${error.message}. Apply migration 20261111153000 before retrying.`,
+    );
+  }
+  if (data !== true) {
+    throw new Error("Refusing destructive Storage retention because the active RPC does not preserve Cloudinary playback URLs.");
+  }
+}
+
 async function main() {
   const apply = process.argv.includes("--apply");
   assertRetentionApplyConfirmation(
@@ -924,6 +936,8 @@ async function main() {
   const client = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  // Fail closed before any inventory mutation unless the safe RPC migration is live.
+  if (apply) await assertRetentionRpcContractReady(client);
   const videosOnly = process.argv.includes("--videos-only");
   const now = new Date();
   const cutoff = new Date(now.getTime() - VIDEO_RETENTION_HOURS * 60 * 60 * 1000);
