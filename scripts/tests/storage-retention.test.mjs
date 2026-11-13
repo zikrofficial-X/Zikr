@@ -540,6 +540,24 @@ assert.match(retentionRpcMigration, /coalesce\(retention_state, ''\) NOT IN \('p
   "the retention RPC must reject a missing/null state instead of accepting SQL UNKNOWN");
 assert.match(retentionRpcMigration, /p_finalize IS DISTINCT FROM \(retention_state = 'purged'\)/,
   "the finalization flag must agree with the explicit pending/purged state");
+
+assert.match(retentionRpcMigration, /SECURITY INVOKER\s+SET search_path = ''/,
+  "the retention RPC must remain invoker-secured with an empty search path");
+assert.match(retentionRpcMigration, /nullif\(btrim\(p_retention->>'path'\), ''\) IS NULL/,
+  "the retention RPC must reject an empty or whitespace-only Storage path");
+assert.match(retentionRpcMigration, /p_expected_url IS NULL[\s\S]*btrim\(p_expected_url\) = ''/,
+  "the retention RPC must reject missing or blank playback URLs");
+const retentionPreflightStart = retentionRpcMigration.indexOf("CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()");
+const retentionPreflightBody = retentionRpcMigration.slice(retentionPreflightStart);
+assert.ok(retentionPreflightStart >= 0, "the live retention preflight must remain present");
+assert.ok(retentionPreflightBody.includes("coalesce\\\\(retention_state") && retentionPreflightBody.includes("nullif\\\\(btrim\\\\(p_retention->>'path'"),
+  "the live preflight must verify the explicit state and non-empty path guards");
+assert.ok(retentionPreflightBody.includes("pg_catalog.has_function_privilege"));
+for (const role of ["anon", "authenticated", "service_role"]) {
+  assert.ok(retentionPreflightBody.includes("'" + role + "'"), "the live preflight must verify the " + role + " EXECUTE grant");
+}
+assert.ok(retentionPreflightBody.includes("SECURITY INVOKER") && retentionPreflightBody.includes("search_path"),
+  "the live preflight must reject a retention RPC that changes its execution security contract");
 assert.match(retentionRpcMigration, /content_id = p_request_id::text/,
   "the queue row must be linked to the exact video-generation request being updated");
 assert.match(retentionRpcMigration, /metadata->'storageRetention'->>'path' = p_retention->>'path'/,
