@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getServerEnv } from '@/lib/env';
+import { normalizeCloudinaryFolderPath } from '@/features/media/services/cloudinary-folder';
 import { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
 import { deleteCloudinaryImageIfUnreferenced as deleteCloudinaryImageIfUnreferencedCore } from "@/features/media/services/cloudinary-orphan-compensation";
 
@@ -65,7 +66,7 @@ export async function uploadCloudinaryImage(params: {
     new Blob([await params.file.arrayBuffer()], { type: params.file.type }),
     `${fileName}.${extension}`
   );
-  form.append('folder', safeSegment(params.folder, 'zikr'));
+  form.append('folder', normalizeCloudinaryFolderPath(params.folder));
   form.append('public_id', safeSegment(params.publicId, 'image'));
   form.append('overwrite', 'false');
   form.append('resource_type', 'image');
