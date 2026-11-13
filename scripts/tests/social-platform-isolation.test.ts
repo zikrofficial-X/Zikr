@@ -718,6 +718,20 @@ for (const blockedSourceMetadata of [
     "source approval blocks must not be presented as automatically retryable",
   );
 }
+assert.deepEqual(
+  getManualReconciliationPlatforms({
+    kidsSourceApprovalBlocked: true,
+    platformResults: {
+      youtube: {
+        ok: false,
+        error: "HTTP 503: provider outcome is uncertain",
+        requiresReconciliation: true,
+      },
+    },
+  }),
+  ["youtube"],
+  "source approval holds must not hide independent provider reconciliation requirements",
+);
 assert.ok(
   adminSocialRouteSource.includes("const retryMetadata = {") &&
     adminSocialRouteSource.includes("{ ...item, metadata: retryMetadata }"),
