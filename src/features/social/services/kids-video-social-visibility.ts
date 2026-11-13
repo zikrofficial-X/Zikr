@@ -23,6 +23,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
     ? rawPlatformResults.length > 0
     : Object.keys(platformResults).length > 0;
   const platformDeletions = asRecord(metadata.platformDeletions);
+  const rowPublishedAt = typeof row.published_at === "string" ? Date.parse(row.published_at) : Number.NaN;
   const isDeleted = (platform: string, deliveryRemoteId?: string) => {
     const deletion = asRecord(platformDeletions[platform]);
     if (deletion.status !== "deleted") return false;
@@ -34,10 +35,10 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
       return !deliveryRemoteId || deletedRemoteId === deliveryRemoteId;
     }
 
-    // Legacy deletions without a remote ID cannot be tied to a later delivery.
-    // Fail closed rather than letting a shared published_at timestamp resurrect
-    // a post that may still be the one that was deleted.
-    return true;
+    const deletedAt = typeof deletion.deletedAt === "string" ? Date.parse(deletion.deletedAt) : Number.NaN;
+    // Legacy deletion rows use their timestamp to distinguish a later
+    // publication from the post that was removed.
+    return !Number.isFinite(rowPublishedAt) || !Number.isFinite(deletedAt) || deletedAt >= rowPublishedAt;
   };
 
   const delivered = Object.entries(platformResults)
@@ -134,15 +135,20 @@ export function resolveKidsVideoSocialPublication(
   type PublicationEvent = {
     timestamp: number;
     publishedAt: string | null;
+    remoteId: string | null;
   };
-  const targets = new Set<string>();
-  const latestByPlatform = new Map<string, PublicationEvent>();
+  type DeletionEvent = {
+    timestamp: number;
+    remoteId: string | null;
+  };
 
-  // Deletions are applied to their exact queue row and remote ID by
-  // getConfirmedPublicKidsVideoSocialPlatforms. Do not turn a deletion on an
-  // older row into a platform-wide tombstone that hides a newer live post.
+  const targets = new Set<string>();
+  const publicationsByPlatform = new Map<string, PublicationEvent[]>();
+  const deletionsByPlatform = new Map<string, DeletionEvent[]>();
+
   for (const row of rows) {
     const record = row as Record<string, unknown>;
+    const metadata = asRecord(record.metadata);
     const rowPublishedAt = typeof record.published_at === "string" ? record.published_at : null;
     const parsedPublishedAt = rowPublishedAt ? Date.parse(rowPublishedAt) : Number.NaN;
     const publicationTimestamp = Number.isFinite(parsedPublishedAt)
@@ -156,21 +162,53 @@ export function resolveKidsVideoSocialPublication(
       : [];
     for (const platform of rowTargets) targets.add(platform);
 
-    // An unversioned success cannot supersede a deletion or become a public badge.
+    const platformResults = normalizeSocialPlatformResults(metadata.platformResults);
     if (Number.isFinite(publicationTimestamp)) {
       for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
-        const current = latestByPlatform.get(platform);
-        if (
-          !current ||
-          publicationTimestamp > current.timestamp
-        ) {
-          latestByPlatform.set(platform, {
-            timestamp: publicationTimestamp,
-            publishedAt: rowPublishedAt,
-          });
-        }
+        const delivery = asRecord(platformResults[platform]);
+        const rawRemoteId = typeof delivery.remoteId === "string" ? delivery.remoteId.trim() : "";
+        const events = publicationsByPlatform.get(platform) ?? [];
+        events.push({
+          timestamp: publicationTimestamp,
+          publishedAt: rowPublishedAt,
+          remoteId: rawRemoteId || null,
+        });
+        publicationsByPlatform.set(platform, events);
       }
     }
+
+    const platformDeletions = asRecord(metadata.platformDeletions);
+    for (const platform of SOCIAL_PLATFORMS) {
+      const deletion = asRecord(platformDeletions[platform]);
+      if (deletion.status !== "deleted") continue;
+      const rawRemoteId = typeof deletion.remoteId === "string" ? deletion.remoteId.trim() : "";
+      const deletedAt = typeof deletion.deletedAt === "string" ? Date.parse(deletion.deletedAt) : Number.NaN;
+      const events = deletionsByPlatform.get(platform) ?? [];
+      events.push({
+        timestamp: Number.isFinite(deletedAt) ? deletedAt : Number.POSITIVE_INFINITY,
+        remoteId: rawRemoteId || null,
+      });
+      deletionsByPlatform.set(platform, events);
+    }
+  }
+
+  const latestByPlatform = new Map<string, PublicationEvent>();
+  for (const platform of SOCIAL_PLATFORMS) {
+    const deletions = deletionsByPlatform.get(platform) ?? [];
+    const activePublications = (publicationsByPlatform.get(platform) ?? []).filter((publication) =>
+      !deletions.some((deletion) => {
+        if (deletion.remoteId && publication.remoteId) {
+          return deletion.remoteId === publication.remoteId;
+        }
+        return deletion.timestamp >= publication.timestamp;
+      }),
+    );
+    const latest = activePublications.reduce<PublicationEvent | null>(
+      (current, publication) =>
+        !current || publication.timestamp > current.timestamp ? publication : current,
+      null,
+    );
+    if (latest) latestByPlatform.set(platform, latest);
   }
 
   const platforms = [...SOCIAL_PLATFORMS].filter((platform) => latestByPlatform.has(platform));

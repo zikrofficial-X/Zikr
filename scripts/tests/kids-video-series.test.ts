@@ -128,23 +128,35 @@ assert.deepEqual(
   "deleting an older remote post must not tombstone a newer live post on the same platform",
 );
 
-const legacyDeletedKidsPublication = kidsVideoQueueRow(
+const olderFacebookPublication = kidsVideoQueueRow(
   "50000000-0000-4000-8000-000000000003",
-  "2026-11-12T12:00:00.000Z",
-  "legacy-facebook-post",
-  {
+  "2026-11-09T10:00:00.000Z",
+  "old-facebook-post",
+);
+const supplementalFacebookDeletion = {
+  id: "50000000-0000-4000-8000-000000000005",
+  content_id: "60000000-0000-4000-8000-000000000001",
+  content_type: "kids_story_video",
+  body: null,
+  target_platforms: ["facebook"],
+  status: "partial",
+  published_at: null,
+  created_at: "2026-11-11T10:00:00.000Z",
+  metadata: {
+    audience: "kids",
     platformDeletions: {
       facebook: {
         status: "deleted",
-        deletedAt: "2026-11-10T10:00:00.000Z",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-11T10:00:00.000Z",
       },
     },
   },
-);
+};
 assert.equal(
-  resolveKidsVideoSocialPublication([legacyDeletedKidsPublication], null, true),
+  resolveKidsVideoSocialPublication([olderFacebookPublication, supplementalFacebookDeletion], null, true),
   null,
-  "legacy deletion without a remote ID must fail closed instead of trusting a shared row timestamp",
+  "a supplemental deletion must suppress the exact older remote post even when its result is stored on another queue row",
 );
 
 const republishedOnSameQueueRow = kidsVideoQueueRow(
