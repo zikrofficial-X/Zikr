@@ -174,27 +174,6 @@ CREATE POLICY media_assets_admin_delete
   FOR DELETE TO authenticated
   USING (private.is_admin_user());
 
-CREATE POLICY media_assets_admin_select
-  ON public.media_assets
-  FOR SELECT TO authenticated
-  USING (private.is_admin_user());
-
-CREATE POLICY media_assets_admin_insert
-  ON public.media_assets
-  FOR INSERT TO authenticated
-  WITH CHECK (private.is_admin_user());
-
-CREATE POLICY media_assets_admin_update
-  ON public.media_assets
-  FOR UPDATE TO authenticated
-  USING (private.is_admin_user())
-  WITH CHECK (private.is_admin_user());
-
-CREATE POLICY media_assets_admin_delete
-  ON public.media_assets
-  FOR DELETE TO authenticated
-  USING (private.is_admin_user());
-
 CREATE POLICY media_assets_public_read
   ON public.media_assets
   FOR SELECT TO anon
@@ -295,18 +274,6 @@ BEGIN
   END IF;
   IF NOT has_table_privilege('authenticated', 'public.media_assets', 'UPDATE') THEN
     RAISE EXCEPTION 'Legacy media asset fixture did not reproduce authenticated UPDATE privilege';
-  END IF;
-  IF (
-    SELECT count(*) FROM pg_catalog.pg_policies
-    WHERE schemaname = 'public' AND tablename = 'media_assets'
-      AND policyname IN (
-        'media_assets_admin_select',
-        'media_assets_admin_insert',
-        'media_assets_admin_update',
-        'media_assets_admin_delete'
-      )
-  ) <> 4 THEN
-    RAISE EXCEPTION 'Legacy split media asset admin policies were not reproduced';
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_catalog.pg_policies
