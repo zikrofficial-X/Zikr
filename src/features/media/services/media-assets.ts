@@ -6,6 +6,7 @@ import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/c
 import {
   deleteCloudinaryImageIfUnreferenced,
   uploadCloudinaryImage,
+  validateCloudinaryImage,
   type CloudinaryImageUpload,
 } from "@/features/media/services/cloudinary";
 
@@ -26,6 +27,13 @@ const ALLOWED_FOLDERS = new Set([
   "kids",
   "media",
 ]);
+
+export class AdminMediaInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AdminMediaInputError";
+  }
+}
 
 export type AdminMediaAsset = Record<string, unknown>;
 
@@ -110,14 +118,21 @@ export async function createAdminMediaAsset(input: {
   createdBy: string;
 }): Promise<AdminMediaAsset> {
   const validationError = validateImage(input.file);
-  if (validationError) throw new Error(validationError);
+  if (validationError) throw new AdminMediaInputError(validationError);
+  try {
+    await validateCloudinaryImage(input.file, MAX_IMAGE_BYTES);
+  } catch (error) {
+    throw new AdminMediaInputError(
+      error instanceof Error ? error.message : "ملف الصورة غير صالح.",
+    );
+  }
 
   if (!input.license && !input.attribution) {
-    throw new Error("أدخل الترخيص أو بيانات النسب قبل تسجيل الأصل.");
+    throw new AdminMediaInputError("أدخل الترخيص أو بيانات النسب قبل تسجيل الأصل.");
   }
 
   if (!ALLOWED_FOLDERS.has(input.folder)) {
-    throw new Error("مجلد الوسائط غير صالح.");
+    throw new AdminMediaInputError("مجلد الوسائط غير صالح.");
   }
 
   if (input.sourceId) {
@@ -129,7 +144,7 @@ export async function createAdminMediaAsset(input: {
       )}&limit=1`,
       { method: "GET" },
     );
-    if (!source[0]?.verified) throw new Error("المصدر المختار غير موثّق.");
+    if (!source[0]?.verified) throw new AdminMediaInputError("المصدر المختار غير موثّق.");
   }
 
   const requestedPublicId = `${input.createdBy}-${crypto.randomUUID()}`;
