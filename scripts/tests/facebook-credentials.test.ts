@@ -76,9 +76,9 @@ const persistEnd = source.indexOf("export async function getFacebookPageConnecti
 assert.ok(persistStart >= 0 && persistEnd > persistStart, "persistValidation must remain a bounded helper");
 const persistSource = source.slice(persistStart, persistEnd);
 assert.match(persistSource, /buildFacebookCredentialValidationFilter\(credential\)/);
-assert.match(persistSource, /if \(!filter\) return;/);
+assert.match(persistSource, /if \(!filter \|\| !updatedAt\) return;/);
 assert.doesNotMatch(persistSource, /social_platform_credentials\?platform=eq\.facebook/);
-assert.match(persistSource, /updated_at: buildNextRowVersionUpdatedAt\\(updatedAt\\)/);
-assert.doesNotMatch(persistSource, /updated_at: new Date\\(\\)\\.toISOString\\(\\)/);
+assert.match(persistSource, /updated_at: buildNextRowVersionUpdatedAt\(updatedAt\)/);
+assert.doesNotMatch(persistSource, /updated_at: new Date\(\)\.toISOString\(\)/);
 
 console.log("Facebook credential row-shape and validation CAS checks passed.");
