@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseSourceItems } from "../../supabase/functions/source-verified-content-agent/parse-items.ts";
+import { parseSourceItems } from "../../supabase/functions/source-verified-content-agent/parse-items";
 
 const catalogResult = parseSourceItems(
   { parser_key: "alquran_cloud" },
