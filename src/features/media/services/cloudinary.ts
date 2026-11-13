@@ -2,6 +2,7 @@ import "server-only";
 
 import { getServerEnv } from '@/lib/env';
 import { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
+import { deleteCloudinaryImageIfUnreferenced as deleteCloudinaryImageIfUnreferencedCore } from "@/features/media/services/cloudinary-orphan-compensation";
 
 export { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
 
@@ -93,4 +94,13 @@ export async function uploadCloudinaryImage(params: {
     bytes: payload.bytes ?? params.file.size,
     format: payload.format ?? null,
   };
+}
+
+export async function deleteCloudinaryImageIfUnreferenced(
+  params: Parameters<typeof deleteCloudinaryImageIfUnreferencedCore>[0],
+) {
+  const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+  return deleteCloudinaryImageIfUnreferencedCore(params, {
+    credentials: { cloudName, apiKey, apiSecret },
+  });
 }
