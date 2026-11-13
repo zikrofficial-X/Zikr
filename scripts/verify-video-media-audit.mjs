@@ -67,6 +67,11 @@ if (!mediaContract.includes("normalizeSocialPlatformResults") ||
   failures.push("YouTube media fallback reconciliation must normalize legacy result ledgers and respect confirmed deletion timestamps");
 }
 if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
+if (!mediaContract.includes("metadata.mediaState === \"unlinked\"") ||
+    !audit.includes("isUnlinkedInternalVideoMedia(row)") ||
+    !audit.includes('state: "skipped"')) {
+  failures.push("Explicitly unlinked internal media must remain hidden and must not be restored by the scheduled media audit");
+}
 if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {
   failures.push("Public video service must use the canonical media resolver contract");
 }
