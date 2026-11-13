@@ -268,6 +268,19 @@ assert.deepEqual(
  ["facebook"],
  "a later legacy written post must not be hidden by an older deletion record when its current remote ID is absent",
 );
+const malformedWrittenResultLedger = {
+ ...queueRow,
+ published_at: "2026-11-11T12:10:00.000Z",
+ metadata: {
+  ...queueRow.metadata,
+  platformResults: "malformed",
+ },
+};
+assert.equal(
+ buildPublicKidsWrittenPost(malformedWrittenResultLedger, liveKidsStory),
+ null,
+ "a present but malformed written-post result ledger must fail closed instead of exposing all target platforms",
+);
 assert.equal(
  buildPublicKidsWrittenPost({
   ...confirmedWrittenPost,
