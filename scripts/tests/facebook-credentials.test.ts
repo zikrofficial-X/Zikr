@@ -3,9 +3,28 @@ import { readFileSync } from "node:fs";
 import { buildFacebookPublicProfileIdentityUpsert } from "../../src/features/social/services/facebook-profile-contract";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import {
+  FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS,
+  FACEBOOK_REQUESTED_PERMISSIONS,
+  hasFacebookInsightsPermission,
+  hasFacebookPublishingPermissions,
+} from "../../src/features/social/services/facebook-oauth-policy";
+import {
   buildFacebookCredentialValidationFilter,
   readStoredFacebookCredential,
 } from "../../src/features/social/services/facebook-credentials";
+
+const publishOnlyScopes = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"];
+assert.deepEqual(FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS, publishOnlyScopes);
+assert.ok(FACEBOOK_REQUESTED_PERMISSIONS.includes("read_insights"));
+assert.equal(hasFacebookPublishingPermissions(publishOnlyScopes), true);
+assert.equal(hasFacebookInsightsPermission(publishOnlyScopes), false);
+assert.equal(hasFacebookPublishingPermissions([...publishOnlyScopes, "read_insights"]), true);
+assert.equal(hasFacebookInsightsPermission([...publishOnlyScopes, "read_insights"]), true);
+assert.equal(
+  hasFacebookPublishingPermissions(["pages_show_list", "pages_read_engagement", "read_insights"]),
+  false,
+  "missing a required publishing permission must still block Facebook publishing",
+);
 
 const validCredential = {
   page_id: "page 123",
