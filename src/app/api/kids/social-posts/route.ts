@@ -29,7 +29,7 @@ export async function GET() {
 
   try {
     const rows = await supabaseServerAdminRequest<KidsWrittenQueueRow[]>(
-      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=60",
+      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=in.%28published%2Cpartial%29&published_at=not.is.null&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=60",
     );
     const candidateIds = [...new Set(
       (rows ?? [])
