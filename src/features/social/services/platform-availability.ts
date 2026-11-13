@@ -96,7 +96,7 @@ export function isPermanentSocialFailure(error: unknown): boolean {
 
 export function isAmbiguousProviderOutcome(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /http\s+(?:408|425|500|502|503|504)\b|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
+  return /http\s+(?:408|425|500|502|503|504)\b|completed without returning a remote post\/video id|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
 }
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
@@ -116,6 +116,10 @@ export function canAttemptSocialPlatform(input: {
 }): boolean {
   const { platform, enabledPlatforms, metadata, maxAttempts } = input;
   if (metadata?.sourceMediaMissing === true) return false;
+  if (
+    metadata?.kidsSourceApprovalBlocked === true ||
+    metadata?.writtenArticlePublicationBlocked === true
+  ) return false;
   if (!enabledPlatforms.includes(platform)) return false;
   const rawResults = metadata?.platformResults;
   const hasPlatformResults = rawResults !== null && typeof rawResults === "object";
