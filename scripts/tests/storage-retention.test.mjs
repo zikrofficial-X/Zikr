@@ -809,6 +809,10 @@ assert.ok(
     retentionRpcMigration.includes("TRUNCATE"),
   "the preflight must reject unreviewed extra updates, deletes, truncates, and dynamic SQL",
 );
+assert.ok(
+  retentionRpcMigration.includes("pg_catalog.regexp_count(definition, '\\mUPDATE\\s+public\\.[a-z_]+\\s+SET', 1, 'i') = 2"),
+  "the preflight must count actual UPDATE statements, not the word UPDATE in SQL comments",
+);
 assert.match(
   retentionRpcMigration,
   /\\mINSERT\\M\|\\mMERGE\\M\|\\mDELETE\\M\|\\mTRUNCATE\\M\|\\mEXECUTE\\M\|\\mCALL\\M\|\\mPERFORM\\M\|\\mSELECT\\M\|\\mCOPY\\M/,
