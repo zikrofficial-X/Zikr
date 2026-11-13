@@ -10,6 +10,7 @@ import {
 } from "../../src/features/videos/services/video-media-contract";
 import { supabaseServerAdminExactCount, supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 type JsonRecord = Record<string, unknown>;
 type VideoCatalogRow = {
@@ -133,7 +134,7 @@ async function patchCatalog(row: VideoCatalogRow, patch: Record<string, unknown>
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(filter, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(updatedAt) }),
   });
   return Boolean(updated?.length);
 }
