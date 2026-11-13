@@ -187,6 +187,36 @@ export function isCurrentPrayerReminderSchedule(input: {
   return Math.abs(scheduledTime - expectedTime) <= tolerance;
 }
 
+/**
+ * A delivery can be adjacent to a prayer date when its offset crosses midnight.
+ * Cache queries include neighboring local dates, and PostgREST does not promise
+ * row order; validate against every matching cache instead of trusting the first.
+ */
+export function matchesAnyCurrentPrayerReminderSchedule(input: {
+  scheduledAt: string;
+  timeZone: string;
+  prayerName: string;
+  offsetMinutes: unknown;
+  candidates: readonly {
+    prayer_date: string;
+    timings: Record<string, unknown>;
+  }[];
+}): boolean {
+  return input.candidates.some((candidate) => {
+    const prayerTime = candidate.timings[input.prayerName];
+    if (typeof prayerTime !== "string") return false;
+    const prayerAt = zonedDateTime(candidate.prayer_date, input.timeZone, prayerTime);
+    return Boolean(
+      prayerAt &&
+      isCurrentPrayerReminderSchedule({
+        scheduledAt: input.scheduledAt,
+        prayerAt,
+        offsetMinutes: input.offsetMinutes,
+      }),
+    );
+  });
+}
+
 /** Background reminder intervals are anchored to UTC midnight by the SQL planner. */
 export function isCurrentIntervalReminderSlot(
   scheduledAt: string,
