@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
-import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
+import { deleteCloudinaryImageIfUnreferenced, uploadCloudinaryImage, type CloudinaryImageUpload } from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
 import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
@@ -22,6 +22,37 @@ function normalizeSlug(slug: string) {
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+async function compensateOrphanedKidsImage(
+  upload: CloudinaryImageUpload | null,
+  requestedPublicId: string | null,
+) {
+  if (!upload || !requestedPublicId) return;
+  try {
+    const result = await deleteCloudinaryImageIfUnreferenced({
+      publicId: upload.publicId,
+      expectedPublicId: requestedPublicId,
+      secureUrl: upload.secureUrl,
+      isReferenced: async ({ secureUrl }) => {
+        const rows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+          "/rest/v1/kids_content?select=id&featured_image_url=eq." +
+            encodeURIComponent(secureUrl) +
+            "&limit=1",
+          { method: "GET" },
+        );
+        if (!Array.isArray(rows)) {
+          throw new Error("Unable to verify whether the uploaded Kids image is still referenced.");
+        }
+        return rows.length > 0;
+      },
+    });
+    if (result === "referenced") {
+      console.warn("[admin/kids] orphan image compensation skipped because the exact image URL is still referenced.");
+    }
+  } catch (cleanupError) {
+    console.warn("[admin/kids] orphan image compensation failed safely; the Cloudinary asset was retained.", cleanupError);
+  }
 }
 
 export async function saveKidsContentAction(formData: FormData) {
@@ -76,19 +107,24 @@ export async function saveKidsContentAction(formData: FormData) {
 
   const featuredImageFile = formData.get("featured_image_file");
   let featuredImageUrl = value(formData, "featured_image_url");
+  let uploadedImage: CloudinaryImageUpload | null = null;
+  let requestedPublicId: string | null = null;
   if (featuredImageFile instanceof File && featuredImageFile.size > 0) {
     await requireAdminPermission("media.manage");
-    const upload = await uploadCloudinaryImage({
+    requestedPublicId = slug + "-" + randomUUID();
+    uploadedImage = await uploadCloudinaryImage({
       file: featuredImageFile,
       folder: "zikr/kids",
-      publicId: `${slug}-${randomUUID()}`,
+      publicId: requestedPublicId,
       tags: ["zikr", "kids-content"],
       maxBytes: 3 * 1024 * 1024,
     });
-    featuredImageUrl = upload.secureUrl;
+    featuredImageUrl = uploadedImage.secureUrl;
   }
 
-  const saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?select=id,slug", {
+  let saved: Array<{ id: string; slug: string }>;
+  try {
+    saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?select=id,slug", {
     method: "POST",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({
@@ -113,7 +149,11 @@ export async function saveKidsContentAction(formData: FormData) {
       },
       updated_at: new Date().toISOString(),
     }),
-  });
+    });
+  } catch (saveError) {
+    await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
+    throw saveError;
+  }
   if (
     !Array.isArray(saved) ||
     saved.length !== 1 ||
@@ -121,6 +161,7 @@ export async function saveKidsContentAction(formData: FormData) {
     !saved[0].id.trim() ||
     saved[0].slug !== slug
   ) {
+    await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
     throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
   }
   try {
