@@ -34,10 +34,6 @@ DROP POLICY IF EXISTS media_assets_admin_select ON public.media_assets;
 DROP POLICY IF EXISTS media_assets_admin_insert ON public.media_assets;
 DROP POLICY IF EXISTS media_assets_admin_update ON public.media_assets;
 DROP POLICY IF EXISTS media_assets_admin_delete ON public.media_assets;
-DROP POLICY IF EXISTS media_assets_admin_select ON public.media_assets;
-DROP POLICY IF EXISTS media_assets_admin_insert ON public.media_assets;
-DROP POLICY IF EXISTS media_assets_admin_update ON public.media_assets;
-DROP POLICY IF EXISTS media_assets_admin_delete ON public.media_assets;
 
 DROP POLICY IF EXISTS site_audio_assets_admin_insert ON public.site_audio_assets;
 DROP POLICY IF EXISTS site_audio_assets_admin_update ON public.site_audio_assets;
