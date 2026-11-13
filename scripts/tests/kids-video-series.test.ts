@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { readFileSync } from "node:fs";
 import {
   buildKidsSeriesEpisode,
@@ -69,4 +70,105 @@ assert.ok(kidsSeriesEnd > kidsSeriesStart, "Kids series branch must end before g
 const kidsSeriesBranch = automationSource.slice(kidsSeriesStart, kidsSeriesEnd);
 assert.match(kidsSeriesBranch, /audience:\s*"kids"/, "only the canonical Kids series factory may seed Kids-audience video requests");
 assert.match(kidsSeriesBranch, /generationMode:\s*episode\.generationMode/, "Kids series requests must retain their deterministic factory provenance");
-console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota checks passed.");
+
+ // Social deletion state belongs to the exact remote post on its queue row.
+ // Deleting an older Facebook post must not hide a newer live post for the same
+ // generated Kids video, even when the old deletion timestamp is later.
+const kidsVideoQueueRow = (
+  id: string,
+  publishedAt: string,
+  remoteId: string,
+  extraMetadata: Record<string, unknown> = {},
+) => ({
+  id,
+  content_id: "60000000-0000-4000-8000-000000000001",
+  content_type: "kids_story_video",
+  body: null,
+  target_platforms: ["facebook"],
+  status: "published",
+  published_at: publishedAt,
+  created_at: publishedAt,
+  metadata: {
+    audience: "kids",
+    platformResults: { facebook: { ok: true, remoteId } },
+    ...extraMetadata,
+  },
+});
+
+const newerKidsPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000002",
+  "2026-11-10T12:00:00.000Z",
+  "new-facebook-post",
+);
+const olderDeletedKidsPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000001",
+  "2026-11-09T10:00:00.000Z",
+  "old-facebook-post",
+  {
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-11T10:00:00.000Z",
+      },
+    },
+  },
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication(
+    [newerKidsPublication, olderDeletedKidsPublication],
+    null,
+    true,
+  ),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-10T12:00:00.000Z",
+  },
+  "deleting an older remote post must not tombstone a newer live post on the same platform",
+);
+
+const legacyDeletedKidsPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000003",
+  "2026-11-12T12:00:00.000Z",
+  "legacy-facebook-post",
+  {
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        deletedAt: "2026-11-10T10:00:00.000Z",
+      },
+    },
+  },
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([legacyDeletedKidsPublication], null, true),
+  null,
+  "legacy deletion without a remote ID must fail closed instead of trusting a shared row timestamp",
+);
+
+const republishedOnSameQueueRow = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000004",
+  "2026-11-12T12:00:00.000Z",
+  "replacement-facebook-post",
+  {
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-13T10:00:00.000Z",
+      },
+    },
+  },
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([republishedOnSameQueueRow], null, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-12T12:00:00.000Z",
+  },
+  "a new remote ID on the same queue row must remain visible after the old remote post is deleted",
+);
+
+console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota and social publication checks passed.");
