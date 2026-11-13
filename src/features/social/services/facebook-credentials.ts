@@ -391,7 +391,9 @@ export async function saveFacebookPublicProfile(input: {
   if (!Array.isArray(existingRows)) {
     throw new Error("Facebook public profile identity query returned an invalid row set.");
   }
-  const previousPageId = existingRows[0]?.external_id ?? null;
+  const previousPageId = existingRows.length > 0
+    ? existingRows[0]?.external_id ?? null
+    : undefined;
   await supabaseServerAdminRequest(
     "/rest/v1/social_platform_profiles?on_conflict=platform",
     {
