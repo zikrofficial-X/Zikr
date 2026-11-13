@@ -43,3 +43,32 @@ export async function validateCloudinaryImage(
     throw new Error("Image file content does not match its declared raster image type.");
   }
 }
+
+/**
+ * Accept only image-upload URLs from the configured Cloudinary account.
+ * This is used for server-action form values, which can be forged independently
+ * of the browser upload widget.
+ */
+export function isCloudinarySecureImageUrl(value: string, expectedCloudName: string | undefined): boolean {
+  const cloudName = expectedCloudName?.trim();
+  if (!cloudName) return false;
+
+  try {
+    const url = new URL(value);
+    const segments = url.pathname.split("/").filter(Boolean);
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "res.cloudinary.com" &&
+      url.port === "" &&
+      !url.username &&
+      !url.password &&
+      !url.hash &&
+      segments[0] === cloudName &&
+      segments[1] === "image" &&
+      segments[2] === "upload" &&
+      segments.length >= 4
+    );
+  } catch {
+    return false;
+  }
+}
