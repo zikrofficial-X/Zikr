@@ -622,7 +622,17 @@ export async function POST(request: NextRequest) {
         if (!allowAmbiguous && manualPlatforms.some(platform => requestedPlatforms.length === 0 || requestedPlatforms.includes(platform))) {
           manualReconciliationSkipped += 1;
         }
-        const eligiblePlatforms = retryPlatforms(item, allowAmbiguous);
+        const retryMetadata = {
+          ...(item.metadata ?? {}),
+          writtenArticlePublicationBlocked: false,
+          writtenArticlePublicationPending: false,
+          kidsSourceApprovalBlocked: false,
+          kidsSourceApprovalPending: false,
+        };
+        const eligiblePlatforms = retryPlatforms(
+          { ...item, metadata: retryMetadata },
+          allowAmbiguous,
+        );
         const platforms = requestedPlatforms.length > 0
           ? eligiblePlatforms.filter(platform => requestedPlatforms.includes(platform))
           : eligiblePlatforms;
@@ -661,6 +671,14 @@ export async function POST(request: NextRequest) {
           continue;
         }
         const platformSelection = new Set<string>(platforms);
+        const previousManualReconciliationPlatforms = Array.isArray(item.metadata?.manualReconciliationPlatforms)
+          ? item.metadata.manualReconciliationPlatforms.filter(
+              (platform): platform is string => typeof platform === "string",
+            )
+          : [];
+        const remainingManualReconciliationPlatforms = previousManualReconciliationPlatforms.filter(
+          platform => !platformSelection.has(platform),
+        );
         const previousResults = normalizeSocialPlatformResults(item.metadata?.platformResults);
         const nextPlatformResults = Object.fromEntries(
           Object.entries(previousResults).filter(([platform]) => !platformSelection.has(platform)),
@@ -720,6 +738,11 @@ export async function POST(request: NextRequest) {
                 permanentFailure: remainingPermanentFailurePlatforms.length > 0 || legacyPermanentFailureRemains,
                 permanentFailurePlatforms: remainingPermanentFailurePlatforms,
                 unavailablePlatforms: remainingUnavailablePlatforms,
+                manualReconciliationPlatforms: remainingManualReconciliationPlatforms,
+                writtenArticlePublicationBlocked: false,
+                writtenArticlePublicationPending: false,
+                kidsSourceApprovalBlocked: false,
+                kidsSourceApprovalPending: false,
                 // A retry must never clear a scholarly/editorial approval gate.
                 approvalDeferredPlatforms: preservedApprovalDeferredPlatforms,
                 nextRetryAt: null,
