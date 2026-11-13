@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deleteCloudinaryImageIfUnreferenced, isDefinitiveSupabaseInsertRejection } from "../../src/features/media/services/cloudinary-orphan-compensation";
 import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
-import { classifyMediaAssetKind } from "../../src/features/media/services/media-asset-classification";
+import { areMediaAssetRightsVerified, classifyMediaAssetKind } from "../../src/features/media/services/media-asset-classification";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 function image(bytes: number[], type: string, size?: number) {
@@ -244,6 +244,23 @@ assert.ok(
 
 
 
+
+assert.equal(
+  areMediaAssetRightsVerified({ rights_verified: true, verified_rights: true }),
+  true,
+  "rights are verified only when both persisted flags are true",
+);
+assert.equal(
+  areMediaAssetRightsVerified({ rights_verified: true, verified_rights: false }),
+  false,
+  "a legacy-only rights flag must not be displayed as fully verified",
+);
+assert.equal(
+  areMediaAssetRightsVerified({ rights_verified: false, verified_rights: true }),
+  false,
+  "a current-only rights flag must not be displayed as fully verified",
+);
+
 assert.equal(
   classifyMediaAssetKind({ asset_type: "kids_game", media_type: "audio" }),
   "audio",
@@ -293,7 +310,7 @@ assert.match(
 );
 
 assert.ok(
-  kidsAssetsPageSource.includes("classifyMediaAssetKind") && kidsAssetsPageSource.includes("أصول غير مصنفة") && kidsAssetsPageSource.includes("أحدث 300 أصل فقط"),
+  kidsAssetsPageSource.includes("classifyMediaAssetKind") && kidsAssetsPageSource.includes("areMediaAssetRightsVerified") && kidsAssetsPageSource.includes("أصول غير مصنفة") && kidsAssetsPageSource.includes("أحدث 300 أصل فقط"),
   "Kids asset metrics must classify all media descriptors and disclose the bounded inventory window",
 );
 
