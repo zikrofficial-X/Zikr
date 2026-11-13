@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { deleteCloudinaryImageIfUnreferenced } from "../../src/features/media/services/cloudinary-orphan-compensation";
+import { deleteCloudinaryImageIfUnreferenced, isDefinitiveSupabaseInsertRejection } from "../../src/features/media/services/cloudinary-orphan-compensation";
 import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
@@ -194,6 +194,51 @@ assert.equal(
   mediaAssetsSource.includes("updated_at: new Date().toISOString()"),
   false,
   "media asset writes must not reuse a millisecond-precision wall-clock CAS token",
+);
+
+
+assert.equal(
+  isDefinitiveSupabaseInsertRejection(new Error("Supabase REST 400: invalid payload")),
+  true,
+  "an explicit PostgREST validation rejection proves the insert transaction did not commit",
+);
+assert.equal(
+  isDefinitiveSupabaseInsertRejection(new Error("Supabase REST 409: duplicate key")),
+  true,
+  "a definitive conflict rejection may use guarded upload compensation",
+);
+for (const ambiguous of [
+  new Error("Supabase REST 408: request timeout"),
+  new Error("Supabase REST 429: rate limited"),
+  new Error("Supabase REST 500: internal error"),
+  new Error("fetch failed"),
+  new Error("The operation was aborted"),
+]) {
+  assert.equal(
+    isDefinitiveSupabaseInsertRejection(ambiguous),
+    false,
+    "ambiguous transport, timeout, rate-limit, and server outcomes must retain uploaded media",
+  );
+}
+
+assert.ok(
+  kidsActionSource.includes("if (isDefinitiveSupabaseInsertRejection(saveError))") &&
+    kidsActionSource.includes("retaining the Cloudinary image for reconciliation"),
+  "Kids image compensation must run only after a definitive database rejection",
+);
+assert.ok(
+  mediaAssetsSource.includes("if (isDefinitiveSupabaseInsertRejection(saveError))") &&
+    mediaAssetsSource.includes("retaining the Cloudinary asset for reconciliation"),
+  "media asset compensation must retain uploads after ambiguous database outcomes",
+);
+assert.ok(
+  mediaAssetsSource.includes('...(input.folder === "kids" ? { scope: "kids", section: "kids" } : {})'),
+  "assets uploaded into the Kids folder must carry the metadata scope consumed by Kids governance",
+);
+const kidsAssetsPageSource = readFileSync("src/app/admin/kids/assets/page.tsx", "utf8");
+assert.ok(
+  kidsAssetsPageSource.includes("asset.asset_type, asset.media_type"),
+  "Kids governance must include legacy assets explicitly typed as Kids even when metadata tags are absent",
 );
 
 console.log("Cloudinary raster signature and orphan compensation contracts passed.");
