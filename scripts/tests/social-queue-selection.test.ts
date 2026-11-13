@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
+import {
+  canAttemptSocialPlatform,
+  getManualReconciliationPlatforms,
+  getRetryableSocialPlatforms,
+} from "../../src/features/social/services/platform-availability";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
@@ -20,6 +25,52 @@ const writtenPosts = [
 ];
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
+
+const malformedResultLedgers: unknown[] = [
+  "corrupt",
+  7,
+  { youtube: "not-a-result-object" },
+  { youtube: { ok: true } },
+  { youtube: { ok: false } },
+  [{ ok: false, error: "missing platform key" }],
+  [{ platform: "youtube", ok: true }],
+  [
+    { platform: "youtube", ok: false, error: "first result" },
+    { platform: "youtube", ok: false, error: "duplicate result" },
+  ],
+];
+for (const platformResults of malformedResultLedgers) {
+  const metadata = { platformResults };
+  assert.deepEqual(
+    getManualReconciliationPlatforms(metadata),
+    ["facebook", "facebook_reels", "youtube"],
+    "malformed or ambiguous result-ledger shapes must require manual reconciliation for every supported target",
+  );
+  assert.equal(
+    canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata, maxAttempts: 5 }),
+    false,
+    "the publisher must not automatically retry a malformed result ledger",
+  );
+  assert.deepEqual(
+    getRetryableSocialPlatforms(["youtube"], metadata),
+    [],
+    "admin retry selection must not silently widen a malformed ledger into a publish attempt",
+  );
+}
+for (const emptyLedger of [{}, []]) {
+  const metadata = { platformResults: emptyLedger };
+  assert.deepEqual(getManualReconciliationPlatforms(metadata), [], "a valid explicit empty ledger is not malformed");
+  assert.equal(
+    canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata, maxAttempts: 5 }),
+    true,
+    "a valid empty ledger may publish because it records no prior provider outcome",
+  );
+}
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata: null, maxAttempts: 5 }),
+  true,
+  "legacy rows with no result ledger retain the bounded legacy-attempt path",
+);
 
 const missingSourceMedia = {
   id: "missing-source-media",
