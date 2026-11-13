@@ -34,7 +34,7 @@ BEGIN
     EXECUTE p_statement;
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS actual_message = MESSAGE_TEXT;
-    IF pg_catalog.position(p_expected_message IN actual_message) > 0 THEN
+    IF pg_catalog.strpos(actual_message, p_expected_message) > 0 THEN
       RETURN;
     END IF;
     RAISE EXCEPTION 'Unexpected retention rejection: % (expected %)', actual_message, p_expected_message;
