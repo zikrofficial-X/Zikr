@@ -10,16 +10,25 @@ export type MediaAssetKind = "audio" | "visual" | "unclassified";
  * Classify the media kind from every available descriptor. Asset type is a
  * governance label and must not mask a more specific media_type or MIME type.
  */
-export function classifyMediaAssetKind(asset: MediaAssetKindInput): MediaAssetKind {
-  const values = [asset.asset_type, asset.media_type, asset.mime_type]
-    .map((value) => String(value ?? "").trim().toLowerCase())
-    .filter(Boolean);
+function classifyMediaDescriptor(value: unknown): MediaAssetKind | null {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return null;
 
-  if (values.some((value) => /(^|[^a-z])audio([^a-z]|$)|^audio\//.test(value))) {
+  if (/(^|[^a-z])audio([^a-z]|$)|^audio\//.test(normalized)) {
     return "audio";
   }
-  if (values.some((value) => /(^|[^a-z])(image|video|visual)([^a-z]|$)|^(image|video)\//.test(value))) {
+  if (/(^|[^a-z])(image|video|visual)([^a-z]|$)|^(image|video)\//.test(normalized)) {
     return "visual";
+  }
+  return null;
+}
+
+export function classifyMediaAssetKind(asset: MediaAssetKindInput): MediaAssetKind {
+  // MIME is the most specific descriptor, followed by media_type and then the
+  // broader governance label. An older asset_type must never override either.
+  for (const value of [asset.mime_type, asset.media_type, asset.asset_type]) {
+    const kind = classifyMediaDescriptor(value);
+    if (kind) return kind;
   }
   return "unclassified";
 }

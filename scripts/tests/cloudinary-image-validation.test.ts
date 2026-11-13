@@ -287,6 +287,21 @@ assert.equal(
   "video assets must be included in the visual media count",
 );
 assert.equal(
+  classifyMediaAssetKind({ asset_type: "audio", media_type: "image", mime_type: "image/png" }),
+  "visual",
+  "a specific image MIME type must override a stale audio governance label",
+);
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "audio", media_type: "visual" }),
+  "visual",
+  "a specific media_type must override a broader asset_type label",
+);
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "audio", media_type: "unknown", mime_type: "application/octet-stream" }),
+  "audio",
+  "unknown specific descriptors must fall back to a recognized governance label",
+);
+assert.equal(
   classifyMediaAssetKind({ asset_type: "kids_game" }),
   "unclassified",
   "unknown media types must not be silently counted as visual",
