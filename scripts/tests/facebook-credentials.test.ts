@@ -112,7 +112,7 @@ assert.doesNotMatch(
 
 const youtubeSource = readFileSync("src/features/videos/integrations/youtube.ts", "utf8");
 const channelProfileStart = youtubeSource.indexOf("const channelProfile =");
-const channelProfileEnd = youtubeSource.indexOf("const cacheRows", channelProfileStart);
+const channelProfileEnd = youtubeSource.indexOf("const videos = await readCachedVideos", channelProfileStart);
 const channelProfileSource = channelProfileStart >= 0 && channelProfileEnd > channelProfileStart
   ? youtubeSource.slice(channelProfileStart, channelProfileEnd)
   : "";
