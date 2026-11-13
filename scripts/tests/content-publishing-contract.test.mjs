@@ -31,6 +31,12 @@ assert.match(job, /metadata\.kidsVideoQaStatus === "passed" && automatedQa\.stat
   "Kids video site publication must require both the dedicated Kids QA gate and the automated QA pass");
 assert.match(job, /parsed\.pathname\.includes\("\/video\/upload\/"\)/,
   "internal video publication must reject non-video Cloudinary URLs");
+assert.match(job, /resolveVideoMediaUrl\(/,
+  "scheduled video publication must use the same canonical playable-media resolver as public video routes");
+assert.match(job, /select=id,updated_at,published,youtube_id,metadata/,
+  "scheduled video publication must load the YouTube fallback identifier used by the canonical media resolver");
+assert.match(job, /!hasPlayableMedia/,
+  "a video with a known missing Cloudinary master and no confirmed YouTube fallback must not be published");
 
 assert.match(
   job,
