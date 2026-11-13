@@ -603,6 +603,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           auditRecorded?: boolean;
           workerDispatched?: boolean;
           workerDispatchFailed?: boolean;
+          queueUpdateFailed?: boolean;
+          released?: number;
           affected?: number;
           preserved?: number;
           stale?: number;
@@ -612,10 +614,13 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
         if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
+        if (payload.queueUpdateFailed) {
+          throw new Error("تعذر تأكيد تحديث الطابور؛ حدّث الحالة قبل أي محاولة أخرى ولا تكرر الإجراء قبل مراجعة الحالة.");
+        }
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
         const auditWarning = payload.auditRecorded === false ? " تحذير: تم تنفيذ الإجراء لكن تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذه." : "";
         const dispatchWarning = payload.workerDispatchFailed
-          ? " تم حفظ العناصر في الطابور لكن تعذر تشغيل العامل فورًا؛ الناشر المجدول سيعالجها لاحقًا. لا تعِد تنفيذ الإجراء."
+          ? " تم حفظ العناصر في الطابور لكن تعذر تشغيل العامل فورًا؛ تحقّق من تفعيل الناشر المجدول قبل إعادة المحاولة. لا تعِد تنفيذ الإجراء."
           : "";
         if (action === "publish_now") {
           setMessage(
@@ -643,8 +648,12 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         } else {
           const skipped = payload.manualReconciliationSkipped ?? 0;
           const staleSkipped = payload.staleSkipped ?? 0;
+          const affectedCount = action === "release_auth_blocked_queue" ? payload.released ?? 0 : payload.affected ?? 0;
+          const actionSummary = action === "release_auth_blocked_queue"
+            ? `تم تحرير ${affectedCount} عنصر من الحظر.`
+            : `تم تنفيذ الإجراء على ${affectedCount} عنصر ظاهر.`;
           setMessage(
-            `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
+            actionSummary +
               (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
               (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + dispatchWarning + auditWarning,
           );

@@ -282,7 +282,7 @@ async function dispatchQueuedSocialWorker() {
   const outcome = await dispatchSocialWorkerSafely(triggerSocialWorker);
   if (!outcome.workerDispatched) {
     console.error(
-      "[api/admin/social] queue state committed but immediate worker dispatch failed; scheduled publishing remains the fallback:",
+      "[api/admin/social] queue state committed but immediate worker dispatch failed; scheduled workflow is configured as fallback; enabled state must be verified:",
       outcome.error,
     );
   }
@@ -581,8 +581,8 @@ export async function POST(request: NextRequest) {
         try {
           await triggerSocialWorker();
           workerDispatched = true;
-        } catch {
-          // The scheduled publisher remains the fallback after an explicit, step-up-gated release.
+        } catch (error) {
+          console.error("[api/admin/social] released queue rows were saved but immediate worker dispatch failed:", error);
         }
       }
 
@@ -592,11 +592,24 @@ export async function POST(request: NextRequest) {
         resourceType: "social_publish_queue",
         metadata: { released, queueUpdateFailed, workerDispatched, pageName: health.facebookPageName },
       });
+      if (queueUpdateFailed) {
+        return NextResponse.json({
+          ok: false,
+          error: "queue_update_unconfirmed",
+          released,
+          queueUpdateFailed: true,
+          workerDispatched,
+          workerDispatchFailed: false,
+          health,
+          auditRecorded,
+        }, { status: 503, headers: { "Cache-Control": "no-store" } });
+      }
       return NextResponse.json({
         ok: true,
         released,
-        queueUpdateFailed,
+        queueUpdateFailed: false,
         workerDispatched,
+        workerDispatchFailed: released > 0 && !workerDispatched,
         health,
         auditRecorded,
       }, { headers: { "Cache-Control": "no-store" } });

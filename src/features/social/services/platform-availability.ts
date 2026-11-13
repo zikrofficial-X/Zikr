@@ -107,9 +107,10 @@ export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadat
   if (metadata?.sourceMediaMissing === true) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
-  return supported.filter(
-    (platform) => asRecord(results[platform])?.requiresReconciliation === true,
-  );
+  return supported.filter((platform) => {
+    const result = asRecord(results[platform]);
+    return result?.requiresReconciliation === true || isAmbiguousProviderOutcome(result?.error);
+  });
 }
 
 export function canAttemptSocialPlatform(input: {

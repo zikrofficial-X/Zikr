@@ -4,8 +4,9 @@ export type SocialWorkerDispatchOutcome<T> =
 
 /**
  * Keep a committed queue mutation distinct from the best-effort request that
- * wakes the publisher. The scheduled workflow remains the fallback if dispatch
- * fails; callers must not turn an already-saved queue update into a retryable 500.
+ * wakes the publisher. The scheduled workflow is configured as a fallback, but
+ * its enabled state is owner-controlled; callers must not turn a saved queue
+ * update into a retryable 500 when immediate dispatch fails.
  */
 export async function dispatchSocialWorkerSafely<T>(
   dispatch: () => Promise<T>,

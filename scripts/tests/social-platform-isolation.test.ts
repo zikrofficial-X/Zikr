@@ -133,6 +133,35 @@ assert.deepEqual(getManualReconciliationPlatforms(ambiguousOutcome), ["youtube"]
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: ambiguousOutcome, maxAttempts: 5 }), false, "uncertain provider outcomes must not be retried automatically");
 assert.equal(canAttemptSocialPlatform({ platform: "facebook_reels", enabledPlatforms: both, metadata: ambiguousOutcome, maxAttempts: 5 }), true, "an uncertain YouTube result must not block an independent Facebook target");
 
+
+const legacyAmbiguousOutcome = {
+  platformResults: {
+    youtube: { platform: "youtube", ok: false, error: "HTTP 503 temporary provider issue" },
+  },
+};
+assert.deepEqual(
+  getManualReconciliationPlatforms(legacyAmbiguousOutcome),
+  ["youtube"],
+  "legacy 5xx results without the newer reconciliation flag must still be treated as ambiguous",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: legacyAmbiguousOutcome, maxAttempts: 5 }),
+  false,
+  "the background worker must not automatically retry a legacy ambiguous provider result",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], legacyAmbiguousOutcome),
+  [],
+  "admin retry must require explicit no-remote-publication confirmation for legacy ambiguous results",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], legacyAmbiguousOutcome, true),
+  ["youtube"],
+  "the explicit no-remote-publication confirmation may release only the selected ambiguous platform",
+);
+assert.equal(isAmbiguousProviderOutcome("TypeError: fetch failed"), true, "a fetch transport failure is ambiguous");
+assert.equal(isAmbiguousProviderOutcome("ECONNRESET"), true, "a reset provider connection is ambiguous");
+
 const attemptStartedAt = "2026-11-11T10:00:00.000Z";
 const inFlightMetadata = buildSocialPublishInFlightMetadata(
   { attempts: 2, platformResults: { facebook: { ok: true, remoteId: "fb-confirmed-1" } } },
@@ -198,7 +227,7 @@ assert.match(
 const metadata = {
   platformResults: {
     facebook: { platform: "facebook", ok: false, error: "Facebook OAuthException: access token expired" },
-    youtube: { platform: "youtube", ok: false, error: "HTTP 503 temporary provider issue" },
+    youtube: { platform: "youtube", ok: false, error: "HTTP 429 rate limit" },
   },
   platformAttempts: { facebook: 1, youtube: 1 },
   authBlocked: true,
@@ -388,12 +417,18 @@ assert.match(adminSocialRoute, /sourceMediaMissingSkipped/);
 assert.match(adminSocialRoute, /async function dispatchQueuedSocialWorker[\s\S]*?dispatchSocialWorkerSafely\(triggerSocialWorker\)/);
 for (const action of ["publish_now", "retry_all_failed", "retry"]) {
   const start = adminSocialRoute.indexOf(`if (action === "${action}")`);
-  const next = adminSocialRoute.indexOf("\\n    if (action ===", start + 1);
+  const next = adminSocialRoute.indexOf("\n    if (action ===", start + 1);
   const block = start >= 0 ? adminSocialRoute.slice(start, next > start ? next : undefined) : "";
   assert.ok(block.includes("dispatchQueuedSocialWorker"), `${action} must not turn a saved queue mutation into an HTTP 500 when worker dispatch fails`);
   assert.ok(block.includes("workerDispatchFailed"), `${action} must report the dispatch fallback state`);
 }
-assert.ok(adminSocialClient.includes("payload.workerDispatchFailed") && adminSocialClient.includes("الناشر المجدول"), "the admin UI must explain that saved queue work will fall back to the scheduled publisher");
+assert.ok(adminSocialClient.includes("payload.workerDispatchFailed") && adminSocialClient.includes("تحقّق من تفعيل الناشر المجدول"), "the admin UI must not claim an unverified scheduled workflow will run");
+const releaseStart = adminSocialRoute.indexOf('if (action === "release_auth_blocked_queue")');
+const releaseEnd = adminSocialRoute.indexOf('if (action === "run_worker")', releaseStart + 1);
+const releaseBlock = adminSocialRoute.slice(releaseStart, releaseEnd);
+assert.match(releaseBlock, /queueUpdateFailed[\s\S]*status:\s*503/);
+assert.match(releaseBlock, /workerDispatchFailed:\s*released > 0 && !workerDispatched/);
+assert.ok(adminSocialClient.includes("payload.released") && adminSocialClient.includes("payload.queueUpdateFailed"), "the release action must display its actual count and an unconfirmed update as an error");
 
 console.log("Social platform isolation and independent readiness tests passed.");
 
