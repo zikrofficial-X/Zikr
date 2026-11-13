@@ -96,3 +96,28 @@ export async function deleteCloudinaryImageIfUnreferenced(
   if (payload.result === "not found") return "not_found";
   throw new Error("Cloudinary did not confirm deletion of the exact uploaded asset.");
 }
+
+const DEFINITIVE_SUPABASE_INSERT_REJECTION_STATUSES = new Set([
+  400,
+  401,
+  403,
+  404,
+  409,
+  413,
+  415,
+  422,
+]);
+
+/**
+ * A cleanup is safe only when Supabase explicitly rejected the insert before
+ * committing it. Timeouts, transport failures, rate limits, and 5xx responses
+ * have an ambiguous outcome, so callers must retain the uploaded asset.
+ */
+export function isDefinitiveSupabaseInsertRejection(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const match = /^Supabase REST (\\d{3}):/.exec(error.message);
+  return Boolean(
+    match &&
+      DEFINITIVE_SUPABASE_INSERT_REJECTION_STATUSES.has(Number(match[1])),
+  );
+}
