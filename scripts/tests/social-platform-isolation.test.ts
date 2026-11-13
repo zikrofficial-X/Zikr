@@ -2,8 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dispatchSocialWorkerSafely } from "../../src/features/social/services/social-worker-dispatch";
 import { resolve } from "node:path";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
+import { buildYouTubeQueueRecoveryFilter, buildYouTubeQueueRecoveryPatch } from "../../src/features/social/services/youtube-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
@@ -237,7 +238,7 @@ assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: b
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: facebookOnly, metadata, maxAttempts: 5 }), false, "disabled channel must not be attempted");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformAttempts: { youtube: 5 } }, maxAttempts: 5 }), false, "retry ceiling is tracked per platform");
 assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { youtube: { ok: true, remoteId: "yt-1" } } }, maxAttempts: 5 }), false, "successful channel must never be republished");
-assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { youtube: { ok: false, error: "missing OAuth configuration" } } }, maxAttempts: 5 }), false, "permanent platform failure is isolated");
+assert.equal(canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { platformResults: { youtube: { ok: false, error: "missing OAuth configuration" } } }, maxAttempts: 5 }), false, "YouTube OAuth failures remain held until upload reauthorization and explicit release");
 const missingMediaFailure = {
   platformResults: {
     facebook_reels: {
@@ -842,3 +843,101 @@ assert.ok(
     socialClientAuditSource.includes("لا تعِد"),
   "the admin UI must warn about audit gaps and explicitly discourage repeating committed social actions",
 );
+
+const youtubeAuthError = "YouTube OAuth token refresh failed (HTTP 400): invalid_grant";
+assert.equal(isAuthBlocked("youtube", youtubeAuthError), true, "YouTube invalid_grant and OAuth refresh failures must be classified as auth blocks");
+assert.equal(isPermanentSocialFailure(youtubeAuthError), false, "YouTube auth failures must not be mislabeled as permanent media/provider failures");
+assert.equal(isAuthBlocked("youtube", "HTTP 422 invalid media"), false, "confirmed media validation failures are not auth blocks");
+const youtubeAuthMetadata = {
+  authBlocked: true,
+  authBlockedPlatforms: ["youtube", "facebook"],
+  permanentFailure: true,
+  permanentFailurePlatforms: ["youtube", "facebook_reels"],
+  platformResults: {
+    youtube: { ok: false, error: youtubeAuthError },
+    facebook: { ok: true, remoteId: "fb-keep" },
+  },
+  platformAttempts: { youtube: 5, facebook: 1 },
+};
+assert.deepEqual(getRetryableSocialPlatforms(["youtube"], youtubeAuthMetadata), [], "a YouTube auth block must remain held until upload reauthorization");
+const youtubeRecovery = buildYouTubeQueueRecoveryPatch(
+  youtubeAuthMetadata,
+  ["youtube", "facebook", "facebook_reels"],
+  "2026-11-13T10:00:00.000Z",
+  "2026-11-13T10:00:00.001Z",
+);
+assert.ok(youtubeRecovery, "a confirmed YouTube OAuth block must produce a recovery patch");
+assert.equal(youtubeRecovery.status, "queued");
+assert.equal(youtubeRecovery.metadata.authBlocked, true, "the independent Facebook auth block must remain held");
+assert.deepEqual(youtubeRecovery.metadata.authBlockedPlatforms, ["facebook"]);
+assert.equal(youtubeRecovery.metadata.permanentFailure, true, "the independent Reels permanent failure must remain held");
+assert.deepEqual(youtubeRecovery.metadata.permanentFailurePlatforms, ["facebook_reels"]);
+assert.deepEqual(youtubeRecovery.metadata.platformResults, { facebook: { ok: true, remoteId: "fb-keep" } }, "only the failed YouTube auth result is cleared");
+assert.deepEqual(youtubeRecovery.metadata.platformAttempts, { youtube: 0, facebook: 1 });
+assert.deepEqual(getRetryableSocialPlatforms(["youtube"], youtubeRecovery.metadata), ["youtube"], "YouTube becomes retryable only after explicit recovery");
+assert.deepEqual(getRetryableSocialPlatforms(["facebook"], youtubeRecovery.metadata), [], "YouTube recovery must not release Facebook");
+assert.deepEqual(getRetryableSocialPlatforms(["facebook_reels"], youtubeRecovery.metadata), [], "YouTube recovery must not clear a Reels permanent failure");
+assert.equal(
+  buildYouTubeQueueRecoveryPatch(
+    { platformResults: { youtube: { ok: false, error: "HTTP 422 invalid media" } }, permanentFailurePlatforms: ["youtube"] },
+    ["youtube"],
+    "2026-11-13T10:00:00.000Z",
+  ),
+  null,
+  "YouTube recovery must not clear confirmed permanent media failures",
+);
+assert.equal(
+  buildYouTubeQueueRecoveryPatch(
+    { platformResults: { youtube: { ok: false, requiresReconciliation: true, error: "OAuth upload timed out; remote outcome unknown" } } },
+    ["youtube"],
+    "2026-11-13T10:00:00.000Z",
+  ),
+  null,
+  "YouTube recovery must never bypass ambiguous remote outcomes",
+);
+assert.equal(
+  buildYouTubeQueueRecoveryPatch(
+    { authBlocked: true, platformResults: { youtube: { ok: false, error: youtubeAuthError } }, sourceMediaMissing: true },
+    ["youtube"],
+    "2026-11-13T10:00:00.000Z",
+  ),
+  null,
+  "YouTube recovery must never release a missing-media row",
+);
+assert.equal(
+  buildYouTubeQueueRecoveryFilter({
+    id: "youtube-queue-row",
+    status: "partial",
+    updated_at: "2026-11-12T06:00:00.000Z",
+    created_at: "2026-11-12T05:00:00.000Z",
+  }, "2026-11-06T20:00:00.000Z"),
+  "id=eq.youtube-queue-row&status=eq.partial&updated_at=eq.2026-11-12T06%3A00%3A00.000Z&created_at=eq.2026-11-12T05%3A00%3A00.000Z",
+  "YouTube queue recovery must use exact row-version and creation-time compare-and-swap guards",
+);
+assert.equal(
+  buildYouTubeQueueRecoveryFilter({
+    id: "old-youtube-queue-row",
+    status: "failed",
+    updated_at: "2026-11-05T06:00:00.000Z",
+    created_at: "2026-11-05T05:00:00.000Z",
+  }, "2026-11-06T20:00:00.000Z"),
+  null,
+  "historical YouTube auth failures before the publish cutoff must remain held",
+);
+
+const youtubeRecoveryServiceSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/youtube-queue-recovery.ts"),
+  "utf8",
+);
+assert.match(youtubeRecoveryServiceSource, /status=in\.\(failed,partial\)/, "YouTube recovery must scan only failed or partial queue rows");
+assert.match(youtubeRecoveryServiceSource, /created_at=gte\./, "YouTube recovery must respect the current publish cutoff");
+assert.match(adminSocialRouteSource, /unblockYouTubeAuthBlockedQueue\(\)/, "the admin route must call the dedicated YouTube recovery service");
+assert.match(adminSocialRouteSource, /getYouTubeUploadRefreshToken\(\)/, "the admin route must verify an upload-scoped credential before release");
+assert.match(adminSocialRouteSource, /body\.platform/, "the release action must distinguish Facebook and YouTube");
+assert.match(socialClientAuditSource, /youtubeAuthBlocked/, "the admin UI must surface YouTube auth-blocked rows");
+assert.match(socialClientAuditSource, /releaseAuthBlockedQueue\("youtube"\)/, "the admin UI must expose an explicit YouTube recovery action");
+const socialPublisherSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+assert.match(socialPublisherSource, /isAuthBlocked\(failure\.platform, failure\.error\)/, "the worker must classify YouTube OAuth failures as per-platform auth blocks");

@@ -22,7 +22,7 @@ import { patchSocialQueueMetadataWithCas } from "@/features/social/services/soci
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -73,24 +73,6 @@ function publicUrl(item: SocialPublishQueueItem) {
     return `${base}${publicPath}`;
   }
   return siteUrl();
-}
-
-function isFacebookAuthFailure(error: string | undefined) {
-  if (!error) return false;
-  const normalized = error.toLowerCase();
-  return (
-    normalized.includes("facebook") &&
-    (
-      normalized.includes("session has expired") ||
-      normalized.includes("error validating access token") ||
-      normalized.includes("oauthexception") ||
-      normalized.includes("invalid oauth") ||
-      normalized.includes("access token") ||
-      normalized.includes("oauth-managed publishing center") ||
-      normalized.includes("reauthorization_required") ||
-      normalized.includes("reconnect the page")
-    )
-  );
 }
 
 const SOCIAL_DEFAULT_MAX_ATTEMPTS = 5;
@@ -1290,7 +1272,7 @@ export async function processSocialPublishItem(
         : nextStatus;
 
   const authBlockedPlatforms = operationalFailures
-    .filter(failure => isFacebookAuthFailure(failure.error))
+    .filter(failure => isAuthBlocked(failure.platform, failure.error))
     .map(failure => failure.platform);
   const permanentFailurePlatforms = operationalFailures
     .filter(failure => isPermanentSocialFailure(failure.error))

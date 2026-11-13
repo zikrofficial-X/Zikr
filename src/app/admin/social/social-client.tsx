@@ -25,6 +25,8 @@ type QueueItem = SocialPublishQueueItem & {
 type QueueReadiness = { approvalPending: number; queuedEligible: number };
 type Health = {
   youtubeConfigured: boolean;
+  youtubeUploadReady: boolean;
+  youtubeAuthBlocked: number;
   youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
   youtubeReadSource?: "oauth" | "api_key" | null;
   youtubeChannelId?: string | null;
@@ -224,6 +226,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
     youtubeConfigured: false,
+    youtubeUploadReady: false,
+    youtubeAuthBlocked: 0,
     facebookEnabled: false,
     facebookCredentialsConfigured: false,
     facebookEnvironmentTokenConfigured: false,
@@ -463,8 +467,9 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
     }
   }, [load]);
 
-  const releaseAuthBlockedQueue = useCallback(async () => {
-    if (!window.confirm("سيتم إعادة العناصر المحجوبة المؤهلة ضمن نافذة النشر الحالية إلى الطابور. العناصر التاريخية الأقدم ستظل محجوبة. قد تُنشر العناصر المعادة تلقائيًا. هل تؤكد المتابعة؟")) return;
+  const releaseAuthBlockedQueue = useCallback(async (platform: "facebook" | "youtube" = "facebook") => {
+    const platformLabel = platform === "youtube" ? "YouTube" : "Facebook";
+    if (!window.confirm("سيتم إعادة العناصر المحجوبة المؤهلة على " + platformLabel + " ضمن نافذة النشر الحالية إلى الطابور. العناصر التاريخية الأقدم ستظل محجوبة. قد تُنشر العناصر المعادة تلقائيًا. هل تؤكد المتابعة؟")) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -472,7 +477,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const response = await fetch("/api/admin/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "release_auth_blocked_queue", confirmed: true }),
+        body: JSON.stringify({ action: "release_auth_blocked_queue", platform, confirmed: true }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -485,7 +490,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر استئناف العناصر المحجوبة.");
       const summary = [
-        "تم تحرير " + (payload.released ?? 0) + " عنصرًا مؤهلًا ضمن نافذة النشر الحالية بعد التحقق من اتصال Facebook. العناصر التاريخية الأقدم تظل محجوبة.",
+        "تم تحرير " + (payload.released ?? 0) + " عنصرًا مؤهلًا على " + platformLabel + " بعد التحقق من صلاحية النشر. العناصر التاريخية الأقدم تظل محجوبة.",
         payload.queueUpdateFailed ? "تعذر تحديث بعض العناصر؛ راجع الطابور قبل أي محاولة أخرى." : "",
         (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل الناشر المجدول المعالجة في دورته التالية." : "",
       ].filter(Boolean);
@@ -866,6 +871,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           </div>
           <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "قناة YouTube — يلزم الاختبار" : "بيانات YouTube غير مكتملة")}</p>
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
+          {health.youtubeConnectionStatus === "connected" && !health.youtubeUploadReady && <p className="text-xs leading-5 text-amber-200/80">قراءة القناة متاحة، لكن صلاحية رفع الفيديو غير مكتملة. أعد ربط YouTube قبل تحرير العناصر المحجوبة.</p>}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectYouTube()}>
               ربط YouTube للنشر والإحصاءات
@@ -919,6 +925,13 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           </div>
           <div className="mt-1 font-semibold">{health.facebookAuthBlocked}</div>
         </Card>
+        <Card>
+          <div className="text-xs text-brand-cream/50">
+            <span aria-hidden="true">YouTube Auth Blocks</span>
+            <span className="sr-only">سجلات فشل اعتماد YouTube السابقة</span>
+          </div>
+          <div className="mt-1 font-semibold">{health.youtubeAuthBlocked}</div>
+        </Card>
       </section>
 
       {health.facebookAuthBlocked > 0 && (
@@ -935,9 +948,32 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
               variant="outline"
               size="sm"
               disabled={busy || !health.facebookEnabled || health.facebookConnectionStatus !== "connected"}
-              onClick={() => void releaseAuthBlockedQueue()}
+              onClick={() => void releaseAuthBlockedQueue("facebook")}
             >
               استئناف نشر العناصر المحجوبة ({health.facebookAuthBlocked}) — يتطلب MFA
+            </Button>
+          ) : (
+            <p className="text-xs">استئناف النشر يتطلب صلاحية social.publish.</p>
+          )}
+        </div>
+      )}
+
+      {health.youtubeAuthBlocked > 0 && (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200"
+        >
+          <p>
+            يوجد {health.youtubeAuthBlocked} عنصرًا متوقفًا بسبب اعتماد YouTube. إعادة ربط القناة تحفظ الاعتماد فقط؛ لا تستأنف الطابور تلقائيًا. بعد التحقق من صلاحية الرفع استخدم زر الاستئناف الصريح. العناصر الأقدم من نافذة النشر الحالية تظل محجوبة.
+          </p>
+          {canPublish ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !health.youtubeUploadReady}
+              onClick={() => void releaseAuthBlockedQueue("youtube")}
+            >
+              استئناف نشر YouTube المحجوب ({health.youtubeAuthBlocked}) — يتطلب MFA
             </Button>
           ) : (
             <p className="text-xs">استئناف النشر يتطلب صلاحية social.publish.</p>

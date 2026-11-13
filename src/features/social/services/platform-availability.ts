@@ -85,17 +85,26 @@ function hasSuccessfulDelivery(value: unknown): boolean {
   return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
 }
 
-function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
-  if (!platform.startsWith("facebook") || typeof error !== "string") return false;
+export function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
+  if (typeof error !== "string") return false;
   const value = error.toLowerCase();
-  return value.includes("access token") || value.includes("session has expired") ||
-    value.includes("oauth") || value.includes("reauthorization_required") ||
-    value.includes("reconnect the page");
+  if (platform.startsWith("facebook")) {
+    return value.includes("access token") || value.includes("session has expired") ||
+      value.includes("oauth") || value.includes("reauthorization_required") ||
+      value.includes("reconnect the page");
+  }
+  if (platform === "youtube") {
+    return value.includes("oauth") || value.includes("invalid_grant") ||
+      value.includes("invalid_token") || value.includes("access token") ||
+      value.includes("unauthorized") || /http\s+401\b/.test(value) ||
+      value.includes("missing the required upload/read scopes");
+  }
+  return false;
 }
 
 export function isPermanentSocialFailure(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
+  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|publishing is disabled|not configured|human qa approval/i.test(error);
 }
 
 export function isAmbiguousProviderOutcome(error: unknown): boolean {

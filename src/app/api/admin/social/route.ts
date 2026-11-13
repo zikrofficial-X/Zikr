@@ -13,12 +13,14 @@ import {
   unblockFacebookAuthBlockedQueue,
 } from "@/features/social/services/facebook-credentials";
 import { getYouTubePublishingConnectionHealth } from "@/features/social/services/youtube-publishing-health";
+import { getYouTubeUploadRefreshToken } from "@/features/social/services/youtube-oauth-credentials";
+import { unblockYouTubeAuthBlockedQueue } from "@/features/social/services/youtube-queue-recovery";
 import { getFacebookPageAudienceSnapshot } from "@/features/social/services/facebook-reels-insights";
 import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-revenue";
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
 import { claimSocialQueuePlatformDeletion, patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
-import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getEnabledSocialPlatforms, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, isAuthBlocked, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
 
@@ -121,36 +123,26 @@ function authBlockedPlatforms(
   targets: readonly string[] = [],
 ): Set<string> {
   const result = new Set<string>();
+  const supported = new Set(["facebook", "facebook_reels", "youtube"]);
   const declared = Array.isArray(metadata?.authBlockedPlatforms)
     ? metadata.authBlockedPlatforms.filter(
         (platform): platform is string =>
-          typeof platform === "string" && platform.startsWith("facebook"),
+          typeof platform === "string" && supported.has(platform),
       )
     : [];
   for (const platform of declared) result.add(platform);
 
   const values = normalizeSocialPlatformResults(metadata?.platformResults);
   for (const [platform, value] of Object.entries(values)) {
-    if (!value || typeof value !== "object") continue;
+    if (!supported.has(platform) || !value || typeof value !== "object") continue;
     const row = value as { ok?: unknown; error?: unknown };
-    if (row.ok === false && typeof row.error === "string") {
-      const error = row.error.toLowerCase();
-      if (
-        platform.startsWith("facebook") &&
-        (error.includes("access token") ||
-          error.includes("session has expired") ||
-          error.includes("oauth") ||
-          error.includes("reauthorization_required") ||
-          error.includes("reconnect the page"))
-      ) {
-        result.add(platform);
-      }
+    if (row.ok === false && isAuthBlocked(platform as SocialPlatform, row.error)) {
+      result.add(platform);
     }
   }
 
-  // Old rows may carry only a global Facebook auth flag. Expand it to the
-  // row's Facebook targets so a partial retry cannot release another blocked
-  // target merely because the per-platform result ledger is absent.
+  // The legacy global auth flag was emitted by the Facebook adapter only.
+  // Never infer a YouTube block from that old global marker.
   if (metadata?.authBlocked === true && declared.length === 0 && result.size === 0) {
     for (const platform of targets) {
       if (platform.startsWith("facebook")) result.add(platform);
@@ -358,10 +350,19 @@ export async function GET() {
     const [facebookHealth, facebookAudience, youtubeHealth, trafficSnapshot] = await Promise.all([
       getFacebookPageConnectionHealth(), getFacebookPageAudienceSnapshot(), getYouTubePublishingConnectionHealth(), getTrafficRevenueSnapshot(),
     ]);
+    const youtubeUploadRefreshToken = await getYouTubeUploadRefreshToken().catch(() => null);
+    const youtubeUploadReady = Boolean(youtubeUploadRefreshToken) &&
+      youtubeHealth.status === "connected" &&
+      getEnabledSocialPlatforms(env).includes("youtube");
     const facebookAuthBlocked = rows.filter(
       item =>
         retryableStatuses.has(item.status) &&
-        authBlockedPlatforms(item.metadata).size > 0
+        [...authBlockedPlatforms(item.metadata, item.target_platforms)].some(platform => platform.startsWith("facebook"))
+    ).length;
+    const youtubeAuthBlocked = rows.filter(
+      item =>
+        retryableStatuses.has(item.status) &&
+        authBlockedPlatforms(item.metadata, item.target_platforms).has("youtube")
     ).length;
     const platformStats = rows.reduce<
       Record<string, { queued: number; published: number; failed: number }>
@@ -435,6 +436,8 @@ export async function GET() {
             (env.YOUTUBE_CLIENT_ID && env.YOUTUBE_CLIENT_SECRET && youtubeHealth.status !== "not_configured") ||
             (env.YOUTUBE_API_KEY && env.YOUTUBE_CHANNEL_ID)
           ),
+          youtubeUploadReady,
+          youtubeAuthBlocked,
           youtubeConnectionStatus: youtubeHealth.status,
           youtubeReadSource: youtubeHealth.readSource,
           youtubeConnectionMessage: youtubeHealth.message,
@@ -481,6 +484,7 @@ export async function POST(request: NextRequest) {
       confirmedNoRemotePublication?: unknown;
       deleteLocalMemory?: unknown;
       confirmed?: unknown;
+      platform?: unknown;
     };
     const action = typeof body.action === "string" ? body.action : "";
     if (action === "delete" || action === "delete_failed") {
@@ -560,6 +564,80 @@ export async function POST(request: NextRequest) {
           { status: 400, headers: { "Cache-Control": "no-store" } },
         );
       }
+      const recoveryPlatform = body.platform === undefined ? "facebook" : body.platform;
+      if (recoveryPlatform !== "facebook" && recoveryPlatform !== "youtube") {
+        return NextResponse.json(
+          { error: "invalid_recovery_platform" },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
+
+      if (recoveryPlatform === "youtube") {
+        const env = getServerEnv();
+        if (!getEnabledSocialPlatforms(env).includes("youtube")) {
+          return NextResponse.json(
+            { error: "youtube_publishing_disabled" },
+            { status: 409, headers: { "Cache-Control": "no-store" } },
+          );
+        }
+        const [health, uploadRefreshToken] = await Promise.all([
+          getYouTubePublishingConnectionHealth(),
+          getYouTubeUploadRefreshToken().catch(() => null),
+        ]);
+        if (!uploadRefreshToken || health.status !== "connected") {
+          return NextResponse.json(
+            { error: "youtube_upload_connection_not_ready", health },
+            { status: 409, headers: { "Cache-Control": "no-store" } },
+          );
+        }
+
+        let released = 0;
+        let queueUpdateFailed = false;
+        try {
+          released = await unblockYouTubeAuthBlockedQueue();
+        } catch {
+          queueUpdateFailed = true;
+        }
+
+        let workerDispatched = false;
+        if (released > 0) {
+          try {
+            await triggerSocialWorker();
+            workerDispatched = true;
+          } catch (error) {
+            console.error("[api/admin/social] released YouTube queue rows were saved but immediate worker dispatch failed:", error);
+          }
+        }
+
+        const auditRecorded = await recordSocialAuditEvent({
+          action: "social.youtube.auth_blocked_queue.release",
+          permission: "social.publish",
+          resourceType: "social_publish_queue",
+          metadata: { released, queueUpdateFailed, workerDispatched, channelId: health.channelId },
+        });
+        if (queueUpdateFailed) {
+          return NextResponse.json({
+            ok: false,
+            error: "queue_update_unconfirmed",
+            released,
+            queueUpdateFailed: true,
+            workerDispatched,
+            workerDispatchFailed: false,
+            health,
+            auditRecorded,
+          }, { status: 503, headers: { "Cache-Control": "no-store" } });
+        }
+        return NextResponse.json({
+          ok: true,
+          released,
+          queueUpdateFailed: false,
+          workerDispatched,
+          workerDispatchFailed: released > 0 && !workerDispatched,
+          health,
+          auditRecorded,
+        }, { headers: { "Cache-Control": "no-store" } });
+      }
+
       const health = await getFacebookPageConnectionHealth();
       if (health.facebookConnectionStatus !== "connected" || health.facebookEnabled !== true) {
         return NextResponse.json(
