@@ -7,7 +7,7 @@
 -- pg_cron command. The scheduled job remains daily at 03:00 UTC and continues
 -- to authenticate through the server-side scheduler secret RPC.
 
-DO $
+DO $do$
 DECLARE
   v_cron_job_oid regclass := to_regclass('cron.job');
 BEGIN
@@ -95,4 +95,5 @@ BEGIN
     $inner$;
   $schedule$;
 END
-$$;
+
+$do$;
