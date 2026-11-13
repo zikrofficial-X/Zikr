@@ -398,7 +398,9 @@ function getConfirmedPublicWrittenPlatforms(
    deliveryRemoteId,
    row.published_at,
   );
- const hasResultLedger = rawResults !== null && typeof rawResults === "object";
+ // Only an absent/null field is legacy. A present but malformed ledger must
+ // fail closed rather than optimistically exposing every requested platform.
+ const hasResultLedger = rawResults !== undefined && rawResults !== null;
  if (hasResultLedger) {
   return targets.filter((platform) => {
    const result = asWrittenRecord(results[platform]);
