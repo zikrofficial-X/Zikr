@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deleteCloudinaryImageIfUnreferenced, isDefinitiveSupabaseInsertRejection } from "../../src/features/media/services/cloudinary-orphan-compensation";
-import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
+import { isCloudinarySecureImageUrl, validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
 import { areMediaAssetRightsVerified, classifyMediaAssetKind } from "../../src/features/media/services/media-asset-classification";
 import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES } from "../../src/features/media/services/media-asset-limits";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
@@ -26,6 +26,31 @@ await assert.doesNotReject(() =>
 );
 await assert.doesNotReject(() =>
   validateCloudinaryImage(image([0x47, 0x49, 0x46, 0x38, 0x39, 0x61], "image/gif")),
+);
+
+assert.equal(
+  isCloudinarySecureImageUrl("https://res.cloudinary.com/demo-cloud/image/upload/v123/zikr-kids/story.jpg", "demo-cloud"),
+  true,
+  "a secure image URL from the configured Cloudinary account must be accepted",
+);
+for (const invalidUrl of [
+  "http://res.cloudinary.com/demo-cloud/image/upload/v123/zikr-kids/story.jpg",
+  "https://res.cloudinary.com.evil.test/demo-cloud/image/upload/v123/zikr-kids/story.jpg",
+  "https://evil.test/demo-cloud/image/upload/v123/zikr-kids/story.jpg",
+  "https://res.cloudinary.com/other-cloud/image/upload/v123/zikr-kids/story.jpg",
+  "https://res.cloudinary.com/demo-cloud/video/upload/v123/zikr-kids/story.mp4",
+  "https://user@res.cloudinary.com/demo-cloud/image/upload/v123/zikr-kids/story.jpg",
+]) {
+  assert.equal(
+    isCloudinarySecureImageUrl(invalidUrl, "demo-cloud"),
+    false,
+    "only HTTPS image uploads from the configured Cloudinary account may be attached",
+  );
+}
+assert.equal(
+  isCloudinarySecureImageUrl("https://res.cloudinary.com/demo-cloud/image/upload/v123/zikr-kids/story.jpg", undefined),
+  false,
+  "Cloudinary URL attachment must fail closed when the configured cloud name is unavailable",
 );
 
 await assert.rejects(
@@ -159,6 +184,15 @@ assert.equal(destroyRequests, 1, "a non-Cloudinary URL must not reach Cloudinary
 
 const kidsActionSource = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 assert.match(kidsActionSource, /featured_image_url=eq\.[\s\S]*?encodeURIComponent\(secureUrl\)/, "Kids compensation must check the exact persisted image URL before deletion");
+assert.ok(
+  kidsActionSource.includes("if (hasFeaturedImageFile || featuredImageUrl)") &&
+    kidsActionSource.includes('requireAdminPermission("media.manage")'),
+  "attaching an existing image URL must require media.manage just like a new upload",
+);
+assert.ok(
+  kidsActionSource.includes("isCloudinarySecureImageUrl(featuredImageUrl, process.env.CLOUDINARY_CLOUD_NAME)"),
+  "Kids content must reject forged or foreign-account image URLs",
+);
 assert.match(kidsActionSource, /catch \(saveError\)[\s\S]*?compensateOrphanedKidsImage\(uploadedImage, requestedPublicId\)/, "a failed database insert must run guarded orphan compensation");
 assert.match(kidsActionSource, /saved\.length !== 1[\s\S]*?compensateOrphanedKidsImage\(uploadedImage, requestedPublicId\)/, "an unconfirmed insert must run guarded orphan compensation");
 
