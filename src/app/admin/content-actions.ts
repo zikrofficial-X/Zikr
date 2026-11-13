@@ -12,6 +12,7 @@ import {
   type ManagedContentTable,
 } from "@/features/admin/services/content";
 import { parseExplicitScheduledAt } from "@/features/admin/services/content-schedule";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 
 const TABLES = new Set<ManagedContentTable>([
   "stories",
@@ -104,6 +105,14 @@ export async function scheduleContentPublishAction(formData: FormData) {
       throw new Error("لا يمكن جدولة المقال أثناء وجود إيقاف نشر صريح؛ أعد مراجعته وانشره يدويًا أولاً.");
     }
   }
+  const activeSchedules = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
+    `/rest/v1/content_publish_queue?content_table=eq.${encodeURIComponent(table)}&content_id=eq.${encodeURIComponent(id)}&status=in.(queued,processing)&select=id,status&limit=1`,
+    { method: "GET" },
+  );
+  if (activeSchedules?.length) {
+    throw new Error("يوجد موعد نشر قائم أو قيد التنفيذ لهذا المحتوى. ألغِ الموعد الحالي أولاً.");
+  }
+
   await supabaseServerAdminRequest("/rest/v1/content_publish_queue", {
     method: "POST",
     headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -120,15 +129,44 @@ export async function scheduleContentPublishAction(formData: FormData) {
 }
 
 export async function cancelContentPublishAction(formData: FormData) {
-  const admin = await requireAdminPermission("content.publish");
+  const admin = await requireAdminStepUp("content.publish", "/admin/content");
   await enforceAdminRateLimit(admin, "content.publish", 30, 60);
   const queueId = String(formData.get("queueId") ?? "").trim();
   if (!queueId) throw new Error("معرّف الجدولة مطلوب.");
-  await supabaseServerAdminRequest(`/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(queueId)}&status=eq.queued`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-    body: JSON.stringify({ status: "cancelled", updated_at: new Date().toISOString() }),
+
+  const currentRows = await supabaseServerAdminRequest<Array<{ id: string; status: "queued" | "processing"; updated_at: string }>>(
+    `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(queueId)}&status=in.(queued,processing)&select=id,status,updated_at&limit=1`,
+    { method: "GET" },
+  );
+  const current = currentRows?.[0];
+  if (!current?.updated_at) {
+    throw new Error("لم يعد موعد النشر نشطًا؛ حدّث الصفحة قبل المتابعة.");
+  }
+
+  // Advancing the exact queue version fences an in-flight worker. The worker
+  // rechecks this claim before publishing and rolls back only its own write.
+  const cancelled = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(queueId)}&status=in.(queued,processing)&updated_at=eq.${encodeURIComponent(current.updated_at)}&select=id`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({
+        status: "cancelled",
+        error_message: "Cancelled by an administrator before scheduled publication.",
+        updated_at: buildNextRowVersionUpdatedAt(current.updated_at),
+      }),
+    },
+  );
+  if (!cancelled?.some((row) => row.id === queueId)) {
+    throw new Error("تغيرت حالة موعد النشر أثناء الإلغاء؛ حدّث الصفحة ثم أعد المحاولة.");
+  }
+
+  await recordAdminAuditEvent({
+    action: "content.publish.schedule_cancel",
+    permission: "content.publish",
+    resourceType: "content_publish_queue",
+    resourceId: queueId,
+    metadata: { previousStatus: current.status },
   });
-  await recordAdminAuditEvent({ action: "content.publish.schedule_cancel", permission: "content.publish", resourceType: "content_publish_queue", resourceId: queueId });
   revalidatePath("/admin/content");
 }

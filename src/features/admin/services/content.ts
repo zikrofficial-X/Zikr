@@ -22,12 +22,13 @@ export type ScheduledContentItem = {
   content_id: string;
   scheduled_at: string;
   status: "queued" | "processing" | "published" | "cancelled" | "failed";
+  updated_at: string;
 };
 
 export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
   try {
     return await supabaseServerAdminRequest<ScheduledContentItem[]>(
-      "/rest/v1/content_publish_queue?status=eq.queued&select=id,content_table,content_id,scheduled_at,status&order=scheduled_at.asc&limit=20",
+      "/rest/v1/content_publish_queue?status=in.(queued,processing)&select=id,content_table,content_id,scheduled_at,status,updated_at&order=scheduled_at.asc&limit=100",
       { method: "GET" },
     );
   } catch (error) {
