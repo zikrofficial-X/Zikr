@@ -69,11 +69,11 @@ export async function POST(request: NextRequest) {
     });
     try {
       await recordAdminAuditEvent({
-      action: "media.asset.create",
-      permission: "media.manage",
-      resourceType: "media_assets",
-      resourceId: typeof asset.id === "string" ? asset.id : null,
-      metadata: { folder: assetFolder, mimeType: file.type, sizeBytes: file.size, sourceLinked: Boolean(sourceId) },
+        action: "media.asset.create",
+        permission: "media.manage",
+        resourceType: "media_assets",
+        resourceId: typeof asset.id === "string" ? asset.id : null,
+        metadata: { folder: assetFolder, mimeType: file.type, sizeBytes: file.size, sourceLinked: Boolean(sourceId) },
       });
     } catch (auditError) {
       // The asset row is already committed; returning 500 would invite a duplicate retry.
@@ -126,10 +126,10 @@ export async function PATCH(request: NextRequest) {
     if (!result.ok) return responseError(result.error);
     try {
       await recordAdminAuditEvent({
-      action: `media.asset.${action}`,
-      permission: "media.manage",
-      resourceType: "media_assets",
-      resourceId: id,
+        action: `media.asset.${action}`,
+        permission: "media.manage",
+        resourceType: "media_assets",
+        resourceId: id,
       });
     } catch (auditError) {
       // The row-version update is already committed; do not report it as a failed mutation.
