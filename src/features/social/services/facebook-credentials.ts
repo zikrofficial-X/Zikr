@@ -3,6 +3,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
 import { buildFacebookPublicProfileIdentityUpsert } from "./facebook-profile-contract";
+import { FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS } from "./facebook-oauth-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -207,7 +208,7 @@ function classifyGraphFailure(code: string | null, message: string): {
   if (code === "10" || code === "200" || normalized.includes("permission")) {
     return {
       status: "permission_error",
-      safeMessage: "اتصال Facebook موجود لكن الصلاحيات المطلوبة للنشر والإحصاءات غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts وread_insights.",
+      safeMessage: "اتصال Facebook موجود لكن صلاحيات النشر الأساسية غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts؛ read_insights اختيارية لإحصاءات Reels ولا توقف النشر.",
     };
   }
   return {
@@ -528,10 +529,9 @@ export async function adoptServerConfiguredFacebookPageToken(): Promise<{
   const permissions = Array.isArray(data.scopes)
     ? data.scopes.filter((value): value is string => typeof value === "string")
     : [];
-  const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
-  const missing = required.filter((permission) => !permissions.includes(permission));
+  const missing = FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS.filter((permission) => !permissions.includes(permission));
   if (missing.length) {
-    throw new Error("توكن الخادم صالح، لكن صلاحيات النشر ناقصة: " + missing.join("، ") + ". أعد تفويض التطبيق مع هذه الصلاحيات.");
+    throw new Error("توكن الخادم صالح، لكن صلاحيات النشر الأساسية ناقصة: " + missing.join("، ") + ". صلاحية read_insights اختيارية لإحصاءات Reels ولا توقف النشر.");
   }
 
   const expirySeconds = Number(data.expires_at ?? 0);
