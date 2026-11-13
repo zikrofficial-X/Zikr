@@ -102,21 +102,25 @@ jobs:
           test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing Cloudinary API secret." >&2; exit 1; }
 
           facebook_ready=false
+          facebook_insights_ready=false
           if [[ "${FACEBOOK_PUBLISHING_REQUESTED,,}" == "true" ]]; then
             facebook_json="$(curl -fsS \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
               "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&is_enabled=eq.true&connection_status=eq.connected&page_id=not.is.null&page_id=neq.&page_access_token=not.is.null&page_access_token=neq.&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"
-            facebook_ready="$(node -e '
+            facebook_readiness="$(node -e '
               const rows = JSON.parse(process.argv[1]);
               const row = Array.isArray(rows) ? rows[0] : null;
               const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
               const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
               const scopes = Array.isArray(row?.granted_permissions) ? row.granted_permissions : [];
-              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
+              const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts"];
               const scopesOkay = required.every(scope => scopes.includes(scope));
-              process.stdout.write(String(Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay)));
+              const publishReady = Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay);
+              const insightsReady = scopes.includes("read_insights");
+              process.stdout.write(String(publishReady) + "|" + String(insightsReady));
             ' "$facebook_json")"
+            IFS='|' read -r facebook_ready facebook_insights_ready <<< "$facebook_readiness"
           fi
           echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
 
@@ -156,7 +160,8 @@ jobs:
           {
             echo "### Social publishing readiness"
             echo "- Facebook publishing requested: $FACEBOOK_PUBLISHING_REQUESTED"
-            echo "- Facebook credential ready: $facebook_ready"
+            echo "- Facebook credential ready for publishing: $facebook_ready"
+            echo "- Facebook Reels insights permission granted (optional): $facebook_insights_ready"
             echo "- YouTube publishing requested: $YOUTUBE_PUBLISHING_REQUESTED"
             echo "- YouTube client ID configured: $youtube_client_id_present"
             echo "- YouTube client secret configured: $youtube_client_secret_present"
@@ -165,6 +170,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "Facebook publishing readiness: $facebook_ready"
+          echo "Facebook Reels insights permission granted (optional): $facebook_insights_ready"
           echo "YouTube client ID configured: $youtube_client_id_present"
           echo "YouTube client secret configured: $youtube_client_secret_present"
           echo "YouTube OAuth credential and scope readiness: $youtube_scopes_ready"
