@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Container } from '@/components/ui/container';
 import { getAyahFromDb, getSurahMetaFromDb, getTafsirRecordFromDb } from '@/features/quran/services/quran-server';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Share2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { ShareButton } from '@/components/ui/share-button';
 import { pageMetadata } from '@/lib/site';
 
 export const revalidate = 3600;
@@ -17,10 +18,12 @@ interface AyahPageProps {
 
 export async function generateMetadata({ params }: AyahPageProps): Promise<Metadata> {
   const p = await params;
-  const surahId = Number.parseInt(p.surah, 10);
-  const ayahId = Number.parseInt(p.ayah, 10);
+  const surahId = Number(p.surah);
+  const ayahId = Number(p.ayah);
 
-  const surahMeta = Number.isNaN(surahId) ? null : await getSurahMetaFromDb(surahId, 'ar');
+  const surahMeta = Number.isInteger(surahId) && surahId >= 1 && surahId <= 114
+    ? await getSurahMetaFromDb(surahId, 'ar')
+    : null;
   
   return pageMetadata({
     title: surahMeta ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
@@ -35,10 +38,13 @@ export async function generateMetadata({ params }: AyahPageProps): Promise<Metad
 
 export default async function AyahPage({ params }: AyahPageProps) {
   const p = await params;
-  const surahId = Number.parseInt(p.surah, 10);
-  const ayahId = Number.parseInt(p.ayah, 10);
+  const surahId = Number(p.surah);
+  const ayahId = Number(p.ayah);
 
-  if (Number.isNaN(surahId) || Number.isNaN(ayahId)) return notFound();
+  if (
+    !Number.isInteger(surahId) || surahId < 1 || surahId > 114 ||
+    !Number.isInteger(ayahId) || ayahId < 1
+  ) return notFound();
 
   const [dbSurahMeta, dbAyah, dbTafsirRecord] = await Promise.all([
     getSurahMetaFromDb(surahId, 'ar'),
@@ -85,10 +91,14 @@ export default async function AyahPage({ params }: AyahPageProps) {
           <div className='mt-8 flex items-center justify-between pt-6 border-t'>
             <div className="flex gap-4">
               <BookmarkButton keyRef={`quran:${surahId}:${ayah.numberInSurah}`} />
-              <Button variant="outline" size="sm" className="gap-2">
-                <Share2 className="h-4 w-4" />
-                مشاركة
-              </Button>
+              <ShareButton
+                title={`سورة ${surahMeta.name} — الآية ${ayah.numberInSurah}`}
+                text={ayah.text}
+                label="مشاركة"
+                sharedLabel="تم فتح خيارات المشاركة."
+                copiedLabel="تم نسخ نص الآية والرابط."
+                errorLabel="تعذرت مشاركة الآية أو نسخ الرابط."
+              />
             </div>
             <div className="text-sm text-muted-foreground">
               الجزء {ayah.juz} | الصفحة {ayah.page}
@@ -117,7 +127,7 @@ export default async function AyahPage({ params }: AyahPageProps) {
                 </div>
               </>
             ) : (
-              <p className="text-center text-muted-foreground italic">جاري تحميل التفسير...</p>
+              <p role="status" className="text-center text-muted-foreground italic">لا يتوفر تفسير مسجل لهذه الآية حالياً.</p>
             )}
           </CardContent>
         </Card>

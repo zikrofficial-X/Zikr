@@ -6,7 +6,8 @@ import { Container } from '@/components/ui/container';
 import { getHadithByNumber } from '@/features/hadith/services/hadith';
 import { resolveHadithDisplay } from '@/features/hadith/types/hadith';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Share2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
+import { ShareButton } from '@/components/ui/share-button';
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
 import { getRequestLocale } from '@/lib/i18n/server';
@@ -70,10 +71,14 @@ export default async function HadithDetail({ params }: HadithDetailPageProps) {
             <div className='flex items-center justify-between pt-6 border-t'>
               <div className="flex gap-4">
                 <BookmarkButton keyRef={`hadith:${bookSlug}:${h.number}`} />
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Share2 className="h-4 w-4" />
-                  {isEnglish ? "Share" : "مشاركة"}
-                </Button>
+                <ShareButton
+                  title={isEnglish ? `Hadith ${h.number}` : `حديث رقم ${h.number}`}
+                  text={display.text}
+                  label={isEnglish ? "Share" : "مشاركة"}
+                  sharedLabel={isEnglish ? "Share sheet opened." : "تم فتح خيارات المشاركة."}
+                  copiedLabel={isEnglish ? "Hadith text and link copied." : "تم نسخ الحديث والرابط."}
+                  errorLabel={isEnglish ? "Could not share or copy the link." : "تعذرت مشاركة الحديث أو نسخ الرابط."}
+                />
               </div>
 
               <div className="text-sm text-muted-foreground">
