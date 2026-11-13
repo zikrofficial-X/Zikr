@@ -3,9 +3,23 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { validateSiteAudioStorageObject, validateSiteAudioUploadPath } from "@/features/audio/services/site-audio-upload-contract";
 
 const KINDS = new Set(["adhan", "salawat", "dhikr"]);
 const select = "id,kind,title,storage_path,mime_type,size_bytes,is_primary,created_at,updated_at";
+
+async function recordAuditSafely(
+  event: Parameters<typeof recordAdminAuditEvent>[0],
+  context: string,
+): Promise<boolean> {
+  try {
+    await recordAdminAuditEvent(event);
+    return true;
+  } catch (error) {
+    console.error(`[api/admin/site-audio] audit event failed after ${context}:`, error);
+    return false;
+  }
+}
 
 export async function GET() {
   const guard = await requireAdminApi("audio.manage");
@@ -33,11 +47,48 @@ export async function POST(request: NextRequest) {
   if (!KINDS.has(kind) || !title || title.length > 120 || !storagePath || !mimeType || !Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) {
     return NextResponse.json({ error: "بيانات المقطع غير صالحة." }, { status: 400 });
   }
-  if (!storagePath.startsWith(guard.profile.id.toLowerCase() + "/")) {
-    return NextResponse.json({ error: "مسار الملف غير صالح." }, { status: 400 });
+
+  const pathValidation = validateSiteAudioUploadPath({
+    ownerId: guard.profile.id,
+    storagePath,
+    mimeType,
+    sizeBytes,
+  });
+  if (!pathValidation.ok) {
+    const error = pathValidation.reason === "invalid_path"
+      ? "مسار الملف غير صالح."
+      : pathValidation.reason === "invalid_mime_type"
+        ? "نوع ملف الصوت غير مدعوم."
+        : "حجم ملف الصوت غير صالح.";
+    return NextResponse.json({ error }, { status: 400 });
   }
 
-  const { data, error } = await createAdminClient()
+  const db = createAdminClient();
+  const { data: objects, error: storageListError } = await db.storage
+    .from("site-audio")
+    .list(pathValidation.directory, { search: pathValidation.fileName, limit: 10 });
+  if (storageListError) {
+    console.error("[api/admin/site-audio] upload verification failed:", storageListError);
+    return NextResponse.json({ error: "تعذر التحقق من الملف المرفوع. أعد المحاولة." }, { status: 503 });
+  }
+  const objectValidation = validateSiteAudioStorageObject({
+    fileName: pathValidation.fileName,
+    mimeType,
+    sizeBytes,
+    objects: objects ?? [],
+  });
+  if (!objectValidation.ok) {
+    const error = objectValidation.reason === "missing_object"
+      ? "لم يكتمل رفع الملف إلى التخزين بعد."
+      : objectValidation.reason === "size_mismatch"
+        ? "حجم الملف المخزن لا يطابق الحجم المرسل."
+        : objectValidation.reason === "mime_mismatch"
+          ? "نوع الملف المخزن لا يطابق نوع الصوت المرسل."
+          : "بيانات الملف المخزن غير مكتملة.";
+    return NextResponse.json({ error }, { status: objectValidation.reason === "missing_object" ? 409 : 400 });
+  }
+
+  const { data, error } = await db
     .from("site_audio_assets")
     .insert({
       kind,
@@ -51,14 +102,14 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await recordAdminAuditEvent({
+  const auditRecorded = await recordAuditSafely({
     action: "site_audio.asset.create",
     permission: "audio.manage",
     resourceType: "site_audio_assets",
     resourceId: data.id,
     metadata: { kind, mimeType, sizeBytes },
-  });
-  return NextResponse.json({ asset: data }, { status: 201 });
+  }, "asset creation");
+  return NextResponse.json({ asset: data, auditRecorded }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -94,7 +145,14 @@ export async function PATCH(request: NextRequest) {
     .eq("id", id)
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ asset: data });
+  const auditRecorded = await recordAuditSafely({
+    action: "site_audio.asset.set_primary",
+    permission: "audio.manage",
+    resourceType: "site_audio_assets",
+    resourceId: data.id,
+    metadata: { kind, isPrimary: data.is_primary === true },
+  }, "primary asset update");
+  return NextResponse.json({ asset: data, auditRecorded });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -134,12 +192,12 @@ export async function DELETE(request: NextRequest) {
   }
   const storageCleanupPending = false;
 
-  await recordAdminAuditEvent({
+  const auditRecorded = await recordAuditSafely({
     action: "site_audio.asset.delete",
     permission: "audio.manage",
     resourceType: "site_audio_assets",
     resourceId: id,
     metadata: { kind: asset.kind, storageCleanupPending },
-  });
-  return NextResponse.json({ ok: true, storageCleanupPending });
+  }, "asset deletion");
+  return NextResponse.json({ ok: true, storageCleanupPending, auditRecorded });
 }

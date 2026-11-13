@@ -97,7 +97,9 @@ export function SiteAudioManager() {
 
       setAssets(current => [payload.asset, ...current]);
       setTitle("");
-      setStatus("تم رفع المقطع. اختر «جعله الأساسي» لتفعيله.");
+      setStatus(payload.auditRecorded === false
+        ? "تم رفع المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
+        : "تم رفع المقطع. اختر «جعله الأساسي» لتفعيله.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "فشل رفع المقطع.");
     } finally {
@@ -121,7 +123,9 @@ export function SiteAudioManager() {
         ...item,
         is_primary: item.kind === asset.kind ? item.id === asset.id : item.is_primary,
       })));
-      setStatus("تم تعيين المقطع الأساسي.");
+      setStatus(payload.auditRecorded === false
+        ? "تم تفعيل المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
+        : "تم تعيين المقطع الأساسي.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "تعذر تفعيل المقطع.");
     } finally {
@@ -139,7 +143,9 @@ export function SiteAudioManager() {
       if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error ?? "تعذر حذف المقطع.");
       setAssets(current => current.filter(item => item.id !== asset.id));
-      setStatus("تم حذف المقطع.");
+      setStatus(payload.auditRecorded === false
+        ? "تم حذف المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
+        : "تم حذف المقطع.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "تعذر حذف المقطع.");
     } finally {

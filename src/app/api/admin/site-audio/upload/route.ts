@@ -4,8 +4,8 @@ import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sanitizeStorageSegment } from '@/lib/services/storage';
 
-const ALLOWED_TYPES = new Set(['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/mp4', 'audio/aac', 'audio/webm']);
-const MAX_BYTES = 50 * 1024 * 1024;
+const ALLOWED_TYPES = new Set<string>(SITE_AUDIO_ALLOWED_MIME_TYPES);
+const MAX_BYTES = SITE_AUDIO_MAX_BYTES;
 
 export async function POST(request: NextRequest) {
   const guard = await requireAdminApi('audio.manage');
