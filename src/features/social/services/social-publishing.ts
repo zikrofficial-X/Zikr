@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { assertCloudinaryVideoUrl } from "@/features/videos/services/video-media-url";
 import { publishFacebookReelWithIds, publishToFacebook, publishToYoutube } from "@/features/videos/services/video-automation";
@@ -565,85 +564,6 @@ async function publishPlatform(
  * has confirmed publication. Provider post IDs and the text/audit records stay.
  * Supabase originals are kept only until Cloudinary and Supabase cleanup succeed.
  */
-async function deleteManagedVideoUrl(
-  value: string,
-  env: ReturnType<typeof getServerEnv>,
-) {
-  const parsed = new URL(value);
-
-  if (parsed.hostname === "res.cloudinary.com") {
-    const parts = parsed.pathname.split("/").filter(Boolean);
-    const uploadIndex = parts.indexOf("upload");
-    if (uploadIndex < 0) throw new Error("Unrecognized Cloudinary delivery URL");
-
-    const publicParts = parts.slice(uploadIndex + 1);
-    const version = publicParts[0] ?? "";
-    if (version.startsWith("v") && version.slice(1).length > 0 && [...version.slice(1)].every(character => character >= "0" && character <= "9")) {
-      publicParts.shift();
-    }
-    const fileName = publicParts.pop() ?? "";
-    const extensionIndex = fileName.lastIndexOf(".");
-    const publicId = [...publicParts, extensionIndex > 0 ? fileName.slice(0, extensionIndex) : fileName].filter(Boolean).join("/");
-    const cloudName = env.CLOUDINARY_CLOUD_NAME;
-    if (parts[0] !== cloudName || parts[1] !== "video" || parts[2] !== "upload" || !publicId.startsWith("auto-")) {
-      throw new Error("Only ZIKR auto-generated upload videos can be deleted");
-    }
-    const apiKey = env.CLOUDINARY_API_KEY;
-    const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-    if (!cloudName || !apiKey || !apiSecret || !publicId) {
-      throw new Error("Cloudinary delete credentials or public ID are unavailable");
-    }
-
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signatureBase = "public_id=" + publicId + "&timestamp=" + timestamp + apiSecret;
-    const signature = createHash("sha1").update(signatureBase).digest("hex");
-    const form = new URLSearchParams({ public_id: publicId, timestamp, api_key: apiKey, signature });
-    const response = await fetch(
-      "https://api.cloudinary.com/v1_1/" + encodeURIComponent(cloudName) + "/video/destroy",
-      { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: form, signal: AbortSignal.timeout(15_000) },
-    );
-    const result = await response.json().catch(() => ({})) as { result?: string; error?: { message?: string } };
-    if (!response.ok || (result.result !== "ok" && result.result !== "not found")) {
-      throw new Error(result.error?.message || "Cloudinary asset deletion failed");
-    }
-    return;
-  }
-
-  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl || parsed.hostname !== new URL(supabaseUrl).hostname) {
-    throw new Error("Video URL is not a managed ZIKR media asset");
-  }
-  const publicPrefix = "/storage/v1/object/public/videos/";
-  if (!parsed.pathname.startsWith(publicPrefix)) {
-    throw new Error("Supabase video URL is outside the managed videos bucket");
-  }
-  const objectPath = parsed.pathname.slice(publicPrefix.length);
-  if (!objectPath) throw new Error("Supabase video object path is empty");
-  const encodedPath = objectPath
-    .split("/")
-    .map(segment => encodeURIComponent(decodeURIComponent(segment)))
-    .join("/");
-  try {
-    await supabaseServerAdminRequest("/storage/v1/object/videos/" + encodedPath, {
-      method: "DELETE",
-      // The DELETE request has no body; the shared REST helper omits Content-Type.
-    });
-  } catch (error) {
-    // Cleanup is idempotent: a retry after a previous successful DELETE may see 404.
-    const message = error instanceof Error ? error.message : String(error);
-    const alreadyMissing =
-      message.startsWith("Supabase REST 404:") ||
-      message.includes('"code":"NoSuchKey"') ||
-      message.includes('"message":"Object not found"');
-    if (!alreadyMissing) throw error;
-  }
-}
-
-/**
- * Remove temporary video artifacts only after every requested social target
- * has confirmed publication. Provider post IDs and text/audit records stay.
- * Failed cleanup is retried by the social publishing worker.
- */
 async function syncKidsSocialPublicationToCatalog(
   item: SocialPublishQueueItem,
   queueMetadata: Record<string, unknown>,
@@ -872,118 +792,19 @@ async function disposePublishedVideo(item: SocialPublishQueueItem): Promise<bool
     },
   });
 }
-export async function resetQueuedSocialVideoMedia(limit = 100): Promise<{ attempted: number; cleaned: number; pending: number }> {
-  const maxItems = Math.max(1, Math.min(100, Math.floor(limit)));
-  const cutoff = new Date(process.env.SOCIAL_PUBLISH_AFTER ?? "2026-11-06T20:00:00Z");
-  if (!Number.isFinite(cutoff.getTime())) throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff.");
-  const createdSince = encodeURIComponent(cutoff.toISOString());
-  const select = "select=id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at&";
-  const queueItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-    "/rest/v1/social_publish_queue?status=eq.queued&created_at=gte." + createdSince + "&video_url=not.is.null&" + select + "order=created_at.asc&limit=" + maxItems,
+/**
+ * Disabled after audit: the former reset path could delete the Cloudinary
+ * playback master and Supabase staging copy without a complete cross-table
+ * reference inventory or a queue-row lease. Staging cleanup must go through
+ * the audited retention workflow; this helper intentionally performs no I/O.
+ */
+export async function resetQueuedSocialVideoMedia(
+  _limit = 100,
+): Promise<{ attempted: number; cleaned: number; pending: number }> {
+  throw new Error(
+    "Queued social media reset is disabled; use the audited storage-retention workflow after a complete reference and playback check.",
   );
-  const retryItems = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-    "/rest/v1/social_publish_queue?status=eq.failed&created_at=gte." + createdSince + "&metadata->>queueResetPending=eq.true&video_url=not.is.null&" + select + "order=updated_at.asc&limit=" + maxItems,
-  );
-  const items = [...(queueItems ?? []), ...(retryItems ?? [])];
-  if (!items.length) return { attempted: 0, cleaned: 0, pending: 0 };
-
-  const ids = items.map(item => item.content_id).filter((id): id is string => Boolean(id));
-  if (ids.length !== items.length || new Set(ids).size !== items.length ||
-      new Set(items.map(item => item.video_url)).size !== items.length) {
-    throw new Error("Reset stopped: queued media rows must have unique request IDs and video URLs.");
-  }
-
-  const requests = await supabaseServerAdminRequest<QueueResetGeneration[]>(
-    "/rest/v1/video_generation_requests?id=in.(" + ids.join(",") + ")&select=id,status,video_url,content",
-  );
-  const byId = new Map((requests ?? []).map(request => [request.id, request]));
-  const env = getServerEnv();
-  const expectedHost = env.NEXT_PUBLIC_SUPABASE_URL ? new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname : "";
-  const plan = items.map(item => {
-    if (!isVideoContentType(item.content_type) || !item.content_id || !item.video_url) {
-      throw new Error("Reset stopped: selected queue item is not a video.");
-    }
-    const request = byId.get(item.content_id);
-    if (!request || !["completed", "failed"].includes(request.status) || request.video_url !== item.video_url) {
-      throw new Error("Reset stopped: generation request mismatch for " + item.id);
-    }
-    const queueBackup = item.metadata?.supabaseOriginalVideoUrl;
-    const requestBackup = request.content?.supabaseOriginalVideoUrl;
-    const backupUrl = typeof queueBackup === "string"
-      ? queueBackup
-      : typeof requestBackup === "string" ? requestBackup : null;
-    const delivery = new URL(item.video_url);
-    if (delivery.protocol !== "https:" || delivery.hostname !== "res.cloudinary.com" ||
-        !delivery.pathname.includes("/video/upload/")) {
-      throw new Error("Reset stopped: unmanaged Cloudinary delivery URL for " + item.id);
-    }
-    if (backupUrl !== null) {
-      const backup = new URL(backupUrl);
-      if (!expectedHost || backup.protocol !== "https:" || backup.hostname !== expectedHost ||
-          !backup.pathname.startsWith("/storage/v1/object/public/videos/automated/") ||
-          !backup.pathname.endsWith(".mp4")) {
-        throw new Error("Reset stopped: unmanaged legacy Supabase backup for " + item.id);
-      }
-    }
-    return { item, request, backupUrl };
-  });
-
-  let cleaned = 0;
-  let pending = 0;
-  for (const { item, request, backupUrl } of plan) {
-    const content = request.content ?? {};
-    const resetAt = new Date().toISOString();
-    await markQueueItem(item.id, "failed", {
-      error_message: "Operator reset: pending video discarded before publication.",
-      metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true },
-    });
-    await supabaseServerAdminRequest("/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(request.id), {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        status: "failed",
-        error_message: "Operator reset: pending video discarded before publication.",
-        content: { ...content, supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true },
-        updated_at: resetAt,
-      }),
-    });
-
-    try {
-      if (backupUrl !== null) await deleteManagedVideoUrl(backupUrl, env);
-      await deleteManagedVideoUrl(item.video_url as string, env);
-      const disposedAt = new Date().toISOString();
-      await supabaseServerAdminRequest("/rest/v1/video_generation_requests?id=eq." + encodeURIComponent(request.id), {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          video_url: null,
-          content: { ...content, supabaseOriginalVideoUrl: null, queueResetAt: resetAt, queueResetPending: false, videoDisposedAt: disposedAt },
-          updated_at: disposedAt,
-        }),
-      });
-      await markQueueItem(item.id, "failed", {
-        video_url: null,
-        metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: null, queueResetAt: resetAt, queueResetPending: false, videoDisposedAt: disposedAt },
-      });
-      cleaned += 1;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await markQueueItem(item.id, "failed", {
-        error_message: "Operator reset started; video cleanup is pending retry.",
-        metadata: { ...(item.metadata ?? {}), supabaseOriginalVideoUrl: backupUrl, queueResetAt: resetAt, queueResetPending: true, queueResetError: message.slice(0, 1000) },
-      });
-      pending += 1;
-    }
-  }
-  return { attempted: plan.length, cleaned, pending };
 }
-
-type QueueResetGeneration = {
-  id: string;
-  status: string;
-  video_url: string | null;
-  content: Record<string, unknown> | null;
-};
 
 export async function retryPendingPublishedVideoCleanup(limit = 25): Promise<{
   attempted: number;

@@ -156,6 +156,20 @@ if (!mediaDisposal.includes("stagingCleanupEligibleAt") ||
     mediaDisposal.includes("video_url: null")) {
   failures.push("social publishing must preserve both media pointers and defer staging-copy deletion to the 48-hour retention worker");
 }
+const resetStart = socialPublishingService.indexOf("export async function resetQueuedSocialVideoMedia(");
+const resetEnd = socialPublishingService.indexOf("export async function retryPendingPublishedVideoCleanup(", resetStart);
+const resetSource = resetStart >= 0 && resetEnd > resetStart
+  ? socialPublishingService.slice(resetStart, resetEnd)
+  : "";
+if (
+  !resetSource.includes("throw new Error") ||
+  resetSource.includes("supabaseServerAdminRequest") ||
+  resetSource.includes("deleteManagedVideoUrl") ||
+  resetSource.includes("video_url: null") ||
+  socialPublishingService.includes("deleteManagedVideoUrl")
+) {
+  failures.push("queued social media reset must remain disabled until it can prove full reference safety; it must not delete playback masters or staging objects");
+}
 const publishedDeleteStart = socialApi.indexOf('if (action === "delete_published")');
 const publishedDeleteEnd = socialApi.indexOf('return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });', publishedDeleteStart);
 const publishedDeleteBody = publishedDeleteStart >= 0 && publishedDeleteEnd > publishedDeleteStart
