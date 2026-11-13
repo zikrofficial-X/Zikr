@@ -88,7 +88,7 @@ const deletedResult = await deleteCloudinaryImageIfUnreferenced(
       assert.equal(String(input), "https://api.cloudinary.com/v1_1/demo-cloud/image/destroy");
       assert.equal(init?.method, "POST");
       assert.ok(init?.body instanceof FormData);
-      const form = init.body as FormData;
+      const form = init?.body as FormData;
       const timestamp = String(Math.floor(cleanupNow.getTime() / 1000));
       assert.equal(form.get("public_id"), cleanupPublicId);
       assert.equal(form.get("timestamp"), timestamp);
