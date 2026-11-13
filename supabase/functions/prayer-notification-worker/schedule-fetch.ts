@@ -1,4 +1,3 @@
-
 export function normalizePrayerTimings(
   value: unknown,
   requiredPrayers: readonly string[],
@@ -11,7 +10,7 @@ export function normalizePrayerTimings(
     const raw = record[prayer];
     if (typeof raw !== "string") return null;
     const normalized = raw.trim();
-    const match = /^(\\d{1,2}):([0-5]\\d)(?:\\s|$)/.exec(normalized);
+    const match = /^(\d{1,2}):([0-5]\d)(?:\s|$)/.exec(normalized);
     if (!match || Number(match[1]) > 23) return null;
     timings[prayer] = normalized;
   }
