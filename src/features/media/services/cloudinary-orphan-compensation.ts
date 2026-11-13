@@ -115,7 +115,7 @@ const DEFINITIVE_SUPABASE_INSERT_REJECTION_STATUSES = new Set([
  */
 export function isDefinitiveSupabaseInsertRejection(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
-  const match = /^Supabase REST (\\d{3}):/.exec(error.message);
+  const match = /^Supabase REST (\d{3}):/.exec(error.message);
   return Boolean(
     match &&
       DEFINITIVE_SUPABASE_INSERT_REJECTION_STATUSES.has(Number(match[1])),
