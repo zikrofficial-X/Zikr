@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "../../supabase/functions/prayer-notification-worker/delivery-lease";
-import { fetchScheduleOrSkip } from "../../supabase/functions/prayer-notification-worker/schedule-fetch";
+import {
+  fetchScheduleOrSkip,
+  normalizePrayerTimings,
+} from "../../supabase/functions/prayer-notification-worker/schedule-fetch";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import {
   buildNotificationTag,
@@ -20,6 +23,53 @@ import {
   normalizePushSubscriptionRequestBody,
   parsePushCoordinate,
 } from "../../src/features/notifications/services/push-subscription-request";
+
+const requiredPrayerNames = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
+const validProviderTimings = {
+  Fajr: "05:00 (EET)",
+  Sunrise: "06:20 (EET)",
+  Dhuhr: "11:45 (EET)",
+  Asr: "14:50 (EET)",
+  Maghrib: "17:10 (EET)",
+  Isha: "18:30 (EET)",
+};
+assert.deepEqual(
+  normalizePrayerTimings(validProviderTimings, requiredPrayerNames),
+  validProviderTimings,
+  "complete Aladhan-style timing objects must retain all required prayer times",
+);
+for (const malformedTimings of [
+  null,
+  "not-an-object",
+  [],
+  {},
+  { ...validProviderTimings, Isha: undefined },
+  { ...validProviderTimings, Dhuhr: 12 },
+  { ...validProviderTimings, Fajr: "99:00" },
+  { ...validProviderTimings, Maghrib: "17:99" },
+  { ...validProviderTimings, Sunrise: "not-a-time" },
+]) {
+  assert.equal(
+    normalizePrayerTimings(malformedTimings, requiredPrayerNames),
+    null,
+    "incomplete or malformed provider/cache timings must be rejected",
+  );
+}
+
+const malformedScheduleKeys = new Set<string>();
+const malformedSchedule = await fetchScheduleOrSkip(
+  "location-malformed|2026-11-13",
+  malformedScheduleKeys,
+  async () => {
+    const normalized = normalizePrayerTimings({}, requiredPrayerNames);
+    if (!normalized) throw new Error("Prayer-time provider returned incomplete or malformed timings");
+    return normalized;
+  },
+  () => undefined,
+);
+assert.equal(malformedSchedule, null, "an invalid timing payload must be treated as a failed location/date fetch");
+assert.equal(malformedScheduleKeys.has("location-malformed|2026-11-13"), true,
+  "an invalid timing payload must be cached as a failure for the current worker page");
 
 assert.equal(isAllowedPushEndpoint("https://fcm.googleapis.com/fcm/send/subscription-token"), true);
 assert.equal(isAllowedPushEndpoint("https://updates.push.services.mozilla.com/wpush/v2/subscription-token"), true);
@@ -123,6 +173,10 @@ await assert.rejects(
 );
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
+assert.match(worker, /normalizePrayerTimings\(cache\.timings, PRAYERS\)/,
+  "malformed cached timings must be treated as a cache miss and refreshed");
+assert.match(worker, /normalizePrayerTimings\(payload\.data\?\.timings, PRAYERS\)/,
+  "provider responses must be complete and validated before they enter the schedule cache");
 const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
 const serviceWorker = readFileSync("public/sw.js", "utf8");
 const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(\s*await request\.json\(\)\.catch\(\(\) => null\)\s*\)/g) ?? [];
