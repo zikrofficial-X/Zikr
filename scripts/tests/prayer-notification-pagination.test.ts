@@ -894,6 +894,12 @@ assert.doesNotMatch(
   /nmdeazfmtncelykzxkhs/,
   "source-agent cron migrations must not retain the legacy Supabase project reference",
 );
+assert.match(sourceAgentCronMigration, /pg_attribute/);
+assert.match(
+  sourceAgentCronMigration,
+  /attname IN \('jobid', 'jobname', 'command', 'schedule', 'active'\)/,
+  "the migration must fail closed when the local pg_cron stub lacks required columns",
+);
 assert.match(sourceAgentCronMigration, /cron\.alter_job/);
 assert.match(sourceAgentCronMigration, /cron\.schedule\(/);
 assert.match(sourceAgentCronMigration, /zikr-source-verified-content-agent/);
