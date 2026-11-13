@@ -1,4 +1,5 @@
 import { normalizeSocialPlatformResults } from "./platform-availability";
+import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 export type WrittenGenerationRequest = {
  category: WrittenCategory;
@@ -391,15 +392,20 @@ function getConfirmedPublicWrittenPlatforms(
   (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
    typeof platform === "string" && allowed.has(platform),
  ))];
- const isDeleted = (platform: string) => asWrittenRecord(deletions[platform]).status === "deleted";
+ const isDeleted = (platform: string, deliveryRemoteId?: string) =>
+  isSocialPlatformDeletionCurrent(
+   deletions[platform],
+   deliveryRemoteId,
+   row.published_at,
+  );
  const hasResultLedger = rawResults !== null && typeof rawResults === "object";
  if (hasResultLedger) {
   return targets.filter((platform) => {
-   if (isDeleted(platform)) return false;
    const result = asWrittenRecord(results[platform]);
+   const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
    return result.ok === true &&
-    typeof result.remoteId === "string" &&
-    result.remoteId.trim().length > 0;
+    remoteId.length > 0 &&
+    !isDeleted(platform, remoteId);
   });
  }
  if (row.status !== "published") return [];

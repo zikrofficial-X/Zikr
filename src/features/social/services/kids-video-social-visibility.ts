@@ -1,4 +1,5 @@
 import { normalizeSocialPlatformResults } from "./platform-availability";
+import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
 
@@ -23,23 +24,12 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
     ? rawPlatformResults.length > 0
     : Object.keys(platformResults).length > 0;
   const platformDeletions = asRecord(metadata.platformDeletions);
-  const rowPublishedAt = typeof row.published_at === "string" ? Date.parse(row.published_at) : Number.NaN;
-  const isDeleted = (platform: string, deliveryRemoteId?: string) => {
-    const deletion = asRecord(platformDeletions[platform]);
-    if (deletion.status !== "deleted") return false;
-
-    const deletedRemoteId = typeof deletion.remoteId === "string" ? deletion.remoteId.trim() : "";
-    if (deletedRemoteId) {
-      // A shared queue published_at can advance when another platform retries.
-      // Tie confirmed deletions to the exact remote post ID instead.
-      return !deliveryRemoteId || deletedRemoteId === deliveryRemoteId;
-    }
-
-    const deletedAt = typeof deletion.deletedAt === "string" ? Date.parse(deletion.deletedAt) : Number.NaN;
-    // Legacy deletion rows use their timestamp to distinguish a later
-    // publication from the post that was removed.
-    return !Number.isFinite(rowPublishedAt) || !Number.isFinite(deletedAt) || deletedAt >= rowPublishedAt;
-  };
+  const isDeleted = (platform: string, deliveryRemoteId?: string) =>
+    isSocialPlatformDeletionCurrent(
+      platformDeletions[platform],
+      deliveryRemoteId,
+      row.published_at,
+    );
 
   const delivered = Object.entries(platformResults)
     .filter(([platform, value]) => {

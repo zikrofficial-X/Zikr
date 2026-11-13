@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { loadKidsSocialQueueRows } from "../../src/features/social/services/kids-video-social-query";
 import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
+import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 import {
   getFallbackKidsContentBySlug,
   isKidsContentPubliclyVisible,
@@ -435,6 +436,59 @@ assert.deepEqual(
   resolveKidsVideoSocialPublication([republishedAfterDeletionSameRow], null, true),
   { status: "published", platforms: ["youtube"], publishedAt: "2026-11-11T12:10:00.000Z" },
   "same-row republishing must preserve the latest confirmed remote publication",
+);
+
+const oldRemoteDeletion = {
+  status: "deleted",
+  remoteId: "yt-video-123",
+  deletedAt: "2026-11-11T12:06:00.000Z",
+};
+assert.equal(
+  isSocialPlatformDeletionCurrent(oldRemoteDeletion, null, "2026-11-11T12:10:00.000Z"),
+  false,
+  "an older deletion with a known provider ID must not hide a later legacy delivery whose current remote ID is absent",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(oldRemoteDeletion, "yt-video-123", "2026-11-11T12:10:00.000Z"),
+  true,
+  "an exact matching provider ID remains deleted even when a shared queue timestamp advances",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(oldRemoteDeletion, "yt-video-789", "2026-11-11T12:00:00.000Z"),
+  false,
+  "a deletion for a different provider ID must not hide the current delivery",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent({ status: "deleted", remoteId: "yt-video-123" }, null, "not-a-timestamp"),
+  true,
+  "missing or invalid timestamps must fail closed when no current provider ID can disambiguate the delivery",
+);
+
+const legacyRepublishedAfterRemoteDeletion = {
+  ...originalYoutubeQueueRow,
+  published_at: "2026-11-11T12:10:00.000Z",
+  metadata: {
+    audience: "kids",
+    platformDeletions: { youtube: oldRemoteDeletion },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(legacyRepublishedAfterRemoteDeletion),
+  ["youtube"],
+  "a later legacy Kids publication must not be hidden by an older deletion record that contains only the previous provider ID",
+);
+const sameRemoteIdStillDeleted = {
+  ...originalYoutubeQueueRow,
+  metadata: {
+    audience: "kids",
+    platformResults: { youtube: { ok: true, remoteId: "yt-video-123" } },
+    platformDeletions: { youtube: oldRemoteDeletion },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(sameRemoteIdStillDeleted),
+  [],
+  "a confirmed deletion must still hide the exact provider delivery it removed",
 );
 const sameTimestampPublication = {
   ...originalYoutubeQueueRow,

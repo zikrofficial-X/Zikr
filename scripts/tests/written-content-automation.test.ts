@@ -229,6 +229,45 @@ assert.deepEqual(
  ["facebook"],
  "new written posts must expose only a platform with a confirmed remote post ID",
 );
+const republishedWrittenPost = {
+ ...confirmedWrittenPost,
+ published_at: "2026-11-11T12:10:00.000Z",
+ metadata: {
+  ...confirmedWrittenPost.metadata,
+  platformResults: { facebook: { ok: true, remoteId: "fb-written-new-456" } },
+  platformDeletions: {
+   facebook: {
+    status: "deleted",
+    remoteId: "fb-written-123",
+    deletedAt: "2026-11-11T12:06:00.000Z",
+   },
+  },
+ },
+};
+assert.deepEqual(
+ buildPublicKidsWrittenPost(republishedWrittenPost, liveKidsStory)?.platforms,
+ ["facebook"],
+ "a confirmed new written-post provider ID must supersede deletion of the previous provider post",
+);
+const republishedLegacyWrittenPost = {
+ ...queueRow,
+ published_at: "2026-11-11T12:10:00.000Z",
+ metadata: {
+  ...queueRow.metadata,
+  platformDeletions: {
+   facebook: {
+    status: "deleted",
+    remoteId: "fb-written-old-123",
+    deletedAt: "2026-11-11T12:06:00.000Z",
+   },
+  },
+ },
+};
+assert.deepEqual(
+ buildPublicKidsWrittenPost(republishedLegacyWrittenPost, liveKidsStory)?.platforms,
+ ["facebook"],
+ "a later legacy written post must not be hidden by an older deletion record when its current remote ID is absent",
+);
 assert.equal(
  buildPublicKidsWrittenPost({
   ...confirmedWrittenPost,

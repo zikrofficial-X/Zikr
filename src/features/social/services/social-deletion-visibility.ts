@@ -19,11 +19,15 @@ export function isSocialPlatformDeletionCurrent(
   if (deletion.status !== "deleted") return false;
 
   const deletedRemoteId = typeof deletion.remoteId === "string" ? deletion.remoteId.trim() : "";
-  if (deletedRemoteId) {
-    const deliveryRemoteId = typeof deliveryRemoteIdValue === "string"
-      ? deliveryRemoteIdValue.trim()
-      : "";
-    return !deliveryRemoteId || deletedRemoteId === deliveryRemoteId;
+  const deliveryRemoteId = typeof deliveryRemoteIdValue === "string"
+    ? deliveryRemoteIdValue.trim()
+    : "";
+
+  // Exact provider IDs are authoritative when both deliveries are known. If
+  // the current row is legacy/unlinked and has no ID, fall back to timestamps
+  // so a later publication is not hidden by an older deletion record.
+  if (deletedRemoteId && deliveryRemoteId) {
+    return deletedRemoteId === deliveryRemoteId;
   }
 
   const deletedAt = typeof deletion.deletedAt === "string"
