@@ -93,7 +93,7 @@ export type KidsVideoSocialPublication = {
 /**
  * Aggregate the original social queue row and any supplemental target rows for
  * one generated Kids video. A newer supplemental row must not hide confirmed
- * platforms from the original row, and a confirmed deletion wins across rows.
+ * platforms from the original row, and deletion state stays scoped to its exact remote post.
  */
 export function resolveKidsVideoSocialPublication(
   rowsInput: readonly unknown[],
@@ -161,10 +161,10 @@ export function resolveKidsVideoSocialPublication(
     if (Number.isFinite(publicationTimestamp)) {
       for (const platform of getConfirmedPublicKidsVideoSocialPlatforms(record)) {
         const current = latestByPlatform.get(platform);
-      if (
-        !current ||
-        publicationTimestamp > current.timestamp
-      ) {
+        if (
+          !current ||
+          publicationTimestamp > current.timestamp
+        ) {
           latestByPlatform.set(platform, {
             timestamp: publicationTimestamp,
             publishedAt: rowPublishedAt,
@@ -172,6 +172,7 @@ export function resolveKidsVideoSocialPublication(
         }
       }
     }
+  }
 
   const platforms = [...SOCIAL_PLATFORMS].filter((platform) => latestByPlatform.has(platform));
   if (platforms.length === 0) return null;
