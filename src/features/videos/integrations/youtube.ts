@@ -212,9 +212,14 @@ function toYoutubeChannel(row: Record<string, unknown> | null): YoutubeChannel |
   };
 }
 
-async function readCachedChannel(): Promise<YoutubeChannel | null> {
+async function readCachedChannel(channelId: string): Promise<YoutubeChannel | null> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from('social_platform_profiles').select('*').eq('platform', 'youtube').maybeSingle();
+  const { data, error } = await supabase
+    .from('social_platform_profiles')
+    .select('*')
+    .eq('platform', 'youtube')
+    .eq('external_id', channelId)
+    .maybeSingle();
   if (error) throw error;
   return toYoutubeChannel((data ?? null) as Record<string, unknown> | null);
 }
@@ -270,7 +275,7 @@ export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeCha
     const [videos, health, channel] = await Promise.all([
       readCachedVideos(YOUTUBE_CHANNEL_ID),
       readSyncHealth(YOUTUBE_CHANNEL_ID),
-      readCachedChannel(),
+      readCachedChannel(YOUTUBE_CHANNEL_ID),
     ]);
     const nextAllowed = health.nextAllowedSyncAt ? new Date(health.nextAllowedSyncAt).getTime() : 0;
     if (videos.length === 0 || nextAllowed <= Date.now()) return await syncYoutubeFeed(maxResults);
@@ -292,7 +297,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
   const nextAllowed = health.nextAllowedSyncAt ? new Date(health.nextAllowedSyncAt).getTime() : 0;
   const lastAttempted = health.lastAttemptedAt ? new Date(health.lastAttemptedAt).getTime() : 0;
   if (nextAllowed > now || (lastAttempted > now - SYNC_LOCK_MS && !health.lastSuccessAt)) {
-    const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel()]);
+    const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel(channelId)]);
     return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: health.cachedPlaylists, stale: true, error: health.lastError ?? 'YouTube sync is temporarily throttled.', errorCode: health.status === 'quota_exceeded' ? 'quota_exceeded' : 'unknown' };
   }
 
@@ -351,7 +356,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
     const cooldown = errorCode === 'quota_exceeded' ? QUOTA_COOLDOWN_MS : ERROR_COOLDOWN_MS;
     const message = safeYoutubeErrorMessage(error);
     await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: errorCode === 'quota_exceeded' ? 'quota_exceeded' : 'error', last_attempted_at: new Date().toISOString(), next_allowed_sync_at: new Date(Date.now() + cooldown).toISOString(), last_error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted.' : message.slice(0, 500) });
-    const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel()]);
+    const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel(channelId)]);
     return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: health.cachedPlaylists, stale: cached.length > 0 || health.cachedPlaylists.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
   }
 }
