@@ -241,4 +241,31 @@ assert.ok(
   "Kids governance must include legacy assets explicitly typed as Kids even when metadata tags are absent",
 );
 
-console.log("Cloudinary raster signature and orphan compensation contracts passed.");
+
+const mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
+assert.match(
+  mediaAssetsSource,
+  /export class AdminMediaInputError/,
+  "media asset validation must have a typed client-input error",
+);
+assert.match(
+  mediaAssetsSource,
+  /validateCloudinaryImage\(input\.file, MAX_IMAGE_BYTES\)[\s\S]*?new AdminMediaInputError/,
+  "invalid raster signatures must be classified as client input errors before upload",
+);
+assert.match(
+  mediaAssetsRouteSource,
+  /error instanceof AdminMediaInputError[\s\S]*?responseError\(error\.message, 400\)/,
+  "invalid media uploads must return HTTP 400 instead of an internal-server error",
+);
+assert.match(
+  mediaAssetsRouteSource,
+  /audit event unavailable after asset creation/,
+  "an audit-log outage after a committed upload must not report the upload as failed",
+);
+assert.match(
+  mediaAssetsRouteSource,
+  /audit event unavailable after asset update/,
+  "an audit-log outage after a committed metadata update must not report the update as failed",
+);
+\nconsole.log("Cloudinary raster signature and orphan compensation contracts passed.");
