@@ -65,7 +65,12 @@ BEGIN
         ORDER BY jobid DESC
         LIMIT 1;
 
+        -- A matching URL is not enough: an older/malformed command can still
+        -- omit the scheduler-secret header or the expected pg_cron source.
         IF v_command LIKE '%' || v_target_url || '%'
+          AND position('net.http_post(' in v_command) > 0
+          AND position('public.get_push_scheduler_secret()' in v_command) > 0
+          AND position('jsonb_build_object(''source'', ''pg_cron'')' in v_command) > 0
           AND v_schedule = '0 3 * * *'
           AND v_active THEN
           RETURN;

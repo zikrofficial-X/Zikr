@@ -109,6 +109,11 @@ jobs:
         run: bash scripts/tests/admin-managed-write-rls.integration.sh
         timeout-minutes: 5
 
+      - name: Verify source-agent cron reconciliation against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/source-agent-cron-reconcile.integration.sh
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |
