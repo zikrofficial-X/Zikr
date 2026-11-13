@@ -9,6 +9,7 @@ import {
   isInQuietHours,
 } from "@/features/notifications/services/notifications";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { syncBackgroundReminderTimeZone } from "@/features/reminders/services/reminder-timezone-sync";
 
 export type { SalawatInterval, QuietHours, SalawatSettings } from "@/features/reminders/services/reminder-settings";
 import {
@@ -173,6 +174,10 @@ export function useSalawatReminder(
         if (!response.ok) return;
         const data = await response.json();
         if (cancelled) return;
+        void syncBackgroundReminderTimeZone({
+          userId: session.user.id,
+          serverTimeZone: data.timezone,
+        });
         const next = normalizeSalawatSettings({
           enabled: data.salawat_enabled === true,
           intervalMinutes: data.salawat_interval_minutes,
@@ -200,6 +205,44 @@ export function useSalawatReminder(
     return () =>
       window.removeEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
   }, []);
+
+  // Reconcile the server's account-level timezone when the user signs in or
+  // returns to the app after changing the device timezone.
+  useEffect(() => {
+    if (passive) return;
+    let cancelled = false;
+    const syncTimeZone = () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      void getAuthenticatedSession().then(session => {
+        if (cancelled || !session?.user) return;
+        void syncBackgroundReminderTimeZone({ userId: session.user.id });
+      });
+    };
+
+    let unsubscribe = () => {};
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          void syncBackgroundReminderTimeZone({ userId: session.user.id });
+        }
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch {
+      // The regular authenticated preference load remains the primary path.
+    }
+
+    window.addEventListener("zikr:native-app-state", syncTimeZone);
+    window.addEventListener("focus", syncTimeZone);
+    document.addEventListener("visibilitychange", syncTimeZone);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      window.removeEventListener("zikr:native-app-state", syncTimeZone);
+      window.removeEventListener("focus", syncTimeZone);
+      document.removeEventListener("visibilitychange", syncTimeZone);
+    };
+  }, [passive]);
 
   // Set up native reminders whenever settings change; these continue when the app is closed.
   // Re-run after the Capacitor bridge is ready and whenever Android resumes the
