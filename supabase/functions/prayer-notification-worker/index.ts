@@ -11,7 +11,7 @@ import {
   previousLocalDate,
   zonedDateTime,
 } from "./time-zone.ts";
-import { fetchScheduleOrSkip } from "./schedule-fetch.ts";
+import { fetchScheduleOrSkip, normalizePrayerTimings } from "./schedule-fetch.ts";
 import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
 import { createAsyncSerialQueue } from "../../../src/lib/async-serial-queue.ts";
 import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "./delivery-lease.ts";
@@ -244,7 +244,8 @@ function scheduleCacheMatches(
     Number(cache.longitude) === Number(location.longitude) &&
     cache.timezone === timeZone &&
     cache.calculation_method === method &&
-    cache.madhab === madhab
+    cache.madhab === madhab &&
+    normalizePrayerTimings(cache.timings, PRAYERS) !== null
   );
 }
 
@@ -268,11 +269,12 @@ async function fetchTimings(
     throw new Error(`Prayer-time provider returned HTTP ${response.status}`);
 
   const payload = (await response.json()) as {
-    data?: { timings?: Record<string, string> };
+    data?: { timings?: unknown };
   };
-  if (!payload.data?.timings)
-    throw new Error("Prayer-time provider returned no timings");
-  return payload.data.timings;
+  const timings = normalizePrayerTimings(payload.data?.timings, PRAYERS);
+  if (!timings)
+    throw new Error("Prayer-time provider returned incomplete or malformed timings");
+  return timings;
 }
 
 async function loadVapidBundle(): Promise<VapidBundle> {
