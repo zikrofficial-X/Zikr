@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { saveOfflinePreference } from "@/lib/offline-settings";
 import { CURATED_AUDIO_CHOICES } from "@/lib/audio/curated-library";
 
@@ -170,15 +171,26 @@ export function getAudioUrl(slot: AudioSlot): string {
   return getAudioChoice(getAudioSettingsFromStorage()[slot]).webUrl;
 }
 
-export function getNativeAudio(slot: AudioSlot): {
+export function getNativeAudio(
+  slot: AudioSlot,
+  platform: string = Capacitor.getPlatform(),
+): {
   sound: string;
   channelId: string;
 } {
   const settings = getAudioSettingsFromStorage();
   const choice = getAudioChoice(settings[slot]);
   const native = choice.nativeFile ? choice : getBundledFallback(slot);
+
+  // iOS notification sounds must be present in the native app bundle and use
+  // supported WAV/CAF formats. The iOS target ships only adhan.wav/salawat.wav;
+  // remote choices and the Android-only MP3 fallback remain foreground audio.
+  const sound = platform === "ios"
+    ? slot === "salawat" ? "salawat.wav" : "adhan.wav"
+    : native.nativeFile as string;
+
   return {
-    sound: native.nativeFile as string,
+    sound,
     channelId: "zikr-audio-" + settings[slot] + "-v2",
   };
 }
