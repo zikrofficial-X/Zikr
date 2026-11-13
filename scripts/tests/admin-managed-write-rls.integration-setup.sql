@@ -98,6 +98,39 @@ CREATE POLICY social_publish_queue_admin_write
   USING (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]))
   WITH CHECK (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
 
+CREATE POLICY social_publish_queue_admin_all
+  ON public.social_publish_queue
+  FOR ALL TO authenticated
+  USING (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]))
+  WITH CHECK (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
+
+CREATE POLICY social_publish_queue_service_role_all
+  ON public.social_publish_queue
+  FOR ALL TO service_role
+  USING (true)
+  WITH CHECK (true);
+
+CREATE POLICY social_publish_queue_admin_insert
+  ON public.social_publish_queue
+  FOR INSERT TO authenticated
+  WITH CHECK (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
+
+CREATE POLICY social_publish_queue_admin_update
+  ON public.social_publish_queue
+  FOR UPDATE TO authenticated
+  USING (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]))
+  WITH CHECK (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
+
+CREATE POLICY social_publish_queue_admin_delete
+  ON public.social_publish_queue
+  FOR DELETE TO authenticated
+  USING (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
+
+CREATE POLICY social_publish_queue_authenticated_read_published_or_admin
+  ON public.social_publish_queue
+  FOR SELECT TO authenticated
+  USING (status = 'published' OR private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
+
 CREATE POLICY select_video_requests_admin
   ON public.video_generation_requests
   FOR SELECT TO authenticated
@@ -221,6 +254,20 @@ BEGIN
       AND cmd = 'ALL'
   ) THEN
     RAISE EXCEPTION 'Legacy social queue fixture did not reproduce the admin ALL policy';
+  END IF;
+  IF (
+    SELECT count(*) FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public' AND tablename = 'social_publish_queue'
+      AND policyname IN (
+        'social_publish_queue_admin_all',
+        'social_publish_queue_service_role_all',
+        'social_publish_queue_admin_insert',
+        'social_publish_queue_admin_update',
+        'social_publish_queue_admin_delete',
+        'social_publish_queue_authenticated_read_published_or_admin'
+      )
+  ) <> 6 THEN
+    RAISE EXCEPTION 'Legacy social queue split/alternate policies were not reproduced';
   END IF;
   IF NOT has_table_privilege('authenticated', 'public.video_generation_requests', 'INSERT') THEN
     RAISE EXCEPTION 'Legacy video generation fixture did not reproduce authenticated INSERT privilege';
