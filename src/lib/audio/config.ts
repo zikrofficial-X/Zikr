@@ -62,18 +62,26 @@ export function isAudioChoiceKey(value: unknown): value is string {
   return typeof value === "string" && allChoices().some(choice => choice.key === value);
 }
 
+export function isAudioChoiceKeyForSlot(value: unknown, slot: AudioSlot): value is string {
+  if (typeof value !== "string") return false;
+  const knownChoice = allChoices().find(choice => choice.key === value);
+  // Keep unknown server-library IDs while offline; getAudioChoice will use a
+  // safe slot-specific bundled fallback until the remote catalog is available.
+  return knownChoice ? knownChoice.slot === slot : value.startsWith("site:id:");
+}
+
 export function normalizeAudioSettings(
   value: Partial<Record<AudioSlot, unknown>> | null | undefined,
 ): AudioSettings {
   const normalized = { ...DEFAULT_AUDIO_SETTINGS };
   for (const slot of Object.keys(normalized) as AudioSlot[]) {
-    if (isAudioChoiceKey(value?.[slot])) normalized[slot] = value[slot] as string;
+    if (isAudioChoiceKeyForSlot(value?.[slot], slot)) normalized[slot] = value[slot] as string;
   }
   return normalized;
 }
 
-export function getAudioChoice(key: string): AudioChoice {
-  return allChoices().find(choice => choice.key === key) ?? getBundledFallback("prayer");
+export function getAudioChoice(key: string, slot: AudioSlot = "prayer"): AudioChoice {
+  return allChoices().find(choice => choice.key === key && choice.slot === slot) ?? getBundledFallback(slot);
 }
 
 export function getAudioSettingsFromStorage(): AudioSettings {
@@ -168,7 +176,7 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
 }
 
 export function getAudioUrl(slot: AudioSlot): string {
-  return getAudioChoice(getAudioSettingsFromStorage()[slot]).webUrl;
+  return getAudioChoice(getAudioSettingsFromStorage()[slot], slot).webUrl;
 }
 
 export function getNativeAudio(
@@ -179,7 +187,7 @@ export function getNativeAudio(
   channelId: string;
 } {
   const settings = getAudioSettingsFromStorage();
-  const choice = getAudioChoice(settings[slot]);
+  const choice = getAudioChoice(settings[slot], slot);
   const native = choice.nativeFile ? choice : getBundledFallback(slot);
 
   // iOS notification sounds must be present in the native app bundle and use
@@ -191,7 +199,7 @@ export function getNativeAudio(
 
   return {
     sound,
-    channelId: "zikr-audio-" + settings[slot] + "-v2",
+    channelId: "zikr-audio-" + slot + "-" + settings[slot] + "-v3",
   };
 }
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { getNativeAudio } from "../../src/lib/audio/config";
+import { DEFAULT_AUDIO_SETTINGS, getAudioChoice, getNativeAudio, normalizeAudioSettings } from "../../src/lib/audio/config";
 import { ensureNativeNotificationChannels } from "../../src/features/notifications/services/native-notification-channels";
 
 const iosPrayer = getNativeAudio("prayer", "ios");
@@ -52,6 +52,31 @@ await ensureNativeNotificationChannels(
   "android",
 );
 assert.equal(androidChannels.length, 3);
+assert.ok(androidChannels.some(channel => channel.id.startsWith("zikr-audio-prayer-")));
+assert.ok(androidChannels.some(channel => channel.id.startsWith("zikr-audio-dhikr-")));
+assert.ok(androidChannels.some(channel => channel.id.startsWith("zikr-audio-salawat-")));
+
+const invalidSlotSettings = normalizeAudioSettings({
+  prayer: "salawat-wav",
+  dhikr: "adhan-01",
+  salawat: "adhan-02",
+});
+assert.deepEqual(
+  invalidSlotSettings,
+  DEFAULT_AUDIO_SETTINGS,
+  "audio settings must not accept a known choice from a different notification slot",
+);
+assert.equal(
+  normalizeAudioSettings({ prayer: "site:id:offline-library-choice" }).prayer,
+  "site:id:offline-library-choice",
+  "unknown remote library IDs must survive offline normalization until the catalog is reachable",
+);
+assert.equal(
+  getAudioChoice("salawat-wav", "prayer").key,
+  "adhan-01",
+  "slot-aware lookup must fall back to the correct bundled audio instead of playing another slot's sound",
+);
+
 assert.deepEqual(
   new Set(androidChannels.map(channel => channel.id)),
   new Set([

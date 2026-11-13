@@ -27,10 +27,10 @@ function DhikrAudioCard() {
     let active = true;
     const load = async () => {
       await loadAudioSettings();
-      if (active) setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr));
+      if (active) setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr, "dhikr"));
     };
     void load();
-    const handleChange = () => setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr));
+    const handleChange = () => setChoice(getAudioChoice(getAudioSettingsFromStorage().dhikr, "dhikr"));
     window.addEventListener('zikr:audio-settings-changed', handleChange);
     return () => {
       active = false;
