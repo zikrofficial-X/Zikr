@@ -128,6 +128,15 @@ assert.throws(
   /exceeds the safe URL decoding depth/,
   "references deeper than the decoder bound must stop retention instead of being treated as unreferenced",
 );
+let overEncodedCharacterReferenceUrl = characterEncodedReferenceUrl;
+for (let depth = 0; depth < 6; depth += 1) {
+  overEncodedCharacterReferenceUrl = encodeURIComponent(overEncodedCharacterReferenceUrl);
+}
+assert.throws(
+  () => findManagedVideoReferences({ sourceUrl: overEncodedCharacterReferenceUrl }, encodedReferenceCandidates, supabaseUrl),
+  /exceeds the safe URL decoding depth/,
+  "deeply nested encoding of the managed directory's unreserved characters must stop retention instead of being missed",
+);
 
 const expectedEncodedReferencePatterns = ["%automated%", "%61%", "%75%", "%74%", "%6f%", "%6d%", "%65%", "%64%"];
 function captureReferencePatterns(patterns) {
