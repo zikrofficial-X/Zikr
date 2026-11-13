@@ -147,8 +147,7 @@ for (const token of [
   "for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1)",
   "for (const [key, item] of Object.entries(entry))",
   "visit(key);",
-  "if (decoded.toLowerCase().includes(\"automated\"))",
-  "hasMoreEncoding = decodeURIComponent(decoded) !== decoded;",
+  "if (/%[0-9a-f]{2}/i.test(decoded)) {",
   "Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.",
 ]) {
   if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded and JSON-key reference protection: " + token);
