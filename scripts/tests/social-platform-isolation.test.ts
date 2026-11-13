@@ -355,10 +355,7 @@ assert.equal(
   "a target whose approval state was not revalidated must remain held",
 );
 
-const revalidatedPublisherSource = readFileSync(
-  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
-  "utf8",
-);
+
 const socialWorkerStart = revalidatedPublisherSource.indexOf("export async function processSocialPublishItem(");
 const videoApprovalCheck = revalidatedPublisherSource.indexOf("if (!(await hasVideoApprovalForQueueItem(item)))", socialWorkerStart);
 const sourceApprovalCheck = revalidatedPublisherSource.indexOf("const sourceApproval = await checkWrittenPostSourceApproval(item);", videoApprovalCheck);
