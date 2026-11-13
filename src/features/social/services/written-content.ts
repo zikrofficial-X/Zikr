@@ -432,7 +432,7 @@ export function buildPublicKidsWrittenPost(
  const platforms = getConfirmedPublicWrittenPlatforms(row);
  if (
   row.content_type !== "written_post" ||
-  row.status !== "published" ||
+  (row.status !== "published" && row.status !== "partial") ||
   !row.id ||
   !row.content_id ||
   row.content_id !== source.id ||
