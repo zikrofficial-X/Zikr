@@ -846,7 +846,7 @@ export async function POST(request: NextRequest) {
           workerDispatched: affected > 0,
         },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
     }
 
     if (action === "delete" || action === "delete_failed") {
