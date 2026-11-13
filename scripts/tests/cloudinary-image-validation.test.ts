@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deleteCloudinaryImageIfUnreferenced } from "../../src/features/media/services/cloudinary-orphan-compensation";
 import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 function image(bytes: number[], type: string, size?: number) {
   const payload = size && size > bytes.length
@@ -164,4 +165,37 @@ assert.match(mediaAssetsSource, /url=eq\.[\s\S]*?encodeURIComponent\(secureUrl\)
 assert.match(mediaAssetsSource, /storage_path=eq\.[\s\S]*?encodeURIComponent\(publicId\)/, "media asset compensation must check the exact persisted Cloudinary public ID");
 assert.match(mediaAssetsSource, /catch \(saveError\)[\s\S]*?compensateOrphanedMediaAsset\(upload, requestedPublicId\)/, "a failed media_assets insert must run guarded orphan compensation");
 assert.match(mediaAssetsSource, /!Array\.isArray\(rows\) \|\| !rows\[0\][\s\S]*?compensateOrphanedMediaAsset\(upload, requestedPublicId\)/, "an unconfirmed media_assets insert must run guarded orphan compensation");
+
+const sameMillisecond = new Date("2026-11-13T04:00:00.000Z");
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T04:00:00.000Z", sameMillisecond),
+  "2026-11-13T04:00:00.001Z",
+  "media asset updates must advance the CAS version even when the wall clock has not advanced",
+);
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T04:00:00.001Z", sameMillisecond),
+  "2026-11-13T04:00:00.002Z",
+  "consecutive media asset updates must never reuse the previous CAS version",
+);
+assert.match(
+  mediaAssetsSource,
+  /updated_at=eq\\.\\$\\{encodeURIComponent\\(current\\[0\\]\\.updated_at\\)\\}/,
+  "every media asset mutation must compare against the row version it read",
+);
+assert.match(
+  mediaAssetsSource,
+  /updated_at:\\s*buildNextRowVersionUpdatedAt\\(current\\[0\\]\\.updated_at\\)/,
+  "every media asset mutation must advance its compare-and-set row version",
+);
+assert.match(
+  mediaAssetsSource,
+  /const patch =\\s*action === "verify_rights"[\\s\\S]*?rights_verified: true, verified_rights: true/,
+  "rights verification must use the same guarded row-version update path",
+);
+assert.doesNotMatch(
+  mediaAssetsSource,
+  /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+  "media asset writes must not reuse a millisecond-precision wall-clock CAS token",
+);
+
 console.log("Cloudinary raster signature and orphan compensation contracts passed.");
