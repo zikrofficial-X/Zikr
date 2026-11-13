@@ -238,6 +238,31 @@ assert.doesNotMatch(
   "the authenticated compatibility grant must remain intact",
 );
 
+assert.doesNotMatch(
+  publicAdminPolicyMigration,
+  /CREATE POLICY[\s\S]*?TO (?:anon|public)[\s\S]*?public\.is_admin_user\(\)/i,
+  "anonymous public-read policies must not depend on the revoked public compatibility wrapper",
+);
+const publicWrapperPolicyBlocks = publicAdminPolicyMigration.split(/CREATE POLICY/i).slice(1);
+assert.ok(
+  publicWrapperPolicyBlocks.filter(block => block.includes("public.is_admin_user()")).every(block => /\bTO authenticated\b/i.test(block)),
+  "every legacy policy that calls public.is_admin_user must target authenticated sessions only",
+);
+const contentHubAdminPolicies = contentHubPolicyMigration.split(/CREATE POLICY/i).slice(1).filter(block => /_admin_all\b/i.test(block));
+assert.ok(contentHubAdminPolicies.length > 0 && contentHubAdminPolicies.every(block => /\bTO authenticated\b/i.test(block)),
+  "content-hub admin policies that resolve the compatibility predicate must remain authenticated-only",
+);
+assert.match(
+  publicReadPolicyMigration,
+  /TO public[\s\S]*?private\.is_admin_user\(\)/i,
+  "public hadith/story/scholar reads must keep using the private predicate after anonymous wrapper access is revoked",
+);
+assert.doesNotMatch(
+  publicReadPolicyMigration,
+  /TO public[\s\S]*?public\.is_admin_user\(\)/i,
+  "public read policies must not call the revoked compatibility wrapper",
+);
+
 assert.match(
   atomicRoleMigration,
   /CREATE OR REPLACE FUNCTION public\.admin_update_user_role\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path = ''/i,
