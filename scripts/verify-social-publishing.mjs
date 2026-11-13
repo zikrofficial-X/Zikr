@@ -333,7 +333,7 @@ if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
     !facebookConnect.includes('requireAdminStepUpApi("social.publish"') ||
     !facebookConnect.includes("dialog/oauth") ||
     !facebookConnect.includes("FACEBOOK_REQUESTED_PERMISSIONS.join") ||
-    !facebookConnect.includes("pages_manage_posts") ||
+    !facebookOAuthPolicy.includes("pages_manage_posts") ||
     facebookConnect.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth connect must start a scoped Meta Page authorization flow");
 }
