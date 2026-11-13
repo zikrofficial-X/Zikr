@@ -23,3 +23,16 @@ export function classifyMediaAssetKind(asset: MediaAssetKindInput): MediaAssetKi
   }
   return "unclassified";
 }
+
+export type MediaAssetRightsInput = {
+  rights_verified?: boolean | null;
+  verified_rights?: boolean | null;
+};
+
+/**
+ * Publishing requires both legacy and current rights flags to be true.
+ * Governance screens must report the same contract as the publish gate.
+ */
+export function areMediaAssetRightsVerified(asset: MediaAssetRightsInput): boolean {
+  return asset.rights_verified === true && asset.verified_rights === true;
+}
