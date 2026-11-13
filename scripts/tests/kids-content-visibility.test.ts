@@ -179,6 +179,7 @@ assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-orig
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
 
 assert.ok(kidsVideosApi.includes("loadKidsSocialQueueRows(requestIds"), "the Kids video feed must read the complete paginated Kids social history");
+assert.match(kidsVideosApi, /VIDEO_GENERATION_REQUEST_ID_PATTERN\.test\(id\.trim\(\)\)/, "only valid generation UUIDs may enter the Kids feed Supabase filters");
 assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must aggregate all original and supplemental social queue rows");
 assert.ok(kidsVideosApi.includes("socialQueueReadSucceeded = true"), "stored social badges must be used only after a successful live queue read");
 assert.ok(kidsVideosApi.includes("Promise.allSettled"), "a social queue read failure must be distinguishable from a legitimate empty result");
