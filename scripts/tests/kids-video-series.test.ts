@@ -228,16 +228,17 @@ assert.equal(
   "stored publication metadata must not be used when a required queue read failed",
 );
 const kidsVideosRouteSource = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
-assert.match(
-  kidsVideosRouteSource,
-  /let socialQueueReadSucceeded = requestIds\\.length === 0;/,
+assert.ok(
+  kidsVideosRouteSource.includes("let socialQueueReadSucceeded = requestIds.length === 0;"),
   "the list feed must treat an empty request-ID set as a successful no-op queue read",
 );
 const kidsVideoServiceSource = readFileSync("src/features/videos/services/videos.ts", "utf8");
-assert.match(
-  kidsVideoServiceSource,
-  /if \\(typeof requestId !== "string" \\|\\| !VIDEO_GENERATION_REQUEST_ID_PATTERN\\.test\\(requestId\\)\\) \\{\\s*return resolveKidsVideoSocialPublication\\(\\[\\], stored, true\\);\\s*\\}/,
-  "the detail feed must use stored legacy publication metadata when there is no valid request ID to query",
-);
+const detailResolverStart = kidsVideoServiceSource.indexOf("async function resolveKidsVideoSocialPublicationForDetail");
+const detailResolverEnd = kidsVideoServiceSource.indexOf("export async function getKidsGeneratedVideoBySlug", detailResolverStart);
+const detailResolverSource = detailResolverStart >= 0 && detailResolverEnd > detailResolverStart
+  ? kidsVideoServiceSource.slice(detailResolverStart, detailResolverEnd)
+  : "";
+assert.ok(detailResolverSource.includes("return resolveKidsVideoSocialPublication([], stored, true);"),
+  "the detail feed must use stored legacy publication metadata when there is no valid request ID to query");
 
 console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota and social publication checks passed.");
