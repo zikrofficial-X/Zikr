@@ -7,9 +7,27 @@
 -- pg_cron command. The scheduled job remains daily at 03:00 UTC and continues
 -- to authenticate through the server-side scheduler secret RPC.
 
-DO $$
+DO $
+DECLARE
+  v_cron_job_oid regclass := to_regclass('cron.job');
 BEGIN
-  IF to_regclass('cron.job') IS NULL THEN
+  IF v_cron_job_oid IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- Some local migration-test environments expose a minimal cron.job stub.
+  -- Skip reconciliation unless the deployed pg_cron contract is complete.
+  IF (
+    SELECT count(*)
+    FROM pg_attribute
+    WHERE attrelid = v_cron_job_oid
+      AND attname IN ('jobid', 'jobname', 'command', 'schedule', 'active')
+      AND NOT attisdropped
+  ) <> 5
+    OR to_regprocedure('cron.alter_job(bigint,text,text,text,text,boolean)') IS NULL
+    OR to_regprocedure('cron.unschedule(bigint)') IS NULL
+    OR to_regprocedure('cron.schedule(text,text,text)') IS NULL
+  THEN
     RETURN;
   END IF;
 
