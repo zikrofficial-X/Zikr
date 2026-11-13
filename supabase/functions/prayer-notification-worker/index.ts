@@ -3,6 +3,7 @@ import type { ExportedVapidKeys } from "webpush";
 import { forEachIdPage } from "./pagination.ts";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "./eligibility.ts";
 import {
+  buildNotificationTag,
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
   matchesAnyCurrentPrayerReminderSchedule,
@@ -10,6 +11,7 @@ import {
   previousLocalDate,
   zonedDateTime,
 } from "./time-zone.ts";
+import { fetchScheduleOrSkip } from "./schedule-fetch.ts";
 import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
 import { createAsyncSerialQueue } from "../../../src/lib/async-serial-queue.ts";
 import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "./delivery-lease.ts";
@@ -260,7 +262,7 @@ async function fetchTimings(
   });
   const response = await fetch(
     `https://api.aladhan.com/v1/timings/${dateForProvider(date)}?${params.toString()}`,
-    { headers: { "User-Agent": "ZIKR-Prayer-Notification-Worker/1.0" } }
+    { headers: { "User-Agent": "ZIKR-Prayer-Notification-Worker/1.0" }, signal: AbortSignal.timeout(10_000) }
   );
   if (!response.ok)
     throw new Error(`Prayer-time provider returned HTTP ${response.status}`);
@@ -369,6 +371,7 @@ async function ensureSubscriptionBatchSchedules(
     .in("prayer_date", allDates);
   if (cacheError) throw cacheError;
   const caches = (cachedRows ?? []) as CachedSchedule[];
+  const failedScheduleKeys = new Set<string>();
 
   const inserts: Array<Record<string, unknown>> = [];
   for (const subscription of eligible) {
@@ -381,6 +384,15 @@ async function ensureSubscriptionBatchSchedules(
     const reminders = preference.prayer_reminders ?? {};
 
     for (const date of dateByUser.get(subscription.user_id) ?? []) {
+      const scheduleKey = [
+        location.id,
+        date,
+        Number(location.latitude),
+        Number(location.longitude),
+        timeZone,
+        method,
+        madhab,
+      ].join("|");
       let cache = caches.find(row =>
         scheduleCacheMatches(
           row,
@@ -392,7 +404,17 @@ async function ensureSubscriptionBatchSchedules(
         )
       );
       if (!cache) {
-        const timings = await fetchTimings(location, date, method, madhab);
+        const timings = await fetchScheduleOrSkip(
+          scheduleKey,
+          failedScheduleKeys,
+          () => fetchTimings(location, date, method, madhab),
+          (failedKey, error) => console.error(
+            "[prayer-notification-worker] prayer-time fetch failed; skipping only this location/date for the current batch:",
+            failedKey,
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+        if (!timings) continue;
         const { data: stored, error: cacheInsertError } = await supabase
           .from("prayer_schedule_cache")
           .upsert(
@@ -887,13 +909,12 @@ async function deliverDue(
         scheduledAt: delivery.scheduled_at,
       });
       const isPrayer = delivery.notification_kind === 'prayer';
-      // Foreground/local reminders use stable tags. Reuse those tags for server
-      // push notifications so an open app replaces rather than duplicates them.
-      const notificationTag = isPrayer
-        ? topic
-        : delivery.notification_kind === "dhikr"
-          ? "dhikr-reminder"
-          : "salawat-reminder";
+      // Keep browser notification tags aligned with local reminders. The Web
+      // Push Topic remains unique per delivery to avoid provider-side collapsing.
+      const notificationTag = buildNotificationTag({
+        notificationKind: delivery.notification_kind,
+        prayerName: delivery.prayer_name,
+      });
       if (heartbeat.leaseLost) {
         console.warn("[prayer-notification-worker] Delivery lease was recovered before the push provider call; skipping:", delivery.id);
         continue;

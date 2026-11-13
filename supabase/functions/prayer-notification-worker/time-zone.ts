@@ -29,6 +29,18 @@ export function nextLocalDate(date: Date, timeZone: string): string {
 
 export type NotificationKind = "prayer" | "dhikr" | "salawat";
 
+/** Match server push notification tags to the browser's local reminder tags. */
+export function buildNotificationTag(input: {
+  notificationKind: NotificationKind;
+  prayerName: string;
+}): string {
+  if (input.notificationKind === "prayer") {
+    if (!input.prayerName.trim()) throw new Error("A prayer name is required for prayer notification tags.");
+    return `prayer-${input.prayerName}`;
+  }
+  return input.notificationKind === "dhikr" ? "dhikr-reminder" : "salawat-reminder";
+}
+
 /**
  * Web Push topics replace outstanding messages for the same subscription.
  * Keep each scheduled delivery distinct while staying inside RFC 8030's

@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fetchAllIdPages, forEachIdPage } from "../../supabase/functions/prayer-notification-worker/pagination";
 import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "../../supabase/functions/prayer-notification-worker/delivery-lease";
+import { fetchScheduleOrSkip } from "../../supabase/functions/prayer-notification-worker/schedule-fetch";
 import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "../../supabase/functions/prayer-notification-worker/eligibility";
 import {
+  buildNotificationTag,
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
   isCurrentPrayerReminderSchedule,
@@ -122,6 +124,7 @@ await assert.rejects(
 
 const worker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
 const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
+const serviceWorker = readFileSync("public/sw.js", "utf8");
 const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(\s*await request\.json\(\)\.catch\(\(\) => null\)\s*\)/g) ?? [];
 assert.equal(normalizedRequestBodyCalls.length, 2, "POST and DELETE must normalize malformed and non-object JSON before reading fields");
 assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.latitude, -90, 90\)/);
@@ -141,6 +144,10 @@ assert.match(staleRecovery, /status: "cancelled"/,
 assert.match(staleRecovery, /Stale worker claim exhausted retry budget; manual review required/);
 
 assert.match(worker, /forEachIdPage\(/);
+assert.match(worker, /AbortSignal\.timeout\(10_000\)/, "prayer-time provider calls must have a bounded timeout");
+assert.match(worker, /fetchScheduleOrSkip\(/, "one failed location/date must not abort later subscription pages");
+assert.match(worker, /buildNotificationTag\(/, "server push tags must align with browser-local notification tags");
+assert.match(serviceWorker, /tag:\s*`prayer-\$\{prayerName\}`/, "local prayer reminders use a stable prayer-specific notification tag");
 assert.match(worker, /canSchedulePrayerSubscription\(/);
 assert.match(worker, /preference\.notifications_enabled !== true/);
 assert.match(worker, /isDeliverySubscriptionOwnerValid\(delivery\.user_id, subscription\.user_id\)/);
@@ -321,6 +328,63 @@ assert.equal(
 );
 assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:00:00.000Z", 60), true);
 assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:00:00.000Z", null), false);
+
+assert.equal(
+  buildNotificationTag({ notificationKind: "prayer", prayerName: "Fajr" }),
+  "prayer-Fajr",
+  "server prayer notifications must replace the matching local prayer notification",
+);
+assert.equal(buildNotificationTag({ notificationKind: "dhikr", prayerName: "" }), "dhikr-reminder");
+assert.equal(buildNotificationTag({ notificationKind: "salawat", prayerName: "" }), "salawat-reminder");
+assert.throws(
+  () => buildNotificationTag({ notificationKind: "prayer", prayerName: "" }),
+  /prayer name is required/,
+);
+
+const failedScheduleKeys = new Set<string>();
+const scheduleFetchFailures: Array<{ key: string; message: string }> = [];
+let scheduleFetchAttempts = 0;
+const failedSchedule = await fetchScheduleOrSkip(
+  "location-1|2026-11-13",
+  failedScheduleKeys,
+  async () => {
+    scheduleFetchAttempts += 1;
+    throw new Error("HTTP 503");
+  },
+  (key, error) => scheduleFetchFailures.push({
+    key,
+    message: error instanceof Error ? error.message : String(error),
+  }),
+);
+assert.equal(failedSchedule, null);
+const repeatedFailedSchedule = await fetchScheduleOrSkip(
+  "location-1|2026-11-13",
+  failedScheduleKeys,
+  async () => {
+    scheduleFetchAttempts += 1;
+    return { Fajr: "05:00" };
+  },
+  (key, error) => scheduleFetchFailures.push({
+    key,
+    message: error instanceof Error ? error.message : String(error),
+  }),
+);
+assert.equal(repeatedFailedSchedule, null, "a failed location/date must not be retried repeatedly inside the same page");
+const healthySchedule = await fetchScheduleOrSkip(
+  "location-2|2026-11-13",
+  failedScheduleKeys,
+  async () => {
+    scheduleFetchAttempts += 1;
+    return { Fajr: "05:00" };
+  },
+  (key, error) => scheduleFetchFailures.push({
+    key,
+    message: error instanceof Error ? error.message : String(error),
+  }),
+);
+assert.deepEqual(healthySchedule, { Fajr: "05:00" }, "a failed location must not block a different location/date");
+assert.equal(scheduleFetchAttempts, 2);
+assert.deepEqual(scheduleFetchFailures, [{ key: "location-1|2026-11-13", message: "HTTP 503" }]);
 
 const pushTopics = [
   buildNotificationTopic({ notificationKind: "prayer", prayerName: "Fajr", scheduledAt: "2026-11-11T03:00:00.000Z" }),
