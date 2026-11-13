@@ -240,7 +240,7 @@ BEGIN
     RAISE EXCEPTION 'self-role rejection did not preserve the super administrator assignment';
   END IF;
 END;
-$;
+$$;
 
 -- An ordinary administrator must not promote their own delegated role to super_admin.
 SET ROLE service_role;
