@@ -25,6 +25,10 @@ DROP POLICY IF EXISTS admin_insert_video_generation_requests ON public.video_gen
 DROP POLICY IF EXISTS admin_update_video_generation_requests ON public.video_generation_requests;
 
 DROP POLICY IF EXISTS media_assets_admin_all ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_select ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_insert ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_update ON public.media_assets;
+DROP POLICY IF EXISTS media_assets_admin_delete ON public.media_assets;
 
 DROP POLICY IF EXISTS site_audio_assets_admin_insert ON public.site_audio_assets;
 DROP POLICY IF EXISTS site_audio_assets_admin_update ON public.site_audio_assets;
