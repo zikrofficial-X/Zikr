@@ -108,6 +108,7 @@ SET search_path = ''
 AS $function$
 DECLARE
   definition text;
+  executable_definition text;
   queue_update text[];
   request_update text[];
 BEGIN
@@ -115,16 +116,25 @@ BEGIN
     'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
   );
 
+  -- Ignore SQL comments when validating executable statements. A comment may
+  -- mention a DML keyword without introducing another database operation.
+  executable_definition := pg_catalog.regexp_replace(
+    definition,
+    '--[^\r\n]*|/\*.*?\*/',
+    '',
+    'gis'
+  );
+
   -- Parse both UPDATE statements. The preflight must inspect their SET and
   -- WHERE clauses independently; merely rejecting one known old SQL string is
   -- not sufficient to prove that a future implementation preserves playback.
   queue_update := pg_catalog.regexp_match(
-    definition,
+    executable_definition,
     'UPDATE\s+public\.social_publish_queue\s+SET(.*?)WHERE(.*?);',
     'is'
   );
   request_update := pg_catalog.regexp_match(
-    definition,
+    executable_definition,
     'UPDATE\s+public\.video_generation_requests\s+SET(.*?)WHERE(.*?);',
     'is'
   );
@@ -135,11 +145,11 @@ BEGIN
 
   RETURN
     -- Reject any additional UPDATE, even when the two expected tables are still updated safely.
-    pg_catalog.regexp_count(definition, '\mUPDATE\M', 1, 'i') = 2
+    pg_catalog.regexp_count(executable_definition, '\mUPDATE\M', 1, 'i') = 2
     AND pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.social_publish_queue\s+SET', 1, 'i') = 1
     AND pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.video_generation_requests\s+SET', 1, 'i') = 1
     AND pg_catalog.regexp_count(
-      definition,
+      executable_definition,
       '\mINSERT\M|\mMERGE\M|\mDELETE\M|\mTRUNCATE\M|\mEXECUTE\M|\mCALL\M|\mPERFORM\M|\mSELECT\M|\mCOPY\M',
       1,
       'i'
@@ -170,13 +180,13 @@ BEGIN
         'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
         AND retention_proc.prosecdef IS FALSE
     )
-    AND definition ~* $pattern$SET\s+search_path\s+(?:=|TO)\s*''$pattern$
-    AND definition ~* $pattern$coalesce\(retention_state,\s*''\)\s+NOT\s+IN\s*\('purge_pending',\s*'purged'\)$pattern$
-    AND definition ~* $pattern$p_finalize\s+IS\s+DISTINCT\s+FROM\s*\(retention_state\s*=\s*'purged'\)$pattern$
-    AND definition ~* $pattern$nullif\(btrim\(p_retention->>'path'\),\s*''\)\s+IS\s+NULL$pattern$
-    AND definition ~* $pattern$p_expected_url\s+IS\s+NULL$pattern$
-    AND definition ~* $pattern$btrim\(p_expected_url\)\s*=\s*''$pattern$
-    AND definition ~* $pattern$p_retention->>'bucket'\s+IS\s+DISTINCT\s+FROM\s+'videos'$pattern$
+    AND executable_definition ~* $pattern$SET\s+search_path\s+(?:=|TO)\s*''$pattern$
+    AND executable_definition ~* $pattern$coalesce\(retention_state,\s*''\)\s+NOT\s+IN\s*\('purge_pending',\s*'purged'\)$pattern$
+    AND executable_definition ~* $pattern$p_finalize\s+IS\s+DISTINCT\s+FROM\s*\(retention_state\s*=\s*'purged'\)$pattern$
+    AND executable_definition ~* $pattern$nullif\(btrim\(p_retention->>'path'\),\s*''\)\s+IS\s+NULL$pattern$
+    AND executable_definition ~* $pattern$p_expected_url\s+IS\s+NULL$pattern$
+    AND executable_definition ~* $pattern$btrim\(p_expected_url\)\s*=\s*''$pattern$
+    AND executable_definition ~* $pattern$p_retention->>'bucket'\s+IS\s+DISTINCT\s+FROM\s+'videos'$pattern$
     AND NOT pg_catalog.has_function_privilege(
       'anon',
       'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)',

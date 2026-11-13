@@ -43,6 +43,18 @@ assert.match(
   /CREATE OR REPLACE FUNCTION public\.video_storage_retention_contract_ready\(\)[\s\S]*?RETURNS boolean/i,
   "the migration must provide the fail-closed RPC contract guard",
 );
+assert.ok(
+  retentionRpcMigrationForInitialAssertions.includes("executable_definition := pg_catalog.regexp_replace"),
+  "the retention contract must remove SQL comments before counting executable DML statements",
+);
+assert.ok(
+  retentionRpcMigrationForInitialAssertions.includes("regexp_count(executable_definition, '\\mUPDATE\\M', 1, 'i') = 2"),
+  "the retention contract must count the two actual queue/request updates after comment stripping",
+);
+assert.ok(
+  readFileSync("scripts/tests/video-storage-retention-contract.integration.sql", "utf8").includes("UPDATE INSERT DELETE TRUNCATE EXECUTE CALL PERFORM SELECT COPY marker only"),
+  "the PostgreSQL integration test must prove DML keywords inside comments do not create false positives",
+);
 assert.match(
   retentionRpcMigrationForInitialAssertions,
   /REVOKE ALL ON FUNCTION public\.video_storage_retention_contract_ready\(\)\s+FROM PUBLIC, anon, authenticated/i,
