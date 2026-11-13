@@ -260,7 +260,7 @@ for (const token of [
   "scheduledAvailable?: boolean",
   "طابور جدولة المحتوى غير متاح",
   "scheduledAvailable && !item.published",
-  "scheduledAvailable && queued",
+  "scheduledAvailable && activeSchedule",
   "scheduledAvailable && selected",
 ]) {
   if (!contentConsole.includes(token)) failures.push(`Admin content console must disable schedule operations when the queue is unavailable: ${token}`);
