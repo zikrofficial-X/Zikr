@@ -106,6 +106,40 @@ const republishedQueueRow = {
     },
   },
 };
+const supersededDeletionRow = {
+  status: "published",
+  published_at: "2026-11-12T12:00:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: id } },
+    platformDeletions: {
+      youtube: { status: "deleted", remoteId: id, deletedAt: "2026-11-12T12:05:00.000Z" },
+    },
+  },
+};
+const newerYoutubePublication = {
+  status: "published",
+  published_at: "2026-11-12T12:04:00.000Z",
+  metadata: { platformResults: { youtube: { ok: true, remoteId: "newVideo999" } } },
+};
+assert.deepEqual(
+  resolveLatestConfirmedYoutubeQueueState([supersededDeletionRow, newerYoutubePublication]),
+  { status: "published", id: "newVideo999", publishedAt: newerYoutubePublication.published_at },
+  "deleting an older remote YouTube ID must not clear a newer confirmed publication",
+);
+const uncorrelatedDeletionRow = {
+  ...publishedQueueRow,
+  metadata: {
+    ...publishedQueueRow.metadata,
+    platformDeletions: {
+      youtube: { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" },
+    },
+  },
+};
+assert.deepEqual(
+  resolveLatestConfirmedYoutubeQueueState([uncorrelatedDeletionRow]),
+  { status: "conflict" },
+  "a legacy deletion without a remote ID must not silently erase a confirmed fallback",
+);
 assert.deepEqual(
   resolveLatestConfirmedYoutubeQueueState([deletedQueueRow, republishedQueueRow]),
   { status: "published", id: "newVideo999", publishedAt: republishedQueueRow.published_at },
@@ -117,7 +151,7 @@ const tiedDeletionRow = {
   metadata: {
     ...publishedQueueRow.metadata,
     platformDeletions: {
-      youtube: { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" },
+      youtube: { status: "deleted", remoteId: id, deletedAt: "2026-11-12T12:01:00.000Z" },
     },
   },
 };
