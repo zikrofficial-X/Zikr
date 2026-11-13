@@ -14,7 +14,10 @@ const audit = read("scripts/jobs/audit-video-media.ts");
 for (const token of [
   "social_publish_queue",
   "platformResults",
-  "youtube.remoteId",
+  "resolveLatestConfirmedYoutubeQueueState",
+  "reconcileYoutubeFallbackMetadata",
+  "platformDeletions",
+  "published_at",
   "metadata.videoGenerationRequestId",
   "probeCloudinary",
   'method: "HEAD"',
@@ -56,6 +59,11 @@ const mediaContract = read("src/features/videos/services/video-media-contract.ts
 const requiredFallbackStates = ["cloudinary_missing", "unavailable", "youtube_only", "purged"];
 if (!requiredFallbackStates.every((state) => mediaContract.includes(JSON.stringify(state)))) {
   failures.push("Public video media contract must cover every unavailable internal-media state before using a confirmed YouTube fallback");
+}
+if (!mediaContract.includes("normalizeSocialPlatformResults") ||
+    !mediaContract.includes('youtubeDeletion.status === "deleted"') ||
+    !mediaContract.includes("publicationTimestamp > latest.timestamp")) {
+  failures.push("YouTube media fallback reconciliation must normalize legacy result ledgers and respect confirmed deletion timestamps");
 }
 if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
 if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {
@@ -121,7 +129,7 @@ if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
     !workflow.includes("pnpm video:media:audit")) {
-  failures.push("Daily video media audit must be production-gated, manually confirmed, and must not auto-run on source pushes");
+  failures.push("Daily video media audit must be production-gated and scheduled, require explicit confirmation for manual dispatch, and must not auto-run on source pushes");
 }
 const migration = read("supabase/migrations/20261110025303_reconcile_published_youtube_ids_to_video_catalog.sql");
 for (const token of [
