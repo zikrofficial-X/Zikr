@@ -338,6 +338,38 @@ assert.equal(
   false,
   "ambiguous provider outcomes must remain available for manual reconciliation",
 );
+
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["facebook"],
+    error_message: null,
+    metadata: {
+      platformResults: {
+        facebook: { ok: false, error: "Facebook rejected the post (HTTP 422)." },
+        youtube: { ok: false, error: "YouTube rejected the request (HTTP 422).", remoteId: "FKQ4tsQOtTs" },
+      },
+    },
+  }),
+  false,
+  "an unexpected legacy platform result with a remote ID must preserve the queue row even when ok is false",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["facebook"],
+    error_message: null,
+    metadata: {
+      platformResults: {
+        facebook: { ok: false, error: "Facebook rejected the post (HTTP 400)." },
+        tiktok: { ok: false, error: "Unsupported provider result." },
+      },
+    },
+  }),
+  false,
+  "an unrecognized provider result must remain in the audit queue until its outcome is classified",
+);
+
 assert.equal(
   canDeleteLocalSocialQueueItem({
     status: "failed",
