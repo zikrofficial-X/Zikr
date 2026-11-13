@@ -11,6 +11,7 @@ import {
   previousLocalDate,
   zonedDateTime,
 } from "../../supabase/functions/prayer-notification-worker/time-zone";
+import { syncBackgroundReminderTimeZone } from "../../src/features/reminders/services/reminder-timezone-sync";
 import { isAllowedPushEndpoint } from "../../src/features/notifications/services/push-endpoint";
 import {
   normalizePushSubscriptionRequestBody,
@@ -550,5 +551,110 @@ assert.match(
   /leaseLost\) \{[\s\S]{0,220}before the push provider call[\s\S]{0,180}await applicationServer/,
   "a worker that has lost its lease must not begin a new provider send",
 );
+
+
+const changedTimeZoneRequests: Array<{ method: string; body?: string }> = [];
+const changedTimeZoneFetcher: typeof fetch = async (_input, init) => {
+  changedTimeZoneRequests.push({
+    method: (init?.method ?? "GET").toUpperCase(),
+    body: typeof init?.body === "string" ? init.body : undefined,
+  });
+  return new Response(null, { status: 204 });
+};
+assert.equal(
+  await syncBackgroundReminderTimeZone({
+    userId: "timezone-change-user",
+    serverTimeZone: "UTC",
+    deviceTimeZone: "Africa/Cairo",
+    fetcher: changedTimeZoneFetcher,
+  }),
+  true,
+);
+assert.deepEqual(
+  changedTimeZoneRequests,
+  [{ method: "PUT", body: JSON.stringify({ timezone: "Africa/Cairo" }) }],
+  "a device timezone change must update only the background reminder timezone",
+);
+
+let unchangedTimeZoneCalls = 0;
+assert.equal(
+  await syncBackgroundReminderTimeZone({
+    userId: "timezone-unchanged-user",
+    serverTimeZone: "Africa/Cairo",
+    deviceTimeZone: "Africa/Cairo",
+    fetcher: async () => {
+      unchangedTimeZoneCalls += 1;
+      return new Response(null, { status: 204 });
+    },
+  }),
+  true,
+);
+assert.equal(unchangedTimeZoneCalls, 0, "matching timezones must not write to the database");
+
+const resumedTimeZoneMethods: string[] = [];
+assert.equal(
+  await syncBackgroundReminderTimeZone({
+    userId: "timezone-resume-user",
+    deviceTimeZone: "Africa/Cairo",
+    fetcher: async (_input, init) => {
+      const method = (init?.method ?? "GET").toUpperCase();
+      resumedTimeZoneMethods.push(method);
+      return method === "GET"
+        ? new Response(JSON.stringify({ timezone: "UTC" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        : new Response(null, { status: 204 });
+    },
+  }),
+  true,
+);
+assert.deepEqual(resumedTimeZoneMethods, ["GET", "PUT"], "app resume must read the current server timezone before updating it");
+
+let invalidTimeZoneCalls = 0;
+assert.equal(
+  await syncBackgroundReminderTimeZone({
+    userId: "timezone-invalid-user",
+    serverTimeZone: "UTC",
+    deviceTimeZone: "Not/A-Real-Timezone",
+    fetcher: async () => {
+      invalidTimeZoneCalls += 1;
+      return new Response(null, { status: 204 });
+    },
+  }),
+  false,
+);
+assert.equal(invalidTimeZoneCalls, 0, "invalid device timezone values must never be persisted");
+
+let releaseTimeZonePut!: () => void;
+const timeZonePutGate = new Promise<void>(resolve => {
+  releaseTimeZonePut = resolve;
+});
+let concurrentTimeZonePutCount = 0;
+const concurrentTimeZoneFetcher: typeof fetch = async (_input, init) => {
+  concurrentTimeZonePutCount += 1;
+  await timeZonePutGate;
+  return new Response(null, { status: 204 });
+};
+const concurrentTimeZoneOptions = {
+  userId: "timezone-concurrent-user",
+  serverTimeZone: "UTC",
+  deviceTimeZone: "Africa/Cairo",
+  fetcher: concurrentTimeZoneFetcher,
+};
+const firstTimeZoneSync = syncBackgroundReminderTimeZone(concurrentTimeZoneOptions);
+const secondTimeZoneSync = syncBackgroundReminderTimeZone(concurrentTimeZoneOptions);
+await Promise.resolve();
+releaseTimeZonePut();
+assert.deepEqual(await Promise.all([firstTimeZoneSync, secondTimeZoneSync]), [true, true]);
+assert.equal(concurrentTimeZonePutCount, 1, "concurrent resume events must share one timezone update");
+
+const salawatHookSource = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
+const prayerAlertProviderSource = readFileSync("src/components/layout/prayer-alert-provider.tsx", "utf8");
+assert.match(salawatHookSource, /serverTimeZone: data\.timezone/);
+assert.match(salawatHookSource, /event === "SIGNED_IN"[\s\S]*?syncBackgroundReminderTimeZone/);
+assert.match(salawatHookSource, /window\.addEventListener\("zikr:native-app-state", syncTimeZone\)/);
+assert.match(salawatHookSource, /document\.addEventListener\("visibilitychange", syncTimeZone\)/);
+assert.match(prayerAlertProviderSource, /useSalawatReminder\(\)/, "the global prayer provider must keep the timezone sync mounted");
 
 console.log("Prayer notification subscription pagination and delivery lease contracts passed.");
