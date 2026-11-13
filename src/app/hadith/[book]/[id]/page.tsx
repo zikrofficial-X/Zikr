@@ -33,11 +33,11 @@ export async function generateMetadata({ params }: HadithDetailPageProps): Promi
 
 export default async function HadithDetail({ params }: HadithDetailPageProps) {
   const { book: bookSlug, id: hadithNumber } = await params;
-  const num = parseInt(hadithNumber, 10);
+  const num = Number(hadithNumber);
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
 
-  if (Number.isNaN(num)) return notFound();
+  if (!Number.isInteger(num) || num < 1) return notFound();
 
   const h = await getHadithByNumber(bookSlug, num, locale);
 

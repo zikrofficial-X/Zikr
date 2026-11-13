@@ -24,5 +24,8 @@ assert.match(quranPage, /لا يتوفر تفسير مسجل لهذه الآية
 
 assert.match(hadithPage, /<ShareButton/, "Hadith detail page must use the functional share control");
 assert.doesNotMatch(hadithPage, /Share2/, "Hadith detail page must not retain an inert share button");
+assert.match(hadithPage, /const num = Number\(hadithNumber\)/, "Hadith route IDs must be parsed as complete numeric segments");
+assert.match(hadithPage, /Number\.isInteger\(num\) \|\| num < 1/, "Hadith route must reject partial, fractional, zero, and negative record IDs");
+assert.doesNotMatch(hadithPage, /parseInt\(hadithNumber/, "Hadith route must not silently accept trailing non-numeric path characters");
 
 console.log("Quran/Hadith detail route validation, share controls, and tafsir empty-state contracts passed.");
