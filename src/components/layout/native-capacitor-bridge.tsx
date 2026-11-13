@@ -158,34 +158,6 @@ function installNativeFacade(
     async scheduleLocalNotification(notification) {
       const localNotifications = plugins.LocalNotifications;
 
-    let disposed = false;
-    let audioSettingsRefreshQueue = Promise.resolve();
-    const refreshNativeAudioSettings = (notifyReady = true) => {
-      audioSettingsRefreshQueue = audioSettingsRefreshQueue
-        .then(async () => {
-          if (disposed) return;
-          await ensureNativeNotificationChannels(
-            localNotifications,
-            Capacitor.getPlatform(),
-          );
-          await syncQuranReminderFromAccount();
-          if (notifyReady && !disposed) {
-            window.dispatchEvent(
-              new CustomEvent("zikr:native-audio-channels-ready"),
-            );
-          }
-        })
-        .catch(error => {
-          console.warn(
-            "[native-bridge] Audio notification channel refresh failed",
-            error,
-          );
-        });
-      return audioSettingsRefreshQueue;
-    };
-    const handleAudioSettingsChanged = () => {
-      void refreshNativeAudioSettings();
-    };
       if (!localNotifications?.schedule) {
         throw new Error("Capacitor LocalNotifications plugin is unavailable");
       }
@@ -283,6 +255,35 @@ export function NativeCapacitorBridge() {
     const browser = plugins.Browser;
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
+
+    let disposed = false;
+    let audioSettingsRefreshQueue = Promise.resolve();
+    const refreshNativeAudioSettings = (notifyReady = true) => {
+      audioSettingsRefreshQueue = audioSettingsRefreshQueue
+        .then(async () => {
+          if (disposed) return;
+          await ensureNativeNotificationChannels(
+            localNotifications,
+            Capacitor.getPlatform(),
+          );
+          await syncQuranReminderFromAccount();
+          if (notifyReady && !disposed) {
+            window.dispatchEvent(
+              new CustomEvent("zikr:native-audio-channels-ready"),
+            );
+          }
+        })
+        .catch(error => {
+          console.warn(
+            "[native-bridge] Audio notification channel refresh failed",
+            error,
+          );
+        });
+      return audioSettingsRefreshQueue;
+    };
+    const handleAudioSettingsChanged = () => {
+      void refreshNativeAudioSettings();
+    };
 
     void (async () => {
       try {
