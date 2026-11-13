@@ -42,6 +42,10 @@ assert.equal(hasAdminPermission("editor", "kids.manage"), true);
 assert.equal(hasAdminPermission("editor", "media.manage"), true);
 assert.equal(hasAdminPermission("editor", "content.publish"), true);
 
+const kidsOverviewPage = readFileSync("src/app/admin/kids/page.tsx", "utf8");
+assert.match(kidsOverviewPage, /hasAdminPermission\(admin\.role, "content\.publish"\)/);
+assert.match(kidsOverviewPage, /hasAdminPermission\(admin\.role, "media\.manage"\)/);
+assert.match(kidsOverviewPage, /canPublish=\{canPublish\} canManageMedia=\{canManageMedia\}/);
 const kidsContentPage = readFileSync("src/app/admin/kids/content/page.tsx", "utf8");
 const kidsContentManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
 const kidsContentActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
