@@ -6,6 +6,7 @@ import {
   isGeneratedCloudinaryVideoUrl,
 } from "../../src/features/videos/services/video-media-url";
 import { isUnlinkedInternalVideoMedia, resolveLatestConfirmedYoutubeQueueState, resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "../../src/features/videos/services/video-media-contract";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
   assertCloudinaryVideoUrl(url, target, "zikr");
@@ -107,6 +108,18 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
 
 });
 
+
+test("scheduled media audit advances the row-version CAS token within the same millisecond", () => {
+  const previousUpdatedAt = "2026-11-13T01:30:00.123Z";
+  assert.equal(
+    buildNextRowVersionUpdatedAt(previousUpdatedAt, new Date(previousUpdatedAt)),
+    "2026-11-13T01:30:00.124Z",
+    "a media-audit write in the same millisecond must still advance updated_at",
+  );
+  const auditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+  assert.match(auditScript, /updated_at: buildNextRowVersionUpdatedAt\(updatedAt\)/);
+  assert.doesNotMatch(auditScript, /updated_at: new Date\(\)\.toISOString\(\)/);
+});
 
 test("YouTube media fallback requires a confirmed published or partial queue row", () => {
   const publishedAt = "2026-11-12T12:00:00.000Z";
