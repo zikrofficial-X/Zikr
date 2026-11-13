@@ -1,5 +1,27 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-13T23:26:31.388Z — verified source head d9782c24230ad3c7e72b5993d434ee0c022a978a
+
+- Branch `audit/zikr-kids-daily-priority-20261110`; base/merge base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,343 ahead / 0 behind.
+- PR delta: 389 files (157 added, 232 modified, no removals). Source tree: 2,317 entries (1,819 files, 498 directories); no main-tree path missing.
+- Exact-head checks: Quality Gate 43525654762 SUCCESS; Android Debug APK 43525654785 SUCCESS; CircleCI Config Validation 43525654803 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS; Supabase Preview SKIPPED.
+- Repair: robots now advertises `/sitemap-index.xml`; sitemap-shards test and AdSense verifier assert the index route. Intermediate `97ddb20` failed on the stale `/sitemap.xml` assertion; exact head `d9782c24230ad3c7e72b5993d434ee0c022a978a` passes the canonical full gate.
+- Production baseline remains unchanged: Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` READY at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; robots points to the URL-set route, while the sitemap index is separate. No deploy.
+- Supabase: 435 local / 418 remote migrations (17 pending); no live apply. Live `public.is_admin_user()` still has anon EXECUTE pending the local revoke migration. Nine inspected tables have RLS enabled. Advisors: one leaked-password-protection warning, 81 unused-index notices, zero health lints. No index/data changes.
+- Source agent v14 active; only Al Quran Cloud enabled; last seven runs all zero counters. Local parser/telemetry changes are not deployed.
+- Video-retention contract integration passed locally; migration remains live-apply pending. Cleanup was not run.
+- CODEOWNERS requires `@Zikrmediaofficial`; PR #320 has no review; branch protection API returned 403. No merge/deploy. iOS Xcode/device/signing and live OAuth acceptance remain manual.
+- Main `english-content-sync` CircleCI job remains failed and was not rerun due translation/Hadith side effects.
+- No production DB mutation, storage/media/index deletion, secret change, release, Gemini/content generation, or social publishing.
+- Audit remains open: 187 REVIEW_REQUIRED, 30 CONTENT_READ_PENDING_TRACE, 17 FIXED_TESTED_PENDING_LIVE_APPLY in this overlay; the main baseline matrix still has 1,525 REVIEW_REQUIRED.
+
+### Snapshot artifacts
+
+- Current PR overlay: `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-13T2326Z.md` (389 source-head paths; new overlay and companion manifest excluded from the table).
+- Current repository manifest: `docs/audits/PR320_REPO_MANIFEST_2026-11-13T2326Z.jsonl` (full pre-manifest tree snapshot; manifest excludes itself).
+- Previous overlay and manifest are retained as historical snapshots.
+
+
 ## Latest verified audit checkpoint — 2026-11-13T22:29Z
 
 **State: OPEN / IN PROGRESS.** PR #320 is unmerged. Source/test head `7b06aacfc650d6d31c51bb0681472f25666bca23` passed all available exact-head checks; this is not a project-wide closure.

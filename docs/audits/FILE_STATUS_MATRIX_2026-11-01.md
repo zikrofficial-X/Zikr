@@ -1,5 +1,8 @@
 # ZIKR file status matrix — refreshed 2026-11-13T22:29Z
 
+> **Snapshot boundary (2026-11-14):** This remains the baseline matrix for `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` (1,662 tracked files), not the live PR #320 branch matrix. Use `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-13T2326Z.md` for the current audit-branch delta at source head `d9782c24230ad3c7e72b5993d434ee0c022a978a` (389 changed paths). Baseline rows are retained as historical evidence; unchanged main files have not been re-reviewed by the PR overlay.
+
+
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Main manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (2,153 records, pinned to main; self-entry excluded).  
 **PR-branch manifest:** `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl` (2310 records, all branch files/directories except the manifest itself; `docs` and `docs/audits` directory hashes null to avoid self-reference).  

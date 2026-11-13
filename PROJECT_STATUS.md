@@ -1,4 +1,23 @@
-# ZIKR — Project Status
+# ZIKR Project Status
+
+## Latest verified checkpoint — 2026-11-13T23:26:31.388Z
+
+- **Audit branch/source head:** `audit/zikr-kids-daily-priority-20261110@d9782c24230ad3c7e72b5993d434ee0c022a978a`; base and merge base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,343 commits ahead / 0 behind.
+- **PR #320 delta:** 389 changed paths (157 added, 232 modified, 0 removed). Source tree: 2,317 entries (1,819 files, 498 directories), 141,677,787 bytes; every path in the current main tree is present.
+- **Exact-head verification:** Quality Gate run 43525654762 SUCCESS; Android Native Login Debug APK run 43525654785 SUCCESS; CircleCI Config Validation run 43525654803 SUCCESS. CircleCI config-guard/source-verify/application-build-docs are green. Supabase Preview skipped (no preview project).
+- **Resolved intermediate failure:** `97ddb20` failed because the AdSense verifier still required `/sitemap.xml`; the verifier now requires `/sitemap-index.xml` and checks the shard-index route. Full gate passes at `d9782c24230ad3c7e72b5993d434ee0c022a978a`.
+- **SEO fix on branch only:** robots now advertises `/sitemap-index.xml`; the shard test and AdSense verifier enforce discovery of all shards. Production is unchanged.
+- **Production baseline:** Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` is READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Live robots still points to `/sitemap.xml`; that route returns a URL set, while `/sitemap-index.xml` returns a sitemap index. No deployment was triggered.
+- **Supabase:** 435 local / 418 remote migrations (17 pending); no live apply. Live `public.is_admin_user()` still has anon EXECUTE until the pending revoke migration is approved/applied. Nine inspected tables have RLS enabled. Advisors: one leaked-password-protection warning, 81 unused-index notices, zero health lints. No index deletion.
+- **Source agent:** deployed v14 active; only Al Quran Cloud enabled; last seven live runs have zero fetched/queued/skipped/failed counts. Branch parser/telemetry changes are not deployed.
+- **Retention:** video-storage-retention migration and PostgreSQL contract integration pass locally, but live apply remains pending. Cleanup was not run; no storage/media deletion.
+- **Automation safety:** social workflow was read and its social-only target traced; it was not dispatched. No Gemini/content generation, social publishing, production DB mutation, secret change, release, or Android release was triggered.
+- **Owner/manual gates:** CODEOWNERS assigns all paths to `@Zikrmediaofficial`; PR #320 has no review. Branch-protection API returned 403. No merge/deploy. iOS Xcode/signing/device/APNs/Universal Links and live OAuth acceptance remain manual; Android debug build passed only.
+- **Main scheduled job:** `ci/circleci: english-content-sync` remains failed on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; not rerun because it performs translation/Hadith sync.
+- **Status:** not closed. Overlay counts: 155 pass, 30 pending trace, 187 review required, 17 fixed/tested pending live apply. The separate main baseline matrix still records 1,525 REVIEW_REQUIRED paths.
+
+---
+
 
 ## Latest verified audit checkpoint — 2026-11-13T22:29Z
 
