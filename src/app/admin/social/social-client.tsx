@@ -398,6 +398,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        auditRecorded?: boolean;
         health?: { status?: Health["youtubeConnectionStatus"]; readSource?: Health["youtubeReadSource"]; channelId?: string | null; channelName?: string | null; subscribers?: number | null; totalViews?: number | null; videoCount?: number | null; checkedAt?: string; message?: string };
       };
       if (!response.ok || !payload.health) throw new Error(payload.error || "تعذر اختبار اتصال YouTube.");
@@ -413,9 +414,10 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         youtubeLastCheckedAt: payload.health?.checkedAt ?? null,
         youtubeConnectionMessage: payload.health?.message ?? "انتهى اختبار YouTube.",
       }));
-      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر.");
-      else if (payload.health.status === "public_data_only") setMessage(payload.health.message || "تمت قراءة بيانات القناة العامة.");
-      else setError(payload.health.message || "لم يجتز اتصال YouTube الاختبار.");
+      const auditWarning = payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لم يُعد تنفيذ الاختبار." : "";
+      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر." + auditWarning);
+      else if (payload.health.status === "public_data_only") setMessage((payload.health.message || "تمت قراءة بيانات القناة العامة.") + auditWarning);
+      else setError((payload.health.message || "لم يجتز اتصال YouTube الاختبار.") + auditWarning);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال YouTube.");
     } finally {
@@ -436,6 +438,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         nextPath?: string;
+        auditRecorded?: boolean;
         adopted?: boolean;
         pageName?: string;
         health?: Health;
@@ -451,7 +454,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         "تم التحقق من التوكن وحفظ اعتماد الصفحة " + (payload.pageName || "Facebook") + ".",
         "لم يتم استئناف أي عناصر محجوبة. راجعها ثم استخدم زر الاستئناف الصريح إذا رغبت؛ قد تُنشر تلقائيًا بعد إعادتها إلى الطابور.",
       ];
-      setMessage(summary.join(" "));
+      setMessage(summary.join(" ") + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذ اعتماد التوكن." : ""));
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اعتماد توكن Facebook من إعدادات الخادم.");
@@ -474,6 +477,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         nextPath?: string;
+        auditRecorded?: boolean;
         released?: number;
         queueUpdateFailed?: boolean;
         workerDispatched?: boolean;
@@ -485,7 +489,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         payload.queueUpdateFailed ? "تعذر تحديث بعض العناصر؛ راجع الطابور قبل أي محاولة أخرى." : "",
         (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل الناشر المجدول المعالجة في دورته التالية." : "",
       ].filter(Boolean);
-      setMessage(summary.join(" "));
+      setMessage(summary.join(" ") + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذ تحرير الطابور." : ""));
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر استئناف العناصر المحجوبة.");
@@ -507,12 +511,14 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         nextPath?: string;
+        auditRecorded?: boolean;
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok)
         throw new Error(payload.error || "تعذر تشغيل عامل النشر.");
       setMessage(
-        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. سيعالج العامل العناصر الجاهزة للنشر الآن."
+        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. سيعالج العامل العناصر الجاهزة للنشر الآن." +
+          (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد إرسال الطلب." : "")
       );
       await load();
     } catch (cause) {
@@ -594,6 +600,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
           nextPath?: string;
+          auditRecorded?: boolean;
           affected?: number;
           preserved?: number;
           stale?: number;
@@ -604,12 +611,13 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         };
         if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
+        const auditWarning = payload.auditRecorded === false ? " تحذير: تم تنفيذ الإجراء لكن تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذه." : "";
         if (action === "publish_now") {
           setMessage(
             `تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.` +
               ((payload.manualReconciliationSkipped ?? 0) > 0
                 ? ` تم تجاوز ${payload.manualReconciliationSkipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.`
-                : ""),
+                : "") + auditWarning,
           );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
@@ -621,7 +629,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           setMessage(
             `حُذف ${payload.affected ?? 0} سجل محلي آمن. تم الاحتفاظ بـ${preserved} سجل بسبب نتيجة ناجحة أو جزئية أو غير مؤكدة.` +
               (stale > 0 ? ` تم تجاوز ${stale} سجل تغيّر قبل تنفيذ الحذف.` : "") +
-              (uncertain > 0 ? ` تعذر تأكيد نتيجة ${uncertain} عملية؛ حدّث الطابور قبل أي محاولة أخرى.` : ""),
+              (uncertain > 0 ? ` تعذر تأكيد نتيجة ${uncertain} عملية؛ حدّث الطابور قبل أي محاولة أخرى.` : "") + auditWarning,
           );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
@@ -632,7 +640,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           setMessage(
             `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
               (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
-              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : ""),
+              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + auditWarning,
           );
         }
         await load();
@@ -673,6 +681,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
         nextPath?: string;
+        auditRecorded?: boolean;
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
@@ -682,7 +691,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
-      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من Facebook/Facebook Reels. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. لم يتم إرسال طلب حذف إلى YouTube. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من Facebook/Facebook Reels. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. لم يتم إرسال طلب حذف إلى YouTube. نسخة الفيديو داخل ZIKR محفوظة.` + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد طلب الحذف." : ""));
       const issues = (payload.results ?? []).filter(result =>
         result.status === "failed" || result.status === "missing_remote_id" || result.status === "in_progress" || result.status === "stale"
       );
