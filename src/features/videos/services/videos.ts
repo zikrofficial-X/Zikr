@@ -7,6 +7,7 @@ import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/da
 import { defaultOgImage } from "@/lib/site";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { resolveKidsVideoSocialPublication } from "@/features/social/services/kids-video-social-visibility";
+import { loadKidsSocialQueueRows, type KidsSocialQueueRequest } from "@/features/social/services/kids-video-social-query";
 import { resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "./video-media-contract";
 
 function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
@@ -166,26 +167,15 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
     }));
 }
 
-type KidsVideoSocialQueueRow = {
-  content_type: string;
-  target_platforms: string[] | null;
-  status: string;
-  published_at: string | null;
-  metadata: Record<string, unknown> | null;
-};
-
 const VIDEO_GENERATION_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function resolveKidsVideoSocialPublicationForDetail(requestId: unknown, stored: unknown) {
   if (typeof requestId !== "string" || !VIDEO_GENERATION_REQUEST_ID_PATTERN.test(requestId)) return null;
 
   try {
-    const rows = await supabaseServerAdminRequest<KidsVideoSocialQueueRow[]>(
-      "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
-        "&metadata->>audience=eq.kids&select=content_type,target_platforms,status,published_at,metadata&order=created_at.desc&limit=600",
-      { timeoutMs: 8000, retries: 1, cache: "no-store" },
-    );
-    if (!Array.isArray(rows)) return null;
+    const request: KidsSocialQueueRequest = <T>(path: string) =>
+      supabaseServerAdminRequest<T>(path, { timeoutMs: 8000, retries: 1, cache: "no-store" });
+    const rows = await loadKidsSocialQueueRows([requestId], request);
     return resolveKidsVideoSocialPublication(rows, stored, true);
   } catch (error) {
     console.warn("[content] Failed to reconcile Kids video social publication:", error);
