@@ -1258,3 +1258,51 @@ Audit status remains OPEN; no project-wide error-free or closed certification is
 - Vercel production deployment dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu remains READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; read-only smoke returned 200 for /api/health, /, /kids, /quran/1/1, and AASA (empty associations). No audit-branch deployment was created.
 - PR #320 remains open without owner review; mergeable state unstable. No merge or approval gate bypass.
 - No production database mutation, migration apply, content generation, Gemini request, social publishing, push notification, media/storage deletion, secret rotation, Android/iOS release, merge, or deployment occurred.
+
+
+## Audit run — 2026-11-13 — code head f20bc346885654831c30895ed5472c1ea1848462
+
+**State: OPEN.** The code repair below is verified on its exact head. The repository-wide review and PR remain open.
+
+### Exact-head verification
+
+- GitHub ZIKR Quality Gate run 43384291336 / job 131749029319: SUCCESS on f20bc346885654831c30895ed5472c1ea1848462. The job log records QUALITY_GATE_FULL_SCOPE=true, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, lint, type checks, production build, and QUALITY_GATE=PASSED_FULL.
+- The new regression test printed `Cloudinary folder hierarchy contract passed.`
+- CircleCI config-validation run 43384291262: SUCCESS. On the exact source head, `ci/circleci: config-guard`, `ci/circleci: source-verify`, and `ci/circleci: application-build-docs` are SUCCESS.
+- This is the last code-bearing source head. The inventory/status/ledger reconciliation is documentation-only and is committed separately; its own CI must be checked independently.
+
+### Reproducible defect and repair
+
+- **Defect:** `uploadCloudinaryImage` sanitized `params.folder` with the single-segment `safeSegment` helper. That helper replaces `/` with `-`, so caller-supplied paths such as `zikr/kids`, `zikr/avatars`, and `zikr/${folder}` were flattened instead of retaining their intended Cloudinary folder hierarchy.
+- **Repair:** added `src/features/media/services/cloudinary-folder.ts` with `normalizeCloudinaryFolderPath`, which splits on path separators, sanitizes each segment, drops empty/dot-only segments, and falls back to `zikr` when no safe segment remains. The shared `cloudinary.ts` upload path now uses this helper.
+- **Regression coverage:** added `scripts/tests/cloudinary-folder-path.test.ts`; registered it in the canonical `pnpm test` script. Tests cover nested folders, whitespace sanitization, repeated separators, traversal-like segments, empty input/fallback, and the actual shared uploader wiring.
+- **Consumers traced:** `src/features/media/services/media-assets.ts`, `src/app/admin/kids/actions.ts`, `src/app/api/admin/cloudinary/image/route.ts`, and `src/app/profile/avatar-actions.ts` all route through the shared uploader. No existing asset migration was attempted. No live upload was run.
+
+### Media and Kids code-path review
+
+- Read the media classification helper, media-asset limits, Cloudinary validation and orphan-compensation helpers, media-asset service, admin media API/client, Kids asset page/actions, and the focused Cloudinary tests.
+- The media classifier prioritizes MIME type, then media type, then asset type; the Kids assets page uses that classification and explicit Kids metadata. Publishing requires both `rights_verified` and `verified_rights`.
+- Media insert failure compensation verifies the exact returned public ID and checks both URL/public-ID references before any possible remote cleanup; lookup failure is fail-closed. No orphan cleanup was executed.
+- No additional reproducible defect was found in these reviewed paths. Their current blob hashes are recorded in the refreshed overlay.
+
+### Other targeted traces and limits
+
+- **Reminder preferences:** read the disabled interval contract in preferences/hooks and the worker path; migration `20261113000000_background_reminder_intervals_allow_disabled.sql` makes DB constraints agree with interval `0` as disabled. The PostgreSQL 17 integration check passed. It remains pending live apply.
+- **Social worker:** read the dispatch outcome helper, publishing worker entry, background runner gates, workflow trigger policy, and the relevant admin route sections. The route uses step-up for retry/publish operations; the worker requires the Admin auto-publish setting and `SOCIAL_PUBLISH_ENABLED=true`. Full consumer/permission trace is incomplete; related overlay rows remain pending/review-required. No dispatch or publish was triggered.
+- **Storage retention:** read the workflow, the service-only retention RPC migration, the published-video cleanup helper, and targeted safety/deletion sections of the 1,124-line cleanup script. The workflow's scheduled mode is dry-run; destructive apply requires a full reference-writer freeze and the exact typed confirmation. The script was not executed and no object/release was removed. Full script review remains open.
+- **Supabase inventory:** 430 local migrations versus 418 remote; latest remote is 20261110170000; 12 branch migrations are pending. Eleven are test-backed/pending owner approval; 20261111000000 remains REVIEW_REQUIRED. Security advisor reports leaked-password protection disabled; performance advisor reports 81 unused-index findings. No indexes were removed.
+- **Production:** Vercel production remains READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; automatic Git deployments are disabled. No branch deployment or post-deploy smoke was run. Main's scheduled `english-content-sync` CircleCI context remains FAILURE; it was not rerun because it may generate content or call Gemini.
+- **Governance:** PR #320 has no submitted reviews or review threads; CODEOWNERS owner `@Zikrmediaofficial` has no connected repository permission. No merge or approval bypass.
+
+### Reconciled inventory and closeout state
+
+- Branch tree: 2,272 entries (1,775 files, 497 directories); main tree: 2,154 entries (1,662 files, 492 directories). Branch comparison: 1,141 ahead, 0 behind; PR changed paths: 323 (113 added, 210 modified, 0 removed).
+- Branch manifest: 2,271 records, self-excluded; `docs` and `docs/audits` directory hashes are null to prevent self-reference. The manifest is generated from the complete recursive branch tree.
+- Overlay: 321 file rows, excluding the overlay and manifest artifacts to avoid a mutual-hash cycle. Counts: 88 CONTENT_READ_TESTED_PASS, 20 CONTENT_READ_PENDING_TRACE, 202 REVIEW_REQUIRED, 11 FIXED_TESTED_PENDING_LIVE_APPLY.
+- Main-baseline matrix remains 1,525 REVIEW_REQUIRED rows; no modules are closed. This is not a claim that the repository is error-free or fully audited.
+
+### Safety and owner-only acceptance
+
+- No content generation, Gemini request, social publishing, notification, production DB mutation, migration application, Storage/media/index deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment.
+- Owner-only: CODEOWNERS review, production migration approval/apply, Apple Team/App identifiers, and release/deploy approval.
+- Device-only: Android/iOS deep-link, OAuth, notification, signing, and real-device acceptance.

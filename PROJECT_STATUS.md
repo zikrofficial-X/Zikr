@@ -1,6 +1,37 @@
 # ZIKR — Project Status
 
-## Latest verified audit checkpoint — 2026-11-12T16:57Z
+## Latest verified audit checkpoint — 2026-11-13T07:17:35Z
+
+**State: IN PROGRESS.** PR #320 remains open and unmerged. The last code-bearing head is verified; the documentation-only inventory reconciliation is being committed separately and will receive its own exact-head checks.
+
+- **Repository / PR:** `zikrofficial-X/Zikr`, [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320).
+- **Branch / base:** `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Last code-bearing source head:** `f20bc346885654831c30895ed5472c1ea1848462` — `fix(media): preserve Cloudinary folder hierarchy`. GitHub comparison: 1,141 commits ahead, 0 behind; 323 changed paths (113 added, 210 modified, 0 removed). Recursive branch inventory: 2,272 entries (1,775 files, 497 directories); main: 2,154 entries (1,662 files, 492 directories). No main paths are missing from the branch.
+- **Exact full verification:** GitHub ZIKR Quality Gate run [43384291336](https://github.com/zikrofficial-X/Zikr/actions/runs/43384291336), job 131749029319, SUCCESS on `f20bc346885654831c30895ed5472c1ea1848462`. Logs confirm `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration checks, lint, types, production build, and `QUALITY_GATE=PASSED_FULL`. The new `Cloudinary folder hierarchy contract passed` regression test appears in the same successful log. CircleCI config-validation run 43384291262 and the exact-head `config-guard`, `source-verify`, and `application-build-docs` contexts all passed.
+- **Repair E — Cloudinary folder hierarchy:** the shared uploader previously passed the complete folder string through a single-segment sanitizer. Valid caller values such as `zikr/kids`, `zikr/avatars`, and `zikr/${folder}` were flattened to names such as `zikr-kids`. Added `normalizeCloudinaryFolderPath`, which preserves slash-delimited hierarchy while sanitizing each segment independently; wired it into the shared Cloudinary upload helper. Added a focused regression test for nested folders, empty segments, traversal-like input, fallback behavior, and integration into the uploader. Commit: `f20bc346885654831c30895ed5472c1ea1848462`. This affects future uploads only; no existing Cloudinary assets were moved or deleted and no live upload was triggered.
+- **Media/Kids trace completed in this batch:** read the classifier, media limits, Cloudinary validation and orphan-compensation helpers, media-asset service, admin media API/client, Kids asset page/actions, and focused Cloudinary tests. The Kids asset page uses MIME type, media type, and asset type precedence for media classification; publication remains gated by both rights flags. A failed media DB insert uses exact-public-id/reference checks before any possible orphan compensation. No additional reproducible defect was found in these reviewed paths.
+- **Reminder contract:** the zero-minute interval is the explicit disabled state in the preference service/hooks and worker. Migration `20261113000000_background_reminder_intervals_allow_disabled.sql` aligns the DB constraint with that contract; the PostgreSQL 17 background-reminder integration test passed. The migration remains unapplied in production.
+- **Social/background review remains partial:** the new dispatch helper is fail-soft after a committed queue mutation; the admin social route applies step-up authentication to retry/publish actions, and the worker requires both the Admin auto-publish setting and `SOCIAL_PUBLISH_ENABLED=true`. The full route/worker/import graph is not closed; those rows remain pending trace or review required. No workflow was dispatched and no post was published.
+- **Storage-retention safety:** the workflow's scheduled path is dry-run only; destructive apply requires the owner to pause video generation, social publishing, and media-reference writers and enter the exact typed confirmation. The retention script was inspected only in targeted sections and was not executed. No Storage object, media asset, index, Android release, or production resource was deleted.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` has 418 remote migrations, latest applied `20261110170000`, versus 430 local migrations. Twelve branch migrations remain unapplied; 11 are test-backed/pending owner-approved live apply, while `20261111000000` remains REVIEW_REQUIRED. The security advisor still reports leaked-password protection disabled; the performance advisor reports 81 unused-index findings. No index or migration was changed in production.
+- **Production / Vercel:** production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Automatic Git deployments are disabled; production release is manual. No audit-branch deployment or post-deploy smoke was run.
+- **Governance / independent CI:** PR #320 has zero submitted reviews and zero review threads. `.github/CODEOWNERS` assigns all paths to `@Zikrmediaofficial`; the connected identity's repository permission is null. Main's separate `ci/circleci: english-content-sync` context remains FAILURE and was not rerun because it may perform content/Gemini work.
+- **Review coverage:** the refreshed 321-row overlay excludes both itself and the branch manifest to avoid a mutual-hash cycle: 88 `CONTENT_READ_TESTED_PASS`, 20 `CONTENT_READ_PENDING_TRACE`, 202 `REVIEW_REQUIRED`, and 11 `FIXED_TESTED_PENDING_LIVE_APPLY`. The branch manifest contains 2,271 records, excludes itself, and nulls the `docs` / `docs/audits` directory hashes to avoid self-reference. The main-baseline matrix remains 1,525 `REVIEW_REQUIRED` rows and zero closed modules.
+- **Safety:** no content generation, Gemini request, social publishing, push notification, production DB mutation, migration apply, Storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered.
+
+### Remaining work
+
+1. Continue file-by-file review for the 202 PR overlay rows still `REVIEW_REQUIRED`, 20 paths pending consumer trace, and the 1,525-row main-baseline backlog.
+2. Finish the full social publishing, Kids content/navigation, authentication/OAuth, background-job, retention, mobile, and CI/CD import/consumer traces.
+3. Obtain required `@Zikrmediaofficial` CODEOWNERS review; the connected identity cannot provide it.
+4. Obtain owner approval and apply the 11 test-backed pending migrations only through the approved migration procedure; keep `20261111000000` in review until its contract is fully verified.
+5. Resolve the main-only `english-content-sync` failure without triggering content generation/Gemini, configure Apple AASA identifiers, and complete physical Android/iOS acceptance.
+6. Only after code review, owner review, and required checks are complete: merge through protected rules, use the manual Vercel release workflow, and verify READY plus production smoke checks.
+
+---
+
+
+## Previous verified checkpoint — 2026-11-12T16:57Z
 
 **State: IN PROGRESS.** PR #320 is open and unmerged. The audit branch has not been deployed.
 
