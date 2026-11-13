@@ -11,6 +11,7 @@ import {
   toggleManagedContent,
   type ManagedContentTable,
 } from "@/features/admin/services/content";
+import { parseExplicitScheduledAt } from "@/features/admin/services/content-schedule";
 
 const TABLES = new Set<ManagedContentTable>([
   "stories",
@@ -70,8 +71,8 @@ export async function scheduleContentPublishAction(formData: FormData) {
   await enforceAdminRateLimit(admin, "content.publish", 30, 60);
   const { table, id } = getTarget(formData);
   const scheduledAt = String(formData.get("scheduledAt") ?? "").trim();
-  const date = new Date(scheduledAt);
-  if (!scheduledAt || Number.isNaN(date.getTime()) || date.getTime() <= Date.now() + 60_000) {
+  const date = parseExplicitScheduledAt(scheduledAt);
+  if (!date || date.getTime() <= Date.now() + 60_000) {
     throw new Error("اختر موعداً مستقبلياً للنشر بعد دقيقة على الأقل.");
   }
   const select = table === "stories"
