@@ -364,12 +364,19 @@ assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
 const remoteDeleteActionStart = socialAdminRoute.indexOf('if (action === "delete_published") {');
 const remoteDeleteConfirmationGuard = socialAdminRoute.indexOf("if (body.confirmed !== true)", remoteDeleteActionStart);
+const remoteDeletePlatformGuard = socialAdminRoute.indexOf(
+  'if (requestedPlatforms.length === 0 || requestedPlatforms.includes("youtube"))',
+  remoteDeleteActionStart,
+);
+const firstRemoteDeleteQueueRead = socialAdminRoute.indexOf("const selectedItems =", remoteDeleteActionStart);
 const firstRemoteDeleteCall = socialAdminRoute.indexOf("deleteSocialPlatformPost(", remoteDeleteActionStart);
 assert.ok(
   remoteDeleteActionStart >= 0 &&
     remoteDeleteConfirmationGuard > remoteDeleteActionStart &&
-    firstRemoteDeleteCall > remoteDeleteConfirmationGuard,
-  "the server must reject remote social deletion before any provider call unless the request carries explicit confirmation",
+    remoteDeletePlatformGuard > remoteDeleteConfirmationGuard &&
+    remoteDeletePlatformGuard < firstRemoteDeleteQueueRead &&
+    firstRemoteDeleteCall > remoteDeletePlatformGuard,
+  "the server must require explicit Facebook-only targets and reject YouTube before reading deletion candidates or calling a provider",
 );
 assert.match(
   readFileSync("src/app/admin/social/social-client.tsx", "utf8"),
