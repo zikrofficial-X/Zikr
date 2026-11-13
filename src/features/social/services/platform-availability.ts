@@ -64,6 +64,34 @@ export function normalizeSocialPlatformResults(value: unknown): Record<string, u
   return asRecord(value) ?? {};
 }
 
+function isValidSocialPlatformResult(value: unknown): boolean {
+  if (value === null) return true;
+  const result = asRecord(value);
+  if (!result || typeof result.ok !== "boolean") return false;
+  if (result.ok === true) {
+    return typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+  }
+  return typeof result.error === "string" && result.error.trim().length > 0;
+}
+
+function hasMalformedSocialPlatformResults(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (Array.isArray(value)) {
+    const seenPlatforms = new Set<string>();
+    return value.some((item) => {
+      const row = asRecord(item);
+      if (!row || typeof row.platform !== "string" || !row.platform.trim()) return true;
+      const platform = row.platform.trim();
+      if (seenPlatforms.has(platform)) return true;
+      seenPlatforms.add(platform);
+      return !isValidSocialPlatformResult(row);
+    });
+  }
+  const record = asRecord(value);
+  if (!record) return true;
+  return Object.values(record).some((result) => !isValidSocialPlatformResult(result));
+}
+
 function metadataPlatforms(value: unknown): SocialPlatform[] {
   if (!Array.isArray(value)) return [];
   return value.filter(
@@ -154,9 +182,10 @@ export function isAmbiguousProviderOutcome(error: unknown): boolean {
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
   if (metadata?.sourceMediaMissing === true) return [];
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+  if (hasMalformedSocialPlatformResults(metadata?.platformResults)) return [...supported];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const declaredManualPlatforms = new Set(metadataPlatforms(metadata?.manualReconciliationPlatforms));
-  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
   return supported.filter((platform) => {
     const result = asRecord(results[platform]);
     return declaredManualPlatforms.has(platform) ||
