@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { isTasbeehTabLoaded } from '@/features/tasbeeh/services/tasbeeh-storage';
+import {
+  isTasbeehItemArray,
+  isTasbeehTabLoaded,
+  shouldPersistTasbeehItems,
+} from '@/features/tasbeeh/services/tasbeeh-storage';
 import { ExternalLink, Headphones } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -70,7 +74,9 @@ export function TasbeehPage() {
   const [tab, setTab] = useState<TabType>('default');
   const [items, setItems] = useState<TasbeehItem[]>(DEFAULT_TASBEEH_ITEMS);
   const [loadedTab, setLoadedTab] = useState<TabType | null>(null);
+  const [persistenceAllowed, setPersistenceAllowed] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const tabLoaded = isTasbeehTabLoaded(tab, loadedTab);
 
   const resetToDefaults = useCallback(() => {
     switch (tab) {
@@ -85,50 +91,64 @@ export function TasbeehPage() {
     }
   }, [tab]);
 
-  // Load the selected tab before allowing the persistence effect to write.
+  // Load and validate the selected tab before allowing persistence.
+  // Malformed saved data remains untouched until the user explicitly changes a counter.
   useEffect(() => {
+    let allowPersistence = true;
     try {
       const saved = localStorage.getItem(`tasbeeh_${tab}`);
-      if (saved) {
-        try {
-          setItems(JSON.parse(saved));
-        } catch {
+      if (saved !== null) {
+        const parsed: unknown = JSON.parse(saved);
+        if (isTasbeehItemArray(parsed)) {
+          setItems(parsed);
+        } else {
           resetToDefaults();
+          allowPersistence = false;
         }
       } else {
         resetToDefaults();
       }
     } catch {
       resetToDefaults();
+      allowPersistence = false;
     } finally {
+      setPersistenceAllowed(allowPersistence);
       setLoadedTab(tab);
     }
   }, [tab, resetToDefaults]);
 
   // Never persist the previous tab's items while the newly selected tab is loading.
   useEffect(() => {
-    if (!isTasbeehTabLoaded(tab, loadedTab)) return;
-    try {
-      localStorage.setItem(`tasbeeh_${tab}`, JSON.stringify(items));
-    } catch {
-      // Keep the counter usable when browser storage is unavailable.
+    if (!tabLoaded) return;
+    if (shouldPersistTasbeehItems(tab, loadedTab, persistenceAllowed)) {
+      try {
+        localStorage.setItem(`tasbeeh_${tab}`, JSON.stringify(items));
+      } catch {
+        // Keep the counter usable when browser storage is unavailable.
+      }
     }
     setTotalCount(calculateTotalCount(items));
-  }, [items, tab, loadedTab]);
+  }, [items, tab, loadedTab, persistenceAllowed, tabLoaded]);
 
   const handleIncrement = (index: number) => {
+    if (!tabLoaded) return;
+    setPersistenceAllowed(true);
     const newItems = [...items];
     newItems[index] = incrementTasbeeh(newItems[index]);
     setItems(newItems);
   };
 
   const handleReset = (index: number) => {
+    if (!tabLoaded) return;
+    setPersistenceAllowed(true);
     const newItems = [...items];
     newItems[index] = resetTasbeeh(newItems[index]);
     setItems(newItems);
   };
 
   const handleResetAll = () => {
+    if (!tabLoaded) return;
+    setPersistenceAllowed(true);
     setItems(items.map(resetTasbeeh));
   };
 
@@ -214,6 +234,7 @@ export function TasbeehPage() {
             <div className="flex gap-2">
               <Button
                 onClick={() => handleIncrement(index)}
+                disabled={!tabLoaded}
                 variant="primary"
                 className="flex-1"
               >
@@ -221,6 +242,7 @@ export function TasbeehPage() {
               </Button>
               <Button
                 onClick={() => handleReset(index)}
+                disabled={!tabLoaded}
                 variant="outline"
                 className="flex-1"
               >
@@ -241,6 +263,7 @@ export function TasbeehPage() {
       {/* Reset All Button */}
       <Button
         onClick={handleResetAll}
+        disabled={!tabLoaded}
         variant="outline"
         className="w-full"
       >

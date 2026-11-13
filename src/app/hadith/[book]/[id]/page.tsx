@@ -11,6 +11,7 @@ import { ShareButton } from '@/components/ui/share-button';
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
 import { getRequestLocale } from '@/lib/i18n/server';
+import { parsePositiveIntegerRouteSegment } from '@/lib/route-params';
 
 interface HadithDetailPageProps {
   params: Promise<{ book: string; id: string }>;
@@ -33,11 +34,11 @@ export async function generateMetadata({ params }: HadithDetailPageProps): Promi
 
 export default async function HadithDetail({ params }: HadithDetailPageProps) {
   const { book: bookSlug, id: hadithNumber } = await params;
-  const num = Number(hadithNumber);
+  const num = parsePositiveIntegerRouteSegment(hadithNumber);
   const locale = await getRequestLocale();
   const isEnglish = locale === "en";
 
-  if (!Number.isInteger(num) || num < 1) return notFound();
+  if (num === null) return notFound();
 
   const h = await getHadithByNumber(bookSlug, num, locale);
 

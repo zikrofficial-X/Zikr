@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { ShareButton } from '@/components/ui/share-button';
 import { pageMetadata } from '@/lib/site';
+import { parsePositiveIntegerRouteSegment } from '@/lib/route-params';
 
 export const revalidate = 3600;
 
@@ -18,15 +19,15 @@ interface AyahPageProps {
 
 export async function generateMetadata({ params }: AyahPageProps): Promise<Metadata> {
   const p = await params;
-  const surahId = Number(p.surah);
-  const ayahId = Number(p.ayah);
+  const surahId = parsePositiveIntegerRouteSegment(p.surah);
+  const ayahId = parsePositiveIntegerRouteSegment(p.ayah);
 
-  const surahMeta = Number.isInteger(surahId) && surahId >= 1 && surahId <= 114
+  const surahMeta = surahId !== null && ayahId !== null && surahId <= 114
     ? await getSurahMetaFromDb(surahId, 'ar')
     : null;
   
   return pageMetadata({
-    title: surahMeta ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
+    title: surahMeta && ayahId !== null ? `سورة ${surahMeta.name} - الآية ${ayahId}` : `الآية ${p.ayah}`,
     description: 'عرض الآية وتفسيرها من داخل صفحة السورة في منصة ذِكرٌ.',
     path: `/quran/${p.surah}/${p.ayah}`,
     // Individual verses are useful detail screens, but the complete surah is
@@ -38,13 +39,10 @@ export async function generateMetadata({ params }: AyahPageProps): Promise<Metad
 
 export default async function AyahPage({ params }: AyahPageProps) {
   const p = await params;
-  const surahId = Number(p.surah);
-  const ayahId = Number(p.ayah);
+  const surahId = parsePositiveIntegerRouteSegment(p.surah);
+  const ayahId = parsePositiveIntegerRouteSegment(p.ayah);
 
-  if (
-    !Number.isInteger(surahId) || surahId < 1 || surahId > 114 ||
-    !Number.isInteger(ayahId) || ayahId < 1
-  ) return notFound();
+  if (surahId === null || surahId > 114 || ayahId === null) return notFound();
 
   const [dbSurahMeta, dbAyah, dbTafsirRecord] = await Promise.all([
     getSurahMetaFromDb(surahId, 'ar'),
