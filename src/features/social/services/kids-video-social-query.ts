@@ -30,7 +30,6 @@ type QueueCursor = {
 export async function loadKidsSocialQueueRows(
   requestIdsInput: readonly string[],
   request: KidsSocialQueueRequest,
-  snapshotAtInput = new Date().toISOString(),
 ): Promise<KidsSocialQueueRow[]> {
   const requestIds = [...new Set(requestIdsInput
     .filter((value): value is string => typeof value === "string")
@@ -38,11 +37,6 @@ export async function loadKidsSocialQueueRows(
     .filter((value) => value.length > 0))];
   if (requestIds.length === 0) return [];
 
-  const snapshotTimestamp = Date.parse(snapshotAtInput);
-  if (!Number.isFinite(snapshotTimestamp)) {
-    throw new Error("Kids social queue snapshot requires a valid timestamp.");
-  }
-  const snapshotAt = new Date(snapshotTimestamp).toISOString();
   const contentIdFilter = requestIds.map(encodeURIComponent).join(",");
   const rows: KidsSocialQueueRow[] = [];
   const seenIds = new Set<string>();
@@ -58,7 +52,6 @@ export async function loadKidsSocialQueueRows(
     const path =
       "/rest/v1/social_publish_queue?content_id=in.(" + contentIdFilter + ")" +
       "&metadata->>audience=eq.kids" +
-      "&created_at=lte." + encodeURIComponent(snapshotAt) +
       "&select=" + KIDS_SOCIAL_QUEUE_SELECT +
       "&order=created_at.desc,id.desc" +
       "&limit=" + KIDS_SOCIAL_QUEUE_PAGE_SIZE +
