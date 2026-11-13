@@ -83,7 +83,7 @@ const deletedQueueRow = {
     },
   },
 };
-const deletedYoutubeState = { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" };
+const deletedYoutubeState = { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" } as const;
 assert.deepEqual(resolveLatestConfirmedYoutubeQueueState([publishedQueueRow, deletedQueueRow]), deletedYoutubeState);
 assert.deepEqual(resolveLatestConfirmedYoutubeQueueState([deletedQueueRow, publishedQueueRow]), deletedYoutubeState,
   "a confirmed YouTube deletion must win independently of queue row order");
