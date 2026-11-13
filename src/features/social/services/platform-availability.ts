@@ -12,6 +12,10 @@ export type SocialPlatformMetadata = {
   approvalDeferredPlatforms?: unknown;
   unavailablePlatforms?: unknown;
   sourceMediaMissing?: unknown;
+  writtenArticlePublicationBlocked?: unknown;
+  writtenArticlePublicationPending?: unknown;
+  kidsSourceApprovalBlocked?: unknown;
+  kidsSourceApprovalPending?: unknown;
   attempts?: unknown;
 } | null | undefined;
 
