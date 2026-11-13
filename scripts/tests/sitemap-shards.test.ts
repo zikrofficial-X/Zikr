@@ -33,5 +33,17 @@ assert.match(shardRouteSource, /getSitemapShard\(allEntries, id\)/);
 assert.doesNotMatch(shardRouteSource, /SITEMAP_PAGE_SIZE\s*=/);
 assert.match(indexRouteSource, /getSitemapShardCount\(\)/);
 assert.match(indexRouteSource, /sitemap-content\/\$\{id\}\.xml/);
+const robotsSource = readFileSync("src/app/robots.ts", "utf8");
+assert.match(
+  robotsSource,
+  /sitemap:\\s*`\\$\\{baseUrl\\}\\/sitemap-index\\.xml`/,
+  "robots.txt must advertise the sitemap index so every generated shard is discoverable",
+);
+assert.doesNotMatch(
+  robotsSource,
+  /sitemap:\\s*`\\$\\{baseUrl\\}\\/sitemap\\.xml`/,
+  "robots.txt must not advertise only the first URL shard as the complete sitemap",
+);
+
 
 console.log("Sitemap shard sizing, indexing, and route alignment contracts passed.");
