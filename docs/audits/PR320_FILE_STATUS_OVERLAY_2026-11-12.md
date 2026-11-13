@@ -1,30 +1,17 @@
 # PR #320 file-status overlay — refreshed 2026-11-13
 
-## Snapshot identity
+Repository: `zikrofficial-X/Zikr`
+PR: [#320](https://github.com/zikrofficial-X/Zikr/pull/320)
+Branch: `audit/zikr-kids-daily-priority-20261110`
+Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
+Verified code head: `bb1f066ca9aa63067781219ad5c2e93ff85929d9`
 
-- Repository: `zikrofficial-X/Zikr`
-- PR: https://github.com/zikrofficial-X/Zikr/pull/320
-- Branch: `audit/zikr-kids-daily-priority-20261110`
-- Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
-- Last code-bearing source head: `f20bc346885654831c30895ed5472c1ea1848462`; tree object `3213e1b704ae8bb5b8426f8c1632239e50922383`.
-- Branch inventory: 2,272 entries (1,775 files, 497 directories); main inventory: 2,154 entries (1,662 files, 492 directories); 1,141 commits ahead, 0 behind; 323 PR paths (113 added, 210 modified, 0 removed). No main paths are deleted.
-- Branch manifest: `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl`, 2,271 records, self-excluded. It contains the current branch file/blob inventory; the `docs` and `docs/audits` tree hashes are null to prevent self-reference.
-- This table contains 321 PR file rows. The overlay file is self-excluded, and the branch-manifest artifact is recorded separately below to avoid a mutual-hash cycle.
-- Status counts: 88 `CONTENT_READ_TESTED_PASS`, 20 `CONTENT_READ_PENDING_TRACE`, 202 `REVIEW_REQUIRED`, 11 `FIXED_TESTED_PENDING_LIVE_APPLY`.
-- Exact code-head verification: GitHub ZIKR Quality Gate run 43384291336 / job 131749029319 SUCCESS on `f20bc346885654831c30895ed5472c1ea1848462`; logs confirm full scope, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration, lint, types, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI config-validation run 43384291262 and contexts `config-guard`, `source-verify`, and `application-build-docs` SUCCESS on the same head. A following documentation-only commit requires its own exact-head checks.
-- Repair E: Cloudinary folder hierarchy preservation. The shared uploader now sanitizes each path segment independently instead of flattening nested folders. Regression test `scripts/tests/cloudinary-folder-path.test.ts` passed in the full gate. Existing assets were not moved or deleted; no live upload was triggered.
-- Supabase: 430 local / 418 remote migrations; latest applied `20261110170000`; 12 pending, 11 test-backed/pending live apply and `20261111000000` still REVIEW_REQUIRED. Security advisor reports leaked-password protection disabled; performance advisor reports 81 unused indexes. No production migration or index was removed.
-- Production Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on main; automatic Git deployments are disabled. No audit-branch deployment was created.
-- PR #320 remains open; zero submitted reviews and zero review threads. CODEOWNERS owner `@Zikrmediaofficial` has no connected repository permission. No merge or gate bypass.
-- Main's separate `ci/circleci: english-content-sync` context remains FAILURE and was not rerun because it may perform content/Gemini work.
-- No content generation, Gemini request, social publishing, notification, production DB mutation, migration apply, storage/media/index deletion, secret rotation, mobile release, merge, or deployment was triggered.
-
-## Audit artifact metadata
-
-- `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl`: `CONTENT_READ_TESTED_PASS`; 2,271 records, self-excluded. Its blob SHA is intentionally not embedded in this overlay; the exact blob and commit SHAs are available from the PR tree/closeout evidence.
-- This overlay is self-excluded from its own table. The manifest includes this overlay's current blob SHA.
-
-## Changed-file inventory
+- Recursive branch inventory: 2274 entries (1777 files, 497 directories); main: 2154 entries (1662 files, 492 directories); no main paths absent.
+- Complete PR changed-file listing: 326 paths (115 added, 211 modified, 0 removed). Compare API returns at most 300 file entries; the full PR filename listing is authoritative.
+- This overlay contains 324 rows and excludes its own file plus `PR320_REPO_MANIFEST_2026-11-13.jsonl` to avoid a mutual-hash cycle.
+- Status counts: 90 `CONTENT_READ_TESTED_PASS`, 21 `CONTENT_READ_PENDING_TRACE`, 202 `REVIEW_REQUIRED`, 11 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Branch manifest contains 2273 records (1776 blobs, 497 directories), self-excluded; `docs` and `docs/audits` directory hashes are null. The manifest includes this overlay's current blob SHA; its own blob SHA is intentionally not embedded here.
+- Exact code-head verification: GitHub Quality Gate run `43392759745` / job `131776401932` SUCCESS; full scope, `pnpm verify`, seven PostgreSQL 17 integration checks, native audio test, lint, type check, production build, `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS on the same head.
 
 | Path | Change | Current blob SHA-1 | Bytes | Status |
 |---|---|---|---:|---|
@@ -36,29 +23,29 @@
 | `.github/workflows/release-finalization.yml` | MODIFIED | b8d63ae66d8ab9441d1ee351a2708f98835bca21 | 16998 | CONTENT_READ_PENDING_TRACE |
 | `.github/workflows/storage-retention.yml` | MODIFIED | 618897128a2c6bf1bc1cb0b8908b1c0183df22d0 | 5063 | CONTENT_READ_TESTED_PASS |
 | `.gitignore` | MODIFIED | 12594eba3cb52a5de9723fee782804cba9a023d9 | 1632 | REVIEW_REQUIRED |
+| `PROJECT_STATUS.md` | MODIFIED | 6f5c05c9a8db8c5c34d2748a902ec5801d0c3114 | 163542 | REVIEW_REQUIRED |
 | `android/app/src/main/AndroidManifest.xml` | MODIFIED | 4090657e7b7de1b16c0d653a0663e50d6846bcbb | 3457 | CONTENT_READ_TESTED_PASS |
 | `android/app/src/main/res/xml/file_paths.xml` | MODIFIED | 591ff1ff6c38cad9405d22da57bb8e65430a8e67 | 213 | REVIEW_REQUIRED |
 | `capacitor.config.json` | MODIFIED | a7e77c6caf9a31a90a590c78b0a4ad99a846db0f | 2029 | CONTENT_READ_TESTED_PASS |
+| `docs/GITHUB_AI_VIDEO.md` | MODIFIED | c72f7242923763a41981dcce856b343042ca45c2 | 5274 | REVIEW_REQUIRED |
+| `docs/MONETAG_SMARTLINK_PLACEMENT.md` | MODIFIED | 4516283b915e5ed06d60758ac0de2f4c6a70b359 | 3553 | REVIEW_REQUIRED |
 | `docs/admin/ADMIN_API_PERMISSION_MATRIX_2026-11-06.md` | MODIFIED | b755f38f3d8b75effb75b97646b30a05d6fdc8e5 | 7365 | REVIEW_REQUIRED |
 | `docs/admin/SOCIAL_PUBLISHING_OPERATIONS.md` | MODIFIED | 8adadaf3b3a6bb2abdede5d2fcf9eb8f26f1da13 | 6862 | REVIEW_REQUIRED |
-| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | 8adb5a27c6eb84ed2f2f8eed5d7a50ff08797bf5 | 199601 | REVIEW_REQUIRED |
-| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | f7b0a634a67b2fd0b1a0135ba6b7fd8999368e6e | 676294 | REVIEW_REQUIRED |
+| `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | 6cbd171733518c9e7ad76e3ff1c544aa2553c4e2 | 206082 | REVIEW_REQUIRED |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | fcf2c5d5b155ffe9d93bff62cc5c27461fe826a2 | 675326 | REVIEW_REQUIRED |
 | `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` | MODIFIED | ae8849ca2127dd5ee1d6e327fb07405e3a05cbc2 | 311031 | CONTENT_READ_TESTED_PASS |
 | `docs/background-jobs.md` | MODIFIED | ba7a0dd48794e6088948d41d1379b4d162376c5d | 11451 | REVIEW_REQUIRED |
 | `docs/circleci-supabase-environment.md` | MODIFIED | 1dabaf72209c8faf7bdd8d1d0c245e9eeb2901a3 | 7248 | REVIEW_REQUIRED |
 | `docs/environment-variables.md` | MODIFIED | 43c3b4453dddb6324f07b73a2fb1d57b85fc93f3 | 17970 | REVIEW_REQUIRED |
-| `docs/GITHUB_AI_VIDEO.md` | MODIFIED | c72f7242923763a41981dcce856b343042ca45c2 | 5274 | REVIEW_REQUIRED |
-| `docs/MONETAG_SMARTLINK_PLACEMENT.md` | MODIFIED | 4516283b915e5ed06d60758ac0de2f4c6a70b359 | 3553 | REVIEW_REQUIRED |
 | `docs/native-oauth-fix.md` | MODIFIED | 1325d2648ea323ca72c6da0aedb25186f3337e3b | 1212 | REVIEW_REQUIRED |
 | `ios/App/App.xcodeproj/project.pbxproj` | MODIFIED | 1cd37c2fc9e6f76b6045ce7aaeada9c2440d19e6 | 17243 | REVIEW_REQUIRED |
 | `ios/App/App/AppDebug.entitlements` | ADDED | a2b0d7ebeeffcd04126f1e412761d7f2c469c6d6 | 445 | REVIEW_REQUIRED |
 | `ios/App/App/Info.plist` | MODIFIED | f38153d83836f03e9afc60f312dcafcb63d09186 | 2401 | CONTENT_READ_TESTED_PASS |
 | `ios/App/Podfile` | MODIFIED | ddf8bb9a4f87fe6e6c05aa1ab1c5e734cf2c224b | 1852 | REVIEW_REQUIRED |
 | `mobile-shell/index.html` | ADDED | 2ebf7ae7b16b2d971cc009878b44be9d4b1b91ae | 1199 | REVIEW_REQUIRED |
+| `mobile/README.md` | MODIFIED | 85505a12b81e0de40fae4cf4dc8e6bfb5d511de0 | 4080 | REVIEW_REQUIRED |
 | `mobile/capacitor-dependencies.json` | MODIFIED | dc9b7955207c96b7aadb8893cd23e9c67abe56e2 | 809 | REVIEW_REQUIRED |
-| `mobile/README.md` | MODIFIED | fc3584fbb947a09a8c5ae9ef0e34363a1a2e8fa2 | 3561 | REVIEW_REQUIRED |
-| `package.json` | MODIFIED | 0de8533dc29367d8fc4d0208d39fb4023715118f | 17477 | REVIEW_REQUIRED |
-| `PROJECT_STATUS.md` | MODIFIED | abc0bb4622e99a62e52252c9943bda59ebc05808 | 156627 | REVIEW_REQUIRED |
+| `package.json` | MODIFIED | 1ec34ca396b0aff7b3d6d13f0fd5b3f7515bfe67 | 17535 | REVIEW_REQUIRED |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | ef1cad9d7db75ee6677edc9dba3387debb95695a | 30421 | REVIEW_REQUIRED |
 | `public/offline-content/v1/kids.json` | MODIFIED | dc32c0bdbd722f0f920d7db2a690074de0194fcc | 52752 | REVIEW_REQUIRED |
 | `public/offline-content/v1/manifest.json` | MODIFIED | 9d95f4df6b9e85227aed64e171a207a89da787ad | 8419 | REVIEW_REQUIRED |
@@ -113,6 +100,7 @@
 | `scripts/tests/kids-navigation.test.ts` | MODIFIED | 31bb89eb1143274076ad36a34a20d5bf9b8c7188 | 3572 | REVIEW_REQUIRED |
 | `scripts/tests/kids-share-rate-limit.test.ts` | ADDED | 89f3fc70bf8427f4ee4a4862bfa8457c14eee48d | 3331 | REVIEW_REQUIRED |
 | `scripts/tests/kids-video-series.test.ts` | MODIFIED | 881ec4abc56df23e9fe1f7418b8c0d13c4f33fc4 | 4974 | REVIEW_REQUIRED |
+| `scripts/tests/native-audio-platform-assets.test.ts` | ADDED | 997c26c8fe033ff62c0f9371eda9b161622493b4 | 4533 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/native-google-oauth-contract.test.mjs` | MODIFIED | da5a4ff4281fc64639afb3713162ed630b410ad1 | 12525 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/native-reminder-safety.test.ts` | ADDED | 22a1f9791c1e7f9216b19e52dde65d847a426ce3 | 7136 | REVIEW_REQUIRED |
 | `scripts/tests/offline-export-parent-scope.test.mjs` | ADDED | 518ec5e153dc0638229694dcb83a41b5be5355ae | 2753 | REVIEW_REQUIRED |
@@ -230,7 +218,7 @@
 | `src/app/sitemap.ts` | MODIFIED | be73250d48aadca9f86681fef6e5c4dfb70270b4 | 7798 | REVIEW_REQUIRED |
 | `src/components/layout/adsense-slot.tsx` | MODIFIED | 3a3aa137c4d2fa91bbda8197e7e0f83d48210b51 | 2091 | CONTENT_READ_TESTED_PASS |
 | `src/components/layout/deferred-runtime.tsx` | MODIFIED | 06cdaa10a5e804c1a197b89374911fbbc0203c64 | 2016 | CONTENT_READ_TESTED_PASS |
-| `src/components/layout/native-capacitor-bridge.tsx` | MODIFIED | f2b10ba7fc166f889a04f82033cb699919c1d4f3 | 13909 | REVIEW_REQUIRED |
+| `src/components/layout/native-capacitor-bridge.tsx` | MODIFIED | a7c157a09f6602cf181589584ac3d3622e26127a | 14021 | REVIEW_REQUIRED |
 | `src/components/layout/native-google-oauth-handler.tsx` | MODIFIED | 7a18dc10879699083708bccea1a34e91608413e3 | 4863 | CONTENT_READ_TESTED_PASS |
 | `src/components/layout/runtime-effects.tsx` | MODIFIED | 1d358572133816df8d64b68c3b3809672145e264 | 1670 | CONTENT_READ_TESTED_PASS |
 | `src/components/layout/service-worker-register.tsx` | MODIFIED | 7554c65516997dca85be95e07108bd3a86e97086 | 7130 | CONTENT_READ_TESTED_PASS |
@@ -271,9 +259,10 @@
 | `src/features/media/services/media-asset-classification.ts` | ADDED | 4b4eaf6ad7af05a7d729945fc603999c82709dc3 | 1604 | CONTENT_READ_TESTED_PASS |
 | `src/features/media/services/media-asset-limits.ts` | ADDED | 7f0bf17ceb1c6972b8c2a47a30c818d3f62ff76e | 379 | CONTENT_READ_TESTED_PASS |
 | `src/features/media/services/media-assets.ts` | MODIFIED | c3672a80e8aad1eafab696ddc13a8a3b560db0be | 8982 | CONTENT_READ_TESTED_PASS |
+| `src/features/notifications/services/native-notification-channels.ts` | ADDED | 154fda5fce99eaff6d8c8b13e45d3757682bb895 | 2138 | CONTENT_READ_TESTED_PASS |
 | `src/features/notifications/services/push-endpoint.ts` | ADDED | 72ddd8e83669bf6599d3b6bb56b22353ec56fa87 | 1086 | REVIEW_REQUIRED |
 | `src/features/notifications/services/push-subscription-request.ts` | ADDED | 378fc61d3b67be1608eb764d516380a9e96dd174 | 491 | REVIEW_REQUIRED |
-| `src/features/prayer/hooks/use-prayer-alert.ts` | MODIFIED | c5aad576b0bf935d65aa2dfbd06d40aec9b11a98 | 19865 | REVIEW_REQUIRED |
+| `src/features/prayer/hooks/use-prayer-alert.ts` | MODIFIED | 5b51d78e0d06a6c0319a22bd76b5ea4c69444c10 | 20020 | REVIEW_REQUIRED |
 | `src/features/prayer/services/prayer-alert-settings.ts` | ADDED | 6ec49843358b3f526897680ddf3bafa4afa89e8f | 1235 | REVIEW_REQUIRED |
 | `src/features/prayer/services/prayer-notification-schedule.ts` | ADDED | dccb29d132066a2110a8c3bc4fef03a36ccc638f | 5434 | REVIEW_REQUIRED |
 | `src/features/prayer/services/prayer-reminder-preferences.ts` | ADDED | 59db8bb4e6a58e2fb2b31e46ad88d819213bc398 | 1347 | CONTENT_READ_TESTED_PASS |
@@ -281,7 +270,7 @@
 | `src/features/profile/services/profile-sync.ts` | ADDED | fd9c2bd727ef52e7524a0f1a9fe64417e048ee90 | 1870 | REVIEW_REQUIRED |
 | `src/features/profile/services/profile.ts` | MODIFIED | 70801feec3d6d200eb7a2001a3413b2feee0eebd | 12094 | REVIEW_REQUIRED |
 | `src/features/reminders/hooks/use-dhikr-reminder.ts` | MODIFIED | 33f99cc4756b8f7f73db96f86718654c2883f0f1 | 8326 | REVIEW_REQUIRED |
-| `src/features/reminders/hooks/use-salawat-reminder.ts` | MODIFIED | e5c23c537a7fe71182a707fecab11ffa1eb45025 | 12500 | REVIEW_REQUIRED |
+| `src/features/reminders/hooks/use-salawat-reminder.ts` | MODIFIED | 78e088be522bcf8d57b340683499b81b8b065fc7 | 12655 | REVIEW_REQUIRED |
 | `src/features/reminders/services/reminder-preferences.ts` | MODIFIED | 04f03aa42620b8c898842b373fec12616382899e | 5336 | CONTENT_READ_TESTED_PASS |
 | `src/features/reminders/services/reminder-settings.ts` | ADDED | ceacd1acdc136fb3f39f4adc0bd22b05d4c249f0 | 1726 | REVIEW_REQUIRED |
 | `src/features/reminders/services/reminder-timezone-sync.ts` | ADDED | 4f775b633bbcf20fa6ab9d19f9d9a1e4c16f376e | 3137 | REVIEW_REQUIRED |
@@ -316,6 +305,7 @@
 | `src/features/videos/services/videos.ts` | MODIFIED | 2e81dc118c85b4637f628c51ac21116df323a059 | 10540 | CONTENT_READ_PENDING_TRACE |
 | `src/lib/ads/runtime-policy.ts` | ADDED | bc5983b510df01b78e6cb129d39fc45d5c7ccb4b | 520 | CONTENT_READ_TESTED_PASS |
 | `src/lib/async-serial-queue.ts` | ADDED | edbf8e7ccfc685996f3901617f36b0f1eeed7f75 | 303 | REVIEW_REQUIRED |
+| `src/lib/audio/config.ts` | MODIFIED | 4e11d5c53a632d765d09fc017106cba5912f0552 | 7622 | CONTENT_READ_PENDING_TRACE |
 | `src/lib/auth-enhanced.ts` | MODIFIED | a64b46b73b1c3e6b50195311b225ad7fc8500d93 | 4859 | REVIEW_REQUIRED |
 | `src/lib/games/registry.ts` | MODIFIED | 307dc154fdabf1b5eba9e0def99d66321dab83c4 | 17590 | REVIEW_REQUIRED |
 | `src/lib/offline-pack.ts` | MODIFIED | 2d3feee223b2d8457f7462b326a326f1f7523b64 | 22058 | REVIEW_REQUIRED |
@@ -352,11 +342,11 @@
 
 ## Open coverage and safety notes
 
-- The 202 PR branch rows still `REVIEW_REQUIRED` are separate from the 1,525-row main-baseline backlog; neither count is a claim of full repository closure.
-- The 20 pending-trace rows need complete import/consumer/API/permission/runtime tracing before they can be marked closed.
-- The 11 `FIXED_TESTED_PENDING_LIVE_APPLY` rows are test-backed migrations only; they are not applied to production. The remaining `20261111000000` migration remains `REVIEW_REQUIRED`.
-- Social publishing, OAuth, admin routes, background jobs, Kids navigation/content, mobile, CI/CD, and the storage-retention script still require full path-by-path review. No publishing or content-generation workflow was dispatched.
-- The storage-retention workflow is dry-run on schedule and requires an owner-confirmed reference freeze plus exact typed confirmation for apply. No deletion was executed.
-- The main-only `english-content-sync` CircleCI failure remains open; do not rerun it until its side effects are proven safe.
+- The 202 `REVIEW_REQUIRED` PR rows and 21 pending-trace rows remain open; CI success is not a substitute for complete source/import/consumer/runtime review.
+- The 11 `FIXED_TESTED_PENDING_LIVE_APPLY` migrations are not applied to production. `20261111153000_harden_video_storage_retention_rpc.sql` remains `REVIEW_REQUIRED` pending complete RPC/cleanup-worker trace.
+- The native audio lifecycle repair is verified on code head `bb1f066ca9aa63067781219ad5c2e93ff85929d9`; the entire Capacitor bridge and physical Android/iOS acceptance remain open.
+- The durable video-to-social handoff recovery is tested, but the full social provider, OAuth, Admin, and workflow graph remains open. No publishing or content generation was triggered.
+- Supabase `auth_leaked_password_protection` remains WARN; 81 unused-index findings are INFO only. No index was removed.
+- The main-only `english-content-sync` CircleCI failure remains open; its log page was not accessible through the connected view and it was not rerun.
 - Owner review, production migration approval, Apple AASA identifiers, physical-device acceptance, and manual Vercel release approval remain external gates.
-- Do not merge, deploy, delete assets/indexes/releases, apply migrations, or claim closure until the corresponding evidence and approvals exist.
+- Do not merge, deploy, apply migrations, delete assets/indexes/releases, or claim project closure until corresponding evidence and approvals exist.
