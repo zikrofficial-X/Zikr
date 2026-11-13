@@ -174,3 +174,17 @@ assert.ok(
 );
 assert.match(job, /currentQueue\?\.\[0\]\?\.status === "cancelled"/,
   "a concurrent unpublish must win over an in-flight scheduled publication");
+
+
+assert.match(job, /import \{ buildNextRowVersionUpdatedAt \} from "\.\.\/\.\.\/src\/lib\/supabase\/row-version"/,
+  "scheduled content publication must use a strictly monotonic row-version helper for compare-and-set transitions");
+assert.match(job, /const requestedClaimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, now\)/,
+  "the queue claim must advance its row version before the worker lease is used");
+assert.match(job, /const requestedContentUpdatedAt = buildNextRowVersionUpdatedAt\(validatedContentUpdatedAt\)/,
+  "the validated content row must receive a strictly newer CAS version even when publication and a concurrent edit share one millisecond");
+assert.match(job, /updated_at: buildNextRowVersionUpdatedAt\(publishedUpdatedAt\)/,
+  "a stale rollback must advance the exact worker-written row version so it cannot undo a same-millisecond admin republish");
+assert.match(job, /const recoveredAt = buildNextRowVersionUpdatedAt\(row\.updated_at, now\)/,
+  "stale queue recovery must not reuse the expired worker's row-version token");
+assert.match(job, /const completedUpdatedAt = buildNextRowVersionUpdatedAt\(claimUpdatedAt, new Date\(completedAt\)\)/,
+  "queue completion must advance the exact processing lease version");
