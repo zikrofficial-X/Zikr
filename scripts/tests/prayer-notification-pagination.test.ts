@@ -880,4 +880,22 @@ assert.match(salawatHookSource, /window\.addEventListener\("zikr:native-app-stat
 assert.match(salawatHookSource, /document\.addEventListener\("visibilitychange", syncTimeZone\)/);
 assert.match(prayerAlertProviderSource, /useSalawatReminder\(\)/, "the global prayer provider must keep the timezone sync mounted");
 
+const sourceAgentCronMigration = readFileSync(
+  "supabase/migrations/20261113210000_reconcile_source_agent_cron_project_ref.sql",
+  "utf8",
+);
+assert.match(
+  sourceAgentCronMigration,
+  /https:\/\/zqtssvlvmkzeeyqghqfk\.supabase\.co\/functions\/v1\/source-verified-content-agent/,
+  "source-agent cron must target the active Supabase project",
+);
+assert.doesNotMatch(
+  sourceAgentCronMigration,
+  /nmdeazfmtncelykzxkhs/,
+  "source-agent cron migrations must not retain the legacy Supabase project reference",
+);
+assert.match(sourceAgentCronMigration, /cron\.alter_job/);
+assert.match(sourceAgentCronMigration, /cron\.schedule\(/);
+assert.match(sourceAgentCronMigration, /zikr-source-verified-content-agent/);
+
 console.log("Prayer notification subscription pagination and delivery lease contracts passed.");
