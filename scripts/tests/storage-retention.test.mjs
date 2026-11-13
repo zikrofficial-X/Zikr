@@ -550,7 +550,7 @@ assert.match(retentionRpcMigration, /p_expected_url IS NULL[\s\S]*btrim\(p_expec
 const retentionPreflightStart = retentionRpcMigration.indexOf("CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()");
 const retentionPreflightBody = retentionRpcMigration.slice(retentionPreflightStart);
 assert.ok(retentionPreflightStart >= 0, "the live retention preflight must remain present");
-assert.ok(retentionPreflightBody.includes("coalesce\\\\(retention_state") && retentionPreflightBody.includes("nullif\\\\(btrim\\\\(p_retention->>'path'"),
+assert.ok(retentionPreflightBody.includes("coalesce\\(retention_state") && retentionPreflightBody.includes("nullif\\(btrim\\(p_retention->>'path'"),
   "the live preflight must verify the explicit state and non-empty path guards");
 assert.ok(retentionPreflightBody.includes("pg_catalog.has_function_privilege"));
 for (const role of ["anon", "authenticated", "service_role"]) {
