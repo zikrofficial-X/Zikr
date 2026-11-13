@@ -20,17 +20,21 @@ const fakeFetch: typeof fetch = async (input, init) => {
   assert.ok(url.includes("youtube/v3/channels"));
   assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer private-access-token");
   return new Response(JSON.stringify({
-    items: [{
-      id: "UC123456789",
-      snippet: { title: "ZIKR Channel" },
-      statistics: { subscriberCount: "1234", viewCount: "98765", videoCount: "42" },
-    }],
+    items: [
+      { id: "UC-other-channel", snippet: { title: "Other Channel" }, statistics: { subscriberCount: "1" } },
+      {
+        id: "UC123456789",
+        snippet: { title: "ZIKR Channel" },
+        statistics: { subscriberCount: "1234", viewCount: "98765", videoCount: "42" },
+      },
+    ],
   }), { status: 200 });
 };
 const connected = await getYouTubePublishingConnectionHealth({
   YOUTUBE_CLIENT_ID: "client-id",
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
 }, fakeFetch, async () => "verified-read-only-refresh-token");
 assert.equal(connected.status, "connected");
 assert.equal(connected.readSource, "oauth");
@@ -40,6 +44,29 @@ assert.equal(connected.subscribers, 1234);
 assert.equal(connected.totalViews, 98765);
 assert.equal(connected.videoCount, 42);
 assert.equal(oauthRequests, 2);
+
+let ambiguousChannelRequests = 0;
+const multipleChannelsFetch: typeof fetch = async (input) => {
+  if (String(input).includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+  }
+  ambiguousChannelRequests += 1;
+  return new Response(JSON.stringify({
+    items: [
+      { id: "UC-first", snippet: { title: "First Channel" } },
+      { id: "UC-second", snippet: { title: "Second Channel" } },
+    ],
+  }), { status: 200 });
+};
+const ambiguousChannel = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+}, multipleChannelsFetch, async () => "verified-read-only-refresh-token");
+assert.equal(ambiguousChannel.status, "channel_selection_required");
+assert.equal(ambiguousChannel.channelId, null);
+assert.match(ambiguousChannel.message, /YOUTUBE_CHANNEL_ID/);
+assert.equal(ambiguousChannelRequests, 1, "an ambiguous OAuth account must not be reported as connected or trigger a guessed channel");
+
 assert.equal(JSON.stringify(connected).includes("private-access-token"), false);
 assert.equal(JSON.stringify(connected).includes("private-refresh-token"), false);
 

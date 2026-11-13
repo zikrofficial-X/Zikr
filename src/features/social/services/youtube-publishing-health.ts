@@ -1,5 +1,5 @@
 import type { SocialPlatformEnvironment } from "./platform-availability";
-import { getYouTubeRefreshToken } from "./youtube-oauth-credentials";
+import { getYouTubeRefreshToken, selectYouTubeChannel } from "./youtube-oauth-credentials";
 
 export type YouTubePublishingHealthStatus =
   | "not_configured"
@@ -8,6 +8,7 @@ export type YouTubePublishingHealthStatus =
   | "reauthorization_required"
   | "permission_missing"
   | "channel_not_found"
+  | "channel_selection_required"
   | "unavailable";
 
 export type YouTubeChannelReadSource = "oauth" | "api_key" | null;
@@ -183,10 +184,26 @@ export async function getYouTubePublishingConnectionHealth(
           : "تعذر قراءة ملف قناة YouTube حاليًا.");
     }
     const channels = await channelResponse.json() as ChannelResponse;
-    const channel = channels.items?.[0];
+    const validChannels = (channels.items ?? []).filter(
+      (item) => typeof item.id === "string" && item.id.trim().length > 0,
+    );
+    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
+    const channel = selectYouTubeChannel(validChannels, configuredChannelId);
     if (!channel?.id) {
+      if (!configuredChannelId && validChannels.length > 1) {
+        return result(
+          "channel_selection_required",
+          "يرتبط حساب Google بأكثر من قناة YouTube؛ اضبط YOUTUBE_CHANNEL_ID على القناة المقصودة ثم أعد تفويضها.",
+        );
+      }
       const publicRead = await readPublicChannel(env, fetcher, "permission_missing");
-      return publicRead ?? result("channel_not_found", "OAuth صالح، لكن الحساب لم يُرجع قناة YouTube مرتبطة.");
+      return publicRead ?? result(
+        "channel_not_found",
+        configuredChannelId
+          ? "القناة المحددة في YOUTUBE_CHANNEL_ID غير موجودة ضمن القنوات التي أعادها OAuth."
+          : "OAuth صالح، لكن الحساب لم يُرجع قناة YouTube مرتبطة.",
+        configuredChannelId || null,
+      );
     }
     return result(
       "connected",
