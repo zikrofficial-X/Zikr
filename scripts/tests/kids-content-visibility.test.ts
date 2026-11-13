@@ -426,7 +426,7 @@ assert.ok(
   "duplicate Kids slugs must be rejected before uploading media",
 );
 assert.doesNotMatch(adminAction, /on_conflict=slug|resolution=merge-duplicates/, "the add-only Kids form must never silently overwrite an existing published slug");
-assert.ok(adminAction.includes("publicId: `${slug}-${randomUUID()}`"), "each Kids upload must use a unique Cloudinary asset id");
+assert.ok(adminAction.includes('requestedPublicId = slug + "-" + randomUUID()') && adminAction.includes("publicId: requestedPublicId"), "each Kids upload must use a unique Cloudinary asset id");
 const mediaPermissionPosition = adminAction.indexOf('requireAdminPermission("media.manage")');
 assert.ok(mediaPermissionPosition > 0 && mediaPermissionPosition < imageUploadPosition, "image upload must retain the media.manage permission gate");
 assert.ok(adminAction.includes("audit event unavailable after content save"), "audit failure must not report a committed Kids insert as failed or skip cache revalidation");
