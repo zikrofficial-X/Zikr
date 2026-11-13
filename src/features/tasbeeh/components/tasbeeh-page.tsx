@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { isTasbeehTabLoaded } from '@/features/tasbeeh/services/tasbeeh-storage';
 import { ExternalLink, Headphones } from 'lucide-react';
 import { Container } from '@/components/ui/container';
 import { Card } from '@/components/ui/card';
@@ -68,6 +69,7 @@ function DhikrAudioCard() {
 export function TasbeehPage() {
   const [tab, setTab] = useState<TabType>('default');
   const [items, setItems] = useState<TasbeehItem[]>(DEFAULT_TASBEEH_ITEMS);
+  const [loadedTab, setLoadedTab] = useState<TabType | null>(null);
   const [totalCount, setTotalCount] = useState(0);
 
   const resetToDefaults = useCallback(() => {
@@ -83,25 +85,36 @@ export function TasbeehPage() {
     }
   }, [tab]);
 
-  // Load from localStorage on mount
+  // Load the selected tab before allowing the persistence effect to write.
   useEffect(() => {
-    const saved = localStorage.getItem(`tasbeeh_${tab}`);
-    if (saved) {
-      try {
-        setItems(JSON.parse(saved));
-      } catch {
+    try {
+      const saved = localStorage.getItem(`tasbeeh_${tab}`);
+      if (saved) {
+        try {
+          setItems(JSON.parse(saved));
+        } catch {
+          resetToDefaults();
+        }
+      } else {
         resetToDefaults();
       }
-    } else {
+    } catch {
       resetToDefaults();
+    } finally {
+      setLoadedTab(tab);
     }
   }, [tab, resetToDefaults]);
 
-  // Save to localStorage
+  // Never persist the previous tab's items while the newly selected tab is loading.
   useEffect(() => {
-    localStorage.setItem(`tasbeeh_${tab}`, JSON.stringify(items));
+    if (!isTasbeehTabLoaded(tab, loadedTab)) return;
+    try {
+      localStorage.setItem(`tasbeeh_${tab}`, JSON.stringify(items));
+    } catch {
+      // Keep the counter usable when browser storage is unavailable.
+    }
     setTotalCount(calculateTotalCount(items));
-  }, [items, tab]);
+  }, [items, tab, loadedTab]);
 
   const handleIncrement = (index: number) => {
     const newItems = [...items];
