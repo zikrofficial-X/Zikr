@@ -17,6 +17,7 @@ function asRecord(value: unknown): Record<string, unknown> {
  */
 export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): string[] {
   const row = asRecord(value);
+  if (row.status !== "published" && row.status !== "partial") return [];
   const metadata = asRecord(row.metadata);
   const rawPlatformResults = metadata.platformResults;
   const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
