@@ -160,6 +160,29 @@ assert.deepEqual(
   ["youtube"],
   "the explicit no-remote-publication confirmation may release only the selected ambiguous platform",
 );
+const explicitManualHold = {
+  manualReconciliationPlatforms: ["youtube", "legacy-provider", "youtube"],
+};
+assert.deepEqual(
+  getManualReconciliationPlatforms(explicitManualHold),
+  ["youtube"],
+  "persisted manual reconciliation metadata must remain authoritative even when a platform result is absent",
+);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: explicitManualHold, maxAttempts: 5 }),
+  false,
+  "the background worker must honor an explicit persisted manual hold without relying on platformResults",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], explicitManualHold),
+  [],
+  "admin retry must not silently release an explicit manual hold",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], explicitManualHold, true),
+  ["youtube"],
+  "only an explicit no-remote-publication confirmation may release a persisted manual hold",
+);
 assert.equal(isAmbiguousProviderOutcome("TypeError: fetch failed"), true, "a fetch transport failure is ambiguous");
 assert.equal(isAmbiguousProviderOutcome("ECONNRESET"), true, "a reset provider connection is ambiguous");
 
@@ -1042,6 +1065,20 @@ assert.equal(
   ),
   null,
   "YouTube recovery must never bypass ambiguous remote outcomes",
+);
+assert.equal(
+  buildYouTubeQueueRecoveryPatch(
+    {
+      authBlocked: true,
+      authBlockedPlatforms: ["youtube"],
+      manualReconciliationPlatforms: ["youtube"],
+      platformResults: { youtube: { ok: false, error: youtubeAuthError } },
+    },
+    ["youtube"],
+    "2026-11-13T10:00:00.000Z",
+  ),
+  null,
+  "YouTube auth recovery must not bypass a persisted manual-reconciliation hold when the result ledger is incomplete",
 );
 assert.equal(
   buildYouTubeQueueRecoveryPatch(
