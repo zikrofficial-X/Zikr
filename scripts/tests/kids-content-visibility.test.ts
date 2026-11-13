@@ -680,7 +680,7 @@ assert.doesNotMatch(migration, /age_appropriate/i, "the automation eligibility f
 assert.match(migration, /security invoker\s+set search_path = ''/i, "the service-role share counter must use invoker privileges and an empty search path");
 assert.doesNotMatch(migration, /security definer/i, "public share-count code must not introduce a definer entry point");
 
-console.log("Kids content visibility and fallback contracts passed.");
+
 
 const offlineKidsRows = normalizeOfflineKidsRows([
   { id: "approved-story", slug: "approved-story", title_ar: "قصة معتمدة", title_en: "Approved story", type: "story", age_group: "6-8", content_ar: "نص", content_en: "Text", published: true, is_active: true, metadata: { age_appropriate: true } },
@@ -743,7 +743,7 @@ assert.ok(kidsSocialQueueRequests[0].includes("order=created_at.desc,id.desc"), 
 assert.ok(kidsSocialQueueRequests[1].includes("&or="), "later Kids social history pages must continue after the last created_at/id cursor");
 assert.ok(kidsSocialQueueRequests[0].includes("limit=500"), "Kids social history must use bounded pages");
 assert.deepEqual(
-  await loadKidsSocialQueueRows([], async <_T>() => {
+  await loadKidsSocialQueueRows([], async () => {
     throw new Error("an empty request-ID set must not query Supabase");
   }),
   [],
@@ -760,3 +760,5 @@ await assert.rejects(
   "an oversized Kids social history must fail closed instead of silently truncating deletion or publication evidence",
 );
 assert.equal(oversizedPage, 11, "the bounded Kids history scan must detect rows beyond its 5,000-row safety limit");
+
+console.log("Kids content visibility and fallback contracts passed.");
