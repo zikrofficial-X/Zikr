@@ -7,6 +7,7 @@ import {
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
   isCurrentPrayerReminderSchedule,
+  matchesAnyCurrentPrayerReminderSchedule,
   nextLocalDate,
   previousLocalDate,
   zonedDateTime,
@@ -168,7 +169,7 @@ assert.match(preferenceLoader, /calculation_method, madhab, notifications_enable
 assert.match(preferenceLoader, /\.select\("id, latitude, longitude, timezone"\)/);
 assert.match(preferenceLoader, /dhikr_interval_minutes, salawat_enabled, salawat_interval_minutes/);
 assert.match(deliverySourceForFencing, /\.from\("prayer_schedule_cache"\)/);
-assert.match(deliverySourceForFencing, /isCurrentPrayerReminderSchedule/);
+assert.match(deliverySourceForFencing, /matchesAnyCurrentPrayerReminderSchedule/);
 assert.match(deliverySourceForFencing, /isCurrentIntervalReminderSlot/);
 
 assert.equal(
@@ -273,6 +274,44 @@ assert.equal(
   }),
   false,
   "a disabled or malformed prayer offset must fail closed",
+);
+const previousDayPrayerCache = {
+  prayer_date: "2026-11-11",
+  timings: { Fajr: "05:00" },
+};
+const currentDayPrayerCache = {
+  prayer_date: "2026-11-12",
+  timings: { Fajr: "05:00" },
+};
+const adjacentDateSchedule = {
+  scheduledAt: "2026-11-12T02:50:00.000Z",
+  timeZone: "Africa/Cairo",
+  prayerName: "Fajr",
+  offsetMinutes: -10,
+};
+assert.equal(
+  matchesAnyCurrentPrayerReminderSchedule({
+    ...adjacentDateSchedule,
+    candidates: [previousDayPrayerCache, currentDayPrayerCache],
+  }),
+  true,
+  "a stale previous-day cache returned first must not hide the matching current-day prayer schedule",
+);
+assert.equal(
+  matchesAnyCurrentPrayerReminderSchedule({
+    ...adjacentDateSchedule,
+    candidates: [currentDayPrayerCache, previousDayPrayerCache],
+  }),
+  true,
+  "prayer schedule validation must be independent of cache row order",
+);
+assert.equal(
+  matchesAnyCurrentPrayerReminderSchedule({
+    ...adjacentDateSchedule,
+    candidates: [previousDayPrayerCache],
+  }),
+  false,
+  "a neighboring date alone must not validate a stale prayer delivery",
 );
 assert.equal(isCurrentIntervalReminderSlot("2026-11-12T08:15:00.000Z", 15), true);
 assert.equal(
