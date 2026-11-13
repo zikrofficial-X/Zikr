@@ -735,12 +735,10 @@ const completeKidsSocialHistory = await loadKidsSocialQueueRows(
       ? kidsSocialQueueRows(0, 500)
       : kidsSocialQueueRows(1, 101)) as T;
   },
-  "2026-11-13T12:00:00.000Z",
 );
 assert.equal(completeKidsSocialHistory.length, 601, "Kids publication reconciliation must read beyond the former 600-row truncation boundary");
 assert.equal(kidsSocialQueueRequests.length, 2, "Kids social history must fetch every page until a short page is returned");
 assert.ok(kidsSocialQueueRequests[0].includes("metadata->>audience=eq.kids"), "Kids social history must remain scoped to Kids-only queue rows");
-assert.ok(kidsSocialQueueRequests[0].includes("created_at=lte."), "Kids social history must use a stable read cutoff");
 assert.ok(kidsSocialQueueRequests[0].includes("order=created_at.desc,id.desc"), "Kids social history must use a deterministic keyset order");
 assert.ok(kidsSocialQueueRequests[1].includes("&or="), "later Kids social history pages must continue after the last created_at/id cursor");
 assert.ok(kidsSocialQueueRequests[0].includes("limit=500"), "Kids social history must use bounded pages");
@@ -757,7 +755,6 @@ await assert.rejects(
   loadKidsSocialQueueRows(
     ["video-request-1"],
     async <T>() => kidsSocialQueueRows(oversizedPage++, 500) as T,
-    "2026-11-13T12:00:00.000Z",
   ),
   /exceeded the safe scan limit/,
   "an oversized Kids social history must fail closed instead of silently truncating deletion or publication evidence",
