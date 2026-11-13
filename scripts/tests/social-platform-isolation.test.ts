@@ -692,3 +692,41 @@ assert.match(releaseActionBlock, /health\.facebookConnectionStatus !== "connecte
 assert.match(releaseActionBlock, /health\.facebookEnabled !== true/, "queue release must verify Facebook publishing is enabled");
 assert.match(releaseActionBlock, /unblockFacebookAuthBlockedQueue\(\)/, "only the explicit action may release auth-blocked queue rows");
 assert.match(releaseActionBlock, /permission: "social\.publish"/, "queue release must be audited as social.publish");
+
+assert.equal(
+  isAmbiguousProviderOutcome("YouTube publisher completed without returning a remote post/video ID."),
+  true,
+  "a provider success without a remote ID is ambiguous and must require reconciliation instead of automatic republishing",
+);
+for (const blockedSourceMetadata of [
+  { writtenArticlePublicationBlocked: true },
+  { kidsSourceApprovalBlocked: true },
+]) {
+  assert.equal(
+    canAttemptSocialPlatform({
+      platform: "facebook",
+      enabledPlatforms: both,
+      metadata: blockedSourceMetadata,
+      maxAttempts: 5,
+    }),
+    false,
+    "source approval blocks must keep failed social queue items out of automatic retry selection",
+  );
+  assert.deepEqual(
+    getRetryableSocialPlatforms(["facebook"], blockedSourceMetadata),
+    [],
+    "source approval blocks must not be presented as automatically retryable",
+  );
+}
+assert.ok(
+  adminSocialRouteSource.includes("const retryMetadata = {") &&
+    adminSocialRouteSource.includes("{ ...item, metadata: retryMetadata }"),
+  "an explicit admin retry must revalidate source-approval holds before selecting platforms",
+);
+assert.ok(
+  adminSocialRouteSource.includes("writtenArticlePublicationBlocked: false") &&
+    adminSocialRouteSource.includes("kidsSourceApprovalBlocked: false") &&
+    adminSocialRouteSource.includes("manualReconciliationPlatforms: remainingManualReconciliationPlatforms"),
+  "an explicit retry must clear only the selected resolved source/manual holds while preserving unrelated approval gates",
+);
+
