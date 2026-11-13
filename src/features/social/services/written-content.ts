@@ -1,3 +1,5 @@
+import { normalizeSocialPlatformResults } from "./platform-availability";
+
 export type WrittenGenerationRequest = {
  category: WrittenCategory;
  batchSize: number;
@@ -382,14 +384,15 @@ function getConfirmedPublicWrittenPlatforms(
 ): PublicKidsWrittenPost["platforms"] {
  const allowed = new Set(["facebook", "facebook_reels", "youtube"]);
  const metadata = asWrittenRecord(row.metadata);
- const results = asWrittenRecord(metadata.platformResults);
+ const rawResults = metadata.platformResults;
+ const results = normalizeSocialPlatformResults(rawResults);
  const deletions = asWrittenRecord(metadata.platformDeletions);
  const targets = [...new Set((row.target_platforms ?? []).filter(
   (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
    typeof platform === "string" && allowed.has(platform),
  ))];
  const isDeleted = (platform: string) => asWrittenRecord(deletions[platform]).status === "deleted";
- const hasResultLedger = Object.keys(results).length > 0;
+ const hasResultLedger = rawResults !== null && typeof rawResults === "object";
  if (hasResultLedger) {
   return targets.filter((platform) => {
    if (isDeleted(platform)) return false;
