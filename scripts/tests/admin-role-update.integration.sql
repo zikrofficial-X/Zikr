@@ -240,7 +240,48 @@ BEGIN
     RAISE EXCEPTION 'self-role rejection did not preserve the super administrator assignment';
   END IF;
 END;
-$$;
+$;
+
+-- An ordinary administrator must not promote their own delegated role to super_admin.
+SET ROLE service_role;
+DO $admin_self_promotion$
+DECLARE
+  v_message text;
+BEGIN
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '77777777-7777-4777-8777-777777777777',
+      'super_admin',
+      '77777777-7777-4777-8777-777777777777'
+    );
+    RAISE EXCEPTION 'ordinary administrator unexpectedly promoted itself to super_admin';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    GET STACKED DIAGNOSTICS v_message = MESSAGE_TEXT;
+    IF v_message <> 'self-role changes are not allowed through this action' THEN
+      RAISE EXCEPTION 'self-promotion was rejected for an unexpected reason: %', v_message;
+    END IF;
+  END;
+END;
+$admin_self_promotion$;
+RESET ROLE;
+
+DO $admin_self_promotion_preserved$
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles
+  WHERE id = '77777777-7777-4777-8777-777777777777';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments
+  WHERE user_id = '77777777-7777-4777-8777-777777777777';
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'admin' THEN
+    RAISE EXCEPTION 'rejected self-promotion changed the administrator role assignment';
+  END IF;
+END;
+$admin_self_promotion_preserved$;
+
 SELECT 'ADMIN_ROLE_UPDATE_INTEGRATION_PASSED' AS result;
 
 
