@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { createAdminClient } from '@/lib/supabase/server';
 import { sanitizeStorageSegment } from '@/lib/services/storage';
+import { SITE_AUDIO_ALLOWED_MIME_TYPES, SITE_AUDIO_MAX_BYTES } from '@/features/audio/services/site-audio-upload-contract';
 
 const ALLOWED_TYPES = new Set<string>(SITE_AUDIO_ALLOWED_MIME_TYPES);
 const MAX_BYTES = SITE_AUDIO_MAX_BYTES;
