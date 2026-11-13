@@ -100,11 +100,7 @@ export function isAmbiguousProviderOutcome(error: unknown): boolean {
 }
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
-  if (
-    metadata?.sourceMediaMissing === true ||
-    metadata?.kidsSourceApprovalBlocked === true ||
-    metadata?.writtenArticlePublicationBlocked === true
-  ) return [];
+  if (metadata?.sourceMediaMissing === true) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
   return supported.filter(
@@ -170,7 +166,11 @@ export function getRetryableSocialPlatforms(
   metadata: SocialPlatformMetadata,
   allowAmbiguous = false,
 ): SocialPlatform[] {
-  if (metadata?.sourceMediaMissing === true) return [];
+  if (
+    metadata?.sourceMediaMissing === true ||
+    metadata?.kidsSourceApprovalBlocked === true ||
+    metadata?.writtenArticlePublicationBlocked === true
+  ) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
