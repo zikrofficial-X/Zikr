@@ -6,7 +6,11 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
-import { deleteCloudinaryImageIfUnreferenced, uploadCloudinaryImage, type CloudinaryImageUpload } from "@/features/media/services/cloudinary";
+import {
+  deleteCloudinaryImageIfUnreferenced,
+  uploadCloudinaryImage,
+  type CloudinaryImageUpload,
+} from "@/features/media/services/cloudinary";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
 import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
@@ -48,10 +52,15 @@ async function compensateOrphanedKidsImage(
       },
     });
     if (result === "referenced") {
-      console.warn("[admin/kids] orphan image compensation skipped because the exact image URL is still referenced.");
+      console.warn(
+        "[admin/kids] orphan image compensation skipped because the exact image URL is still referenced.",
+      );
     }
   } catch (cleanupError) {
-    console.warn("[admin/kids] orphan image compensation failed safely; the Cloudinary asset was retained.", cleanupError);
+    console.warn(
+      "[admin/kids] orphan image compensation failed safely; the Cloudinary asset was retained.",
+      cleanupError,
+    );
   }
 }
 
@@ -125,30 +134,30 @@ export async function saveKidsContentAction(formData: FormData) {
   let saved: Array<{ id: string; slug: string }>;
   try {
     saved = await supabaseServerAdminRequest<Array<{ id: string; slug: string }>>("/rest/v1/kids_content?select=id,slug", {
-    method: "POST",
-    headers: { Prefer: "return=representation" },
-    body: JSON.stringify({
-      title_ar,
-      title_en: value(formData, "title_en") ?? title_ar,
-      slug,
-      type,
-      content_ar,
-      content_en: value(formData, "content_en"),
-      age_group: ageGroup,
-      featured_image_url: featuredImageUrl,
-      video_url: videoUrl,
-      quiz_data: quizData,
-      published,
-      metadata: {
-        ...(type === "story" ? { age_appropriate: ageAppropriate } : {}),
-        reward: value(formData, "reward"),
-        memorizationTarget: value(formData, "memorization_target"),
-        ...(type === "game" && gameId
-          ? { gameId, version: 1, difficulty: "easy" }
-          : {}),
-      },
-      updated_at: new Date().toISOString(),
-    }),
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({
+        title_ar,
+        title_en: value(formData, "title_en") ?? title_ar,
+        slug,
+        type,
+        content_ar,
+        content_en: value(formData, "content_en"),
+        age_group: ageGroup,
+        featured_image_url: featuredImageUrl,
+        video_url: videoUrl,
+        quiz_data: quizData,
+        published,
+        metadata: {
+          ...(type === "story" ? { age_appropriate: ageAppropriate } : {}),
+          reward: value(formData, "reward"),
+          memorizationTarget: value(formData, "memorization_target"),
+          ...(type === "game" && gameId
+            ? { gameId, version: 1, difficulty: "easy" }
+            : {}),
+        },
+        updated_at: new Date().toISOString(),
+      }),
     });
   } catch (saveError) {
     await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
