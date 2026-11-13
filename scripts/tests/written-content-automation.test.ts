@@ -275,6 +275,9 @@ assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.m
 assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, kidsContentId: "different-source" } }, liveKidsStory), null, "Kids metadata must identify the live source");
 assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, publicPath: "/kids/other-story" } }, liveKidsStory), null, "stale story paths must never be exposed");
 assert.equal(buildPublicKidsWrittenPost({ ...queueRow, metadata: { ...queueRow.metadata, source: { type: "kids_story", id: "different-source", verified: true } } }, liveKidsStory), null, "source metadata must identify the same approved story");
+assert.equal(containsKidsPersonalDataSolicitation("ابعت رقم التليفون على الواتساب"), true, "Egyptian Arabic requests for a phone number must be blocked before Kids publication");
+assert.equal(containsKidsPersonalDataSolicitation("شارك رقم واتسابك معي"), true, "WhatsApp number variants must be treated as child personal data");
+assert.equal(containsKidsPersonalDataSolicitation("ابعتلي تليفونك"), true, "colloquial requests for a child's phone must be blocked");
 assert.equal(containsKidsPersonalDataSolicitation("أرسل رقم هاتفك لي"), true, "Arabic phone-number solicitation must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("ابعتلي رقمك"), true, "Egyptian colloquial concatenated requests for a child's phone number must be rejected");
 assert.equal(containsKidsPersonalDataSolicitation("ابعتيلي صورتك"), true, "Egyptian colloquial requests for a child's photo must be rejected");
