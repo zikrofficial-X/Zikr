@@ -743,7 +743,7 @@ assert.ok(kidsSocialQueueRequests[0].includes("order=created_at.desc,id.desc"), 
 assert.ok(kidsSocialQueueRequests[1].includes("&or="), "later Kids social history pages must continue after the last created_at/id cursor");
 assert.ok(kidsSocialQueueRequests[0].includes("limit=500"), "Kids social history must use bounded pages");
 assert.deepEqual(
-  await loadKidsSocialQueueRows([], async <T>() => {
+  await loadKidsSocialQueueRows([], async <_T>() => {
     throw new Error("an empty request-ID set must not query Supabase");
   }),
   [],
