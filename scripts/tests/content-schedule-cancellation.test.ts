@@ -20,7 +20,7 @@ const request = async <T>(path: string, init?: RequestInitLike): Promise<T> => {
       id: queueId,
       status: "processing",
       updated_at: firstVersion,
-    }] as T;
+    }] as unknown as T;
   }
 
   if (init?.method === "PATCH") {
@@ -35,7 +35,7 @@ const request = async <T>(path: string, init?: RequestInitLike): Promise<T> => {
       id: queueId,
       status: "processing",
       updated_at: secondVersion,
-    }] as T;
+    }] as unknown as T;
   }
 
   throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${path}`);
@@ -66,12 +66,12 @@ assert.ok(
 let publishedRead = 0;
 const completedDuringRace = async <T>(path: string, init?: RequestInitLike): Promise<T> => {
   if (init?.method === "GET" && path.includes("content_table=eq.articles")) {
-    return [{ id: queueId, status: "processing", updated_at: firstVersion }] as T;
+    return [{ id: queueId, status: "processing", updated_at: firstVersion }] as unknown as T;
   }
-  if (init?.method === "PATCH") return [] as T;
+  if (init?.method === "PATCH") return [] as unknown as T;
   if (init?.method === "GET" && path.includes(`id=eq.${queueId}`)) {
     publishedRead += 1;
-    return [{ id: queueId, status: "published", updated_at: secondVersion }] as T;
+    return [{ id: queueId, status: "published", updated_at: secondVersion }] as unknown as T;
   }
   throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${path}`);
 };
@@ -83,7 +83,7 @@ assert.equal(
 assert.equal(publishedRead, 1);
 
 const malformedVersion = async <T>(_path: string, _init?: RequestInitLike): Promise<T> =>
-  ([{ id: queueId, status: "queued", updated_at: "not-a-date" }] as T);
+  ([{ id: queueId, status: "queued", updated_at: "not-a-date" }] as unknown as T);
 await assert.rejects(
   cancelActiveContentSchedules(malformedVersion, "articles", "article-1", "cancel"),
   /invalid row-version token/,
