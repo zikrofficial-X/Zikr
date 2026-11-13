@@ -2,6 +2,7 @@ import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
 import {
   getConfirmedYoutubeFallbackId,
+  isUnlinkedInternalVideoMedia,
   reconcileYoutubeFallbackMetadata,
   resolveLatestConfirmedYoutubeQueueState,
   type YoutubeQueuePublicationState,
@@ -141,6 +142,14 @@ async function auditOne(
   now: string,
 ) {
   const metadata = asRecord(row.metadata);
+  if (isUnlinkedInternalVideoMedia(row)) {
+    return {
+      state: "skipped",
+      id: row.id,
+      title: row.title,
+      reason: "media_explicitly_unlinked",
+    };
+  }
   const requestId = typeof metadata.videoGenerationRequestId === "string"
     ? metadata.videoGenerationRequestId
     : "";
