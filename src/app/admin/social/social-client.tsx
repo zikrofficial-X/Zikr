@@ -335,7 +335,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
     const facebookMessages: Record<string, string> = {
       configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
       redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
-      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts، وread_insights لإحصاءات Reels، ثم أعد الربط.",
+      permission_missing: "لم تُمنح صلاحيات النشر الأساسية لصفحة Facebook. وافق على pages_show_list وpages_read_engagement وpages_manage_posts ثم أعد الربط؛ read_insights اختيارية لإحصاءات Reels ولا توقف النشر.",
       authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
       state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
       page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
