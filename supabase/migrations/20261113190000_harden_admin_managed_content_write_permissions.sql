@@ -13,6 +13,11 @@ ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS social_publish_queue_admin_read ON public.social_publish_queue;
 DROP POLICY IF EXISTS social_publish_queue_admin_write ON public.social_publish_queue;
 DROP POLICY IF EXISTS social_publish_queue_authenticated_read_published_or_admin ON public.social_publish_queue;
+DROP POLICY IF EXISTS social_publish_queue_admin_all ON public.social_publish_queue;
+DROP POLICY IF EXISTS social_publish_queue_service_role_all ON public.social_publish_queue;
+DROP POLICY IF EXISTS social_publish_queue_admin_insert ON public.social_publish_queue;
+DROP POLICY IF EXISTS social_publish_queue_admin_update ON public.social_publish_queue;
+DROP POLICY IF EXISTS social_publish_queue_admin_delete ON public.social_publish_queue;
 
 -- These are the policy names in the deployed historical migration
 -- 20260630000017_0017_video_automation.sql. Keep the alternate names too
