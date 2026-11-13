@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/components/layout/language-provider";
 import { KIDS_SECTION_LINKS } from "@/features/kids/data/navigation";
-import { GAME_REGISTRY } from "@/lib/games/registry";
+import { isRegisteredGameId } from "@/lib/games/registry";
 
 export function KidsSectionNavigation() {
   const { isEnglish } = useLanguage();
@@ -12,7 +12,7 @@ export function KidsSectionNavigation() {
   const routeSlug = pathname.startsWith("/kids/")
     ? pathname.slice("/kids/".length).split("/")[0]
     : "";
-  const isRegisteredGame = routeSlug in GAME_REGISTRY;
+  const isRegisteredGame = isRegisteredGameId(routeSlug);
 
   return (
     <nav

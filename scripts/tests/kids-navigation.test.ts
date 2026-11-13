@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { KIDS_SECTION_LINKS } from "../../src/features/kids/data/navigation";
 import { kidsContent } from "../../src/features/kids/data/content";
-import { GAME_REGISTRY } from "../../src/lib/games/registry";
+import { isRegisteredGameId } from "../../src/lib/games/registry";
 
 const ids = KIDS_SECTION_LINKS.map(link => link.id);
 const hrefs = KIDS_SECTION_LINKS.map(link => link.href);
@@ -25,10 +25,14 @@ for (const link of KIDS_SECTION_LINKS) {
   const dynamicPageExists = existsSync("src/app/kids/[slug]/page.tsx");
   assert.ok(dynamicPageExists, "missing direct page and Kids dynamic route for " + link.href);
   assert.ok(
-    slug in GAME_REGISTRY || kidsContent.some(item => item.slug === slug),
+    isRegisteredGameId(slug) || kidsContent.some(item => item.slug === slug),
     "dynamic Kids destination must resolve to a registered game or known content record: " + link.href,
   );
 }
+
+const sectionNavigation = readFileSync("src/features/kids/components/kids-section-navigation.tsx", "utf8");
+assert.ok(sectionNavigation.includes("isRegisteredGameId(routeSlug)"), "Kids route highlighting must use the canonical own-property game ID validator");
+assert.ok(!sectionNavigation.includes("routeSlug in GAME_REGISTRY"), "Kids route highlighting must not accept inherited registry properties");
 
 const detail = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 assert.ok(detail.includes("Object.keys(GAME_REGISTRY).length"), "Kids detail recommendations must derive the game count from the canonical registry");
