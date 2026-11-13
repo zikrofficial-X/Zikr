@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { deleteCloudinaryImageIfUnreferenced, isDefinitiveSupabaseInsertRejection } from "../../src/features/media/services/cloudinary-orphan-compensation";
 import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
 import { areMediaAssetRightsVerified, classifyMediaAssetKind } from "../../src/features/media/services/media-asset-classification";
+import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES } from "../../src/features/media/services/media-asset-limits";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 function image(bytes: number[], type: string, size?: number) {
@@ -245,6 +246,15 @@ assert.ok(
 
 
 
+
+assert.equal(
+  MAX_MEDIA_IMAGE_BYTES,
+  3 * 1024 * 1024,
+  "server-side media uploads must remain below Vercel's 4.5 MB function payload ceiling",
+);
+assert.equal(isAllowedMediaImageType("image/jpeg"), true);
+assert.equal(isAllowedMediaImageType("image/svg+xml"), false);
+
 assert.equal(
   areMediaAssetRightsVerified({ rights_verified: true, verified_rights: true }),
   true,
@@ -282,6 +292,15 @@ assert.equal(
   "unknown media types must not be silently counted as visual",
 );
 
+
+const mediaClientSource = readFileSync("src/app/admin/media/media-client.tsx", "utf8");
+assert.ok(
+  mediaClientSource.includes("MAX_MEDIA_IMAGE_BYTES") &&
+    mediaClientSource.includes("selectFile") &&
+    mediaClientSource.includes("maxLength={500}"),
+  "the admin media client must enforce the shared payload-safe file and metadata limits before POST",
+);
+
 const mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
 assert.match(
   mediaAssetsSource,
@@ -290,7 +309,7 @@ assert.match(
 );
 assert.match(
   mediaAssetsSource,
-  /validateCloudinaryImage\(input\.file, MAX_IMAGE_BYTES\)[\s\S]*?new AdminMediaInputError/,
+  /validateCloudinaryImage\(input\.file, MAX_MEDIA_IMAGE_BYTES\)[\s\S]*?new AdminMediaInputError/,
   "invalid raster signatures must be classified as client input errors before upload",
 );
 assert.match(
