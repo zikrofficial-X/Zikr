@@ -21,6 +21,21 @@ import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getLocalSocialQueueDeletionBlock
 
 export const dynamic = "force-dynamic";
 
+
+type SocialAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+
+async function recordSocialAuditEvent(event: SocialAuditEvent): Promise<boolean> {
+  try {
+    await recordAdminAuditEvent(event);
+    return true;
+  } catch (error) {
+    // The queue/provider operation may already be committed. Never return a
+    // generic 500 that invites the administrator to repeat a publish/delete.
+    console.error("[api/admin/social] audit event failed after action:", error);
+    return false;
+  }
+}
+
 type SocialPostInsightRow = {
   queue_id: string;
   platform: "youtube" | "facebook" | "facebook_reels";
@@ -494,20 +509,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
     }    if (action === "test_youtube") {
       const health = await getYouTubePublishingConnectionHealth();
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.youtube.connection_test",
         permission: "social.manage",
         resourceType: "youtube_channel",
         metadata: { status: health.status, channelId: health.channelId, readSource: health.readSource },
       });
-      return NextResponse.json({ ok: true, health }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ ok: true, health, auditRecorded }, { headers: { "Cache-Control": "no-store" } });
     }
     if (action === "adopt_server_facebook_token") {
       // No token is accepted from the browser. Validate and store the server-only Vercel value;
       // queue recovery remains a separate explicit action with confirmation and MFA.
       const adopted = await adoptServerConfiguredFacebookPageToken();
       const health = await getFacebookPageConnectionHealth();
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.facebook.token_adopt",
         permission: "social.publish",
         resourceType: "facebook_page",
@@ -522,6 +537,7 @@ export async function POST(request: NextRequest) {
         adopted: true,
         pageName: adopted.pageName,
         health,
+        auditRecorded,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -558,7 +574,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.facebook.auth_blocked_queue.release",
         permission: "social.publish",
         resourceType: "social_publish_queue",
@@ -570,18 +586,19 @@ export async function POST(request: NextRequest) {
         queueUpdateFailed,
         workerDispatched,
         health,
+        auditRecorded,
       }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (action === "run_worker") {
       const worker = await triggerSocialWorker();
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.worker.run",
         permission: "social.publish",
         resourceType: "social_publish_queue",
         metadata: { workerDispatched: true },
       });
-      return NextResponse.json({ ok: true, worker });
+      return NextResponse.json({ ok: true, worker, auditRecorded });
     }
     if (
       !["retry", "retry_all_failed", "delete", "delete_failed", "publish_now", "delete_published", "release_auth_blocked_queue"].includes(action)
@@ -784,26 +801,26 @@ export async function POST(request: NextRequest) {
         : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0, staleSkipped: 0 };
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.publish_now",
         permission: "social.publish",
         resourceType: "social_publish_queue",
         metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
     }
 
     if (action === "retry_all_failed") {
       const retryResult = await retryItems("id=in.(" + ids.map(encodeURIComponent).join(",") + ")&status=in.(failed,partial)", false, false);
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
         metadata: { requestedIds: ids.length, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
@@ -815,7 +832,7 @@ export async function POST(request: NextRequest) {
       );
       const affected = retryResult.affected;
       const worker = affected > 0 ? await triggerSocialWorker() : null;
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.retry",
         permission: "social.publish",
         resourceType: "social_publish_queue",
@@ -844,7 +861,7 @@ export async function POST(request: NextRequest) {
       );
       const deletion = await deleteSafeLocalSocialQueueRows(selectedItems ?? []);
       const stale = deletion.stale + Math.max(0, ids.length - (selectedItems?.length ?? 0));
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: action === "delete_failed" ? "social.queue.delete_failed" : "social.queue.delete",
         permission: "social.manage",
         resourceType: "social_publish_queue",
@@ -863,6 +880,7 @@ export async function POST(request: NextRequest) {
         stale,
         uncertain: deletion.uncertain,
         blocked: deletion.blocked,
+        auditRecorded,
       });
     }
 
@@ -1011,13 +1029,13 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      await recordAdminAuditEvent({
+      const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.delete_published_remote",
         permission: "social.publish",
         resourceType: "social_publish_queue",
         metadata: { requestedIds: ids.length, deleted, failed, missingRemoteId, inProgress, staleSkipped },
       });
-      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, inProgress, staleSkipped, results });
+      return NextResponse.json({ ok: true, deleted, failed, missingRemoteId, inProgress, staleSkipped, results, auditRecorded });
     }
 
     return NextResponse.json({ error: "إجراء غير صالح." }, { status: 400 });
