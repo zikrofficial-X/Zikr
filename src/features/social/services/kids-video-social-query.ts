@@ -43,13 +43,13 @@ export async function loadKidsSocialQueueRows(
   let cursor: QueueCursor | null = null;
 
   while (true) {
-    const cursorFilter = cursor
+    const cursorFilter: string = cursor
       ? "&or=" + encodeURIComponent(
           "(created_at.lt." + cursor.createdAt +
           ",and(created_at.eq." + cursor.createdAt + ",id.lt." + cursor.id + "))",
         )
       : "";
-    const path =
+    const path: string =
       "/rest/v1/social_publish_queue?content_id=in.(" + contentIdFilter + ")" +
       "&metadata->>audience=eq.kids" +
       "&select=" + KIDS_SOCIAL_QUEUE_SELECT +
@@ -57,7 +57,7 @@ export async function loadKidsSocialQueueRows(
       "&limit=" + KIDS_SOCIAL_QUEUE_PAGE_SIZE +
       cursorFilter;
 
-    const page = await request<KidsSocialQueueRow[]>(path);
+    const page: KidsSocialQueueRow[] = await request<KidsSocialQueueRow[]>(path);
     if (!Array.isArray(page) || page.length > KIDS_SOCIAL_QUEUE_PAGE_SIZE) {
       throw new Error("Kids social queue pagination returned an invalid page; publication history is incomplete.");
     }
@@ -86,8 +86,8 @@ export async function loadKidsSocialQueueRows(
 
     if (page.length < KIDS_SOCIAL_QUEUE_PAGE_SIZE) return rows;
 
-    const last = page[page.length - 1];
-    const nextCursor = { createdAt: last.created_at, id: last.id };
+    const last: KidsSocialQueueRow = page[page.length - 1];
+    const nextCursor: QueueCursor = { createdAt: last.created_at, id: last.id };
     if (
       cursor &&
       cursor.createdAt === nextCursor.createdAt &&
