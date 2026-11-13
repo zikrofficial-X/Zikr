@@ -4,7 +4,11 @@ import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { saveFacebookPageCredential, saveFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
-import { hasFacebookPagePublishingTask } from "@/features/social/services/facebook-oauth-policy";
+import {
+  hasFacebookInsightsPermission,
+  hasFacebookPagePublishingTask,
+  hasFacebookPublishingPermissions,
+} from "@/features/social/services/facebook-oauth-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,13 +16,6 @@ export const runtime = "nodejs";
 const STATE_COOKIE = "zikr-facebook-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const FACEBOOK_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/facebook/callback";
-const REQUIRED_PERMISSIONS = [
-  "pages_show_list",
-  "pages_read_engagement",
-  "pages_manage_posts",
-  "read_insights",
-] as const;
-
 type MetaTokenResponse = {
   access_token?: string;
   token_type?: string;
@@ -49,9 +46,10 @@ function graphBase(version: string) {
   return "https://graph.facebook.com/" + version;
 }
 
-function redirectResult(status: string) {
+function redirectResult(status: string, extraQuery: Record<string, string> = {}) {
+  const query = new URLSearchParams({ facebook: status, ...extraQuery });
   const response = NextResponse.redirect(
-    new URL("/admin/social?facebook=" + encodeURIComponent(status), CANONICAL_SITE_ORIGIN),
+    new URL("/admin/social?" + query.toString(), CANONICAL_SITE_ORIGIN),
   );
   response.headers.set("Cache-Control", "no-store");
   response.cookies.set(STATE_COOKIE, "", {
@@ -131,7 +129,7 @@ export async function GET(request: NextRequest) {
     const grantedPermissions = (permissionsResult.data.data ?? [])
       .filter((item) => item.status === "granted" && typeof item.permission === "string")
       .map((item) => item.permission as string);
-    if (!REQUIRED_PERMISSIONS.every((permission) => grantedPermissions.includes(permission))) {
+    if (!hasFacebookPublishingPermissions(grantedPermissions)) {
       return redirectResult("permission_missing");
     }
 
@@ -198,7 +196,7 @@ export async function GET(request: NextRequest) {
       // A valid Page credential remains stored if the optional audit event fails.
     }
 
-    return redirectResult("connected");
+    return redirectResult("connected", hasFacebookInsightsPermission(grantedPermissions) ? {} : { insights: "missing" });
   } catch {
     // Never log authorization codes, user/Page tokens, or provider response bodies.
     return redirectResult("oauth_failed");
