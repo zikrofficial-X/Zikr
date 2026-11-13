@@ -12,6 +12,7 @@ import {
   type CloudinaryImageUpload,
 } from "@/features/media/services/cloudinary";
 import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/cloudinary-orphan-compensation";
+import { isCloudinarySecureImageUrl } from "@/features/media/services/cloudinary-validation";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
 import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
@@ -119,17 +120,29 @@ export async function saveKidsContentAction(formData: FormData) {
   let featuredImageUrl = value(formData, "featured_image_url");
   let uploadedImage: CloudinaryImageUpload | null = null;
   let requestedPublicId: string | null = null;
-  if (featuredImageFile instanceof File && featuredImageFile.size > 0) {
+  const hasFeaturedImageFile = featuredImageFile instanceof File && featuredImageFile.size > 0;
+  if (hasFeaturedImageFile || featuredImageUrl) {
+    // The hidden URL field is client-controlled too; media.manage must cover
+    // both a new upload and attaching an existing Cloudinary image.
     await requireAdminPermission("media.manage");
+  }
+  if (hasFeaturedImageFile) {
     requestedPublicId = slug + "-" + randomUUID();
     uploadedImage = await uploadCloudinaryImage({
-      file: featuredImageFile,
+      file: featuredImageFile as File,
       folder: "zikr/kids",
       publicId: requestedPublicId,
       tags: ["zikr", "kids-content"],
       maxBytes: 3 * 1024 * 1024,
     });
     featuredImageUrl = uploadedImage.secureUrl;
+  }
+  if (
+    featuredImageUrl &&
+    !isCloudinarySecureImageUrl(featuredImageUrl, process.env.CLOUDINARY_CLOUD_NAME)
+  ) {
+    await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
+    throw new Error("الصورة المميزة يجب أن تكون من حساب Cloudinary المعتمد للمشروع.");
   }
 
   let saved: Array<{ id: string; slug: string }>;
