@@ -11,6 +11,7 @@ import {
   uploadCloudinaryImage,
   type CloudinaryImageUpload,
 } from "@/features/media/services/cloudinary";
+import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/cloudinary-orphan-compensation";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { isRegisteredGameId } from "@/lib/games/registry";
 import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
@@ -160,7 +161,14 @@ export async function saveKidsContentAction(formData: FormData) {
       }),
     });
   } catch (saveError) {
-    await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
+    if (isDefinitiveSupabaseInsertRejection(saveError)) {
+      await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
+    } else {
+      console.warn(
+        "[admin/kids] database insert outcome is ambiguous; retaining the Cloudinary image for reconciliation.",
+        saveError,
+      );
+    }
     throw saveError;
   }
   if (
