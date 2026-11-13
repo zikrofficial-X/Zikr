@@ -1,5 +1,13 @@
 \set ON_ERROR_STOP on
 
+DO $admin_predicate_acl$
+BEGIN
+  IF NOT has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Legacy fixture did not reproduce public admin-predicate execution';
+  END IF;
+END
+$admin_predicate_acl$;
+
 CREATE TABLE public.client_privilege_hardening_postgres_after (
   id bigint PRIMARY KEY
 );
@@ -9,6 +17,17 @@ CREATE TABLE public.client_privilege_hardening_supabase_admin_after (
   id bigint PRIMARY KEY
 );
 RESET ROLE;
+
+DO $admin_predicate_acl_after$
+BEGIN
+  IF has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'anon still has EXECUTE on public.is_admin_user after hardening';
+  END IF;
+  IF NOT has_function_privilege('authenticated', 'public.is_admin_user()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'authenticated lost its explicit public.is_admin_user permission';
+  END IF;
+END
+$admin_predicate_acl_after$;
 
 DO $verify$
 DECLARE

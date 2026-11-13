@@ -33,6 +33,7 @@ fi
 
 psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zikr_client_privilege_hardening_test)
 "${psql[@]}" -f /workspace/scripts/tests/client-table-privilege-hardening.integration-setup.sql
+"${psql[@]}" -f /workspace/supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql
 "${psql[@]}" -f /workspace/scripts/tests/client-table-privilege-hardening.integration.sql
 

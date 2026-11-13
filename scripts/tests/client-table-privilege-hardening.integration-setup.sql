@@ -22,6 +22,28 @@ $roles$;
 GRANT USAGE, CREATE ON SCHEMA public TO supabase_admin;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
+CREATE SCHEMA IF NOT EXISTS private;
+GRANT USAGE ON SCHEMA private TO authenticated;
+
+CREATE OR REPLACE FUNCTION private.is_admin_user()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $function$
+  SELECT false;
+$function$;
+GRANT EXECUTE ON FUNCTION private.is_admin_user() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.is_admin_user()
+RETURNS boolean
+LANGUAGE sql
+SECURITY INVOKER
+SET search_path = ''
+AS $function$
+  SELECT private.is_admin_user();
+$function$;
+GRANT EXECUTE ON FUNCTION public.is_admin_user() TO PUBLIC, authenticated;
+
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES TO PUBLIC, anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public

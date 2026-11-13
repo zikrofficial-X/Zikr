@@ -89,6 +89,11 @@ jobs:
         run: bash scripts/tests/kids-game-levels-rls.integration.sh
         timeout-minutes: 5
 
+      - name: Verify Kids content active-state public-read policy against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/kids-content-active-rls.integration.sh
+        timeout-minutes: 5
+
       - name: Verify client table privilege hardening against PostgreSQL 17
         shell: bash
         run: bash scripts/tests/client-table-privilege-hardening.integration.sh
