@@ -552,26 +552,45 @@ const REFERENCE_ORDER_COLUMNS = Object.freeze({
   tawasheeh: "id",
 });
 
-// The "automated" path segment is invariant under encodeURIComponent. A
-// single broad prefilter therefore catches raw and arbitrarily nested URL
-// encodings; exact recursive matching removes false positives. References
-// beyond the decoder's safety bound cause the retention run to fail closed.
-const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze(["%automated%"]);
+// Keep the SQL prefilter broad enough to find both canonical paths and
+// percent-encoded unreserved characters in the managed "automated" segment.
+// The hexadecimal pairs deliberately over-select; exact recursive decoding
+// below removes false positives before any retention decision. The encoded
+// bytes remain visible at every nested percent-encoding depth, so the
+// prefilter and bounded decoder cover the same supported URL encodings.
+const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
+  "%automated%",
+  "%61%",
+  "%75%",
+  "%74%",
+  "%6f%",
+  "%6d%",
+  "%65%",
+  "%64%",
+]);
+
+function videoStorageReferenceFilter(query, column) {
+  return query.or(
+    VIDEO_STORAGE_REFERENCE_PATTERNS
+      .map((pattern) => `${column}.ilike.${pattern}`)
+      .join(","),
+  );
+}
 
 export function textReferencePatterns(table, column) {
-  return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
+  return [{
     table,
     column,
-    filter: (query) => query.ilike(column, pattern),
-  }));
+    filter: (query) => videoStorageReferenceFilter(query, column),
+  }];
 }
 
 export function storagePathReferencePatterns(table, column) {
-  return VIDEO_STORAGE_REFERENCE_PATTERNS.map((pattern) => ({
+  return [{
     table,
     column,
-    filter: (query) => query.ilike(column, pattern),
-  }));
+    filter: (query) => videoStorageReferenceFilter(query, column),
+  }];
 }
 
 function jsonReferencePattern(table, column) {

@@ -73,6 +73,17 @@ assert.deepEqual(
   [encodedReferencePath],
   "double-encoded Storage object URLs must remain visible to the reference inventory",
 );
+const characterEncodedReferenceUrl = `${supabaseUrl}/storage/v1/object/public/videos/%61%75%74%6f%6d%61%74%65%64/story%3A20750%3A11.mp4`;
+assert.deepEqual(
+  [...findManagedVideoReferences({ nested: { sourceUrl: characterEncodedReferenceUrl } }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "percent-encoded unreserved characters in the managed directory must remain visible to exact matching",
+);
+assert.deepEqual(
+  [...findManagedVideoReferences({ nested: { sourceUrl: encodeURIComponent(characterEncodedReferenceUrl) } }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "nested percent-encoding of the managed directory must remain visible to exact matching",
+);
 assert.deepEqual(
   [...findManagedVideoReferences({ [encodedReferenceUrl]: true }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],
@@ -88,12 +99,12 @@ assert.throws(
   "references deeper than the decoder bound must stop retention instead of being treated as unreferenced",
 );
 
-const expectedEncodedReferencePatterns = ["%automated%"];
+const expectedEncodedReferencePatterns = ["%automated%", "%61%", "%75%", "%74%", "%6f%", "%6d%", "%65%", "%64%"];
 function captureReferencePatterns(patterns) {
   const captured = [];
   const query = {
-    ilike(column, pattern) {
-      captured.push({ column, pattern });
+    or(expression) {
+      captured.push(expression);
       return query;
     },
   };
@@ -101,14 +112,14 @@ function captureReferencePatterns(patterns) {
   return captured;
 }
 assert.deepEqual(
-  captureReferencePatterns(textReferencePatterns("articles", "content")).map((entry) => entry.pattern),
-  expectedEncodedReferencePatterns,
-  "text-column prefilters must find raw through five-times-encoded Storage paths",
+  captureReferencePatterns(textReferencePatterns("articles", "content")),
+  [expectedEncodedReferencePatterns.map((pattern) => `content.ilike.${pattern}`).join(",")],
+  "text-column prefilters must select canonical and character-encoded Storage URLs in one bounded query",
 );
 assert.deepEqual(
-  captureReferencePatterns(storagePathReferencePatterns("media_assets", "storage_path")).map((entry) => entry.pattern),
-  expectedEncodedReferencePatterns,
-  "storage-path prefilters must use the same bounded encoding-depth coverage",
+  captureReferencePatterns(storagePathReferencePatterns("media_assets", "storage_path")),
+  [expectedEncodedReferencePatterns.map((pattern) => `storage_path.ilike.${pattern}`).join(",")],
+  "storage-path prefilters must select canonical and character-encoded paths in one bounded query",
 );
 assert.deepEqual(
   [...findManagedVideoReferences({ note: `legacy source ${publicUrl}` }, encodedReferenceCandidates, supabaseUrl)],
@@ -356,6 +367,15 @@ const capturePatternCalls = (descriptors) => {
     const query = {
       ilike(column, pattern) { calls.push({ method: "ilike", column, pattern }); return query; },
       like(column, pattern) { calls.push({ method: "like", column, pattern }); return query; },
+      or(expression) {
+        const filters = expression.split(",").map((entry) => {
+          const match = /^([a-z_]+)\\.ilike\\.(.+)$/.exec(entry);
+          assert.ok(match, `unexpected PostgREST OR filter: ${entry}`);
+          return { column: match[1], pattern: match[2] };
+        });
+        calls.push({ method: "or", filters });
+        return query;
+      },
     };
     descriptor.filter(query);
   }
@@ -372,16 +392,22 @@ assert.equal(
   1,
   "one broad text prefilter must select raw and arbitrarily encoded managed paths before exact matching",
 );
-const encodedReferenceUrls = [rawReferenceUrl];
+const encodedReferenceUrls = [
+  rawReferenceUrl,
+  `${supabaseUrl}/storage/v1/object/public/videos/%61%75%74%6f%6d%61%74%65%64/story%3A20750%3A11.mp4`,
+];
 let encodedReferenceUrlAtDepth = rawReferenceUrl;
 for (let depth = 0; depth < 5; depth += 1) {
   encodedReferenceUrlAtDepth = encodeURIComponent(encodedReferenceUrlAtDepth);
   encodedReferenceUrls.push(encodedReferenceUrlAtDepth);
 }
+encodedReferenceUrls.push(encodeURIComponent(encodedReferenceUrls[1]));
+assert.equal(textReferenceCalls.length, 1, "all text reference variants must share one bounded PostgREST request per column");
+assert.deepEqual(textReferenceCalls[0].filters.map((filter) => filter.pattern), expectedEncodedReferencePatterns);
 for (const value of encodedReferenceUrls) {
   assert.ok(
-    textReferenceCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "the broad database text-column filter must select Storage URLs before recursive reference matching",
+    textReferenceCalls.some((call) => call.filters.some((filter) => sqlLikeMatches(value, filter.pattern))),
+    "the broad database text-column filter must select raw, nested, and character-encoded Storage URLs before exact matching",
   );
 }
 const storagePathCalls = capturePatternCalls(storagePathReferencePatterns("media_assets", "storage_path"));
@@ -390,16 +416,22 @@ assert.equal(
   1,
   "one broad Storage-path prefilter must select arbitrarily encoded managed paths before exact matching",
 );
-const encodedStoragePaths = [encodedReferencePath];
+const encodedStoragePaths = [
+  encodedReferencePath,
+  "%61%75%74%6f%6d%61%74%65%64/story%3A20750%3A11.mp4",
+];
 let encodedStoragePath = encodedReferencePath;
 for (let depth = 0; depth < 5; depth += 1) {
   encodedStoragePath = encodeURIComponent(encodedStoragePath);
   encodedStoragePaths.push(encodedStoragePath);
 }
+encodedStoragePaths.push(encodeURIComponent(encodedStoragePaths[1]));
+assert.equal(storagePathCalls.length, 1, "all Storage-path reference variants must share one bounded PostgREST request per column");
+assert.deepEqual(storagePathCalls[0].filters.map((filter) => filter.pattern), expectedEncodedReferencePatterns);
 for (const value of encodedStoragePaths) {
   assert.ok(
-    storagePathCalls.some((call) => sqlLikeMatches(value, call.pattern)),
-    "the broad Storage path filter must select paths before recursive reference matching",
+    storagePathCalls.some((call) => call.filters.some((filter) => sqlLikeMatches(value, filter.pattern))),
+    "the broad Storage path filter must select raw, nested, and character-encoded paths before exact matching",
   );
 }
 const unexpectedPatternsStart = storageRetentionSource.indexOf("  const patterns = [", storageRetentionSource.indexOf("async function loadUnexpectedVideoReferences"));
@@ -407,6 +439,8 @@ const unexpectedPatternsEnd = storageRetentionSource.indexOf("  ];", unexpectedP
 const unexpectedPatternsSource = storageRetentionSource.slice(unexpectedPatternsStart, unexpectedPatternsEnd);
 assert.equal(/filter: \(query\) => query\.(?:ilike|like)/.test(unexpectedPatternsSource), false,
   "every direct URL/path reference column must use the shared raw+encoded pattern helpers");
+assert.match(storageRetentionSource, /function videoStorageReferenceFilter\(query, column\)[\s\S]*?query\.or\(/,
+  "encoded-reference prefilters must be combined into one bounded PostgREST OR query per column");
 for (const [table, column] of [["kids_content","video_url"],["kids_content","featured_image_url"],["media_assets","url"],["social_sync_jobs","source_media_url"],["video_generation_requests","video_url"],["video_generation_requests","thumbnail_url"],["videos","thumbnail_url"],["social_sync_jobs","thumbnail_url"],["youtube_feed_cache","video_url"],["youtube_feed_cache","thumbnail_url"],["content_agent_queue","source_url"],["content_sources","url"],["social_publish_queue","video_url"],["social_publish_queue","image_url"],["content_library","cover_url"],["articles","featured_image_url"],["articles","summary"],["articles","summary_ar"],["articles","summary_en"],["stories","summary"],["kids_content","summary_ar"],["kids_content","summary_en"],["videos","description"],["social_publish_queue","body"],["content_agent_queue","body"],["notifications","body"],["pinned_messages","body"],["battles","featured_image_url"],["battles","thumbnail_url"],["companions","featured_image_url"],["companions","thumbnail_url"],["conquests","featured_image_url"],["conquests","thumbnail_url"],["prophets","featured_image_url"],["prophets","thumbnail_url"],["kids_games","cover_url"],["kids_games","icon_url"],["profiles","avatar_url"],["quran_audio","audio_url"],["quran_audio","storage_url"],["quran_ayahs","audio_url"],["quran_reciters","thumbnail_url"],["quran_reciters","base_url_template"],["scholars","thumbnail_url"],["scholars","website_url"],["scholars","youtube_url"],["social_platform_profiles","avatar_url"],["social_platform_profiles","cover_url"],["social_platform_profiles","page_url"],["tawasheeh","audio_url"],["tawasheeh","thumbnail_url"]]) {
   assert.ok(unexpectedPatternsSource.includes('...textReferencePatterns("' + table + '", "' + column + '")'),
     "unexpected-reference inventory must query raw and encoded forms of " + table + "." + column);
