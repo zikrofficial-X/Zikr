@@ -123,11 +123,18 @@ assert.ok(googleOAuth.includes("request.nextUrl.origin !== canonicalOrigin.origi
 assert.ok(googleOAuth.includes("NextResponse.redirect(canonicalStart, 307)"), "OAuth start must redirect before generating PKCE state");
 assert.ok(googleOAuth.includes('response.headers.set("Cache-Control", "private, no-store, max-age=0")'), "OAuth origin redirects must not be cached");
 
-assert.match(nativeBridge, /addListener\?\.\("appUrlOpen"/);
+assert.match(nativeBridge, /registerPluginListener\(app, "appUrlOpen"/);
 assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
 assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/);
 assert.match(nativeBridge, /sanitizeInternalPath\(target\.pathname \+ target\.search \+ target\.hash\)/, "Universal-link paths must be sanitized before in-app navigation");
 assert.match(nativeBridge, /window\.location\.assign\(path\)/);
+assert.match(nativeHandler, /let disposed = false/);
+assert.match(nativeHandler, /const nextUrlListener = await App\.addListener/);
+assert.match(nativeHandler, /if \(disposed\)[\s\S]*?await nextUrlListener\.remove\(\)/);
+assert.match(nativeHandler, /const nextStateListener = await App\.addListener/);
+assert.match(nativeHandler, /if \(disposed\)[\s\S]*?await nextStateListener\.remove\(\)/);
+assert.match(nativeHandler, /void subscribe\(\)\.catch/);
+assert.match(nativeHandler, /disposed = true;[\s\S]*?urlListener\?\.remove\(\)[\s\S]*?stateListener\?\.remove\(\)/);
 assert.match(authCallback, /return redirectNoStore\(nativeUrl\)/, "native OAuth authorization codes must be handed off through a no-store redirect");
 assert.match(authCallback, /nativeUrl\.searchParams\.set\([\'"]native[\'"], [\'"]1[\'"]\)/, "the server must preserve the native flow marker on the custom-scheme deep link");
 const httpsBridgeStart = nativeHandler.indexOf("const isHttpsBridge =");
