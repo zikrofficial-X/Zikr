@@ -56,6 +56,11 @@ for (const platformResults of malformedResultLedgers) {
     [],
     "admin retry selection must not silently widen a malformed ledger into a publish attempt",
   );
+  assert.deepEqual(
+    getRetryableSocialPlatforms(["youtube"], metadata, true),
+    [],
+    "manual ambiguous-outcome confirmation must not override a malformed result ledger",
+  );
 }
 for (const emptyLedger of [{}, []]) {
   const metadata = { platformResults: emptyLedger };
