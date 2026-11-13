@@ -177,24 +177,22 @@ assert.equal(
   "2026-11-13T04:00:00.002Z",
   "consecutive media asset updates must never reuse the previous CAS version",
 );
-assert.match(
-  mediaAssetsSource,
-  /updated_at=eq\\.\\$\\{encodeURIComponent\\(current\\[0\\]\\.updated_at\\)\\}/,
+assert.ok(
+  mediaAssetsSource.includes("&updated_at=eq.${encodeURIComponent(current[0].updated_at)}"),
   "every media asset mutation must compare against the row version it read",
 );
-assert.match(
-  mediaAssetsSource,
-  /updated_at:\\s*buildNextRowVersionUpdatedAt\\(current\\[0\\]\\.updated_at\\)/,
+assert.ok(
+  mediaAssetsSource.includes("updated_at: buildNextRowVersionUpdatedAt(current[0].updated_at)"),
   "every media asset mutation must advance its compare-and-set row version",
 );
-assert.match(
-  mediaAssetsSource,
-  /const patch =\\s*action === "verify_rights"[\\s\\S]*?rights_verified: true, verified_rights: true/,
+assert.ok(
+  mediaAssetsSource.includes('const patch =\n    action === "verify_rights"') &&
+    mediaAssetsSource.includes("{ rights_verified: true, verified_rights: true }"),
   "rights verification must use the same guarded row-version update path",
 );
-assert.doesNotMatch(
-  mediaAssetsSource,
-  /updated_at:\\s*new Date\\(\\)\\.toISOString\\(\\)/,
+assert.equal(
+  mediaAssetsSource.includes("updated_at: new Date().toISOString()"),
+  false,
   "media asset writes must not reuse a millisecond-precision wall-clock CAS token",
 );
 
