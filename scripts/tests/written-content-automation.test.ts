@@ -229,6 +229,28 @@ assert.deepEqual(
  ["facebook"],
  "new written posts must expose only a platform with a confirmed remote post ID",
 );
+const partiallyPublishedWrittenPost = {
+ ...confirmedWrittenPost,
+ status: "partial",
+ target_platforms: ["facebook", "youtube"],
+ metadata: {
+  ...confirmedWrittenPost.metadata,
+  platformResults: {
+   facebook: { ok: true, remoteId: "fb-written-partial-789" },
+   youtube: { ok: false, error: "temporary provider failure" },
+  },
+ },
+};
+assert.deepEqual(
+ buildPublicKidsWrittenPost(partiallyPublishedWrittenPost, liveKidsStory)?.platforms,
+ ["facebook"],
+ "a partially completed written post must remain visible only on the platform with a confirmed remote delivery",
+);
+assert.equal(
+ buildPublicKidsWrittenPost({ ...queueRow, status: "partial" }, liveKidsStory),
+ null,
+ "a legacy partial row without a confirmed provider result ledger must remain hidden",
+);
 const republishedWrittenPost = {
  ...confirmedWrittenPost,
  published_at: "2026-11-11T12:10:00.000Z",
@@ -456,7 +478,7 @@ assert.match(worker, /if\(kind==="kids_story"\)hasKidsPostToday=true/);
 assert.match(worker, /Kids safety gate/);
 assert.match(worker, /containsKidsPersonalDataSolicitation/);
 assert.match(writtenFactory, /containsKidsPersonalDataSolicitation/);
-assert.match(kidsApi, /status=eq\.published&metadata->>audience=eq\.kids/);
+assert.ok(kidsApi.includes("status=in.%28published%2Cpartial%29&published_at=not.is.null&metadata->>audience=eq.kids"), "the public Kids feed must include partial rows only when the result ledger confirms at least one live provider delivery");
 assert.match(writtenFactory, /source\.type !== "story"/);
 assert.match(writtenFactory, /source\.published !== true/);
 assert.match(writtenFactory, /source\.is_active !== true/);
