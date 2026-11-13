@@ -14,7 +14,11 @@ DROP POLICY IF EXISTS admin_all_kids_game_questions_select
 DROP POLICY IF EXISTS kids_game_questions_admin_select
   ON public.kids_game_questions;
 
-REVOKE SELECT ON TABLE public.kids_game_questions FROM PUBLIC, anon;
+-- This table contains answer keys and has no client-side write contract.
+-- Remove every legacy client grant (including TRUNCATE, which bypasses RLS);
+-- authenticated administrators retain SELECT only, guarded by the policy below.
+REVOKE ALL PRIVILEGES ON TABLE public.kids_game_questions
+  FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.kids_game_questions TO authenticated;
 
 CREATE POLICY kids_game_questions_admin_select

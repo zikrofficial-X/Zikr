@@ -114,7 +114,11 @@ CREATE POLICY kids_game_questions_admin_delete
   TO authenticated
   USING (private.is_admin_user());
 
-GRANT SELECT ON public.kids_games, public.kids_game_levels, public.kids_game_questions TO anon, authenticated;
+GRANT SELECT ON public.kids_games TO anon, authenticated;
+-- Reproduce the broad legacy browser-role grants present before the hardening
+-- migrations, so the integration test proves the migrations actually revoke them.
+GRANT ALL PRIVILEGES ON TABLE public.kids_game_levels, public.kids_game_questions
+  TO PUBLIC, anon, authenticated;
 
 INSERT INTO public.kids_games (id, published)
 VALUES

@@ -13,6 +13,15 @@ DROP POLICY IF EXISTS kids_game_levels_admin_insert ON public.kids_game_levels;
 DROP POLICY IF EXISTS kids_game_levels_admin_update ON public.kids_game_levels;
 DROP POLICY IF EXISTS kids_game_levels_admin_delete ON public.kids_game_levels;
 
+-- RLS does not constrain TRUNCATE or table-maintenance privileges. Keep the
+-- public level catalogue read-only and remove legacy non-admin write grants.
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLE public.kids_game_levels
+  FROM PUBLIC, anon;
+REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLE public.kids_game_levels
+  FROM authenticated;
+
 CREATE POLICY kids_game_levels_public_read
   ON public.kids_game_levels
   FOR SELECT

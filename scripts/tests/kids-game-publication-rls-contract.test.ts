@@ -107,4 +107,30 @@ assert.match(integrationTest, /private\.is_admin_user/);
 assert.match(integrationRunner, /20261111040000_kids_game_levels_require_published_game\.sql/);
 assert.match(integrationRunner, /20261111170000_kids_game_questions_require_published_parent\.sql/);
 
+assert.match(
+  levelsMigration,
+  /REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN[\\s\\S]*?FROM PUBLIC, anon/i,
+  "anonymous level access must not retain DML or non-DML privileges",
+);
+assert.match(
+  levelsMigration,
+  /REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN[\\s\\S]*?FROM authenticated/i,
+  "authenticated level editors must not retain non-DML privileges that bypass RLS",
+);
+assert.match(
+  questionsMigration,
+  /REVOKE ALL PRIVILEGES ON TABLE public\\.kids_game_questions[\\s\\S]*?FROM PUBLIC, anon, authenticated/i,
+  "the answer-key table must remove every legacy client grant before restoring admin-only SELECT",
+);
+assert.match(
+  integrationSetup,
+  /GRANT ALL PRIVILEGES ON TABLE public\\.kids_game_levels, public\\.kids_game_questions[\\s\\S]*?TO PUBLIC, anon, authenticated/i,
+  "the integration fixture must reproduce broad legacy table grants before applying the hardening migrations",
+);
+assert.match(
+  integrationTest,
+  /DO \\$privilege_contract\\$[\\s\\S]*?Kids answer keys/i,
+  "the PostgreSQL integration test must assert least-privilege table ACLs after the migrations",
+);
+
 console.log("Kids game and question publication RLS contracts passed.");

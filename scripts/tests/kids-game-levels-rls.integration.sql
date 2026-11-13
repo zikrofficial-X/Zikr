@@ -102,3 +102,48 @@ BEGIN
   END IF;
 END
 $policy_contract$;
+
+
+-- RLS does not apply to TRUNCATE or maintenance privileges. Prove that the
+-- migrations remove the broad legacy grants rather than relying on row policies.
+DO $privilege_contract$
+BEGIN
+  IF has_table_privilege('anon', 'public.kids_game_levels', 'INSERT')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'UPDATE')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'DELETE')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'TRUNCATE')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'REFERENCES')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'TRIGGER')
+    OR has_table_privilege('anon', 'public.kids_game_levels', 'MAINTAIN') THEN
+    RAISE EXCEPTION 'Anonymous level access must be read-only and must not retain non-DML privileges';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.kids_game_levels', 'TRUNCATE')
+    OR has_table_privilege('authenticated', 'public.kids_game_levels', 'REFERENCES')
+    OR has_table_privilege('authenticated', 'public.kids_game_levels', 'TRIGGER')
+    OR has_table_privilege('authenticated', 'public.kids_game_levels', 'MAINTAIN') THEN
+    RAISE EXCEPTION 'Authenticated level editors must not retain non-DML privileges that bypass RLS';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.kids_game_questions', 'SELECT')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'INSERT')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'UPDATE')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'DELETE')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'TRUNCATE')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'REFERENCES')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'TRIGGER')
+    OR has_table_privilege('anon', 'public.kids_game_questions', 'MAINTAIN') THEN
+    RAISE EXCEPTION 'Anonymous clients must not retain any table-level access to Kids answer keys';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.kids_game_questions', 'INSERT')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'UPDATE')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'DELETE')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'TRUNCATE')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'REFERENCES')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'TRIGGER')
+    OR has_table_privilege('authenticated', 'public.kids_game_questions', 'MAINTAIN') THEN
+    RAISE EXCEPTION 'Authenticated clients must have SELECT-only access to Kids answer keys';
+  END IF;
+END
+$privilege_contract$;
