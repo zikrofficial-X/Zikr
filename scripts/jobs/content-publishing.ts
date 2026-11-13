@@ -1,5 +1,6 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { inspectVideoQueueItemApproval } from "../../src/features/videos/services/video-publish-approval";
+import { resolveVideoMediaUrl } from "../../src/features/videos/services/video-media-contract";
 import { isVideoPurgeLockResponseActive } from "../../src/features/videos/services/background-job-settings";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
@@ -106,9 +107,10 @@ async function validateInternalVideoForPublication(videoId: string): Promise<str
     id: string;
     updated_at: string;
     published: boolean | null;
+    youtube_id: string | null;
     metadata: Record<string, unknown> | null;
   }>>(
-    "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&select=id,updated_at,published,metadata&limit=1",
+    "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&select=id,updated_at,published,youtube_id,metadata&limit=1",
   );
   const row = rows?.[0];
   const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
@@ -153,11 +155,13 @@ async function validateInternalVideoForPublication(videoId: string): Promise<str
     queuedVideoUrl: mediaUrl,
     request: requests?.[0] ?? null,
   });
+  const playableMediaUrl = resolveVideoMediaUrl({ youtube_id: row?.youtube_id, metadata });
+  const hasPlayableMedia = Boolean(playableMediaUrl);
   const audienceEligible = audience === "general" || audience === "kids";
   const kidsQaPassed = audience !== "kids" ||
     (metadata.kidsVideoQaStatus === "passed" && automatedQa.status === "passed");
 
-  if (!row || row.published !== false || !row.updated_at || !approvedCloudinaryMedia || !audienceEligible || !approval.approved || !kidsQaPassed) {
+  if (!row || row.published !== false || !row.updated_at || !approvedCloudinaryMedia || !hasPlayableMedia || !audienceEligible || !approval.approved || !kidsQaPassed) {
     throw new Error("Generated video is not an unpublished, verified, QA-approved, available ZIKR-owned media asset.");
   }
   return row.updated_at;
