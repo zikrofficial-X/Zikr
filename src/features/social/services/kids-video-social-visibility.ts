@@ -1,3 +1,5 @@
+import { normalizeSocialPlatformResults } from "./platform-availability";
+
 const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -15,7 +17,11 @@ function asRecord(value: unknown): Record<string, unknown> {
 export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): string[] {
   const row = asRecord(value);
   const metadata = asRecord(row.metadata);
-  const platformResults = asRecord(metadata.platformResults);
+  const rawPlatformResults = metadata.platformResults;
+  const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
+  const hasPlatformResultLedger = Array.isArray(rawPlatformResults)
+    ? rawPlatformResults.length > 0
+    : Object.keys(platformResults).length > 0;
   const platformDeletions = asRecord(metadata.platformDeletions);
   const rowPublishedAt = typeof row.published_at === "string" ? Date.parse(row.published_at) : Number.NaN;
   const isDeleted = (platform: string) => {
@@ -40,7 +46,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   // Only legacy rows without a result ledger may infer delivery from the
   // original target list. An explicit result ledger with no live success is
   // authoritative and must not be replaced by that optimistic fallback.
-  if (Object.keys(platformResults).length > 0 || row.status !== "published") return [];
+  if (hasPlatformResultLedger || row.status !== "published") return [];
   const targets = Array.isArray(row.target_platforms) ? row.target_platforms : [];
   return [...new Set(targets.filter(
     (platform): platform is string =>

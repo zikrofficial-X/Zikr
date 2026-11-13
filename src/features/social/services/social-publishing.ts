@@ -670,9 +670,7 @@ async function syncKidsSocialPublicationToCatalog(
   if (queueMetadata.audience !== "kids" || queueMetadata.kidsContentQaStatus !== "passed") return;
 
   const rawResults = queueMetadata.platformResults;
-  const results = rawResults && typeof rawResults === "object" && !Array.isArray(rawResults)
-    ? rawResults as Record<string, unknown>
-    : {};
+  const results = normalizeSocialPlatformResults(rawResults);
   const successfulPlatforms = item.target_platforms.filter((platform) => {
     const result = results[platform];
     if (!result || typeof result !== "object" || Array.isArray(result)) return false;

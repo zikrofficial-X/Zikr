@@ -262,6 +262,56 @@ assert.deepEqual(
   [],
   "an explicit failed result ledger must not fall back to optimistic target_platforms",
 );
+const legacyArraySuccessRow = {
+  status: "published",
+  target_platforms: ["youtube", "facebook"],
+  published_at: "2026-11-11T12:00:00.000Z",
+  metadata: {
+    audience: "kids",
+    platformResults: [
+      { platform: "youtube", ok: true, remoteId: "yt-array-123" },
+      { platform: "facebook", ok: false, remoteId: null, error: "temporary provider failure" },
+    ],
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(legacyArraySuccessRow),
+  ["youtube"],
+  "legacy array-shaped result ledgers must expose only platforms with confirmed remote IDs",
+);
+assert.equal(
+  isPublicKidsVideoSocialQueueRow({ ...legacyArraySuccessRow, content_type: "kids_video" }),
+  true,
+  "a confirmed legacy array-shaped publication must remain visible in the Kids feed",
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([{ ...legacyArraySuccessRow, content_type: "kids_video" }], null, true),
+  { status: "partial", platforms: ["youtube"], publishedAt: "2026-11-11T12:00:00.000Z" },
+  "array-shaped partial results must not be promoted to all requested platforms",
+);
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    ...legacyArraySuccessRow,
+    metadata: {
+      audience: "kids",
+      platformResults: [{ platform: "youtube", ok: false, remoteId: null, error: "provider failure" }],
+    },
+  }),
+  [],
+  "a non-empty array result ledger with no confirmed delivery must not fall back to target_platforms",
+);
+
+const socialPublisherSource = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+const kidsSocialSyncStart = socialPublisherSource.indexOf("async function syncKidsSocialPublicationToCatalog");
+const kidsSocialSyncEnd = socialPublisherSource.indexOf("async function syncYouTubeVideoReferenceToCatalog", kidsSocialSyncStart);
+const kidsSocialSyncSource = kidsSocialSyncStart >= 0 && kidsSocialSyncEnd > kidsSocialSyncStart
+  ? socialPublisherSource.slice(kidsSocialSyncStart, kidsSocialSyncEnd)
+  : "";
+assert.match(
+  kidsSocialSyncSource,
+  /normalizeSocialPlatformResults\(rawResults\)/,
+  "Kids catalog synchronization must normalize legacy array-shaped platform results before deriving publication badges",
+);
 
 const originalYoutubeQueueRow = {
   content_type: "kids_video",
