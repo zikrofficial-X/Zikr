@@ -230,6 +230,43 @@ assert.deepEqual(
   ["facebook"],
   "a confirmed remote deletion must remove only that platform from the public Kids publication badge",
 );
+
+const retriedOtherPlatformAfterDeletion = {
+  ...deletedYoutubeRow,
+  published_at: "2026-11-11T12:10:00.000Z",
+  metadata: {
+    ...deletedYoutubeRow.metadata,
+    platformDeletions: {
+      youtube: {
+        status: "deleted",
+        remoteId: "yt-video-123",
+        deletedAt: "2026-11-11T12:06:00.000Z",
+      },
+    },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(retriedOtherPlatformAfterDeletion),
+  ["facebook"],
+  "a later retry on another platform must not resurrect a deleted provider post when the shared row timestamp advances",
+);
+
+const republishedWithOlderSharedTimestamp = {
+  ...retriedOtherPlatformAfterDeletion,
+  published_at: "2026-11-11T12:00:00.000Z",
+  metadata: {
+    ...retriedOtherPlatformAfterDeletion.metadata,
+    platformResults: {
+      ...retriedOtherPlatformAfterDeletion.metadata.platformResults,
+      youtube: { ok: true, remoteId: "yt-video-789" },
+    },
+  },
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(republishedWithOlderSharedTimestamp),
+  ["youtube", "facebook"],
+  "a new provider post ID must supersede the deletion record for the old post even when the shared row timestamp is older",
+);
 assert.deepEqual(
   getConfirmedPublicKidsVideoSocialPlatforms({
     ...deletedYoutubeRow,

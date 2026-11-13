@@ -24,21 +24,29 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
     : Object.keys(platformResults).length > 0;
   const platformDeletions = asRecord(metadata.platformDeletions);
   const rowPublishedAt = typeof row.published_at === "string" ? Date.parse(row.published_at) : Number.NaN;
-  const isDeleted = (platform: string) => {
+  const isDeleted = (platform: string, deliveryRemoteId?: string) => {
     const deletion = asRecord(platformDeletions[platform]);
     if (deletion.status !== "deleted") return false;
+
+    const deletedRemoteId = typeof deletion.remoteId === "string" ? deletion.remoteId.trim() : "";
+    if (deletedRemoteId) {
+      // A shared queue published_at can advance when another platform retries.
+      // Tie confirmed deletions to the exact remote post ID instead.
+      return !deliveryRemoteId || deletedRemoteId === deliveryRemoteId;
+    }
+
     const deletedAt = typeof deletion.deletedAt === "string" ? Date.parse(deletion.deletedAt) : Number.NaN;
-    // If either side lacks a timestamp, keep the deletion authoritative.
+    // Legacy deletion records without a remote ID use the row timestamp and
+    // remain authoritative when either timestamp is malformed.
     return !Number.isFinite(rowPublishedAt) || !Number.isFinite(deletedAt) || deletedAt >= rowPublishedAt;
   };
 
   const delivered = Object.entries(platformResults)
     .filter(([platform, value]) => {
-      if (!SOCIAL_PLATFORMS.has(platform) || isDeleted(platform)) return false;
+      if (!SOCIAL_PLATFORMS.has(platform)) return false;
       const result = asRecord(value);
-      return result.ok === true &&
-        typeof result.remoteId === "string" &&
-        result.remoteId.trim().length > 0;
+      const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
+      return result.ok === true && remoteId.length > 0 && !isDeleted(platform, remoteId);
     })
     .map(([platform]) => platform);
   if (delivered.length > 0) return delivered;
