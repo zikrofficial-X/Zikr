@@ -5,7 +5,7 @@ import {
   assertCloudinaryVideoUrl,
   isGeneratedCloudinaryVideoUrl,
 } from "../../src/features/videos/services/video-media-url";
-import { resolveVideoMediaUrl, resolveVideoThumbnail } from "../../src/features/videos/services/video-media-contract";
+import { resolveLatestConfirmedYoutubeQueueState, resolveVideoMediaUrl, resolveVideoThumbnail } from "../../src/features/videos/services/video-media-contract";
 
 const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
   assertCloudinaryVideoUrl(url, target, "zikr");
@@ -99,11 +99,39 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /const updatedAt = row\.updated_at/);
   assert.match(auditScript, /youtubePublicationsByRequest/);
   assert.match(auditScript, /status=in\.\(published,partial\)/);
-  assert.match(auditScript, /!\["published", "partial"\]\.includes\(row\.status\)/);
   assert.match(auditScript, /else if \(!assetUrl && hasConfirmedYoutubeFallback\) mediaState = "youtube_only"/);
   assert.match(auditScript, /else if \(!assetUrl\) mediaState = "unavailable"/);
   assert.match(auditScript, /thumbnailFor\(metadata, confirmedYoutubeFallbackId, row\.thumbnail_url\)/);
 
+});
+
+
+test("YouTube media fallback requires a confirmed published or partial queue row", () => {
+  const publishedAt = "2026-11-12T12:00:00.000Z";
+  const platformResults = { youtube: { ok: true, remoteId: "abc123xyz_1" } };
+  const pendingRow = {
+    status: "pending",
+    published_at: publishedAt,
+    metadata: { platformResults },
+  };
+
+  assert.equal(
+    resolveLatestConfirmedYoutubeQueueState([pendingRow]),
+    null,
+    "a stale platform result on a pending queue row must not be treated as a confirmed publication",
+  );
+
+  for (const status of ["published", "partial"] as const) {
+    assert.deepEqual(
+      resolveLatestConfirmedYoutubeQueueState([{
+        status,
+        published_at: publishedAt,
+        metadata: { platformResults },
+      }]),
+      { status: "published", id: "abc123xyz_1", publishedAt },
+      status + " queue rows may supply only their confirmed YouTube publication",
+    );
+  }
 });
 
 test("internal video catalog IDs are never trusted without publisher confirmation", () => {
