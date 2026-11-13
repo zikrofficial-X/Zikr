@@ -120,6 +120,27 @@ CREATE POLICY media_assets_admin_all
   USING (public.is_admin_user())
   WITH CHECK (public.is_admin_user());
 
+CREATE POLICY media_assets_admin_select
+  ON public.media_assets
+  FOR SELECT TO authenticated
+  USING (private.is_admin_user());
+
+CREATE POLICY media_assets_admin_insert
+  ON public.media_assets
+  FOR INSERT TO authenticated
+  WITH CHECK (private.is_admin_user());
+
+CREATE POLICY media_assets_admin_update
+  ON public.media_assets
+  FOR UPDATE TO authenticated
+  USING (private.is_admin_user())
+  WITH CHECK (private.is_admin_user());
+
+CREATE POLICY media_assets_admin_delete
+  ON public.media_assets
+  FOR DELETE TO authenticated
+  USING (private.is_admin_user());
+
 CREATE POLICY media_assets_public_read
   ON public.media_assets
   FOR SELECT TO anon
@@ -206,6 +227,25 @@ BEGIN
   END IF;
   IF NOT has_table_privilege('authenticated', 'public.media_assets', 'UPDATE') THEN
     RAISE EXCEPTION 'Legacy media asset fixture did not reproduce authenticated UPDATE privilege';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public' AND tablename = 'media_assets'
+      AND policyname = 'media_assets_admin_select' AND cmd = 'SELECT'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public' AND tablename = 'media_assets'
+      AND policyname = 'media_assets_admin_insert' AND cmd = 'INSERT'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public' AND tablename = 'media_assets'
+      AND policyname = 'media_assets_admin_update' AND cmd = 'UPDATE'
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname = 'public' AND tablename = 'media_assets'
+      AND policyname = 'media_assets_admin_delete' AND cmd = 'DELETE'
+  ) THEN
+    RAISE EXCEPTION 'Legacy split media asset admin policies were not reproduced';
   END IF;
   IF NOT has_table_privilege('authenticated', 'public.site_audio_assets', 'DELETE') THEN
     RAISE EXCEPTION 'Legacy site audio fixture did not reproduce authenticated DELETE privilege';
