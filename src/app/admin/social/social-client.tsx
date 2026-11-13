@@ -89,6 +89,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   facebook: "Facebook",
   facebook_reels: "Facebook Reels",
 };
+const REMOTE_DELETE_PLATFORMS = new Set<string>(["facebook", "facebook_reels"]);
 
 function isVideoQueueItem(item: QueueItem) {
   const value = item.content_type.trim().toLowerCase();
@@ -648,10 +649,15 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       setError("حدد فيديو منشورًا أولًا.");
       return;
     }
-    const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
+    const requestedPlatforms = platforms?.length ? platforms : [...REMOTE_DELETE_PLATFORMS];
+    if (requestedPlatforms.some(platform => !REMOTE_DELETE_PLATFORMS.has(platform))) {
+      setError("حذف منشورات YouTube غير متاح حاليًا؛ صلاحية الحذف غير موجودة في مسار OAuth المعتمد.");
+      return;
+    }
+    const targetText = requestedPlatforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و");
     const confirmation = `تأكيد الحذف النهائي من ${targetText}؟
 
-سيتم حذف المنشور الفعلي من المنصة فقط. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.`;
+سيتم حذف المنشور الفعلي من Facebook/Facebook Reels فقط. لن يتم إرسال طلب حذف إلى YouTube لأن تكامل OAuth الحالي لا يمنح صلاحية الحذف. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.`;
     if (!window.confirm(confirmation)) return;
 
     setBusy(true);
@@ -661,7 +667,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       const response = await fetch("/api/admin/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete_published", ids, platforms, confirmed: true }),
+        body: JSON.stringify({ action: "delete_published", ids, platforms: requestedPlatforms, confirmed: true }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
@@ -675,7 +681,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
       };
       if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
-      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من المنصات. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من Facebook/Facebook Reels. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. لم يتم إرسال طلب حذف إلى YouTube. نسخة الفيديو داخل ZIKR وسجل التدقيق محفوظان.`);
       const issues = (payload.results ?? []).filter(result =>
         result.status === "failed" || result.status === "missing_remote_id" || result.status === "in_progress" || result.status === "stale"
       );
@@ -1289,7 +1295,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
                 <Button variant="outline" size="sm" disabled={!publishedVideos.length || busy} onClick={togglePublishedSelection}>
                   {allPublishedSelected ? "إلغاء تحديد الكل" : "تحديد كل المنشورات"}
                 </Button>
-                <Button variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10" size="sm" disabled={!selectedPublished.length || busy} onClick={() => void deletePublished(selectedPublished)}>
+                <Button variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10" size="sm" disabled={!selectedPublished.length || busy} onClick={() => void deletePublished(selectedPublished, [...REMOTE_DELETE_PLATFORMS])}>
                   حذف المحدد من المنصات ({selectedPublished.length})
                 </Button>
               </div>
@@ -1349,7 +1355,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
                     const delivered = delivery?.ok === true && Boolean(remoteId);
                     const deleted = deletion?.status === "deleted";
                     const href = publishedPlatformUrl(item, platform);
-                    const hasSafeDeleteId = delivered && !deleted;
+                    const remoteDeleteSupported = REMOTE_DELETE_PLATFORMS.has(platform);
+                    const hasSafeDeleteId = delivered && !deleted && remoteDeleteSupported;
                     return (
                       <div key={platform} className="space-y-2 rounded-xl border border-brand-gold/10 bg-black/15 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1360,6 +1367,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
                         </div>
                         {remoteId ? <p className="break-all font-mono text-[11px] text-brand-cream/40" dir="ltr">{remoteId}</p> : <p className="text-xs leading-5 text-amber-100/65">لا يوجد معرّف منشور محفوظ لهذا السجل؛ لا يمكن تنفيذ حذف آمن.</p>}
                         {deletion?.status === "failed" && typeof deletion.error === "string" && <p className="text-xs leading-5 text-red-300/80">{deletion.error}</p>}
+                        {platform === "youtube" && <p className="text-xs leading-5 text-amber-200/80">الحذف عن بُعد من YouTube غير متاح حاليًا؛ لا نطلب صلاحية الحذف في تكامل OAuth الحالي.</p>}
                         {deleted && typeof deletion.deletedAt === "string" && <p className="text-[11px] text-brand-cream/40">تاريخ الحذف: {new Date(deletion.deletedAt).toLocaleString("ar-EG")}</p>}
                         <div className="flex flex-wrap gap-2">
                           {href && !deleted && <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold underline underline-offset-2">فتح المنشور</a>}
@@ -1369,7 +1377,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
                             disabled={!hasSafeDeleteId || busy}
                             onClick={() => void deletePublished([item.id], [platform])}
                           >
-                            حذف من {PLATFORM_LABELS[platform] ?? platform}
+                            {remoteDeleteSupported ? `حذف من ${PLATFORM_LABELS[platform] ?? platform}` : "حذف YouTube غير متاح"}
                           </Button>
                         </div>
                       </div>

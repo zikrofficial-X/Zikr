@@ -35,6 +35,8 @@ const youtubeCallback = read("src/app/api/admin/social/youtube/callback/route.ts
 const facebookConnect = read("src/app/api/admin/social/facebook/connect/route.ts");
 const facebookCallback = read("src/app/api/admin/social/facebook/callback/route.ts");
 const adminClient = read("src/app/admin/social/social-client.tsx");
+const environmentVariablesDoc = read("docs/environment-variables.md");
+const socialOperationsDoc = read("docs/admin/SOCIAL_PUBLISHING_OPERATIONS.md");
 const writtenWorker = read("scripts/jobs/written-content-automation.ts");
 const writtenPostService = read("src/features/social/services/written-content.ts");
 const videoCatalog = read("src/features/videos/services/videos.ts");
@@ -351,6 +353,14 @@ if (!(adminClient.includes("إعادة تفويض YouTube للرفع والتح�
     !adminClient.includes("لا نطلب صلاحية الحذف") ||
     adminClient.includes("scheduleMinutes")) {
   failures.push("social center must describe YouTube authorization and the event-driven automated-QA publisher accurately");
+}
+if (!adminClient.includes('const REMOTE_DELETE_PLATFORMS = new Set<string>(["facebook", "facebook_reels"])') ||
+    !adminClient.includes("REMOTE_DELETE_PLATFORMS.has(platform)") ||
+    !adminClient.includes('deletePublished(selectedPublished, [...REMOTE_DELETE_PLATFORMS])') ||
+    !adminClient.includes("لم يتم إرسال طلب حذف إلى YouTube") ||
+    !environmentVariablesDoc.includes("YouTube remote deletion is not supported by the current integration") ||
+    !socialOperationsDoc.includes("YouTube remote deletion: **disabled in the current integration**")) {
+  failures.push("YouTube remote deletion must remain disabled in the UI while the least-privilege OAuth policy excludes delete scopes");
 }
 if (adminClient.includes("اعتمد الفيديو أولًا") ||
     adminClient.includes("موقوف لمراجعة الجودة") ||
