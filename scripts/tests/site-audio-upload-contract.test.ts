@@ -113,10 +113,12 @@ const adminRoute = readFileSync("src/app/api/admin/site-audio/route.ts", "utf8")
 const uploadRoute = readFileSync("src/app/api/admin/site-audio/upload/route.ts", "utf8");
 const manager = readFileSync("src/features/admin/components/site-audio-manager.tsx", "utf8");
 assert.match(adminRoute, /validateSiteAudioUploadPath/);
-assert.match(adminRoute, /\.storage\.from\("site-audio"\)\.list/);
+assert.ok(adminRoute.includes('.from("site-audio")\n    .list('));
 assert.match(adminRoute, /validateSiteAudioStorageObject/);
+const objectValidationCall = adminRoute.indexOf("const objectValidation = validateSiteAudioStorageObject(");
+const metadataInsertCall = adminRoute.indexOf('.from("site_audio_assets")\n    .insert');
 assert.ok(
-  adminRoute.indexOf("validateSiteAudioStorageObject") < adminRoute.indexOf('.from("site_audio_assets")\n    .insert'),
+  objectValidationCall >= 0 && metadataInsertCall > objectValidationCall,
   "storage object verification must finish before metadata is inserted",
 );
 assert.match(uploadRoute, /SITE_AUDIO_ALLOWED_MIME_TYPES/);
