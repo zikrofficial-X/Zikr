@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cancelActiveContentSchedules } from "./content-schedule-cancellation";
+
 import {
   createClient,
   supabaseServerAdminRequest,
@@ -264,24 +266,16 @@ export async function toggleManagedContent(
     throw new Error("لا يمكن نشر قصة غير معتمدة أو مرتبطة بحساب مستخدم؛ اعتمد قصة عامة أولاً.");
   }
 
-  // An explicit unpublish must also revoke any pending or in-flight schedule.
-  // Cancel first so a queue-service failure cannot leave a worker free to republish.
+  // An explicit unpublish must revoke queued and in-flight schedules. Advance
+  // each queue row's exact lease version so a same-millisecond worker cannot
+  // retain a valid claim after cancellation.
   if (!published) {
     try {
-      await supabaseServerAdminRequest(
-        `/rest/v1/content_publish_queue?content_table=eq.${table}&content_id=eq.${encodedId}&status=in.(queued,processing)`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Prefer: "return=minimal",
-          },
-          body: JSON.stringify({
-            status: "cancelled",
-            error_message: "Cancelled because the content was explicitly unpublished.",
-            updated_at: new Date().toISOString(),
-          }),
-        },
+      await cancelActiveContentSchedules(
+        supabaseServerAdminRequest,
+        table,
+        id,
+        "Cancelled because the content was explicitly unpublished.",
       );
     } catch (error) {
       console.error("[admin/content] failed to cancel scheduled publication:", error);
@@ -356,21 +350,14 @@ export async function deleteManagedContent(
     );
   }
 
-  // A draft may still have a queued or in-flight publication. Cancel it before
-  // deleting the source row so the worker's final claim check cannot publish
-  // content after an administrator has removed it.
+  // A draft may still have a queued or in-flight publication. Cancel it
+  // with an exact, monotonic queue-version compare-and-set before deletion.
   try {
-    await supabaseServerAdminRequest(
-      `/rest/v1/content_publish_queue?content_table=eq.${table}&content_id=eq.${encodeURIComponent(id)}&status=in.(queued,processing)`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify({
-          status: "cancelled",
-          error_message: "Cancelled because the scheduled content was deleted by an administrator.",
-          updated_at: new Date().toISOString(),
-        }),
-      },
+    await cancelActiveContentSchedules(
+      supabaseServerAdminRequest,
+      table,
+      id,
+      "Cancelled because the scheduled content was deleted by an administrator.",
     );
   } catch (error) {
     console.error("[admin/content] failed to cancel schedule before deletion:", error);
