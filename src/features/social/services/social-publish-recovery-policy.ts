@@ -77,6 +77,36 @@ export function clearSocialPublishInFlightMetadata(
   };
 }
 
+
+/**
+ * Clear approval holds only after the worker has freshly revalidated both
+ * automated video QA and the source publication state. Per-platform checks
+ * run again immediately before provider calls and can re-add a hold if the
+ * source changes between this check and publication.
+ */
+export function clearRevalidatedSocialApprovalDeferrals(
+  metadataInput: Record<string, unknown> | null | undefined,
+  revalidatedPlatformsInput: readonly string[],
+): Record<string, unknown> {
+  const metadata = metadataInput ?? {};
+  const revalidatedPlatforms = new Set(normalizePlatforms(revalidatedPlatformsInput));
+  const approvalDeferredPlatforms = Array.isArray(metadata.approvalDeferredPlatforms)
+    ? metadata.approvalDeferredPlatforms.filter((platform): platform is string => typeof platform === "string")
+    : [];
+
+  return {
+    ...metadata,
+    approvalBlocked: false,
+    approvalDeferredPlatforms: approvalDeferredPlatforms.filter(
+      (platform) => !revalidatedPlatforms.has(platform as SocialPlatform),
+    ),
+    kidsSourceApprovalBlocked: false,
+    kidsSourceApprovalPending: false,
+    writtenArticlePublicationBlocked: false,
+    writtenArticlePublicationPending: false,
+  };
+}
+
 export function buildStaleSocialPublishRecoveryMetadata(
   metadataInput: Record<string, unknown> | null | undefined,
   targetPlatformsInput: readonly string[],

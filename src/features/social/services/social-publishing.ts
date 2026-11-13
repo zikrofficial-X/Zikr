@@ -20,7 +20,7 @@ import {
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
-import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
+import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearRevalidatedSocialApprovalDeferrals, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
@@ -1107,7 +1107,7 @@ export async function processSocialPublishItem(
 
   const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
   const previous = normalizeSocialPlatformResults(item.metadata?.platformResults);
-  const previousMetadata = item.metadata ?? {};
+  const previousMetadata = clearRevalidatedSocialApprovalDeferrals(item.metadata, platforms);
   const maxAttempts = socialMaxAttempts(previousMetadata);
   const runnablePlatforms = platforms.filter(platform => canAttemptSocialPlatform({
     platform, enabledPlatforms, metadata: previousMetadata, maxAttempts,

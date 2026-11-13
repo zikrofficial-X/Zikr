@@ -6,7 +6,7 @@ import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconcili
 import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { buildYouTubeQueueRecoveryFilter, buildYouTubeQueueRecoveryPatch } from "../../src/features/social/services/youtube-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
-import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
+import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryMetadata, clearRevalidatedSocialApprovalDeferrals, clearSocialPublishInFlightMetadata } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
   FacebookPageNotConnectedError,
   getFacebookPageCredentials,
@@ -314,6 +314,64 @@ assert.deepEqual(
   "even explicit no-remote-publication confirmation must not bypass editorial or scholarly approval deferrals",
 );
 
+const approvalAfterRevalidation = clearRevalidatedSocialApprovalDeferrals({
+  approvalBlocked: true,
+  approvalDeferredPlatforms: ["youtube", "facebook", "legacy-provider"],
+  kidsSourceApprovalBlocked: true,
+  kidsSourceApprovalPending: true,
+  writtenArticlePublicationBlocked: true,
+  writtenArticlePublicationPending: true,
+  unrelatedAuditMarker: "preserve",
+}, ["youtube"]);
+assert.deepEqual(
+  approvalAfterRevalidation.approvalDeferredPlatforms,
+  ["facebook", "legacy-provider"],
+  "fresh revalidation must clear only the supported target holds that were actually rechecked",
+);
+assert.equal(approvalAfterRevalidation.approvalBlocked, false);
+assert.equal(approvalAfterRevalidation.kidsSourceApprovalBlocked, false);
+assert.equal(approvalAfterRevalidation.kidsSourceApprovalPending, false);
+assert.equal(approvalAfterRevalidation.writtenArticlePublicationBlocked, false);
+assert.equal(approvalAfterRevalidation.writtenArticlePublicationPending, false);
+assert.equal(approvalAfterRevalidation.unrelatedAuditMarker, "preserve");
+assert.equal(
+  canAttemptSocialPlatform({
+    platform: "youtube",
+    enabledPlatforms: both,
+    metadata: approvalAfterRevalidation,
+    maxAttempts: 5,
+  }),
+  true,
+  "a YouTube target must become retryable only after its current approval state has been revalidated",
+);
+assert.equal(
+  canAttemptSocialPlatform({
+    platform: "facebook",
+    enabledPlatforms: both,
+    metadata: approvalAfterRevalidation,
+    maxAttempts: 5,
+  }),
+  false,
+  "a target whose approval state was not revalidated must remain held",
+);
+
+const socialPublisherSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+const socialWorkerStart = socialPublisherSource.indexOf("export async function processSocialPublishItem(");
+const videoApprovalCheck = socialPublisherSource.indexOf("if (!(await hasVideoApprovalForQueueItem(item)))", socialWorkerStart);
+const sourceApprovalCheck = socialPublisherSource.indexOf("const sourceApproval = await checkWrittenPostSourceApproval(item);", videoApprovalCheck);
+const clearApprovalHolds = socialPublisherSource.indexOf("clearRevalidatedSocialApprovalDeferrals(item.metadata, platforms)", sourceApprovalCheck);
+const runnablePlatformsCheck = socialPublisherSource.indexOf("const runnablePlatforms =", clearApprovalHolds);
+assert.ok(
+  socialWorkerStart >= 0 &&
+  videoApprovalCheck > socialWorkerStart &&
+  sourceApprovalCheck > videoApprovalCheck &&
+  clearApprovalHolds > sourceApprovalCheck &&
+  runnablePlatformsCheck > clearApprovalHolds,
+  "the worker may clear old approval holds only after QA/source revalidation and before selecting runnable targets",
+);
 
 const legacyArrayResults = {
   platformResults: [
