@@ -176,19 +176,14 @@ export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
       }
     }
 
-    // Never interpret an over-encoded managed path as "unreferenced". The
-    // broad SQL prefilter below selects it, and this guard stops the entire
-    // retention run if the exact matcher cannot safely decode it.
-    if (decoded.toLowerCase().includes("automated")) {
-      let hasMoreEncoding = false;
-      try {
-        hasMoreEncoding = decodeURIComponent(decoded) !== decoded;
-      } catch {
-        // Malformed percent escapes cannot be decoded into a valid managed path.
-      }
-      if (hasMoreEncoding) {
-        throw new Error("Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.");
-      }
+    // A remaining valid percent escape after the bounded decode may still hide
+    // a managed segment whose letters were themselves percent-encoded (for
+    // example %61%75%74%6f%6d%61%74%65%64). The SQL prefilter deliberately
+    // selects those rows, so never treat an undecoded value as unreferenced.
+    // Malformed outer encodings also fail closed when any valid encoded bytes
+    // remain in the value.
+    if (/%[0-9a-f]{2}/i.test(decoded)) {
+      throw new Error("Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.");
     }
   };
 
