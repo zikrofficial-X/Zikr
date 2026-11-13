@@ -11,6 +11,7 @@ export type SocialPlatformMetadata = {
   permanentFailurePlatforms?: unknown;
   approvalDeferredPlatforms?: unknown;
   unavailablePlatforms?: unknown;
+  manualReconciliationPlatforms?: unknown;
   sourceMediaMissing?: unknown;
   writtenArticlePublicationBlocked?: unknown;
   writtenArticlePublicationPending?: unknown;
@@ -154,10 +155,13 @@ export function isAmbiguousProviderOutcome(error: unknown): boolean {
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
   if (metadata?.sourceMediaMissing === true) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
+  const declaredManualPlatforms = new Set(metadataPlatforms(metadata?.manualReconciliationPlatforms));
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
   return supported.filter((platform) => {
     const result = asRecord(results[platform]);
-    return result?.requiresReconciliation === true || isAmbiguousProviderOutcome(result?.error);
+    return declaredManualPlatforms.has(platform) ||
+      result?.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result?.error);
   });
 }
 
