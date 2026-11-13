@@ -1,6 +1,7 @@
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { inspectVideoQueueItemApproval } from "../../src/features/videos/services/video-publish-approval";
 import { isVideoPurgeLockResponseActive } from "../../src/features/videos/services/background-job-settings";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 type QueueItem = { id: string; content_table: string; content_id: string; scheduled_at: string; updated_at: string };
 const CONTENT_TABLES = new Set(["articles", "stories", "competitions", "memorization_plans", "pinned_messages", "videos"]);
@@ -29,7 +30,7 @@ async function deferVideoPublication(itemId: string, claimUpdatedAt: string): Pr
         status: "queued",
         scheduled_at: new Date(Date.now() + 5 * 60_000).toISOString(),
         error_message: "Video purge is in progress; publication was safely deferred.",
-        updated_at: new Date().toISOString(),
+        updated_at: buildNextRowVersionUpdatedAt(claimUpdatedAt),
       }),
     },
   );
@@ -44,7 +45,7 @@ async function rollbackScheduledContentPublication(item: QueueItem, publishedUpd
     {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
-      body: JSON.stringify({ published: false, updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ published: false, updated_at: buildNextRowVersionUpdatedAt(publishedUpdatedAt) }),
     },
   );
 }
@@ -176,6 +177,7 @@ async function recoverStaleContentPublishingClaims(now: Date): Promise<number> {
   );
   let recovered = 0;
   for (const row of staleRows ?? []) {
+    const recoveredAt = buildNextRowVersionUpdatedAt(row.updated_at, now);
     const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
       `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(row.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(row.updated_at)}`,
       {
@@ -184,7 +186,7 @@ async function recoverStaleContentPublishingClaims(now: Date): Promise<number> {
         body: JSON.stringify({
           status: "failed",
           error_message: "Stale content publishing claim expired; manual review is required before retry.",
-          updated_at: now.toISOString(),
+          updated_at: recoveredAt,
         }),
       },
     );
@@ -217,18 +219,19 @@ export async function processScheduledContent(limit = 20) {
           body: JSON.stringify({
             status: "failed",
             error_message: "Unsupported internal content table.",
-            updated_at: new Date().toISOString(),
+            updated_at: buildNextRowVersionUpdatedAt(item.updated_at),
           }),
         },
       );
       continue;
     }
+    const requestedClaimUpdatedAt = buildNextRowVersionUpdatedAt(item.updated_at, now);
     const claimed = await supabaseServerAdminRequest<QueueItem[]>(
       `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.queued&scheduled_at=lte.${encodeURIComponent(nowIso)}&updated_at=eq.${encodeURIComponent(item.updated_at)}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify({ status: "processing", updated_at: nowIso }),
+        body: JSON.stringify({ status: "processing", updated_at: requestedClaimUpdatedAt }),
       },
     );
     const claimUpdatedAt = claimed?.[0]?.updated_at;
@@ -255,7 +258,7 @@ export async function processScheduledContent(limit = 20) {
         continue;
       }
 
-      const requestedContentUpdatedAt = new Date().toISOString();
+      const requestedContentUpdatedAt = buildNextRowVersionUpdatedAt(validatedContentUpdatedAt);
       const updatedContent = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
         `/rest/v1/${item.content_table}?id=eq.${encodeURIComponent(item.content_id)}&published=eq.false&updated_at=eq.${encodeURIComponent(validatedContentUpdatedAt)}&select=id,updated_at`,
         {
@@ -272,12 +275,13 @@ export async function processScheduledContent(limit = 20) {
       contentPublished = true;
 
       const completedAt = new Date().toISOString();
+      const completedUpdatedAt = buildNextRowVersionUpdatedAt(claimUpdatedAt, new Date(completedAt));
       const completed = await supabaseServerAdminRequest<Array<{ id: string }>>(
         `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(item.id)}&status=eq.processing&updated_at=eq.${encodeURIComponent(claimUpdatedAt)}&select=id`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ status: "published", published_at: completedAt, updated_at: completedAt }),
+          body: JSON.stringify({ status: "published", published_at: completedAt, updated_at: completedUpdatedAt }),
         },
       );
       if (!completed?.some(row => row.id === item.id)) {
@@ -319,7 +323,7 @@ export async function processScheduledContent(limit = 20) {
           body: JSON.stringify({
             status: "failed",
             error_message: error instanceof Error ? error.message.slice(0, 500) : "unknown",
-            updated_at: new Date().toISOString(),
+            updated_at: buildNextRowVersionUpdatedAt(claimUpdatedAt),
           }),
         },
       ).catch(() => {});
