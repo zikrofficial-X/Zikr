@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/features/admin/services/admin';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import {
+  AdminMediaInputError,
   createAdminMediaAsset,
   getAdminMediaAssets,
   normalizeMediaFolder,
@@ -66,13 +67,18 @@ export async function POST(request: NextRequest) {
       folder: assetFolder,
       createdBy: auth.profile.id,
     });
-    await recordAdminAuditEvent({
+    try {
+      await recordAdminAuditEvent({
       action: "media.asset.create",
       permission: "media.manage",
       resourceType: "media_assets",
       resourceId: typeof asset.id === "string" ? asset.id : null,
       metadata: { folder: assetFolder, mimeType: file.type, sizeBytes: file.size, sourceLinked: Boolean(sourceId) },
-    });
+      });
+    } catch (auditError) {
+      // The asset row is already committed; returning 500 would invite a duplicate retry.
+      console.warn("[api/admin/media] audit event unavailable after asset creation:", auditError);
+    }
 
     return NextResponse.json(
       { asset },
@@ -82,6 +88,9 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (error) {
+    if (error instanceof AdminMediaInputError) {
+      return responseError(error.message, 400);
+    }
     console.error('[api/admin/media] POST error', error);
     return responseError(
       error instanceof Error ? error.message : 'تعذر رفع الأصل.',
@@ -115,12 +124,17 @@ export async function PATCH(request: NextRequest) {
       action as 'verify_rights' | 'publish' | 'unpublish',
     );
     if (!result.ok) return responseError(result.error);
-    await recordAdminAuditEvent({
+    try {
+      await recordAdminAuditEvent({
       action: `media.asset.${action}`,
       permission: "media.manage",
       resourceType: "media_assets",
       resourceId: id,
-    });
+      });
+    } catch (auditError) {
+      // The row-version update is already committed; do not report it as a failed mutation.
+      console.warn("[api/admin/media] audit event unavailable after asset update:", auditError);
+    }
 
     return NextResponse.json(
       { ok: true },
