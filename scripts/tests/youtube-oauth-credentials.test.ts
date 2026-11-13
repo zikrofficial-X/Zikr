@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
 import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken, selectYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
+import { buildCanonicalOAuthStartRedirect } from "../../src/features/social/services/oauth-canonical-origin";
 
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC999"), false, "a token for a different channel must fail closed");
@@ -344,5 +345,48 @@ assert.doesNotMatch(
   /^\s*"YOUTUBE_REFRESH_TOKEN",?$/m,
   "the deployment validator must not warn that an intentionally ignored token is an optional integration",
 );
+
+
+const previewOAuthStart = buildCanonicalOAuthStartRedirect(
+  "https://zikr-preview.vercel.app/api/admin/social/youtube/connect?next=%2Fadmin%2Fsocial",
+  "https://zikrmediaofficial.vercel.app",
+);
+assert.equal(
+  previewOAuthStart,
+  "https://zikrmediaofficial.vercel.app/api/admin/social/youtube/connect?next=%2Fadmin%2Fsocial",
+  "OAuth state cookies must be created on the same canonical origin used by provider callbacks",
+);
+assert.equal(
+  buildCanonicalOAuthStartRedirect(
+    "https://zikrmediaofficial.vercel.app/api/admin/social/facebook/connect",
+    "https://zikrmediaofficial.vercel.app",
+  ),
+  null,
+  "canonical-origin OAuth starts should not redirect",
+);
+assert.equal(
+  buildCanonicalOAuthStartRedirect(
+    "https://custom.example/api/admin/social/facebook/connect?next=https%3A%2F%2Fevil.example",
+    "https://zikrmediaofficial.vercel.app",
+  ),
+  "https://zikrmediaofficial.vercel.app/api/admin/social/facebook/connect?next=https%3A%2F%2Fevil.example",
+  "canonicalization must preserve the route and query without trusting the incoming host",
+);
+
+for (const [provider, routePath] of [
+  ["YouTube", "../../src/app/api/admin/social/youtube/connect/route.ts"],
+  ["Facebook", "../../src/app/api/admin/social/facebook/connect/route.ts"],
+] as const) {
+  const routeSource = readFileSync(new URL(routePath, import.meta.url), "utf8");
+  const canonicalGuard = routeSource.indexOf("buildCanonicalOAuthStartRedirect(request.url, CANONICAL_SITE_ORIGIN)");
+  const adminGuard = routeSource.indexOf('requireAdminApi("social.manage")');
+  const stateCreation = routeSource.indexOf("randomBytes(32)");
+  assert.ok(
+    canonicalGuard >= 0 && canonicalGuard < adminGuard && canonicalGuard < stateCreation,
+    provider + " OAuth must canonicalize before auth checks and state-cookie creation",
+  );
+  assert.match(routeSource, /NextResponse\.redirect\(canonicalRedirect, 307\)/);
+  assert.match(routeSource, /Cache-Control", "private, no-store, max-age=0/);
+}
 
 console.log("YouTube OAuth read-only and upload-scope credential tests passed.");

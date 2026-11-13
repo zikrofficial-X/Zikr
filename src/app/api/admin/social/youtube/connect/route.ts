@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { buildCanonicalOAuthStartRedirect } from "@/features/social/services/oauth-canonical-origin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { getServerEnv } from "@/lib/env";
 
@@ -26,7 +27,14 @@ function adminStatusRedirect(status: string) {
   );
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const canonicalRedirect = buildCanonicalOAuthStartRedirect(request.url, CANONICAL_SITE_ORIGIN);
+  if (canonicalRedirect) {
+    const response = NextResponse.redirect(canonicalRedirect, 307);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
+  }
+
   const auth = await requireAdminApi("social.manage");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
