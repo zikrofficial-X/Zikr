@@ -347,6 +347,29 @@ assert.deepEqual(
   { status: "published", platforms: ["youtube"], publishedAt: "2026-11-11T12:10:00.000Z" },
   "same-row republishing must preserve the latest confirmed remote publication",
 );
+const sameTimestampPublication = {
+  ...originalYoutubeQueueRow,
+  published_at: "2026-11-11T12:06:00.000Z",
+};
+const sameTimestampDeletedRow = {
+  ...deletedYoutubeSupplementalRow,
+  metadata: {
+    audience: "kids",
+    platformDeletions: {
+      youtube: { status: "deleted", deletedAt: "2026-11-11T12:06:00.000Z" },
+    },
+  },
+};
+assert.equal(
+  resolveKidsVideoSocialPublication([sameTimestampDeletedRow, sameTimestampPublication], null, true),
+  null,
+  "a publication at the exact deletion timestamp must not resurrect a deleted Kids social post",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([sameTimestampPublication, sameTimestampDeletedRow], null, true),
+  null,
+  "equal-timestamp publication/deletion resolution must be independent of queue row order",
+);
 const storedLegacyPublication = { status: "published", platforms: ["youtube"], publishedAt: "2026-11-10T12:00:00.000Z" };
 assert.equal(
   resolveKidsVideoSocialPublication([], storedLegacyPublication, false),
