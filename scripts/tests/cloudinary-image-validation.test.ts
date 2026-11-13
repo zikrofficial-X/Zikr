@@ -158,4 +158,10 @@ const kidsActionSource = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 assert.match(kidsActionSource, /featured_image_url=eq\.[\s\S]*?encodeURIComponent\(secureUrl\)/, "Kids compensation must check the exact persisted image URL before deletion");
 assert.match(kidsActionSource, /catch \(saveError\)[\s\S]*?compensateOrphanedKidsImage\(uploadedImage, requestedPublicId\)/, "a failed database insert must run guarded orphan compensation");
 assert.match(kidsActionSource, /saved\.length !== 1[\s\S]*?compensateOrphanedKidsImage\(uploadedImage, requestedPublicId\)/, "an unconfirmed insert must run guarded orphan compensation");
+
+const mediaAssetsSource = readFileSync("src/features/media/services/media-assets.ts", "utf8");
+assert.match(mediaAssetsSource, /url=eq\.[\s\S]*?encodeURIComponent\(secureUrl\)/, "media asset compensation must check the exact persisted delivery URL");
+assert.match(mediaAssetsSource, /storage_path=eq\.[\s\S]*?encodeURIComponent\(publicId\)/, "media asset compensation must check the exact persisted Cloudinary public ID");
+assert.match(mediaAssetsSource, /catch \(saveError\)[\s\S]*?compensateOrphanedMediaAsset\(upload, requestedPublicId\)/, "a failed media_assets insert must run guarded orphan compensation");
+assert.match(mediaAssetsSource, /!Array\.isArray\(rows\) \|\| !rows\[0\][\s\S]*?compensateOrphanedMediaAsset\(upload, requestedPublicId\)/, "an unconfirmed media_assets insert must run guarded orphan compensation");
 console.log("Cloudinary raster signature and orphan compensation contracts passed.");
