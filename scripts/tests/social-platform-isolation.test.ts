@@ -209,18 +209,18 @@ assert.equal("inFlightPlatforms" in completedMetadata, false, "completed attempt
 assert.equal("inFlightStartedAt" in completedMetadata, false, "completed attempts must clear the in-flight timestamp");
 assert.deepEqual(completedMetadata.lastAttemptPlatforms, ["youtube"]);
 
-const socialPublisherSource = readFileSync(
+const revalidatedPublisherSource = readFileSync(
   resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
   "utf8",
 );
 
-const inFlightMarkerPosition = socialPublisherSource.indexOf("const inFlightMetadata = buildSocialPublishInFlightMetadata");
-const providerCallPosition = socialPublisherSource.indexOf("const results = await Promise.all(runnablePlatforms.map");
+const inFlightMarkerPosition = revalidatedPublisherSource.indexOf("const inFlightMetadata = buildSocialPublishInFlightMetadata");
+const providerCallPosition = revalidatedPublisherSource.indexOf("const results = await Promise.all(runnablePlatforms.map");
 assert.ok(inFlightMarkerPosition >= 0 && providerCallPosition > inFlightMarkerPosition, "the durable in-flight marker must be written before any provider call");
-assert.match(socialPublisherSource, /buildStaleSocialPublishRecoveryMetadata/, "stale recovery must convert interrupted calls into manual reconciliation");
-assert.match(socialPublisherSource, /Failed to recover stale social publish items; refusing to continue with an incomplete queue state/, "stale recovery failures must fail the job instead of silently skipping ambiguous rows");
+assert.match(revalidatedPublisherSource, /buildStaleSocialPublishRecoveryMetadata/, "stale recovery must convert interrupted calls into manual reconciliation");
+assert.match(revalidatedPublisherSource, /Failed to recover stale social publish items; refusing to continue with an incomplete queue state/, "stale recovery failures must fail the job instead of silently skipping ambiguous rows");
 assert.match(
-  socialPublisherSource,
+  revalidatedPublisherSource,
   /resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/,
   "queue selection and stale recovery must use the same validated publishing cutoff as Facebook auth-block recovery",
 );
@@ -355,15 +355,15 @@ assert.equal(
   "a target whose approval state was not revalidated must remain held",
 );
 
-const socialPublisherSource = readFileSync(
+const revalidatedPublisherSource = readFileSync(
   resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
   "utf8",
 );
-const socialWorkerStart = socialPublisherSource.indexOf("export async function processSocialPublishItem(");
-const videoApprovalCheck = socialPublisherSource.indexOf("if (!(await hasVideoApprovalForQueueItem(item)))", socialWorkerStart);
-const sourceApprovalCheck = socialPublisherSource.indexOf("const sourceApproval = await checkWrittenPostSourceApproval(item);", videoApprovalCheck);
-const clearApprovalHolds = socialPublisherSource.indexOf("clearRevalidatedSocialApprovalDeferrals(item.metadata, platforms)", sourceApprovalCheck);
-const runnablePlatformsCheck = socialPublisherSource.indexOf("const runnablePlatforms =", clearApprovalHolds);
+const socialWorkerStart = revalidatedPublisherSource.indexOf("export async function processSocialPublishItem(");
+const videoApprovalCheck = revalidatedPublisherSource.indexOf("if (!(await hasVideoApprovalForQueueItem(item)))", socialWorkerStart);
+const sourceApprovalCheck = revalidatedPublisherSource.indexOf("const sourceApproval = await checkWrittenPostSourceApproval(item);", videoApprovalCheck);
+const clearApprovalHolds = revalidatedPublisherSource.indexOf("clearRevalidatedSocialApprovalDeferrals(item.metadata, platforms)", sourceApprovalCheck);
+const runnablePlatformsCheck = revalidatedPublisherSource.indexOf("const runnablePlatforms =", clearApprovalHolds);
 assert.ok(
   socialWorkerStart >= 0 &&
   videoApprovalCheck > socialWorkerStart &&
