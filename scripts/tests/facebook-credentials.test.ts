@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildFacebookPublicProfileIdentityUpsert } from "../../src/features/social/services/facebook-profile-contract";
+import {
+  buildFacebookPublicProfileIdentityUpsert,
+  buildFacebookPublicProfileSyncUpsert,
+} from "../../src/features/social/services/facebook-profile-contract";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import {
   FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS,
@@ -116,6 +119,73 @@ assert.deepEqual(identityPayload, {
   last_error: null,
   updated_at: "2026-11-13T14:08:00.000Z",
 });
+const changedPageIdentity = buildFacebookPublicProfileIdentityUpsert({
+  pageId: "987654321098765",
+  pageName: "New ZIKR Page",
+  updatedAt: "2026-11-13T14:09:00.000Z",
+  previousPageId: "123456789012345",
+});
+assert.equal(changedPageIdentity.external_id, "987654321098765");
+assert.equal(changedPageIdentity.followers_count, null);
+assert.equal(changedPageIdentity.likes_count, null);
+assert.equal(changedPageIdentity.avatar_url, null);
+assert.equal(changedPageIdentity.cover_url, null);
+assert.equal(changedPageIdentity.synced_at, null);
+
+const preservedProfile = buildFacebookPublicProfileSyncUpsert({
+  pageId: "123456789012345",
+  name: null,
+  description: null,
+  category: null,
+  website: null,
+  avatarUrl: null,
+  coverUrl: null,
+  pageUrl: null,
+  followersCount: null,
+  likesCount: undefined,
+  fallbackAvatar: "https://graph.facebook.com/123456789012345/picture?type=large",
+  syncedAt: "2026-11-13T14:10:00.000Z",
+  cached: {
+    name: "ZIKR Official",
+    description: "Existing page description",
+    category: "Community",
+    website: "https://zikrmediaofficial.vercel.app",
+    avatarUrl: "https://example.com/avatar.jpg",
+    coverUrl: "https://example.com/cover.jpg",
+    pageUrl: "https://www.facebook.com/123456789012345",
+    followersCount: 1234,
+    likesCount: 567,
+  },
+});
+assert.equal(preservedProfile.name, "ZIKR Official");
+assert.equal(preservedProfile.description, "Existing page description");
+assert.equal(preservedProfile.category, "Community");
+assert.equal(preservedProfile.website, "https://zikrmediaofficial.vercel.app");
+assert.equal(preservedProfile.avatar_url, "https://example.com/avatar.jpg");
+assert.equal(preservedProfile.cover_url, "https://example.com/cover.jpg");
+assert.equal(preservedProfile.followers_count, 1234);
+assert.equal(preservedProfile.likes_count, 567);
+
+const refreshedProfile = buildFacebookPublicProfileSyncUpsert({
+  pageId: "123456789012345",
+  name: "ZIKR Official Updated",
+  followersCount: 1300,
+  likesCount: 600,
+  fallbackAvatar: "https://graph.facebook.com/123456789012345/picture?type=large",
+  syncedAt: "2026-11-13T14:11:00.000Z",
+  cached: { name: "ZIKR Official", followersCount: 1234, likesCount: 567 },
+});
+assert.equal(refreshedProfile.name, "ZIKR Official Updated");
+assert.equal(refreshedProfile.followers_count, 1300);
+assert.equal(refreshedProfile.likes_count, 600);
+
+const facebookIntegration = readFileSync(
+  resolve("src/features/social/integrations/facebook.ts"),
+  "utf8",
+);
+assert.match(facebookIntegration, /String\(row\.external_id \?\? ''\) !== pageId/);
+assert.match(facebookIntegration, /buildFacebookPublicProfileSyncUpsert/);
+assert.match(facebookIntegration, /cached\?\.followingCount/);
 
 const profileSaveStart = source.indexOf("export async function saveFacebookPublicProfile(");
 const profileSaveEnd = source.indexOf("export async function getFacebookPublicProfile(", profileSaveStart);
