@@ -56,12 +56,6 @@ assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_missing", you
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "youtube_only" }), false);
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_ready" }), false);
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "purged" }), false, "an explicit purge is an intentional terminal state, not an availability failure");
-assert.equal(isPurgedInternalVideoMedia(confirmed), true, "a purged internal video must retain its explicit tombstone");
-assert.equal(
-  isPurgedInternalVideoMedia({ ...confirmed, metadata: { ...confirmed.metadata, mediaState: "youtube_fallback" } }),
-  false,
-  "a confirmed publication recovery may move the row out of the purge tombstone",
-);
 
 const id = "5pob7O7rLnU";
 const confirmed = {
@@ -80,6 +74,12 @@ const confirmed = {
     videoUrl: null,
   },
 };
+assert.equal(isPurgedInternalVideoMedia(confirmed), true, "a purged internal video must retain its explicit tombstone");
+assert.equal(
+  isPurgedInternalVideoMedia({ ...confirmed, metadata: { ...confirmed.metadata, mediaState: "youtube_fallback" } }),
+  false,
+  "a confirmed publication recovery may move the row out of the purge tombstone",
+);
 
 const publishedQueueRow = {
   status: "published",
