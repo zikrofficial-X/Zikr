@@ -1,6 +1,11 @@
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
-import { getConfirmedYoutubeFallbackId } from "../../src/features/videos/services/video-media-contract";
+import {
+  getConfirmedYoutubeFallbackId,
+  reconcileYoutubeFallbackMetadata,
+  resolveLatestConfirmedYoutubeQueueState,
+  type YoutubeQueuePublicationState,
+} from "../../src/features/videos/services/video-media-contract";
 import { supabaseServerAdminExactCount, supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
 import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
 
@@ -38,14 +43,6 @@ function validYouTubeId(value: unknown): string | null {
   return /^[A-Za-z0-9_-]{6,20}$/.test(id) ? id : null;
 }
 
-function youtubeIdFromQueue(row: SocialQueueRow): string | null {
-  if (!["published", "partial"].includes(row.status) || !row.content_id || !isVideoContentType(row.content_type)) return null;
-  const metadata = asRecord(row.metadata);
-  const platformResults = asRecord(metadata.platformResults);
-  const youtube = asRecord(platformResults.youtube);
-  if (youtube.ok !== true) return null;
-  return validYouTubeId(youtube.remoteId);
-}
 
 function cloudinaryAssetUrl(metadata: JsonRecord): string | null {
   for (const key of ["generatedVideoUrl", "videoUrl", "video_url", "sourceVideoUrl"]) {
@@ -140,15 +137,20 @@ function comparableMediaAudit(value: unknown): JsonRecord {
 
 async function auditOne(
   row: VideoCatalogRow,
-  youtubePublicationsByRequest: Map<string, { id: string; publishedAt: string | null }>,
+  youtubePublicationsByRequest: Map<string, YoutubeQueuePublicationState>,
   now: string,
 ) {
   const metadata = asRecord(row.metadata);
   const requestId = typeof metadata.videoGenerationRequestId === "string"
     ? metadata.videoGenerationRequestId
     : "";
-  const queuePublication = requestId ? youtubePublicationsByRequest.get(requestId) ?? null : null;
+  const queueState = requestId ? youtubePublicationsByRequest.get(requestId) ?? null : null;
+  if (queueState?.status === "conflict") {
+    return { state: "conflict", id: row.id, title: row.title, reason: "multiple_youtube_publications_share_timestamp" };
+  }
+  const queuePublication = queueState?.status === "published" ? queueState : null;
   const queueYouTubeId = queuePublication?.id ?? null;
+  const youtubeDeletionConfirmed = queueState?.status === "deleted";
   const existingYouTubeId = validYouTubeId(row.youtube_id);
   const metadataYoutubeId = getConfirmedYoutubeFallbackId({
     youtube_id: row.youtube_id,
@@ -156,11 +158,11 @@ async function auditOne(
   });
   const candidateYoutubeIds = [existingYouTubeId, metadataYoutubeId, queueYouTubeId]
     .filter((value): value is string => value !== null);
-  if (new Set(candidateYoutubeIds).size > 1) {
+  if (!youtubeDeletionConfirmed && new Set(candidateYoutubeIds).size > 1) {
     return { state: "conflict", id: row.id, title: row.title, reason: "catalog_youtube_id_conflicts_with_confirmed_fallback" };
   }
-  const confirmedYoutubeFallbackId = queueYouTubeId ?? metadataYoutubeId;
-  const youtubeId = existingYouTubeId ?? confirmedYoutubeFallbackId;
+  const confirmedYoutubeFallbackId = youtubeDeletionConfirmed ? null : queueYouTubeId ?? metadataYoutubeId;
+  const youtubeId = youtubeDeletionConfirmed ? null : existingYouTubeId ?? confirmedYoutubeFallbackId;
   const hasConfirmedYoutubeFallback = Boolean(
     confirmedYoutubeFallbackId && confirmedYoutubeFallbackId === youtubeId,
   );
@@ -175,7 +177,7 @@ async function auditOne(
   else mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "unverified";
 
   const nextMetadata: JsonRecord = {
-    ...metadata,
+    ...reconcileYoutubeFallbackMetadata(metadata, queueState),
     mediaState,
     mediaAudit: {
       checkedAt: now,
@@ -197,7 +199,7 @@ async function auditOne(
   const patch: Record<string, unknown> = {
     metadata: nextMetadata,
   };
-  if (!existingYouTubeId && youtubeId) patch.youtube_id = youtubeId;
+  if (row.youtube_id !== youtubeId) patch.youtube_id = youtubeId;
   if (!row.thumbnail_url && thumbnail) patch.thumbnail_url = thumbnail;
 
   const mediaStateChanged = nextMetadata.mediaState !== metadata.mediaState;
@@ -205,14 +207,13 @@ async function auditOne(
     JSON.stringify(comparableMediaAudit(metadata.mediaAudit));
   // checkedAt is observational metadata, not a catalog change. Do not rewrite
   // every published row on every daily audit and invalidate admin updated_at guards.
-  const confirmedFallbackChanged = Boolean(queueYouTubeId) && (
-    metadata.youtubePublishedVideoId !== queueYouTubeId ||
-    metadata.youtubePublishedUrl !== "https://www.youtube.com/watch?v=" + queueYouTubeId ||
-    metadata.mediaFallbackAvailable !== true ||
-    (Boolean(queuePublication?.publishedAt) && metadata.youtubePublishedAt !== queuePublication?.publishedAt)
-  );
+  const confirmedFallbackChanged =
+    nextMetadata.youtubePublishedVideoId !== metadata.youtubePublishedVideoId ||
+    nextMetadata.youtubePublishedUrl !== metadata.youtubePublishedUrl ||
+    nextMetadata.youtubePublishedAt !== metadata.youtubePublishedAt ||
+    nextMetadata.mediaFallbackAvailable !== metadata.mediaFallbackAvailable;
   const needsUpdate = mediaStateChanged || mediaAuditChanged || confirmedFallbackChanged ||
-    (!existingYouTubeId && Boolean(youtubeId)) ||
+    row.youtube_id !== youtubeId ||
     (!row.thumbnail_url && Boolean(thumbnail));
   if (!needsUpdate) {
     return { state: mediaState, id: row.id, updated: false, youtubeFallback: hasConfirmedYoutubeFallback };
@@ -256,13 +257,17 @@ async function main() {
   ]);
   assertCompleteVideoMediaAuditInventory(videoTableCount, socialQueueTableCount);
 
-  const youtubePublicationsByRequest = new Map<string, { id: string; publishedAt: string | null }>();
+  const youtubeQueueRowsByRequest = new Map<string, SocialQueueRow[]>();
   for (const row of queue ?? []) {
-    if (!row.content_id) continue;
-    const youtubeId = youtubeIdFromQueue(row);
-    if (youtubeId && !youtubePublicationsByRequest.has(row.content_id)) {
-      youtubePublicationsByRequest.set(row.content_id, { id: youtubeId, publishedAt: row.published_at });
-    }
+    if (!row.content_id || !isVideoContentType(row.content_type)) continue;
+    const requestRows = youtubeQueueRowsByRequest.get(row.content_id) ?? [];
+    requestRows.push(row);
+    youtubeQueueRowsByRequest.set(row.content_id, requestRows);
+  }
+  const youtubePublicationsByRequest = new Map<string, YoutubeQueuePublicationState>();
+  for (const [requestId, requestRows] of youtubeQueueRowsByRequest) {
+    const state = resolveLatestConfirmedYoutubeQueueState(requestRows);
+    if (state) youtubePublicationsByRequest.set(requestId, state);
   }
 
   const rows = videos ?? [];
