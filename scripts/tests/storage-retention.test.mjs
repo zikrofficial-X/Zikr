@@ -6,6 +6,7 @@ import {
   getReferenceOrderColumn,
   textReferencePatterns,
   storagePathReferencePatterns,
+  jsonReferencePattern,
   assertExpectedSupabaseProject,
   assertRetentionApplyConfirmation,
   probeCloudinaryPlayback,
@@ -121,6 +122,19 @@ assert.deepEqual(
   [expectedEncodedReferencePatterns.map((pattern) => `storage_path.ilike.${pattern}`).join(",")],
   "storage-path prefilters must select canonical and character-encoded paths in one bounded query",
 );
+
+const jsonPatterns = jsonReferencePattern("articles", "metadata");
+assert.equal(Array.isArray(jsonPatterns), true, "JSON reference patterns must be iterable for the shared reference inventory");
+assert.equal(jsonPatterns.length, 1);
+let jsonFilter;
+const jsonQuery = {
+  not(column, operator, value) {
+    jsonFilter = { column, operator, value };
+    return jsonQuery;
+  },
+};
+jsonPatterns[0].filter(jsonQuery);
+assert.deepEqual(jsonFilter, { column: "metadata", operator: "is", value: null });
 assert.deepEqual(
   [...findManagedVideoReferences({ note: `legacy source ${publicUrl}` }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],

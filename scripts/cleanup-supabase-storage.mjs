@@ -593,12 +593,12 @@ export function storagePathReferencePatterns(table, column) {
   }];
 }
 
-function jsonReferencePattern(table, column) {
-  return {
+export function jsonReferencePattern(table, column) {
+  return [{
     table,
     column,
     filter: (query) => query.not(column, "is", null),
-  };
+  }];
 }
 
 export function getReferenceOrderColumn(table) {
