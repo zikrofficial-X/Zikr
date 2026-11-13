@@ -74,15 +74,23 @@ const facebookCallback = readFileSync(
   resolve("src/app/api/admin/social/facebook/callback/route.ts"),
   "utf8",
 );
+const facebookOAuthPolicy = readFileSync(
+  resolve("src/features/social/services/facebook-oauth-policy.ts"),
+  "utf8",
+);
 assert.match(facebookConnect, /requireAdminApi\("social.manage"\)/);
 assert.ok(facebookConnect.includes("dialog/oauth"));
-assert.match(facebookConnect, /pages_manage_posts/);
+assert.ok(facebookConnect.includes("FACEBOOK_REQUESTED_PERMISSIONS.join"));
+assert.match(facebookOAuthPolicy, /pages_manage_posts/);
+assert.match(facebookOAuthPolicy, /read_insights/);
 assert.doesNotMatch(facebookConnect, /pages_manage_engagement/);
 assert.doesNotMatch(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
 assert.match(facebookCallback, /requireAdminApi\("social.manage"\)/);
 assert.match(facebookCallback, /timingSafeEqual/);
 assert.match(facebookCallback, /saveFacebookPageCredential/);
-assert.match(facebookCallback, /pages_show_list/);
+assert.match(facebookCallback, /hasFacebookPublishingPermissions\(grantedPermissions\)/);
+assert.match(facebookCallback, /hasFacebookInsightsPermission\(grantedPermissions\)/);
+assert.match(facebookCallback, /insights:\s*"missing"/);
 assert.doesNotMatch(facebookCallback, /pages_manage_engagement/);
 assert.match(facebookCallback, /page_selection_required/);
 assert.doesNotMatch(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
