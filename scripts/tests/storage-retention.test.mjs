@@ -369,7 +369,7 @@ const capturePatternCalls = (descriptors) => {
       like(column, pattern) { calls.push({ method: "like", column, pattern }); return query; },
       or(expression) {
         const filters = expression.split(",").map((entry) => {
-          const match = /^([a-z_]+)\\.ilike\\.(.+)$/.exec(entry);
+          const match = /^([a-z_]+)\.ilike\.(.+)$/.exec(entry);
           assert.ok(match, `unexpected PostgREST OR filter: ${entry}`);
           return { column: match[1], pattern: match[2] };
         });
