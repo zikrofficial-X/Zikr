@@ -66,12 +66,14 @@ export type YoutubeQueuePublicationState =
 export function resolveLatestConfirmedYoutubeQueueState(
   rows: unknown[],
 ): YoutubeQueuePublicationState | null {
-  type LatestState =
-    | { status: "published"; id: string; publishedAt: string; timestamp: number }
-    | { status: "deleted"; deletedAt: string | null; timestamp: number }
-    | { status: "conflict"; timestamp: number };
+  type Publication = { id: string; publishedAt: string; timestamp: number };
+  type Deletion = { remoteId: string | null; deletedAt: string | null; timestamp: number };
 
-  let latest: LatestState | null = null;
+  // Deletions are scoped to the exact remote post ID. A late deletion of an
+  // older upload must not erase a newer YouTube publication for this request.
+  const publications = new Map<string, Publication>();
+  const deletions = new Map<string, Deletion>();
+  let uncorrelatedDeletion: Deletion | null = null;
 
   for (const value of rows) {
     if (!value || typeof value !== "object" || Array.isArray(value)) continue;
@@ -91,14 +93,9 @@ export function resolveLatestConfirmedYoutubeQueueState(
       isValidYoutubeId(youtube.remoteId)
     ) {
       const id = youtube.remoteId.trim();
-      if (!latest || publicationTimestamp > latest.timestamp) {
-        latest = { status: "published", id, publishedAt, timestamp: publicationTimestamp };
-      } else if (
-        publicationTimestamp === latest.timestamp &&
-        latest.status === "published" &&
-        latest.id !== id
-      ) {
-        latest = { status: "conflict", timestamp: publicationTimestamp };
+      const previous = publications.get(id);
+      if (!previous || publicationTimestamp > previous.timestamp) {
+        publications.set(id, { id, publishedAt, timestamp: publicationTimestamp });
       }
     }
 
@@ -121,24 +118,72 @@ export function resolveLatestConfirmedYoutubeQueueState(
       const deletionTimestamp = Number.isFinite(parsedDeletedAt)
         ? parsedDeletedAt
         : Number.POSITIVE_INFINITY;
-      if (!latest || deletionTimestamp >= latest.timestamp) {
-        latest = {
-          status: "deleted",
-          deletedAt: Number.isFinite(parsedDeletedAt) ? deletedAt : null,
-          timestamp: deletionTimestamp,
-        };
+      const rawDeletionId = typeof youtubeDeletion.remoteId === "string"
+        ? youtubeDeletion.remoteId.trim()
+        : "";
+      const deletionRemoteId = isValidYoutubeId(rawDeletionId) ? rawDeletionId : null;
+      const deletion: Deletion = {
+        remoteId: deletionRemoteId,
+        deletedAt: Number.isFinite(parsedDeletedAt) ? deletedAt : null,
+        timestamp: deletionTimestamp,
+      };
+
+      if (deletionRemoteId) {
+        const previous = deletions.get(deletionRemoteId);
+        if (!previous || deletionTimestamp > previous.timestamp) {
+          deletions.set(deletionRemoteId, deletion);
+        }
+      } else if (!uncorrelatedDeletion || deletionTimestamp > uncorrelatedDeletion.timestamp) {
+        // Legacy deletion records without a remote ID cannot safely be matched
+        // to one of several publications; keep the media audit fail-closed.
+        uncorrelatedDeletion = deletion;
       }
     }
   }
 
-  if (!latest) return null;
-  if (latest.status === "published") {
-    return { status: "published", id: latest.id, publishedAt: latest.publishedAt };
+  const latestPublicationTimestamp = Math.max(
+    Number.NEGATIVE_INFINITY,
+    ...[...publications.values()].map((publication) => publication.timestamp),
+  );
+  const latestActivePublications = [...publications.values()].filter((publication) => {
+    const deletion = deletions.get(publication.id);
+    return !deletion || deletion.timestamp < publication.timestamp;
+  });
+  const latestActiveTimestamp = Math.max(
+    Number.NEGATIVE_INFINITY,
+    ...latestActivePublications.map((publication) => publication.timestamp),
+  );
+
+  if (latestActivePublications.length > 0) {
+    const newest = latestActivePublications.filter(
+      (publication) => publication.timestamp === latestActiveTimestamp,
+    );
+    if (newest.length > 1) return { status: "conflict" };
+    if (
+      uncorrelatedDeletion &&
+      uncorrelatedDeletion.timestamp >= latestPublicationTimestamp &&
+      uncorrelatedDeletion.timestamp >= latestActiveTimestamp
+    ) {
+      return { status: "conflict" };
+    }
+    const publication = newest[0];
+    return {
+      status: "published",
+      id: publication.id,
+      publishedAt: publication.publishedAt,
+    };
   }
-  if (latest.status === "deleted") {
-    return { status: "deleted", deletedAt: latest.deletedAt };
+
+  if (uncorrelatedDeletion && uncorrelatedDeletion.timestamp >= latestPublicationTimestamp) {
+    return { status: "conflict" };
   }
-  return { status: "conflict" };
+
+  const deletionEvents = [...deletions.values()];
+  if (deletionEvents.length === 0) return null;
+  const latestDeletion = deletionEvents.reduce((latest, current) =>
+    current.timestamp > latest.timestamp ? current : latest,
+  );
+  return { status: "deleted", deletedAt: latestDeletion.deletedAt };
 }
 
 /** Keep the catalog's YouTube fallback in sync with an authoritative queue event. */
