@@ -148,8 +148,7 @@ export function resolveKidsVideoSocialPublication(
         const current = latestByPlatform.get(platform);
       if (
         !current ||
-        publicationTimestamp > current.timestamp ||
-        (publicationTimestamp === current.timestamp && current.state === "deleted")
+        publicationTimestamp > current.timestamp
       ) {
           latestByPlatform.set(platform, {
             state: "published",
