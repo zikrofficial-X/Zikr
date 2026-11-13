@@ -91,6 +91,35 @@ export function normalizeCachedYoutubePlaylists(value: unknown): YoutubePlaylist
   }).slice(0, 25);
 }
 
+export function getCachedPlaylistsForChannel(
+  row: { channel_id: string | null; playlists?: unknown } | null,
+  channelId: string,
+): YoutubePlaylist[] {
+  return row?.channel_id === channelId
+    ? normalizeCachedYoutubePlaylists(row.playlists)
+    : [];
+}
+
+export function buildYoutubeSyncAttemptState(input: {
+  channelId: string;
+  attemptedAt: string;
+  nextAllowedSyncAt: string;
+  cachedPlaylists: YoutubePlaylist[];
+}) {
+  return {
+    id: 1,
+    channel_id: input.channelId,
+    status: 'never_synced' as const,
+    last_attempted_at: input.attemptedAt,
+    next_allowed_sync_at: input.nextAllowedSyncAt,
+    last_error: null,
+    // Persist the channel-scoped snapshot when claiming the sync. On a channel
+    // change this is [], preventing the previous channel's playlists from
+    // being relabeled as the new channel if the provider request fails.
+    playlists: input.cachedPlaylists,
+  };
+}
+
 export type YoutubeSyncHealth = {
   configured: boolean;
   status: YoutubeSyncStateRow['status'];
@@ -246,7 +275,7 @@ async function readSyncHealth(channelId: string): Promise<YoutubeSyncSnapshot> {
     lastSuccessAt: sameChannel ? row?.last_success_at ?? null : null,
     nextAllowedSyncAt: sameChannel ? row?.next_allowed_sync_at ?? null : null,
     lastError: sameChannel && row?.last_error ? safeYoutubeErrorMessage(row.last_error) : null,
-    cachedPlaylists: sameChannel ? normalizeCachedYoutubePlaylists(row?.playlists) : [],
+    cachedPlaylists: getCachedPlaylistsForChannel(row, channelId),
   };
 }
 
@@ -302,7 +331,15 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
   }
 
   const attemptAt = new Date().toISOString();
-  const { error: stateError } = await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'never_synced', last_attempted_at: attemptAt, next_allowed_sync_at: new Date(now + SYNC_LOCK_MS).toISOString(), last_error: null });
+  const syncLockState = buildYoutubeSyncAttemptState({
+    channelId,
+    attemptedAt: attemptAt,
+    nextAllowedSyncAt: new Date(now + SYNC_LOCK_MS).toISOString(),
+    cachedPlaylists: health.cachedPlaylists,
+  });
+  const { error: stateError } = await supabase
+    .from('youtube_sync_state')
+    .upsert(syncLockState);
   if (stateError) throw stateError;
 
   try {

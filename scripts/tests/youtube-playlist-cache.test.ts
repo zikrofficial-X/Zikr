@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { normalizeCachedYoutubePlaylists } from "../../src/features/videos/integrations/youtube";
+import {
+  buildYoutubeSyncAttemptState,
+  getCachedPlaylistsForChannel,
+  normalizeCachedYoutubePlaylists,
+} from "../../src/features/videos/integrations/youtube";
 
 const normalized = normalizeCachedYoutubePlaylists([
   {
@@ -45,6 +49,44 @@ assert.deepEqual(normalized, [
 ]);
 assert.deepEqual(normalizeCachedYoutubePlaylists(null), []);
 assert.deepEqual(normalizeCachedYoutubePlaylists({ items: [] }), []);
+
+const priorChannelState = {
+  channel_id: "UC-previous-channel",
+  playlists: normalized,
+};
+assert.deepEqual(
+  getCachedPlaylistsForChannel(priorChannelState, "UC-new-channel"),
+  [],
+  "a changed YouTube channel must not inherit the previous channel's playlist cache",
+);
+assert.deepEqual(
+  getCachedPlaylistsForChannel(priorChannelState, "UC-previous-channel"),
+  normalized,
+  "the current channel must retain its own successful playlist cache",
+);
+const switchedChannelLock = buildYoutubeSyncAttemptState({
+  channelId: "UC-new-channel",
+  attemptedAt: "2026-11-13T12:00:00.000Z",
+  nextAllowedSyncAt: "2026-11-13T12:10:00.000Z",
+  cachedPlaylists: getCachedPlaylistsForChannel(priorChannelState, "UC-new-channel"),
+});
+assert.deepEqual(
+  switchedChannelLock.playlists,
+  [],
+  "the sync lock must persist an empty cache before a new channel sync can fail",
+);
+const sameChannelLock = buildYoutubeSyncAttemptState({
+  channelId: "UC-previous-channel",
+  attemptedAt: "2026-11-13T12:00:00.000Z",
+  nextAllowedSyncAt: "2026-11-13T12:10:00.000Z",
+  cachedPlaylists: getCachedPlaylistsForChannel(priorChannelState, "UC-previous-channel"),
+});
+assert.deepEqual(
+  sameChannelLock.playlists,
+  normalized,
+  "a same-channel sync attempt must preserve its last successful playlist cache",
+);
+
 
 const source = readFileSync("src/features/videos/integrations/youtube.ts", "utf8");
 const migration = readFileSync(
@@ -93,6 +135,14 @@ assert.ok(
   source.includes("readCachedChannel(YOUTUBE_CHANNEL_ID)"),
   "the feed cache must reject a profile belonging to a previously configured channel",
 );
+const syncLockStart = source.indexOf("const syncLockState = buildYoutubeSyncAttemptState({");
+const syncLockEnd = source.indexOf("if (stateError)", syncLockStart);
+const syncLockSource = syncLockStart >= 0 && syncLockEnd > syncLockStart
+  ? source.slice(syncLockStart, syncLockEnd)
+  : "";
+assert.match(syncLockSource, /cachedPlaylists:\s*health\.cachedPlaylists/);
+assert.match(syncLockSource, /\.upsert\(syncLockState\)/);
+
 assert.ok(
   source.includes("readCachedChannel(channelId)"),
   "sync fallback paths must only return a profile matching the resolved channel ID",
