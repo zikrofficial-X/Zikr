@@ -407,7 +407,7 @@ const unexpectedPatternsEnd = storageRetentionSource.indexOf("  ];", unexpectedP
 const unexpectedPatternsSource = storageRetentionSource.slice(unexpectedPatternsStart, unexpectedPatternsEnd);
 assert.equal(/filter: \(query\) => query\.(?:ilike|like)/.test(unexpectedPatternsSource), false,
   "every direct URL/path reference column must use the shared raw+encoded pattern helpers");
-for (const [table, column] of [["kids_content","video_url"],["kids_content","featured_image_url"],["media_assets","url"],["social_sync_jobs","source_media_url"],["video_generation_requests","video_url"],["video_generation_requests","thumbnail_url"],["videos","thumbnail_url"],["social_sync_jobs","thumbnail_url"],["youtube_feed_cache","video_url"],["youtube_feed_cache","thumbnail_url"],["content_agent_queue","source_url"],["content_sources","url"],["social_publish_queue","video_url"],["social_publish_queue","image_url"],["content_library","cover_url"],["articles","featured_image_url"],["battles","featured_image_url"],["battles","thumbnail_url"],["companions","featured_image_url"],["companions","thumbnail_url"],["conquests","featured_image_url"],["conquests","thumbnail_url"],["prophets","featured_image_url"],["prophets","thumbnail_url"],["kids_games","cover_url"],["kids_games","icon_url"],["profiles","avatar_url"],["quran_audio","audio_url"],["quran_audio","storage_url"],["quran_ayahs","audio_url"],["quran_reciters","thumbnail_url"],["quran_reciters","base_url_template"],["scholars","thumbnail_url"],["scholars","website_url"],["scholars","youtube_url"],["social_platform_profiles","avatar_url"],["social_platform_profiles","cover_url"],["social_platform_profiles","page_url"],["tawasheeh","audio_url"],["tawasheeh","thumbnail_url"]]) {
+for (const [table, column] of [["kids_content","video_url"],["kids_content","featured_image_url"],["media_assets","url"],["social_sync_jobs","source_media_url"],["video_generation_requests","video_url"],["video_generation_requests","thumbnail_url"],["videos","thumbnail_url"],["social_sync_jobs","thumbnail_url"],["youtube_feed_cache","video_url"],["youtube_feed_cache","thumbnail_url"],["content_agent_queue","source_url"],["content_sources","url"],["social_publish_queue","video_url"],["social_publish_queue","image_url"],["content_library","cover_url"],["articles","featured_image_url"],["articles","summary"],["articles","summary_ar"],["articles","summary_en"],["stories","summary"],["kids_content","summary_ar"],["kids_content","summary_en"],["videos","description"],["social_publish_queue","body"],["content_agent_queue","body"],["notifications","body"],["pinned_messages","body"],["battles","featured_image_url"],["battles","thumbnail_url"],["companions","featured_image_url"],["companions","thumbnail_url"],["conquests","featured_image_url"],["conquests","thumbnail_url"],["prophets","featured_image_url"],["prophets","thumbnail_url"],["kids_games","cover_url"],["kids_games","icon_url"],["profiles","avatar_url"],["quran_audio","audio_url"],["quran_audio","storage_url"],["quran_ayahs","audio_url"],["quran_reciters","thumbnail_url"],["quran_reciters","base_url_template"],["scholars","thumbnail_url"],["scholars","website_url"],["scholars","youtube_url"],["social_platform_profiles","avatar_url"],["social_platform_profiles","cover_url"],["social_platform_profiles","page_url"],["tawasheeh","audio_url"],["tawasheeh","thumbnail_url"]]) {
   assert.ok(unexpectedPatternsSource.includes('...textReferencePatterns("' + table + '", "' + column + '")'),
     "unexpected-reference inventory must query raw and encoded forms of " + table + "." + column);
 }
@@ -437,6 +437,10 @@ assert.equal(getReferenceOrderColumn("kids_game_questions"), "id");
 assert.equal(getReferenceOrderColumn("admin_settings"), "key");
 assert.equal(getReferenceOrderColumn("push_runtime_settings"), "key");
 assert.equal(getReferenceOrderColumn("site_settings"), "key");
+assert.equal(getReferenceOrderColumn("pinned_messages"), "id");
+assert.equal(getReferenceOrderColumn("content_agent_runs"), "id");
+assert.equal(getReferenceOrderColumn("kids_achievements"), "id");
+assert.equal(getReferenceOrderColumn("video_template_versions"), "id");
 assert.throws(() => getReferenceOrderColumn("unknown_table"), /No deterministic primary-key order/);
 const orderMapStart = storageRetentionSource.indexOf("const REFERENCE_ORDER_COLUMNS = Object.freeze({");
 const orderMapEnd = storageRetentionSource.indexOf("});", orderMapStart);
@@ -503,6 +507,10 @@ for (const [table, column] of [
   ["kids_game_questions", "options_ar"],
   ["kids_game_questions", "options_en"],
   ["kids_content", "metadata"],
+  ["kids_content", "quiz_data"],
+  ["content_agent_runs", "details"],
+  ["kids_achievements", "criteria"],
+  ["video_template_versions", "config"],
   ["push_runtime_settings", "value"],
   ["quran_audio", "metadata"],
   ["video_automation_runs", "metadata"],
@@ -660,6 +668,12 @@ assert.deepEqual(
     game: { config: { background: publicUrl } },
     level: { config: { preview: publicUrl } },
     question: { options: [{ image: publicUrl }] },
+    kidsContent: { quiz_data: { questions: [{ image_url: publicUrl }] } },
+    socialPost: { body: `caption ${publicUrl}` },
+    contentAgentQueue: { body: `pending ${publicUrl}` },
+    agentRun: { details: { outputUrl: publicUrl } },
+    templateVersion: { config: { previewUrl: publicUrl } },
+    achievement: { criteria: { illustration: publicUrl } },
   }, encodedReferenceCandidates, supabaseUrl)],
   [encodedReferencePath],
   "historical content revisions and structured Kids game media fields must be recursively matchable",
