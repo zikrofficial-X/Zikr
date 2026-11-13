@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
+import { getConfirmedPublicKidsVideoSocialPlatforms, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import {
   buildKidsSeriesEpisode,
   KIDS_SERIES_EPISODES_PER_SEASON,
@@ -126,6 +126,30 @@ assert.deepEqual(
     publishedAt: "2026-11-10T12:00:00.000Z",
   },
   "deleting an older remote post must not tombstone a newer live post on the same platform",
+);
+
+const failedQueueRowWithHistoricalSuccess = {
+  ...newerKidsPublication,
+  status: "failed",
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(failedQueueRowWithHistoricalSuccess),
+  [],
+  "a failed queue row must not expose an old successful provider result as a current publication",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([failedQueueRowWithHistoricalSuccess], null, true),
+  null,
+  "a failed queue row with a stale published_at and prior success must not create a public social badge",
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([newerKidsPublication, failedQueueRowWithHistoricalSuccess], null, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-10T12:00:00.000Z",
+  },
+  "a newer failed retry must not hide the older confirmed publication",
 );
 
 const olderFacebookPublication = kidsVideoQueueRow(
