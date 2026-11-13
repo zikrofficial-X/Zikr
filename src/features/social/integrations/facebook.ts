@@ -107,7 +107,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
   const env = getServerEnv();
   const storedCredential = await readStoredFacebookCredential();
   const pageId = storedCredential?.page_id?.trim() || env.FACEBOOK_PAGE_ID?.trim() || '';
-  const pageAccessToken = storedCredential?.page_access_token?.trim() || env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() || '';
+  const pageAccessToken = storedCredential?.page_access_token?.trim() || '';
   const graphVersion = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
   if (!pageId) return null;
 
