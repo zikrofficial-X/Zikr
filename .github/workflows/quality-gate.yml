@@ -45,6 +45,20 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase Edge Functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          deno check supabase/functions/health/index.ts
+          deno check supabase/functions/spiritual-ai/index.ts
+          deno check supabase/functions/source-verified-content-agent/index.ts
+          deno check --config supabase/functions/prayer-notification-worker/deno.json supabase/functions/prayer-notification-worker/index.ts
+
       - name: Verify toolchain
         shell: bash
         run: |

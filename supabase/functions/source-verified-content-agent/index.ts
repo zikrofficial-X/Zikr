@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { parseSourceItems } from "./parse-items.ts";
 
 const PROJECT_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -20,14 +21,6 @@ type Source = {
   api_key_secret_name: string | null;
   source_type: "quran" | "hadith" | "dua" | "tafsir" | "article";
   parser_key: string;
-};
-
-type SourceItem = {
-  externalId: string;
-  title: string | null;
-  body: string | null;
-  sourceUrl: string;
-  metadata: Record<string, unknown>;
 };
 
 function json(body: unknown, status = 200) {
@@ -53,24 +46,6 @@ async function isAuthorized(request: Request): Promise<boolean> {
   const { data, error } = await supabase.rpc("get_push_scheduler_secret");
   if (error || typeof data !== "string" || !data) return false;
   return constantTimeEqual(supplied, data);
-}
-
-function parseItems(
-  source: Source,
-  _payload: unknown,
-  _retrievedAt: string
-): SourceItem[] {
-  if (source.parser_key === "alquran_cloud") {
-    // Quran chapter catalog is synchronized into quran_surahs and is not a
-    // reviewable editorial-content queue item. Keep the source check for
-    // monitoring, but do not create 114 permanent pending queue records.
-    return [];
-  }
-
-  // API responses from providers requiring credentials are intentionally not
-  // interpreted by a generic parser. A provider-specific parser must be added
-  // and reviewed before enabling that source.
-  return [];
 }
 
 async function processSource(source: Source, now: string) {
@@ -100,7 +75,17 @@ async function processSource(source: Source, now: string) {
   if (!response.ok)
     throw new Error(`${source.name} returned HTTP ${response.status}`);
   const payload = await response.json();
-  const items = parseItems(source, payload, now);
+  const parseResult = parseSourceItems(source, payload, now);
+  if (parseResult.kind === "skipped") {
+    return {
+      fetched: 0,
+      queued: 0,
+      skipped: 1,
+      failed: 0,
+      reason: parseResult.reason,
+    };
+  }
+  const items = parseResult.items;
   let queued = 0;
 
   for (const item of items) {
