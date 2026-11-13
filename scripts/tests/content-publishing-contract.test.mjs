@@ -86,17 +86,24 @@ assert.match(consoleSource, /activeSchedule \? <form action=\{cancelContentPubli
 console.log("Scheduled content publication row-integrity contracts passed.");
 
 const contentService = readFileSync("src/features/admin/services/content.ts", "utf8");
+const scheduleCancellation = readFileSync("src/features/admin/services/content-schedule-cancellation.ts", "utf8");
 const unpublishStart = contentService.indexOf("if (!published)");
-const cancelSchedule = contentService.indexOf("status=in.(queued,processing)", unpublishStart);
+const cancelSchedule = contentService.indexOf("await cancelActiveContentSchedules(", unpublishStart);
 const updateContent = contentService.indexOf("const updated = await supabaseServerAdminRequest", unpublishStart);
 assert.ok(unpublishStart >= 0 && cancelSchedule > unpublishStart && cancelSchedule < updateContent,
   "unpublishing must cancel queued and in-flight scheduled publications before changing content");
+assert.match(scheduleCancellation, /status=in\\.\\(queued,processing\\)/,
+  "schedule cancellation must be restricted to queued and processing rows");
+assert.match(scheduleCancellation, /updated_at=eq\\.\\$\\{encodeURIComponent\\(current\\.updated_at\\)\\}/,
+  "schedule cancellation must compare-and-set the exact worker lease version");
+assert.match(scheduleCancellation, /buildNextRowVersionUpdatedAt\\(current\\.updated_at\\)/,
+  "schedule cancellation must advance the worker lease even when both writes share one millisecond");
 assert.match(adminContent, /automationPublicationHold = true/, "an explicit article unpublish must persist a hold that automation cannot silently reverse");
 assert.match(adminContent, /delete articleMetadata\.automationPublicationHold/, "an explicit admin republish must clear the automation publication hold");
 assert.match(adminContent, /table === "articles"[\s\S]*?id,updated_at,metadata/, "article publication updates must read metadata before preserving and updating the hold marker");
 
 const deleteStart = contentService.indexOf("export async function deleteManagedContent");
-const deleteQueueCancel = contentService.indexOf("status=in.(queued,processing)", deleteStart);
+const deleteQueueCancel = contentService.indexOf("await cancelActiveContentSchedules(", deleteStart);
 const deleteOperation = contentService.indexOf('method: "DELETE"', deleteStart);
 assert.ok(deleteStart >= 0 && deleteQueueCancel > deleteStart && deleteQueueCancel < deleteOperation,
   "deleting a draft must cancel queued and in-flight publication before removing the source row");

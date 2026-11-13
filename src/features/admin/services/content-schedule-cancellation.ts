@@ -88,7 +88,7 @@ export async function cancelActiveContentSchedules(
 
       // The queue row may have been claimed or completed between the read and
       // PATCH. Only retry after a fresh read proves it is still active.
-      const refreshed = await request<ActiveScheduleRow[]>(
+      const refreshed: ActiveScheduleRow[] = await request<ActiveScheduleRow[]>(
         `/rest/v1/content_publish_queue?id=eq.${encodeURIComponent(current.id)}&select=id,status,updated_at&limit=1`,
         { method: "GET" },
       );
