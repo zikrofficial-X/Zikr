@@ -368,6 +368,24 @@ const reminderService = readFileSync(
   "src/features/reminders/services/reminder-preferences.ts",
   "utf8",
 );
+const disabledIntervalMigration = readFileSync(
+  "supabase/migrations/20261113000000_background_reminder_intervals_allow_disabled.sql",
+  "utf8",
+);
+assert.ok(
+  reminderService.includes("const ALLOWED_INTERVALS = new Set([0, 15, 30, 60, 120]);"),
+  "the server must accept interval 0 because the settings UI exposes it as disabled",
+);
+assert.ok(
+  disabledIntervalMigration.includes("check (dhikr_interval_minutes in (0, 15, 30, 60, 120))") &&
+    disabledIntervalMigration.includes("check (salawat_interval_minutes in (0, 15, 30, 60, 120))"),
+  "the database must accept the same disabled interval value as the client and server",
+);
+assert.ok(
+  reminderMigration.includes("and reminder.interval_minutes > 0"),
+  "zero intervals must remain excluded from background delivery planning",
+);
+
 const timezoneUtility = readFileSync("src/lib/timezone.ts", "utf8");
 const dhikrHook = readFileSync("src/features/reminders/hooks/use-dhikr-reminder.ts", "utf8");
 const salawatHook = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");

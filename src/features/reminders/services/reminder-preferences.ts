@@ -3,7 +3,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { normalizeIanaTimeZone } from "@/lib/timezone";
 
-const ALLOWED_INTERVALS = new Set([15, 30, 60, 120]);
+const ALLOWED_INTERVALS = new Set([0, 15, 30, 60, 120]);
 
 export type ReminderPreferences = {
   user_id: string;
