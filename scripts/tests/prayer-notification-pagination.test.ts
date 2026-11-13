@@ -632,7 +632,7 @@ const timeZonePutGate = new Promise<void>(resolve => {
 });
 let concurrentTimeZonePutCount = 0;
 const concurrentTimeZoneFetcher: typeof fetch = async (_input, init) => {
-  concurrentTimeZonePutCount += 1;
+  if ((init?.method ?? "GET").toUpperCase() === "PUT") concurrentTimeZonePutCount += 1;
   await timeZonePutGate;
   return new Response(null, { status: 204 });
 };
@@ -648,6 +648,54 @@ await Promise.resolve();
 releaseTimeZonePut();
 assert.deepEqual(await Promise.all([firstTimeZoneSync, secondTimeZoneSync]), [true, true]);
 assert.equal(concurrentTimeZonePutCount, 1, "concurrent resume events must share one timezone update");
+
+let releaseOldTimeZonePut!: () => void;
+let firstOldTimeZonePutStarted!: () => void;
+const oldTimeZonePutGate = new Promise<void>(resolve => {
+  releaseOldTimeZonePut = resolve;
+});
+const oldTimeZonePutStarted = new Promise<void>(resolve => {
+  firstOldTimeZonePutStarted = resolve;
+});
+let simulatedServerTimeZone = "Africa/Cairo";
+const serializedTimeZoneWrites: string[] = [];
+const changingTimeZoneFetcher: typeof fetch = async (_input, init) => {
+  const method = (init?.method ?? "GET").toUpperCase();
+  if (method === "GET") {
+    return new Response(JSON.stringify({ timezone: simulatedServerTimeZone }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const body = JSON.parse(String(init?.body)) as { timezone: string };
+  serializedTimeZoneWrites.push(body.timezone);
+  if (serializedTimeZoneWrites.length === 1) {
+    firstOldTimeZonePutStarted();
+    await oldTimeZonePutGate;
+  }
+  simulatedServerTimeZone = body.timezone;
+  return new Response(null, { status: 204 });
+};
+const oldDeviceTimeZoneSync = syncBackgroundReminderTimeZone({
+  userId: "timezone-changing-user",
+  serverTimeZone: "Africa/Cairo",
+  deviceTimeZone: "UTC",
+  fetcher: changingTimeZoneFetcher,
+});
+await oldTimeZonePutStarted;
+const latestDeviceTimeZoneSync = syncBackgroundReminderTimeZone({
+  userId: "timezone-changing-user",
+  deviceTimeZone: "Africa/Cairo",
+  fetcher: changingTimeZoneFetcher,
+});
+releaseOldTimeZonePut();
+assert.deepEqual(await Promise.all([oldDeviceTimeZoneSync, latestDeviceTimeZoneSync]), [true, true]);
+assert.deepEqual(
+  serializedTimeZoneWrites,
+  ["UTC", "Africa/Cairo"],
+  "a newer device timezone must be applied after an older in-flight sync instead of being overwritten by it",
+);
+assert.equal(simulatedServerTimeZone, "Africa/Cairo");
 
 const salawatHookSource = readFileSync("src/features/reminders/hooks/use-salawat-reminder.ts", "utf8");
 const prayerAlertProviderSource = readFileSync("src/components/layout/prayer-alert-provider.tsx", "utf8");
