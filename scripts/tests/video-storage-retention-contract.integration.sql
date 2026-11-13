@@ -23,6 +23,104 @@ BEGIN
 END
 $contract$;
 
+CREATE FUNCTION pg_temp.expect_retention_rejection(p_statement text, p_expected_message text)
+RETURNS void
+LANGUAGE plpgsql
+AS $expect$
+DECLARE
+  actual_message text;
+BEGIN
+  BEGIN
+    EXECUTE p_statement;
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS actual_message = MESSAGE_TEXT;
+    IF pg_catalog.position(p_expected_message IN actual_message) > 0 THEN
+      RETURN;
+    END IF;
+    RAISE EXCEPTION 'Unexpected retention rejection: % (expected %)', actual_message, p_expected_message;
+  END;
+
+  RAISE EXCEPTION 'Expected retention RPC rejection containing: %', p_expected_message;
+END;
+$expect$;
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '[]'::jsonb,
+    false
+  )$sql$,
+  'expected an object'
+);
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"pending","bucket":"videos","path":"automated/auto-story-test.mp4"}'::jsonb,
+    false
+  )$sql$,
+  'state must be purge_pending or purged'
+);
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"purge_pending","bucket":"videos","path":"automated/auto-story-test.mp4"}'::jsonb,
+    true
+  )$sql$,
+  'finalize flag does not match'
+);
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    '   ',
+    '{"state":"purge_pending","bucket":"videos","path":"automated/auto-story-test.mp4"}'::jsonb,
+    false
+  )$sql$,
+  'requires the exact expected playback URL'
+);
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"purge_pending","bucket":"other","path":"automated/auto-story-test.mp4"}'::jsonb,
+    false
+  )$sql$,
+  'managed videos-bucket path'
+);
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"purge_pending","bucket":"videos","path":"   "}'::jsonb,
+    false
+  )$sql$,
+  'managed videos-bucket path'
+);
+
+BEGIN;
+GRANT EXECUTE ON FUNCTION public.update_video_storage_retention(uuid, uuid, text, jsonb, boolean) TO anon;
+DO $preflight_acl$
+BEGIN
+  IF public.video_storage_retention_contract_ready() IS NOT FALSE THEN
+    RAISE EXCEPTION 'The live retention preflight must fail when anon gains EXECUTE on the destructive RPC.';
+  END IF;
+END
+$preflight_acl$;
+ROLLBACK;
+
 -- The worker keeps the Cloudinary URL in both records while it removes only the
 -- redundant Supabase staging object. Both the pending and finalization RPC calls
 -- must preserve that exact durable playback URL.
