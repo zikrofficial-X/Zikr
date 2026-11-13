@@ -604,7 +604,6 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           workerDispatched?: boolean;
           workerDispatchFailed?: boolean;
           queueUpdateFailed?: boolean;
-          released?: number;
           affected?: number;
           preserved?: number;
           stale?: number;
@@ -648,12 +647,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         } else {
           const skipped = payload.manualReconciliationSkipped ?? 0;
           const staleSkipped = payload.staleSkipped ?? 0;
-          const affectedCount = action === "release_auth_blocked_queue" ? payload.released ?? 0 : payload.affected ?? 0;
-          const actionSummary = action === "release_auth_blocked_queue"
-            ? `تم تحرير ${affectedCount} عنصر من الحظر.`
-            : `تم تنفيذ الإجراء على ${affectedCount} عنصر ظاهر.`;
           setMessage(
-            actionSummary +
+            `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
               (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
               (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + dispatchWarning + auditWarning,
           );
