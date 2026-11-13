@@ -6,6 +6,8 @@ const requiredFiles = [
   'src/lib/site.ts',
   'src/app/robots.ts',
   'src/app/sitemap.ts',
+  'src/app/sitemap-index.xml/route.ts',
+  'src/app/sitemap-content/[id]/route.ts',
   'src/app/about/page.tsx',
   'src/app/contact/page.tsx',
   'src/app/privacy/page.tsx',
@@ -130,7 +132,14 @@ if (
   fail('Consent Mode and AdSense publisher metadata must be installed only after native/canonical-origin guards, with non-personalized defaults before publisher scripts.');
 }
 
-if (!/sitemap\.xml/.test(read('src/app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');
+const robotsSource = read('src/app/robots.ts');
+const sitemapIndexRoute = read('src/app/sitemap-index.xml/route.ts');
+if (!robotsSource.includes('sitemap: `${baseUrl}/sitemap-index.xml`')) {
+  fail('robots.ts must advertise the sitemap index so every generated content shard is discoverable.');
+}
+if (!sitemapIndexRoute.includes('getSitemapShardCount') || !sitemapIndexRoute.includes('/sitemap-content/${id}.xml')) {
+  fail('The advertised sitemap index must enumerate every generated content shard.');
+}
 if (!/alternates:\s*\{\s*canonical:\s*["']\/["']/.test(layout)) warn('Root canonical is not declared in the expected metadata shape.');
 if (/languages\s*:\s*\{[\s\S]*?en\s*:/.test(layout)) fail('English alternate metadata is present although the site is currently Arabic-only.');
 if (/inLanguage:\s*\[\s*["']ar["']\s*,\s*["']en["']\s*\]/.test(layout)) fail('WebSite JSON-LD incorrectly advertises English content.');
