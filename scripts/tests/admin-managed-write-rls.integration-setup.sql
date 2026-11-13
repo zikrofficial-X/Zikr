@@ -98,17 +98,17 @@ CREATE POLICY social_publish_queue_admin_write
   USING (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]))
   WITH CHECK (private.has_admin_role(ARRAY['admin'::text, 'super_admin'::text, 'social_manager'::text]));
 
-CREATE POLICY admin_select_video_generation_requests
+CREATE POLICY select_video_requests_admin
   ON public.video_generation_requests
   FOR SELECT TO authenticated
   USING (private.is_admin_user());
 
-CREATE POLICY admin_insert_video_generation_requests
+CREATE POLICY insert_video_requests_admin
   ON public.video_generation_requests
   FOR INSERT TO authenticated
   WITH CHECK (private.is_admin_user());
 
-CREATE POLICY admin_update_video_generation_requests
+CREATE POLICY update_video_requests_admin
   ON public.video_generation_requests
   FOR UPDATE TO authenticated
   USING (private.is_admin_user())
