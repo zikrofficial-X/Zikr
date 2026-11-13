@@ -251,6 +251,39 @@ assert.equal(
 assert.deepEqual(
  buildPublicKidsWrittenPost({
   ...queueRow,
+  target_platforms: ["facebook", "youtube"],
+  metadata: {
+   ...queueRow.metadata,
+   platformResults: [
+    { platform: "facebook", ok: true, remoteId: "fb-written-array-123" },
+    { platform: "youtube", ok: false, remoteId: null, error: "upload failed" },
+   ],
+  },
+ }, liveKidsStory)?.platforms,
+ ["facebook"],
+ "legacy array-shaped result ledgers must expose only platforms with confirmed remote IDs",
+);
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook"],
+  metadata: { ...queueRow.metadata, platformResults: [] },
+ }, liveKidsStory),
+ null,
+ "an explicitly empty result ledger must not fall back to optimistic target_platforms",
+);
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook"],
+  metadata: { ...queueRow.metadata, platformResults: {} },
+ }, liveKidsStory),
+ null,
+ "an explicitly empty object result ledger must remain fail-closed",
+);
+assert.deepEqual(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
   target_platforms: ["facebook", "facebook_reels"],
   metadata: {
    ...queueRow.metadata,
