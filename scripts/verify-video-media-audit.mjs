@@ -13,10 +13,8 @@ const read = (file) => {
 const audit = read("scripts/jobs/audit-video-media.ts");
 for (const token of [
   "social_publish_queue",
-  "platformResults",
   "resolveLatestConfirmedYoutubeQueueState",
   "reconcileYoutubeFallbackMetadata",
-  "platformDeletions",
   "published_at",
   "metadata.videoGenerationRequestId",
   "probeCloudinary",
@@ -61,8 +59,11 @@ if (!requiredFallbackStates.every((state) => mediaContract.includes(JSON.stringi
   failures.push("Public video media contract must cover every unavailable internal-media state before using a confirmed YouTube fallback");
 }
 if (!mediaContract.includes("normalizeSocialPlatformResults") ||
-    !mediaContract.includes('youtubeDeletion.status === "deleted"') ||
-    !mediaContract.includes("publicationTimestamp > latest.timestamp")) {
+    !mediaContract.includes("platformResults") ||
+    !mediaContract.includes("platformDeletions") ||
+    !mediaContract.includes("youtubeDeletion.remoteId") ||
+    !mediaContract.includes("deletions.get(publication.id)") ||
+    !mediaContract.includes("deletion.timestamp < publication.timestamp")) {
   failures.push("YouTube media fallback reconciliation must normalize legacy result ledgers and respect confirmed deletion timestamps");
 }
 if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
