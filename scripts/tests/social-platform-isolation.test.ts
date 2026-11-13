@@ -908,6 +908,29 @@ assert.equal(
 );
 assert.equal(isAuthBlocked("youtube", youtubeAuthError), true, "YouTube invalid_grant and OAuth refresh failures must be classified as auth blocks");
 assert.equal(isPermanentSocialFailure(youtubeAuthError), false, "YouTube auth failures must not be mislabeled as permanent media/provider failures");
+const youtubeInsufficientPermissionError = 'YouTube video upload failed (HTTP 403): {"error":{"errors":[{"reason":"insufficientPermissions"}]}}';
+assert.equal(
+  isAuthBlocked("youtube", youtubeInsufficientPermissionError),
+  true,
+  "Google's insufficientPermissions 403 must surface as a YouTube authorization block instead of a silent failed queue row",
+);
+assert.equal(
+  isPermanentSocialFailure(youtubeInsufficientPermissionError),
+  false,
+  "a YouTube permission 403 must remain recoverable after upload-scope reauthorization",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["youtube"], {
+    platformResults: { youtube: { ok: false, error: youtubeInsufficientPermissionError } },
+  }),
+  [],
+  "YouTube permission failures must remain held until explicit reauthorization and queue recovery",
+);
+assert.equal(
+  isAuthBlocked("youtube", 'YouTube video upload failed (HTTP 403): {"error":{"errors":[{"reason":"quotaExceeded"}]}}'),
+  false,
+  "quota exhaustion must not be misclassified as an OAuth permission block",
+);
 assert.equal(isAuthBlocked("youtube", "HTTP 422 invalid media"), false, "confirmed media validation failures are not auth blocks");
 const youtubeAuthMetadata = {
   authBlocked: true,
@@ -1011,14 +1034,14 @@ assert.match(youtubeRecoveryServiceSource, /const maxRows = 5_000/, "YouTube rec
 assert.match(youtubeRecoveryServiceSource, /const cursorFilter: string =/, "YouTube recovery must use a typed stable cursor filter");
 assert.match(youtubeRecoveryServiceSource, /const rows: YouTubeAuthBlockedQueueRow\[\] = await/, "YouTube recovery must type its queue page rows explicitly");
 assert.match(youtubeRecoveryServiceSource, /buildYouTubeQueueRecoveryFilter\(item, publishAfter\)/, "each recovery update must use the exact candidate row version and cutoff");
-assert.match(socialPublisherSource, /const hasAuthFailure = operationalFailures\.some\(failure =>[\s\S]*?isAuthBlocked\(failure\.platform, failure\.error\)/, "the publisher must classify authentication failures for every provider");
-assert.match(socialPublisherSource, /const hasNonAuthFailure = operationalFailures\.some\(failure => !isAuthBlocked\(failure\.platform, failure\.error\)\)/, "provider auth blocks must not be misclassified as retryable operational failures");
-assert.match(socialPublisherSource, /!isAuthBlocked\(failure\.platform, failure\.error\) &&/, "auth-blocked providers must not enter transient retry scheduling");
-assert.doesNotMatch(socialPublisherSource, /isFacebookAuthFailure/, "the publisher must not retain a stale Facebook-only classifier");
+assert.match(revalidatedPublisherSource, /const hasAuthFailure = operationalFailures\.some\(failure =>[\s\S]*?isAuthBlocked\(failure\.platform, failure\.error\)/, "the publisher must classify authentication failures for every provider");
+assert.match(revalidatedPublisherSource, /const hasNonAuthFailure = operationalFailures\.some\(failure => !isAuthBlocked\(failure\.platform, failure\.error\)\)/, "provider auth blocks must not be misclassified as retryable operational failures");
+assert.match(revalidatedPublisherSource, /!isAuthBlocked\(failure\.platform, failure\.error\) &&/, "auth-blocked providers must not enter transient retry scheduling");
+assert.doesNotMatch(revalidatedPublisherSource, /isFacebookAuthFailure/, "the publisher must not retain a stale Facebook-only classifier");
 assert.match(adminSocialRouteSource, /unblockYouTubeAuthBlockedQueue\(\)/, "the admin route must call the dedicated YouTube recovery service");
 assert.match(adminSocialRouteSource, /getYouTubeUploadRefreshToken\(\)/, "the admin route must verify an upload-scoped credential before release");
 assert.match(adminSocialRouteSource, /body\.platform/, "the release action must distinguish Facebook and YouTube");
 assert.match(socialClientAuditSource, /youtubeAuthBlocked/, "the admin UI must surface YouTube auth-blocked rows");
 assert.match(socialClientAuditSource, /releaseAuthBlockedQueue\("youtube"\)/, "the admin UI must expose an explicit YouTube recovery action");
 
-assert.match(socialPublisherSource, /isAuthBlocked\(failure\.platform, failure\.error\)/, "the worker must classify YouTube OAuth failures as per-platform auth blocks");
+assert.match(revalidatedPublisherSource, /isAuthBlocked\(failure\.platform, failure\.error\)/, "the worker must classify YouTube OAuth failures as per-platform auth blocks");

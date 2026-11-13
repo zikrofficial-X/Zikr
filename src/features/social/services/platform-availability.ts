@@ -97,7 +97,8 @@ export function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean
     return value.includes("oauth") || value.includes("invalid_grant") ||
       value.includes("invalid_token") || value.includes("access token") ||
       value.includes("unauthorized") || /http\s+401\b/.test(value) ||
-      value.includes("missing the required upload/read scopes");
+      value.includes("missing the required upload/read scopes") ||
+      value.includes("insufficientpermissions") || value.includes("insufficient permissions");
   }
   return false;
 }
