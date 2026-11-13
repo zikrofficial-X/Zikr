@@ -57,7 +57,9 @@ export async function POST(request: NextRequest) {
       return responseError('اختر ملف صورة صالحًا.');
     }
 
-    const assetFolder = normalizeMediaFolder(form.get('folder')) ?? 'media';
+    const rawFolder = form.get('folder');
+    const assetFolder = rawFolder === null || rawFolder === '' ? 'media' : normalizeMediaFolder(rawFolder);
+    if (!assetFolder) return responseError('مجلد الوسائط غير صالح.');
     const title = String(form.get('title') ?? file.name).trim() || file.name;
     const altText = String(form.get('alt_text_ar') ?? '').trim() || null;
     const license = String(form.get('license') ?? '').trim() || null;
