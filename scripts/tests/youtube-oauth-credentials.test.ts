@@ -372,6 +372,14 @@ assert.equal(
   "https://zikrmediaofficial.vercel.app/api/admin/social/facebook/connect?next=https%3A%2F%2Fevil.example",
   "canonicalization must preserve the route and query without trusting the incoming host",
 );
+assert.equal(
+  buildCanonicalOAuthStartRedirect(
+    "https://zikr-preview.vercel.app//evil.example/path",
+    "https://zikrmediaofficial.vercel.app",
+  ),
+  "https://zikrmediaofficial.vercel.app//evil.example/path",
+  "a path beginning with double slashes must never turn the canonical redirect into an external redirect",
+);
 
 for (const [provider, routePath] of [
   ["YouTube", "../../src/app/api/admin/social/youtube/connect/route.ts"],

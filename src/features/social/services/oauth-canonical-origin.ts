@@ -7,9 +7,10 @@ export function buildCanonicalOAuthStartRedirect(
 
   if (request.origin === canonical.origin) return null;
 
-  const target = new URL(
-    request.pathname + request.search + request.hash,
-    canonical.origin,
-  );
+  const target = new URL(requestUrl);
+  target.protocol = canonical.protocol;
+  target.host = canonical.host;
+  target.username = "";
+  target.password = "";
   return target.toString();
 }
