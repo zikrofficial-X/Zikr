@@ -268,4 +268,5 @@ assert.match(
   /audit event unavailable after asset update/,
   "an audit-log outage after a committed metadata update must not report the update as failed",
 );
-\nconsole.log("Cloudinary raster signature and orphan compensation contracts passed.");
+
+console.log("Cloudinary raster signature and orphan compensation contracts passed.");
