@@ -2,6 +2,7 @@ import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
+import { buildFacebookPublicProfileIdentityUpsert } from "./facebook-profile-contract";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -391,28 +392,13 @@ export async function saveFacebookPublicProfile(input: {
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify({
-        platform: "facebook",
-        external_id: input.pageId,
-        handle: null,
-        name: input.pageName,
-        description: "",
-        category: "media",
-        website: null,
-        avatar_url: null,
-        cover_url: null,
-        page_url: "https://www.facebook.com/" + encodeURIComponent(input.pageId),
-        subscribers_count: null,
-        followers_count: null,
-        likes_count: null,
-        following_count: null,
-        view_count: null,
-        video_count: null,
-        synced_at: now,
-        status: "ok",
-        last_error: null,
-        updated_at: now,
-      }),
+      // Identity-only upsert: omit metrics, media, and descriptive fields that this
+      // OAuth callback does not fetch so merge-duplicates preserves existing data.
+      body: JSON.stringify(buildFacebookPublicProfileIdentityUpsert({
+        pageId: input.pageId,
+        pageName: input.pageName,
+        updatedAt: now,
+      })),
     },
   );
 }

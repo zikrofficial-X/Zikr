@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { buildFacebookPublicProfileIdentityUpsert } from "../../src/features/social/services/facebook-profile-contract";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import {
   buildFacebookCredentialValidationFilter,
@@ -80,5 +81,46 @@ assert.match(persistSource, /if \(!filter \|\| !updatedAt\) return;/);
 assert.doesNotMatch(persistSource, /social_platform_credentials\?platform=eq\.facebook/);
 assert.match(persistSource, /updated_at: buildNextRowVersionUpdatedAt\(updatedAt\)/);
 assert.doesNotMatch(persistSource, /updated_at: new Date\(\)\.toISOString\(\)/);
+
+
+const identityPayload = buildFacebookPublicProfileIdentityUpsert({
+  pageId: "123456789012345",
+  pageName: "ZIKR Official",
+  updatedAt: "2026-11-13T14:08:00.000Z",
+});
+assert.deepEqual(identityPayload, {
+  platform: "facebook",
+  external_id: "123456789012345",
+  name: "ZIKR Official",
+  page_url: "https://www.facebook.com/123456789012345",
+  status: "ok",
+  last_error: null,
+  updated_at: "2026-11-13T14:08:00.000Z",
+});
+
+const profileSaveStart = source.indexOf("export async function saveFacebookPublicProfile(");
+const profileSaveEnd = source.indexOf("export async function getFacebookPublicProfile(", profileSaveStart);
+const profileSaveSource = profileSaveStart >= 0 && profileSaveEnd > profileSaveStart
+  ? source.slice(profileSaveStart, profileSaveEnd)
+  : "";
+assert.ok(profileSaveSource.includes("buildFacebookPublicProfileIdentityUpsert"));
+assert.doesNotMatch(
+  profileSaveSource,
+  /(?:followers_count|likes_count|avatar_url|cover_url|description|website|handle|synced_at):\s*(?:null|""|'')/,
+  "Facebook OAuth identity refresh must not erase existing profile metrics, artwork, or descriptive data",
+);
+
+const youtubeSource = readFileSync("src/features/videos/integrations/youtube.ts", "utf8");
+const channelProfileStart = youtubeSource.indexOf("const channelProfile =");
+const channelProfileEnd = youtubeSource.indexOf("const cacheRows", channelProfileStart);
+const channelProfileSource = channelProfileStart >= 0 && channelProfileEnd > channelProfileStart
+  ? youtubeSource.slice(channelProfileStart, channelProfileEnd)
+  : "";
+assert.ok(channelProfileSource.length > 0, "YouTube channel profile upsert must remain discoverable");
+assert.doesNotMatch(
+  channelProfileSource,
+  /(?:website|cover_url|followers_count|likes_count|following_count):\s*null/,
+  "YouTube sync must omit profile fields it does not fetch so existing values survive upserts",
+);
 
 console.log("Facebook credential row-shape and validation CAS checks passed.");
