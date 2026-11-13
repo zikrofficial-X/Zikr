@@ -141,6 +141,38 @@ VALUES (
   '{}'::jsonb
 );
 
+-- A queue update followed by a missing request row must roll back atomically.
+INSERT INTO public.social_publish_queue (id, content_id, status, video_url, metadata)
+VALUES (
+  '50000000-0000-4000-8000-000000000002',
+  '60000000-0000-4000-8000-000000000002',
+  'published',
+  'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+  '{}'::jsonb
+);
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000002',
+    '60000000-0000-4000-8000-000000000002',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"purge_pending","bucket":"videos","path":"automated/auto-story-test.mp4"}'::jsonb,
+    false
+  )$sql$,
+  'Expected exactly one completed video generation row'
+);
+DO $atomicity$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.social_publish_queue
+    WHERE id = '50000000-0000-4000-8000-000000000002'
+      AND metadata ? 'storageRetention'
+  ) THEN
+    RAISE EXCEPTION 'A failed request-row update must roll back the earlier queue-row update.';
+  END IF;
+END
+$atomicity$;
+
 SELECT public.update_video_storage_retention(
   '50000000-0000-4000-8000-000000000001',
   '60000000-0000-4000-8000-000000000001',
@@ -172,6 +204,30 @@ BEGIN
   END IF;
 END
 $pending$;
+
+SELECT pg_temp.expect_retention_rejection(
+  $sql$SELECT public.update_video_storage_retention(
+    '50000000-0000-4000-8000-000000000001',
+    '60000000-0000-4000-8000-000000000001',
+    'https://res.cloudinary.com/dcuveyab9/video/upload/v1/auto-story-test.mp4',
+    '{"state":"purged","bucket":"videos","path":"automated/other-path.mp4"}'::jsonb,
+    true
+  )$sql$,
+  'Expected exactly one published social queue row'
+);
+DO $path_guard$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.social_publish_queue
+    WHERE id = '50000000-0000-4000-8000-000000000001'
+      AND metadata->'storageRetention'->>'state' = 'purge_pending'
+      AND metadata->'storageRetention'->>'path' = 'automated/auto-story-test.mp4'
+  ) THEN
+    RAISE EXCEPTION 'A mismatched finalization path must leave the exact pending path unchanged.';
+  END IF;
+END
+$path_guard$;
 
 SELECT public.update_video_storage_retention(
   '50000000-0000-4000-8000-000000000001',
