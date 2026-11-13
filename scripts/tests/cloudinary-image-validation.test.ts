@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { deleteCloudinaryImageIfUnreferenced, isDefinitiveSupabaseInsertRejection } from "../../src/features/media/services/cloudinary-orphan-compensation";
 import { validateCloudinaryImage } from "../../src/features/media/services/cloudinary-validation";
+import { classifyMediaAssetKind } from "../../src/features/media/services/media-asset-classification";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 function image(bytes: number[], type: string, size?: number) {
@@ -242,7 +243,28 @@ assert.ok(
 );
 
 
-const mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
+
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "kids_game", media_type: "audio" }),
+  "audio",
+  "a non-audio asset label must not hide the audio media_type",
+);
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "kids_game", mime_type: "audio/mpeg" }),
+  "audio",
+  "audio MIME types must be counted even when asset_type is a governance label",
+);
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "kids_game", media_type: "video", mime_type: "video/mp4" }),
+  "visual",
+  "video assets must be included in the visual media count",
+);
+assert.equal(
+  classifyMediaAssetKind({ asset_type: "kids_game" }),
+  "unclassified",
+  "unknown media types must not be silently counted as visual",
+);
+\nconst mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
 assert.match(
   mediaAssetsSource,
   /export class AdminMediaInputError/,
@@ -267,6 +289,11 @@ assert.match(
   mediaAssetsRouteSource,
   /audit event unavailable after asset update/,
   "an audit-log outage after a committed metadata update must not report the update as failed",
+);
+
+assert.ok(
+  kidsAssetsPageSource.includes("classifyMediaAssetKind") && kidsAssetsPageSource.includes("أصول غير مصنفة") && kidsAssetsPageSource.includes("أحدث 300 أصل فقط"),
+  "Kids asset metrics must classify all media descriptors and disclose the bounded inventory window",
 );
 
 console.log("Cloudinary raster signature and orphan compensation contracts passed.");
