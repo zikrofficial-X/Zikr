@@ -96,6 +96,24 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'Only the published public video read policy should remain';
   END IF;
+
+  IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid='storage.objects'::regclass) THEN
+    RAISE EXCEPTION 'Storage object RLS must remain enabled';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='storage' AND tablename='objects'
+      AND policyname IN ('site_audio_admin_insert', 'site_audio_admin_delete')
+  ) THEN
+    RAISE EXCEPTION 'Direct authenticated site-audio Storage write policies must be removed';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policies
+    WHERE schemaname='storage' AND tablename='objects'
+      AND policyname='site_audio_public_read' AND cmd='SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Public site-audio reads must remain available';
+  END IF;
 END
 $privilege_contract$;
 
@@ -116,6 +134,46 @@ BEGIN
   END IF;
 END
 $public_read$;
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE anon;
+DO $storage_public_read$
+DECLARE
+  object_rows integer;
+BEGIN
+  SELECT count(*) INTO object_rows FROM storage.objects WHERE bucket_id='site-audio';
+  IF object_rows <> 1 THEN
+    RAISE EXCEPTION 'anon must retain public site-audio object reads; found %', object_rows;
+  END IF;
+END
+$storage_public_read$;
+COMMIT;
+
+BEGIN;
+SET LOCAL ROLE authenticated;
+DO $storage_direct_write_denied$
+DECLARE
+  insert_denied boolean := false;
+  deleted_rows integer := 0;
+BEGIN
+  BEGIN
+    INSERT INTO storage.objects (id, bucket_id, name)
+    VALUES (2, 'site-audio', 'bypass.mp3');
+  EXCEPTION WHEN insufficient_privilege THEN
+    insert_denied := true;
+  END;
+  IF NOT insert_denied THEN
+    RAISE EXCEPTION 'authenticated direct site-audio object INSERT must be denied';
+  END IF;
+
+  DELETE FROM storage.objects WHERE bucket_id='site-audio' AND name='existing.mp3';
+  GET DIAGNOSTICS deleted_rows = ROW_COUNT;
+  IF deleted_rows <> 0 THEN
+    RAISE EXCEPTION 'authenticated direct site-audio object DELETE must not remove an object';
+  END IF;
+END
+$storage_direct_write_denied$;
 COMMIT;
 
 BEGIN;
@@ -170,6 +228,10 @@ BEGIN
   WHERE id='66666666-6666-6666-6666-666666666665';
   DELETE FROM public.videos
   WHERE id='66666666-6666-6666-6666-666666666665';
+
+  INSERT INTO storage.objects (id, bucket_id, name)
+  VALUES (3, 'site-audio', 'service-role.mp3');
+  DELETE FROM storage.objects WHERE id=3;
 END
 $service_role_crud$;
 COMMIT;

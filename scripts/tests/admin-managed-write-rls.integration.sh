@@ -34,6 +34,7 @@ fi
 psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zikr_admin_managed_write_rls_test)
 "${psql[@]}" -f /workspace/scripts/tests/admin-managed-write-rls.integration-setup.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261113190000_harden_admin_managed_content_write_permissions.sql
+"${psql[@]}" -f /workspace/supabase/migrations/20261113220000_remove_direct_site_audio_storage_write_policies.sql
 "${psql[@]}" -f /workspace/scripts/tests/admin-managed-write-rls.integration.sql
 
 echo "Admin-managed write RLS integration passed."

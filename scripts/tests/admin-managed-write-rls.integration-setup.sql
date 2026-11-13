@@ -20,8 +20,10 @@ END
 $roles$;
 
 CREATE SCHEMA IF NOT EXISTS private;
+CREATE SCHEMA IF NOT EXISTS storage;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA private TO authenticated;
+GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.is_admin_user()
 RETURNS boolean
@@ -80,6 +82,23 @@ CREATE TABLE public.videos (
   title text NOT NULL,
   published boolean NOT NULL DEFAULT false
 );
+
+CREATE TABLE storage.objects (
+  id bigint PRIMARY KEY,
+  bucket_id text NOT NULL,
+  name text NOT NULL
+);
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+CREATE POLICY site_audio_public_read
+  ON storage.objects FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'site-audio');
+CREATE POLICY site_audio_admin_insert
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'site-audio' AND private.is_admin_user());
+CREATE POLICY site_audio_admin_delete
+  ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'site-audio' AND private.is_admin_user());
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE storage.objects TO anon, authenticated, service_role;
 
 ALTER TABLE public.social_publish_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.video_generation_requests ENABLE ROW LEVEL SECURITY;
@@ -240,6 +259,8 @@ INSERT INTO public.videos (id, title, published)
 VALUES
   ('55555555-5555-5555-5555-555555555555', 'published fixture', true),
   ('55555555-5555-5555-5555-555555555556', 'unpublished fixture', false);
+INSERT INTO storage.objects (id, bucket_id, name)
+VALUES (1, 'site-audio', 'existing.mp3');
 
 DO $legacy_fixture$
 BEGIN
@@ -299,6 +320,15 @@ BEGIN
   END IF;
   IF NOT has_table_privilege('authenticated', 'public.videos', 'UPDATE') THEN
     RAISE EXCEPTION 'Legacy videos fixture did not reproduce authenticated UPDATE privilege';
+  END IF;
+  IF NOT has_table_privilege('authenticated', 'storage.objects', 'INSERT')
+     OR NOT has_table_privilege('authenticated', 'storage.objects', 'DELETE') THEN
+    RAISE EXCEPTION 'Legacy site-audio Storage fixture did not reproduce authenticated object writes';
+  END IF;
+  IF (SELECT count(*) FROM pg_catalog.pg_policies
+      WHERE schemaname='storage' AND tablename='objects'
+        AND policyname IN ('site_audio_admin_insert', 'site_audio_admin_delete')) <> 2 THEN
+    RAISE EXCEPTION 'Legacy site-audio Storage write policies were not reproduced';
   END IF;
 END
 $legacy_fixture$;
