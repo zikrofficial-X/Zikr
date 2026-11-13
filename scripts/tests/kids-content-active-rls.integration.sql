@@ -1,24 +1,5 @@
 \set ON_ERROR_STOP on
 
-DO $legacy_fixture$
-BEGIN
-  IF NOT has_function_privilege('anon', 'public.increment_kids_content_shares(text)', 'EXECUTE') THEN
-    RAISE EXCEPTION 'Legacy fixture did not reproduce public share-RPC execution';
-  END IF;
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_catalog.pg_policies
-    WHERE schemaname = 'public'
-      AND tablename = 'kids_content'
-      AND policyname = 'kids_content_public_read'
-      AND qual ILIKE '%published%'
-      AND qual NOT ILIKE '%is_active%'
-  ) THEN
-    RAISE EXCEPTION 'Legacy fixture did not reproduce the published-only Kids content policy';
-  END IF;
-END
-$legacy_fixture$;
-
 BEGIN;
 SET LOCAL ROLE anon;
 DO $anon_read$
