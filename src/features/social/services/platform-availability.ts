@@ -103,6 +103,44 @@ export function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean
   return false;
 }
 
+export function mergeAuthBlockedPlatforms(
+  previousMetadata: SocialPlatformMetadata,
+  targetPlatforms: readonly string[],
+  attemptedPlatforms: readonly string[],
+  currentFailures: readonly { platform: string; error?: unknown }[],
+): SocialPlatform[] {
+  const supported = new Set<SocialPlatform>(["facebook", "facebook_reels", "youtube"]);
+  const targets = targetPlatforms.filter((platform): platform is SocialPlatform =>
+    supported.has(platform as SocialPlatform),
+  );
+  const attempted = new Set<SocialPlatform>(
+    attemptedPlatforms.filter((platform): platform is SocialPlatform =>
+      supported.has(platform as SocialPlatform),
+    ),
+  );
+  const previous = metadataPlatforms(previousMetadata?.authBlockedPlatforms);
+  const retained = previous.filter((platform) => !attempted.has(platform));
+
+  // Older rows stored only a global Facebook auth flag. Convert it to explicit
+  // Facebook targets before a different platform's attempt can overwrite it.
+  if (previousMetadata?.authBlocked === true && previous.length === 0) {
+    for (const platform of targets) {
+      if (platform.startsWith("facebook") && !attempted.has(platform)) {
+        retained.push(platform);
+      }
+    }
+  }
+
+  const current = currentFailures
+    .filter((failure) =>
+      supported.has(failure.platform as SocialPlatform) &&
+      isAuthBlocked(failure.platform as SocialPlatform, failure.error),
+    )
+    .map((failure) => failure.platform as SocialPlatform);
+
+  return [...new Set([...retained, ...current])];
+}
+
 export function isPermanentSocialFailure(error: unknown): boolean {
   if (typeof error !== "string") return false;
   return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|publishing is disabled|not configured|human qa approval/i.test(error);

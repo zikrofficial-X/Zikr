@@ -22,7 +22,7 @@ import { patchSocialQueueMetadataWithCas } from "@/features/social/services/soci
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearRevalidatedSocialApprovalDeferrals, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -1271,9 +1271,12 @@ export async function processSocialPublishItem(
         ? "partial"
         : nextStatus;
 
-  const authBlockedPlatforms = operationalFailures
-    .filter(failure => isAuthBlocked(failure.platform, failure.error))
-    .map(failure => failure.platform);
+  const authBlockedPlatforms = mergeAuthBlockedPlatforms(
+    previousMetadata,
+    platforms,
+    runnablePlatforms,
+    operationalFailures,
+  );
   const permanentFailurePlatforms = operationalFailures
     .filter(failure => isPermanentSocialFailure(failure.error))
     .map(failure => failure.platform);

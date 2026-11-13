@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dispatchSocialWorkerSafely } from "../../src/features/social/services/social-worker-dispatch";
 import { resolve } from "node:path";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { buildYouTubeQueueRecoveryFilter, buildYouTubeQueueRecoveryPatch } from "../../src/features/social/services/youtube-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
@@ -901,6 +901,56 @@ assert.ok(
 );
 
 const youtubeAuthError = "YouTube OAuth token refresh failed (HTTP 400): invalid_grant";
+const mergedLegacyAuthBlocks = mergeAuthBlockedPlatforms(
+  { authBlocked: true, authBlockedPlatforms: [], platformResults: {} },
+  ["facebook", "youtube"],
+  ["youtube"],
+  [{ platform: "youtube", error: youtubeAuthError }],
+);
+assert.deepEqual(
+  mergedLegacyAuthBlocks,
+  ["facebook", "youtube"],
+  "a YouTube attempt must not overwrite a legacy global Facebook auth block; both targets must become explicit",
+);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["facebook", "youtube"], {
+    authBlocked: true,
+    authBlockedPlatforms: mergedLegacyAuthBlocks,
+    platformResults: {},
+  }),
+  [],
+  "a legacy Facebook block must remain held while the independent YouTube block is present",
+);
+const recoveredLegacyAuthBlocks = buildYouTubeQueueRecoveryPatch(
+  {
+    authBlocked: true,
+    authBlockedPlatforms: mergedLegacyAuthBlocks,
+    platformResults: {},
+  },
+  ["facebook", "youtube"],
+  "2026-11-13T10:00:00.000Z",
+);
+assert.deepEqual(
+  recoveredLegacyAuthBlocks?.metadata.authBlockedPlatforms,
+  ["facebook"],
+  "YouTube recovery must clear only the YouTube block and retain the legacy Facebook block",
+);
+assert.equal(recoveredLegacyAuthBlocks?.metadata.authBlocked, true);
+assert.deepEqual(
+  getRetryableSocialPlatforms(["facebook", "youtube"], recoveredLegacyAuthBlocks?.metadata ?? {}),
+  ["youtube"],
+  "after YouTube recovery, Facebook must remain held and only YouTube may retry",
+);
+assert.deepEqual(
+  mergeAuthBlockedPlatforms(
+    { authBlocked: true, authBlockedPlatforms: ["facebook"] },
+    ["facebook", "youtube"],
+    ["facebook"],
+    [],
+  ),
+  [],
+  "a freshly attempted Facebook target must clear its old auth block when it no longer returns an auth failure",
+);
 assert.equal(
   isAuthBlocked("facebook", "Facebook OAuthException: Error validating access token"),
   true,
@@ -1034,6 +1084,7 @@ assert.match(youtubeRecoveryServiceSource, /const maxRows = 5_000/, "YouTube rec
 assert.match(youtubeRecoveryServiceSource, /const cursorFilter: string =/, "YouTube recovery must use a typed stable cursor filter");
 assert.match(youtubeRecoveryServiceSource, /const rows: YouTubeAuthBlockedQueueRow\[\] = await/, "YouTube recovery must type its queue page rows explicitly");
 assert.match(youtubeRecoveryServiceSource, /buildYouTubeQueueRecoveryFilter\(item, publishAfter\)/, "each recovery update must use the exact candidate row version and cutoff");
+assert.match(revalidatedPublisherSource, /mergeAuthBlockedPlatforms\(/, "the publisher must preserve auth blocks for targets that were not attempted");
 assert.match(revalidatedPublisherSource, /const hasAuthFailure = operationalFailures\.some\(failure =>[\s\S]*?isAuthBlocked\(failure\.platform, failure\.error\)/, "the publisher must classify authentication failures for every provider");
 assert.match(revalidatedPublisherSource, /const hasNonAuthFailure = operationalFailures\.some\(failure => !isAuthBlocked\(failure\.platform, failure\.error\)\)/, "provider auth blocks must not be misclassified as retryable operational failures");
 assert.match(revalidatedPublisherSource, /!isAuthBlocked\(failure\.platform, failure\.error\) &&/, "auth-blocked providers must not enter transient retry scheduling");
