@@ -30,7 +30,7 @@ export async function GET() {
 
     let requestContentById = new Map<string, Record<string, unknown>>();
     const socialQueueByRequestId = new Map<string, KidsSocialQueueRow[]>();
-    let socialQueueReadSucceeded = false;
+    let socialQueueReadSucceeded = requestIds.length === 0;
     if (requestIds.length > 0) {
       const filter = requestIds.map(encodeURIComponent).join(",");
       const [requestsResult, socialRowsResult] = await Promise.allSettled([

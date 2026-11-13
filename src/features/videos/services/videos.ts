@@ -170,7 +170,9 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
 const VIDEO_GENERATION_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function resolveKidsVideoSocialPublicationForDetail(requestId: unknown, stored: unknown) {
-  if (typeof requestId !== "string" || !VIDEO_GENERATION_REQUEST_ID_PATTERN.test(requestId)) return null;
+  if (typeof requestId !== "string" || !VIDEO_GENERATION_REQUEST_ID_PATTERN.test(requestId)) {
+    return resolveKidsVideoSocialPublication([], stored, true);
+  }
 
   try {
     const request: KidsSocialQueueRequest = <T>(path: string) =>

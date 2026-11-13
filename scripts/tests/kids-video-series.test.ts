@@ -207,4 +207,37 @@ assert.deepEqual(
   "a new remote ID on the same queue row must remain visible after the old remote post is deleted",
 );
 
+
+const legacyStoredSocialPublication = {
+  status: "published",
+  platforms: ["facebook"],
+  publishedAt: "2026-11-12T12:00:00.000Z",
+};
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([], legacyStoredSocialPublication, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-12T12:00:00.000Z",
+  },
+  "legacy Kids videos without a generation-request ID must retain their stored confirmed social publication",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([], legacyStoredSocialPublication, false),
+  null,
+  "stored publication metadata must not be used when a required queue read failed",
+);
+const kidsVideosRouteSource = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+assert.match(
+  kidsVideosRouteSource,
+  /let socialQueueReadSucceeded = requestIds\\.length === 0;/,
+  "the list feed must treat an empty request-ID set as a successful no-op queue read",
+);
+const kidsVideoServiceSource = readFileSync("src/features/videos/services/videos.ts", "utf8");
+assert.match(
+  kidsVideoServiceSource,
+  /if \\(typeof requestId !== "string" \\|\\| !VIDEO_GENERATION_REQUEST_ID_PATTERN\\.test\\(requestId\\)\\) \\{\\s*return resolveKidsVideoSocialPublication\\(\\[\\], stored, true\\);\\s*\\}/,
+  "the detail feed must use stored legacy publication metadata when there is no valid request ID to query",
+);
+
 console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota and social publication checks passed.");
