@@ -92,11 +92,11 @@ const cancelSchedule = contentService.indexOf("await cancelActiveContentSchedule
 const updateContent = contentService.indexOf("const updated = await supabaseServerAdminRequest", unpublishStart);
 assert.ok(unpublishStart >= 0 && cancelSchedule > unpublishStart && cancelSchedule < updateContent,
   "unpublishing must cancel queued and in-flight scheduled publications before changing content");
-assert.match(scheduleCancellation, /status=in\\.\\(queued,processing\\)/,
+assert.ok(scheduleCancellation.includes("status=in.(queued,processing)"),
   "schedule cancellation must be restricted to queued and processing rows");
-assert.match(scheduleCancellation, /updated_at=eq\\.\\$\\{encodeURIComponent\\(current\\.updated_at\\)\\}/,
+assert.ok(scheduleCancellation.includes("updated_at=eq.${encodeURIComponent(current.updated_at)}"),
   "schedule cancellation must compare-and-set the exact worker lease version");
-assert.match(scheduleCancellation, /buildNextRowVersionUpdatedAt\\(current\\.updated_at\\)/,
+assert.ok(scheduleCancellation.includes("buildNextRowVersionUpdatedAt(current.updated_at)"),
   "schedule cancellation must advance the worker lease even when both writes share one millisecond");
 assert.match(adminContent, /automationPublicationHold = true/, "an explicit article unpublish must persist a hold that automation cannot silently reverse");
 assert.match(adminContent, /delete articleMetadata\.automationPublicationHold/, "an explicit admin republish must clear the automation publication hold");
