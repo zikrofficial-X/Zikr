@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdminPermission } from "@/features/admin/services/admin";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";

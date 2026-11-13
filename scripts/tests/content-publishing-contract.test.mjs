@@ -78,9 +78,9 @@ assert.match(
 );
 
 const consoleSource = readFileSync("src/app/admin/content/content-console.tsx", "utf8");
-assert.match(consoleSource, /activeSchedule\\.status === "processing" \\? "قيد النشر"/,
+assert.match(consoleSource, /activeSchedule\.status === "processing" \? "قيد النشر"/,
   "the Admin content console must distinguish in-flight publication from a future schedule");
-assert.match(consoleSource, /activeSchedule \\? <form action=\\{cancelContentPublishAction\\}/,
+assert.match(consoleSource, /activeSchedule \? <form action=\{cancelContentPublishAction\}/,
   "the Admin content console must expose cancellation for queued and processing schedules");
 
 console.log("Scheduled content publication row-integrity contracts passed.");
@@ -132,11 +132,11 @@ assert.match(
 
 const adminActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
 const activeQueueMigration = readFileSync("supabase/migrations/20261113230000_content_publish_queue_one_active_item.sql", "utf8");
-assert.match(activeQueueMigration, /CREATE UNIQUE INDEX IF NOT EXISTS content_publish_queue_one_active_item[\\s\\S]*?WHERE status IN \\('queued', 'processing'\\)/,
+assert.match(activeQueueMigration, /CREATE UNIQUE INDEX IF NOT EXISTS content_publish_queue_one_active_item[\s\S]*?WHERE status IN \('queued', 'processing'\)/,
   "the database must allow at most one queued or processing schedule per content item");
-assert.match(adminContent, /status=in\\.\\(queued,processing\\)/,
+assert.match(adminContent, /status=in\.\(queued,processing\)/,
   "the Admin content read model must surface queued and in-flight schedule rows");
-assert.match(adminContent, /updated_at&order=scheduled_at\\.asc/,
+assert.match(adminContent, /updated_at&order=scheduled_at\.asc/,
   "the active schedule read must include row-version data for safe lifecycle handling");
 assert.match(adminActions, /const select = table === "stories"[\s\S]*?"id,published,is_approved,user_id"/,
   "story scheduling must load its public-approval fields");
@@ -148,13 +148,13 @@ assert.match(adminActions, /safeTogglePublishAction[\s\S]*?requireAdminStepUp\("
   "immediate article/story publishing must require destructive-action step-up MFA");
 assert.match(adminActions, /scheduleContentPublishAction[\s\S]*?requireAdminStepUp\("content\.publish", "\/admin\/content"\)/,
   "scheduled article/story publishing must require destructive-action step-up MFA");
-assert.match(adminActions, /status=in\\.\\(queued,processing\\)[\\s\\S]*?activeSchedules\\?\\.length/,
+assert.match(adminActions, /status=in\.\(queued,processing\)[\s\S]*?activeSchedules\?\.length/,
   "a schedule request must reject an existing queued or processing row before insert");
-assert.match(adminActions, /cancelContentPublishAction[\\s\\S]*?requireAdminStepUp\\("content\\.publish", "\\/admin\\/content"\\)/,
+assert.match(adminActions, /cancelContentPublishAction[\s\S]*?requireAdminStepUp\("content\.publish", "\/admin\/content"\)/,
   "cancelling a scheduled or in-flight publication must require step-up MFA");
 assert.match(adminActions, /Prefer: "return=representation"/,
   "schedule cancellation must confirm that a row was actually changed");
-assert.match(adminActions, /if \\(!cancelled\\?\\.some\\(\\(row\\) => row\\.id === queueId\\)\\)/,
+assert.match(adminActions, /if \(!cancelled\?\.some\(\(row\) => row\.id === queueId\)\)/,
   "a stale or completed queue item must not produce a false successful cancellation");
 
 assert.match(
