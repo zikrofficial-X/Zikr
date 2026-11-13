@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { getServerEnv } from "@/lib/env";
+import { FACEBOOK_REQUESTED_PERMISSIONS } from "@/features/social/services/facebook-oauth-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,13 +11,6 @@ export const runtime = "nodejs";
 const STATE_COOKIE = "zikr-facebook-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const FACEBOOK_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/facebook/callback";
-const REQUIRED_PERMISSIONS = [
-  "pages_show_list",
-  "pages_read_engagement",
-  "pages_manage_posts",
-  "read_insights",
-] as const;
-
 export async function GET() {
   const auth = await requireAdminApi("social.manage");
   if (!auth.ok) {
@@ -47,7 +41,7 @@ export async function GET() {
   authorizeUrl.searchParams.set("client_id", appId);
   authorizeUrl.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
   authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("scope", REQUIRED_PERMISSIONS.join(","));
+  authorizeUrl.searchParams.set("scope", FACEBOOK_REQUESTED_PERMISSIONS.join(","));
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set("auth_type", "rerequest");
 
