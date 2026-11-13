@@ -84,6 +84,39 @@ const salawatSource = readFileSync(
   "utf8",
 );
 assert.match(bridgeSource, /zikr:audio-settings-changed/);
+const facadeMethodStart = bridgeSource.indexOf("    async scheduleLocalNotification(notification)");
+const facadeMethodEnd = bridgeSource.indexOf(
+  "    async requestNotificationPermission()",
+  facadeMethodStart,
+);
+const bridgeEffectStart = bridgeSource.indexOf("export function NativeCapacitorBridge()");
+const facadeMethod = bridgeSource.slice(facadeMethodStart, facadeMethodEnd);
+const bridgeEffect = bridgeSource.slice(bridgeEffectStart);
+
+assert.ok(facadeMethodStart >= 0 && facadeMethodEnd > facadeMethodStart);
+assert.doesNotMatch(
+  facadeMethod,
+  /let disposed|audioSettingsRefreshQueue|handleAudioSettingsChanged/,
+  "audio refresh lifecycle must not be scoped to a one-shot notification method",
+);
+assert.match(
+  bridgeEffect,
+  /const localNotifications = plugins\\.LocalNotifications;\\s*let disposed = false;/,
+  "the effect must own the disposal flag and notification plugin",
+);
+assert.match(
+  bridgeEffect,
+  /const handleAudioSettingsChanged = \\(\\) => \\{\\s*void refreshNativeAudioSettings\\(\\);\\s*\\};/,
+);
+assert.match(
+  bridgeEffect,
+  /window\\.addEventListener\\(\\s*"zikr:audio-settings-changed",\\s*handleAudioSettingsChanged,\\s*\\)/,
+);
+assert.match(
+  bridgeEffect,
+  /window\\.removeEventListener\\(\\s*"zikr:audio-settings-changed",\\s*handleAudioSettingsChanged,\\s*\\)/,
+);
+assert.match(bridgeEffect, /return \\(\\) => \\{\\s*disposed = true;/);
 assert.match(bridgeSource, /zikr:native-audio-channels-ready/);
 assert.match(prayerSource, /zikr:native-audio-channels-ready/);
 assert.match(salawatSource, /zikr:native-audio-channels-ready/);
