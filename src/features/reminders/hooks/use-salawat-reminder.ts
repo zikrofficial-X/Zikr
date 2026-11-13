@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createAsyncSerialQueue } from "@/lib/async-serial-queue";
 import { unlockAudioContext, refreshSiteAudio } from "@/lib/audio/spiritual-tones";
 import { getNativeAudio } from "@/lib/audio/config";
@@ -222,7 +223,7 @@ export function useSalawatReminder(
     let unsubscribe = () => {};
     try {
       const supabase = createBrowserSupabaseClient();
-      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
         if (event === "SIGNED_IN" && session?.user) {
           void syncBackgroundReminderTimeZone({ userId: session.user.id });
         }

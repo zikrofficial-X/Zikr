@@ -59,6 +59,17 @@ async function main() {
   assert.match(prayerHook, /createAsyncSerialQueue/, "prayer schedule refreshes must be serialized");
   assert.match(prayerHook, /enqueueNativePrayerSchedule/, "prayer alarm cancellation and replacement must share one queue");
   assert.match(salawatHook, /createAsyncSerialQueue/, "salawat schedule refreshes must be serialized");
+  assert.match(
+    salawatHook,
+    /import type \\{ AuthChangeEvent, Session \\} from "@supabase\\/supabase-js"/,
+    "the Supabase auth listener must import the concrete callback types under strict TypeScript",
+  );
+  assert.match(
+    salawatHook,
+    /onAuthStateChange\\(\\(event: AuthChangeEvent,\\s*session: Session \\| null\\) =>/,
+    "the Salawat auth-state callback must explicitly type both parameters",
+  );
+
   assert.match(salawatHook, /enqueueNativeSalawatSchedule/, "salawat alarm cancellation and replacement must share one queue");
 
   assert.match(dhikrHook, /const SETTINGS_KEY = "zikr_dhikr_settings"/, "Dhikr preferences need a stable local storage key");
