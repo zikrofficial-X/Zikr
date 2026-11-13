@@ -12,7 +12,7 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function confirmedSocialPlatforms(row: SocialQueueRow): string[] {
+function confirmedSocialPlatforms(row: KidsSocialQueueRow): string[] {
   return getConfirmedPublicKidsVideoSocialPlatforms(row);
 }
 
@@ -26,7 +26,7 @@ export async function GET() {
       .filter((id): id is string => typeof id === "string" && id.length > 0))];
 
     let requestContentById = new Map<string, Record<string, unknown>>();
-    const socialQueueByRequestId = new Map<string, SocialQueueRow[]>();
+    const socialQueueByRequestId = new Map<string, KidsSocialQueueRow[]>();
     let socialQueueReadSucceeded = false;
     if (requestIds.length > 0) {
       const filter = requestIds.map(encodeURIComponent).join(",");
