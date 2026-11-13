@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "../../src/features/kids/services/kids-content-validation";
 import { readFileSync } from "node:fs";
 import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
+import { loadKidsSocialQueueRows } from "../../src/features/social/services/kids-video-social-query";
 import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
 import {
   getFallbackKidsContentBySlug,
@@ -704,3 +705,57 @@ assert.match(kidsHomeOfflineSource, /getOfflineKidsContent\(isEnglish \? "en" : 
   "the Kids home page must use the validated offline snapshot after a network failure");
 assert.match(kidsDetailOfflineSource, /getOfflineKidsContentBySlug\(contentSlug, isEnglish \? "en" : "ar"\)/,
   "the Kids detail page must resolve its slug from the validated offline snapshot after a network failure");
+
+
+const kidsSocialQueueRows = (page: number, count: number) => Array.from({ length: count }, (_, index) => {
+  const sequence = page * 500 + index;
+  return {
+    id: "queue-row-" + String(sequence).padStart(5, "0"),
+    content_id: "video-request-1",
+    content_type: "kids_video",
+    body: "Kids caption",
+    target_platforms: ["youtube"],
+    status: "published",
+    published_at: "2026-11-13T11:00:00.000Z",
+    created_at: new Date(Date.UTC(2026, 10, 13, 12, 0, 0) - sequence * 1000).toISOString(),
+    metadata: { audience: "kids" },
+  };
+});
+const kidsSocialQueueRequests: string[] = [];
+const completeKidsSocialHistory = await loadKidsSocialQueueRows(
+  ["video-request-1", "video-request-1", "video-request-2"],
+  async <T>(path: string) => {
+    kidsSocialQueueRequests.push(path);
+    const pageIndex = kidsSocialQueueRequests.length - 1;
+    return (pageIndex === 0
+      ? kidsSocialQueueRows(0, 500)
+      : kidsSocialQueueRows(1, 101)) as T;
+  },
+  "2026-11-13T12:00:00.000Z",
+);
+assert.equal(completeKidsSocialHistory.length, 601, "Kids publication reconciliation must read beyond the former 600-row truncation boundary");
+assert.equal(kidsSocialQueueRequests.length, 2, "Kids social history must fetch every page until a short page is returned");
+assert.ok(kidsSocialQueueRequests[0].includes("metadata->>audience=eq.kids"), "Kids social history must remain scoped to Kids-only queue rows");
+assert.ok(kidsSocialQueueRequests[0].includes("created_at=lte."), "Kids social history must use a stable read cutoff");
+assert.ok(kidsSocialQueueRequests[0].includes("order=created_at.desc,id.desc"), "Kids social history must use a deterministic keyset order");
+assert.ok(kidsSocialQueueRequests[1].includes("&or="), "later Kids social history pages must continue after the last created_at/id cursor");
+assert.ok(kidsSocialQueueRequests[0].includes("limit=500"), "Kids social history must use bounded pages");
+assert.deepEqual(
+  await loadKidsSocialQueueRows([], async <T>() => {
+    throw new Error("an empty request-ID set must not query Supabase");
+  }),
+  [],
+  "an empty Kids video request set must avoid an unnecessary queue read",
+);
+
+let oversizedPage = 0;
+await assert.rejects(
+  loadKidsSocialQueueRows(
+    ["video-request-1"],
+    async <T>() => kidsSocialQueueRows(oversizedPage++, 500) as T,
+    "2026-11-13T12:00:00.000Z",
+  ),
+  /exceeded the safe scan limit/,
+  "an oversized Kids social history must fail closed instead of silently truncating deletion or publication evidence",
+);
+assert.equal(oversizedPage, 11, "the bounded Kids history scan must detect rows beyond its 5,000-row safety limit");
