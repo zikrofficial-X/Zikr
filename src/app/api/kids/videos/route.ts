@@ -2,19 +2,9 @@ import { NextResponse } from "next/server";
 import { getKidsGeneratedVideos } from "@/features/videos/services/videos";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { getConfirmedPublicKidsVideoSocialPlatforms, resolveKidsVideoSocialPublication } from "@/features/social/services/kids-video-social-visibility";
+import { loadKidsSocialQueueRows, type KidsSocialQueueRow } from "@/features/social/services/kids-video-social-query";
 
 export const dynamic = "force-dynamic";
-
-type SocialQueueRow = {
-  content_id: string | null;
-  content_type: string;
-  body: string | null;
-  target_platforms: string[] | null;
-  status: string;
-  published_at: string | null;
-  created_at: string;
-  metadata: Record<string, unknown> | null;
-};
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -46,10 +36,7 @@ export async function GET() {
         ),
         // Include every Kids queue state so a newer supplemental or failed row
         // cannot hide an older confirmed publication or leave a stale badge.
-        supabaseServerAdminRequest<SocialQueueRow[]>(
-          "/rest/v1/social_publish_queue?content_id=in.(" + filter +
-            ")&metadata->>audience=eq.kids&select=content_id,content_type,body,target_platforms,status,published_at,created_at,metadata&order=created_at.desc&limit=600",
-        ),
+        loadKidsSocialQueueRows(requestIds, supabaseServerAdminRequest),
       ]);
       const requests = requestsResult.status === "fulfilled" ? requestsResult.value : [];
       const socialRows = socialRowsResult.status === "fulfilled" ? socialRowsResult.value : [];
