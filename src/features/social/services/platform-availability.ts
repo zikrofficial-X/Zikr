@@ -342,12 +342,25 @@ export function getLocalSocialQueueDeletionBlockers(
   }
 
   // Protect unexpected/legacy result entries too, not only declared targets.
+  // A remote ID is evidence of a provider-side object even when the provider
+  // response was marked failed or the platform is no longer in target_platforms.
   for (const [platform, raw] of Object.entries(results)) {
     const result = asRecord(raw);
+    if (!supported.includes(platform as SocialPlatform)) {
+      blockers.add(platform || "unsupported_result_platform");
+      continue;
+    }
+    const remoteId = result?.remoteId;
+    const hasRemoteId =
+      typeof remoteId === "string"
+        ? remoteId.trim().length > 0
+        : remoteId !== null && remoteId !== undefined;
     if (
       !result ||
-      result.ok === true ||
-      hasSuccessfulDelivery(result) ||
+      result.ok !== false ||
+      typeof result.error !== "string" ||
+      !result.error.trim() ||
+      hasRemoteId ||
       result.requiresReconciliation === true ||
       isAmbiguousProviderOutcome(result.error)
     ) {
