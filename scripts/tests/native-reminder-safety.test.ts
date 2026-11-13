@@ -12,6 +12,7 @@ async function main() {
   const serviceWorker = readFileSync("public/sw.js", "utf8");
   const pushWorker = readFileSync("supabase/functions/prayer-notification-worker/index.ts", "utf8");
   const deferredRuntime = readFileSync("src/components/layout/deferred-runtime.tsx", "utf8");
+  const nativeBridge = readFileSync("src/components/layout/native-capacitor-bridge.tsx", "utf8");
 
   assert.deepEqual(
     normalizeSalawatSettings({
@@ -90,6 +91,12 @@ async function main() {
   assert.match(pushWorker, /tag:\s*notificationTag/, "background push delivery must use the deduplication tag instead of a per-slot notification tag");
   assert.match(deferredRuntime, /import\s+\{\s*Capacitor\s*\}\s+from\s+["']@capacitor\/core["']/, "native reminder initialization must use the imported Capacitor runtime, not a late window global");
   assert.match(deferredRuntime, /if\s*\(Capacitor\.isNativePlatform\(\)\)[\s\S]*?setReady\(true\)/, "native reminder runtime must initialize immediately on native platforms");
+  assert.match(nativeBridge, /const listenerHandles: NativePluginListenerHandle\[\] = \[\]/, "native Capacitor event listeners must be tracked for cleanup");
+  assert.match(nativeBridge, /Promise\.resolve\(pendingHandle\)[\s\S]*?if \(disposed\)[\s\S]*?listenerHandle\.remove\(\)/, "late-resolving Capacitor listener handles must be removed after unmount");
+  assert.match(nativeBridge, /for \(const handle of listenerHandles\.splice\(0\)\)[\s\S]*?handle\.remove\(\)/, "native Capacitor listeners must be removed when the bridge unmounts");
+  for (const eventName of ["browserFinished", "networkStatusChange", "appUrlOpen", "appStateChange"]) {
+    assert.ok(nativeBridge.includes(`registerPluginListener(`) && nativeBridge.includes(`"${eventName}"`), `the ${eventName} listener must use the lifecycle-safe registration helper`);
+  }
 
   const enqueue = createAsyncSerialQueue();
   const events: string[] = [];
