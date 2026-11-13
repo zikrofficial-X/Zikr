@@ -82,8 +82,12 @@ async function main() {
   assert.match(notificationService, /const tag = "dhikr-reminder"/, "foreground Dhikr notifications must use the shared deduplication tag");
   assert.match(notificationService, /const tag = "salawat-reminder"/, "foreground Salawat notifications must use the shared deduplication tag");
   assert.match(serviceWorker, /tag: isSalawat \? "salawat-reminder" : "dhikr-reminder"/, "service-worker local reminders must use the same stable tags as foreground notifications");
-  assert.match(pushWorker, /const notificationTag = isPrayer[\s\S]*?"dhikr-reminder"[\s\S]*?"salawat-reminder"/, "background push reminders must reuse stable local tags while keeping prayer tags distinct");
-  assert.match(pushWorker, /tag: notificationTag/, "background push delivery must use the deduplication tag instead of a per-slot notification tag");
+  assert.match(
+    pushWorker,
+    /const notificationTag = buildNotificationTag\(\{[\s\S]*?notificationKind:\s*delivery\.notification_kind,[\s\S]*?prayerName:\s*delivery\.prayer_name,[\s\S]*?\}\);/,
+    "background push reminders must use the shared prayer-specific or interval-reminder tag builder",
+  );
+  assert.match(pushWorker, /tag:\s*notificationTag/, "background push delivery must use the deduplication tag instead of a per-slot notification tag");
   assert.match(deferredRuntime, /import\s+\{\s*Capacitor\s*\}\s+from\s+["']@capacitor\/core["']/, "native reminder initialization must use the imported Capacitor runtime, not a late window global");
   assert.match(deferredRuntime, /if\s*\(Capacitor\.isNativePlatform\(\)\)[\s\S]*?setReady\(true\)/, "native reminder runtime must initialize immediately on native platforms");
 
