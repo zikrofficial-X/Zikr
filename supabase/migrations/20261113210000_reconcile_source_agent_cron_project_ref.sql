@@ -65,12 +65,11 @@ BEGIN
         ORDER BY jobid DESC
         LIMIT 1;
 
-        -- A matching URL is not enough: an older/malformed command can still
-        -- omit the scheduler-secret header or the expected pg_cron source.
-        IF v_command LIKE '%' || v_target_url || '%'
-          AND position('net.http_post(' in v_command) > 0
-          AND position('public.get_push_scheduler_secret()' in v_command) > 0
-          AND position('jsonb_build_object(''source'', ''pg_cron'')' in v_command) > 0
+        -- Substring checks can be satisfied by SQL comments while the job
+        -- still executes an unrelated command. Compare the normalized full
+        -- command so only the exact authenticated request is accepted.
+        IF regexp_replace(btrim(v_command), '[[:space:]]+', ' ', 'g')
+             = regexp_replace(btrim(v_job_command), '[[:space:]]+', ' ', 'g')
           AND v_schedule = '0 3 * * *'
           AND v_active THEN
           RETURN;
@@ -100,5 +99,4 @@ BEGIN
     $inner$;
   $schedule$;
 END
-
 $do$;
