@@ -257,6 +257,9 @@ export function getRetryableSocialPlatforms(
     metadata?.kidsSourceApprovalBlocked === true ||
     metadata?.writtenArticlePublicationBlocked === true
   ) return [];
+  // The explicit no-remote-publication override is only for a well-formed
+  // ambiguous provider result, never for a corrupt or unparseable ledger.
+  if (hasMalformedSocialPlatformResults(metadata?.platformResults)) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
