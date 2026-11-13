@@ -19,6 +19,7 @@ const navigation = read("src/features/admin/config/navigation.ts");
 const runner = read("scripts/run-background-jobs.ts");
 const socialWorker = read("scripts/jobs/social-publishing.ts");
 const facebookProfileIntegration = read("src/features/social/integrations/facebook.ts");
+const facebookOAuthPolicy = read("src/features/social/services/facebook-oauth-policy.ts");
 const facebookProfileSyncPolicy = read("src/features/social/services/social-insights-sync-status.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
@@ -338,10 +339,30 @@ if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
 if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     !facebookCallback.includes("timingSafeEqual") ||
     !facebookCallback.includes("saveFacebookPageCredential") ||
-    !facebookCallback.includes("pages_show_list") ||
+    !facebookCallback.includes("hasFacebookPublishingPermissions(grantedPermissions)") ||
+    !facebookCallback.includes("hasFacebookInsightsPermission(grantedPermissions)") ||
+    !facebookCallback.includes('insights: "missing"') ||
     !facebookCallback.includes("page_selection_required") ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
-  failures.push("Facebook OAuth callback must validate state, required Page permissions, and the selected managed Page before storing credentials");
+  failures.push("Facebook OAuth callback must require publishing scopes, report missing optional insights separately, and validate the selected managed Page");
+}
+const facebookRequiredScopes = /const required = \\[([\\s\\S]*?)\\];/.exec(socialWorkflow)?.[1] ?? "";
+if (!facebookRequiredScopes.includes("pages_show_list") ||
+    !facebookRequiredScopes.includes("pages_read_engagement") ||
+    !facebookRequiredScopes.includes("pages_manage_posts") ||
+    facebookRequiredScopes.includes("read_insights") ||
+    !socialWorkflow.includes('const insightsReady = scopes.includes("read_insights")')) {
+  failures.push("Facebook workflow readiness must require publishing scopes only and report read_insights as optional");
+}
+if (!facebookOAuthPolicy.includes("FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS") ||
+    !facebookOAuthPolicy.includes("FACEBOOK_REQUESTED_PERMISSIONS") ||
+    !facebookOAuthPolicy.includes("hasFacebookPublishingPermissions") ||
+    !facebookOAuthPolicy.includes("hasFacebookInsightsPermission")) {
+  failures.push("Facebook OAuth must share one explicit publishing/optional-insights permission contract");
+}
+if (facebookProfileIntegration.includes("env.FACEBOOK_PAGE_ACCESS_TOKEN") ||
+    !facebookProfileIntegration.includes('storedCredential?.page_access_token?.trim() || ""')) {
+  failures.push("Facebook profile sync must never activate an unvalidated environment token");
 }
 if (!facebookCallback.includes("await saveFacebookPageCredential(") ||
     facebookCallback.includes("unblockFacebookAuthBlockedQueue") ||
