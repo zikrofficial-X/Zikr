@@ -20,9 +20,9 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   const metadata = asRecord(row.metadata);
   const rawPlatformResults = metadata.platformResults;
   const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
-  const hasPlatformResultLedger = Array.isArray(rawPlatformResults)
-    ? rawPlatformResults.length > 0
-    : Object.keys(platformResults).length > 0;
+  // Only an absent/null field is a legacy row. An explicit empty or malformed
+  // ledger is authoritative and must not fall back to target_platforms.
+  const hasPlatformResultLedger = rawPlatformResults !== undefined && rawPlatformResults !== null;
   const platformDeletions = asRecord(metadata.platformDeletions);
   const isDeleted = (platform: string, deliveryRemoteId?: string) =>
     isSocialPlatformDeletionCurrent(
