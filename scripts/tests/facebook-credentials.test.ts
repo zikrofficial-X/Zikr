@@ -131,6 +131,13 @@ assert.equal(changedPageIdentity.likes_count, null);
 assert.equal(changedPageIdentity.avatar_url, null);
 assert.equal(changedPageIdentity.cover_url, null);
 assert.equal(changedPageIdentity.synced_at, null);
+const unknownPreviousIdentity = buildFacebookPublicProfileIdentityUpsert({
+  pageId: "987654321098765",
+  pageName: "New ZIKR Page",
+  updatedAt: "2026-11-13T14:09:00.000Z",
+  previousPageId: null,
+});
+assert.equal(unknownPreviousIdentity.followers_count, null, "an existing row without a Page ID must not leak its previous metrics");
 
 const preservedProfile = buildFacebookPublicProfileSyncUpsert({
   pageId: "123456789012345",
