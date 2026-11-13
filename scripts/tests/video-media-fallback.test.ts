@@ -100,7 +100,7 @@ const republishedQueueRow = {
   status: "published",
   published_at: "2026-11-12T12:02:00.000Z",
   metadata: {
-    platformResults: { youtube: { ok: true, remoteId: "newVideo99" } },
+    platformResults: { youtube: { ok: true, remoteId: "newVideo999" } },
     platformDeletions: {
       youtube: { status: "deleted", remoteId: id, deletedAt: "2026-11-12T12:01:00.000Z" },
     },
@@ -108,7 +108,7 @@ const republishedQueueRow = {
 };
 assert.deepEqual(
   resolveLatestConfirmedYoutubeQueueState([deletedQueueRow, republishedQueueRow]),
-  { status: "published", id: "newVideo99", publishedAt: republishedQueueRow.published_at },
+  { status: "published", id: "newVideo999", publishedAt: republishedQueueRow.published_at },
   "a strictly later confirmed republish may restore the YouTube fallback",
 );
 const tiedDeletionRow = {
