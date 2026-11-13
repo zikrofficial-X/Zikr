@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabaseServerAdminCount } from '@/lib/supabase/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
@@ -28,9 +29,15 @@ export async function GET() {
   if (!auth.ok) return responseError(auth.error, auth.status);
 
   try {
-    const assets = await getAdminMediaAssets();
+    const [assets, totalCount] = await Promise.all([
+      getAdminMediaAssets(),
+      supabaseServerAdminCount('media_assets').catch((countError) => {
+        console.warn('[api/admin/media] exact asset count unavailable:', countError);
+        return null;
+      }),
+    ]);
     return NextResponse.json(
-      { assets },
+      { assets, totalCount },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
