@@ -141,8 +141,8 @@ export default function AdminMediaPage() {
 
       <section className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">إجمالي الأصول</p><p className="mt-2 text-3xl font-bold text-brand-cream">{totalCount ?? "غير متاح"}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">حقوق تحتاج مراجعة</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingRights}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">منشور</p><p className="mt-2 text-3xl font-bold text-emerald-200">{published}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">حقوق تحتاج مراجعة ضمن أحدث 300 أصل</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingRights}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">منشور ضمن أحدث 300 أصل</p><p className="mt-2 text-3xl font-bold text-emerald-200">{published}</p></div>
       </section>
 
       <section className="rounded-2xl border border-brand-gold/15 bg-black/20 p-5 space-y-4">
@@ -158,7 +158,7 @@ export default function AdminMediaPage() {
         <Button variant="primary" disabled={busy || !file} onClick={() => void upload()}>{busy ? "جاري التنفيذ..." : "رفع وتسجيل الأصل"}</Button>
       </section>
 
-      <p className="text-xs text-brand-cream/35">يعرض الجدول أحدث 300 أصل؛ إجمالي العدد أعلاه محسوب من قاعدة البيانات.</p>
+      <p className="text-xs text-brand-cream/35">يعرض الجدول أحدث 300 أصل؛ إجمالي العدد أعلاه محسوب من قاعدة البيانات. مؤشرا الحقوق وحالة النشر محسوبان على هذه الـ300 فقط.</p>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/15 overflow-hidden">
         <div className="overflow-x-auto">
