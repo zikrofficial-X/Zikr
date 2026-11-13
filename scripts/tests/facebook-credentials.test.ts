@@ -158,8 +158,8 @@ const preservedProfile = buildFacebookPublicProfileSyncUpsert({
     description: "Existing page description",
     category: "Community",
     website: "https://zikrmediaofficial.vercel.app",
-    avatarUrl: "https://example.com/avatar.jpg",
-    coverUrl: "https://example.com/cover.jpg",
+    avatarUrl: "https://graph.facebook.com/123456789012345/picture?type=large",
+    coverUrl: "https://scontent.xx.fbcdn.net/v/t39.30808-6/987654321_987654321098765_9876543210987654321_n.jpg",
     pageUrl: "https://www.facebook.com/123456789012345",
     followersCount: 1234,
     likesCount: 567,
@@ -169,8 +169,8 @@ assert.equal(preservedProfile.name, "ZIKR Official");
 assert.equal(preservedProfile.description, "Existing page description");
 assert.equal(preservedProfile.category, "Community");
 assert.equal(preservedProfile.website, "https://zikrmediaofficial.vercel.app");
-assert.equal(preservedProfile.avatar_url, "https://example.com/avatar.jpg");
-assert.equal(preservedProfile.cover_url, "https://example.com/cover.jpg");
+assert.equal(preservedProfile.avatar_url, "https://graph.facebook.com/123456789012345/picture?type=large");
+assert.equal(preservedProfile.cover_url, "https://scontent.xx.fbcdn.net/v/t39.30808-6/987654321_987654321098765_9876543210987654321_n.jpg");
 assert.equal(preservedProfile.followers_count, 1234);
 assert.equal(preservedProfile.likes_count, 567);
 
