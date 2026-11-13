@@ -362,7 +362,7 @@ if (!facebookOAuthPolicy.includes("FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS") ||
   failures.push("Facebook OAuth must share one explicit publishing/optional-insights permission contract");
 }
 if (facebookProfileIntegration.includes("env.FACEBOOK_PAGE_ACCESS_TOKEN") ||
-    !facebookProfileIntegration.includes("storedCredential?.page_access_token?.trim() || '')") {
+    !facebookProfileIntegration.includes("storedCredential?.page_access_token?.trim() || ''")) {
   failures.push("Facebook profile sync must never activate an unvalidated environment token");
 }
 if (!facebookCallback.includes("await saveFacebookPageCredential(") ||
