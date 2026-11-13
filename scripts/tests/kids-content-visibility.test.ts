@@ -441,7 +441,8 @@ assert.ok(adminManager.includes("آخر 300 سجل"), "the Kids admin list must 
 assert.ok(adminManager.includes('{ok ? totalCount === null ? `عرض ${rows.length} سجل؛ الإجمالي غير متاح` : `عرض ${rows.length} من ${totalCount} سجل` : "غير متاح"}'), "the Kids list must distinguish displayed sample size from total rows");
 assert.ok(adminManager.includes("{ok && rows.length === 0 && <p"), "the empty state must appear only after a successful empty database read");
 assert.ok(adminManager.includes('label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)"'), "the quiz field must explain that quiz records require structured questions");
-assert.ok(imageField.includes("3 * 1024 * 1024"), "the Kids server-action upload must stay below the 4 MB action body limit");
+const mediaAssetLimits = readFileSync("src/features/media/services/media-asset-limits.ts", "utf8");
+assert.ok(imageField.includes("MAX_MEDIA_IMAGE_BYTES") && mediaAssetLimits.includes("3 * 1024 * 1024"), "the Kids server-action upload must use the shared 3 MB limit below the 4 MB action body limit");
 
 assert.ok(
   adminAction.indexOf("const quizData = type === \"quiz\" ? parseKidsQuizData(value(formData, \"quiz_data\")) : null;") < imageUploadPosition,
