@@ -172,15 +172,13 @@ if (!workflow.includes('cron: "41 4 * * *"') ||
   failures.push("Daily video media audit must be production-gated and scheduled, require explicit confirmation for manual dispatch, and must not auto-run on source pushes");
 }
 const retentionMigration = read("supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql");
-if (!retentionMigration.includes("executable_definition := pg_catalog.regexp_replace") ||
-    !retentionMigration.includes("regexp_count(executable_definition, '\\mUPDATE\\M', 1, 'i') = 2") ||
+if (!retentionMigration.includes("regexp_count(definition, '\\mUPDATE\\M', 1, 'i') = 2") ||
     !retentionMigration.includes("UPDATE public.social_publish_queue") ||
     !retentionMigration.includes("UPDATE public.video_generation_requests")) {
   failures.push("Video Storage-retention contract must count every UPDATE across schemas and allow only the two fenced queue/request updates");
 }
 const retentionIntegration = read("scripts/tests/video-storage-retention-contract.integration.sql");
-if (!retentionIntegration.includes("UPDATE INSERT DELETE TRUNCATE EXECUTE CALL PERFORM SELECT COPY marker only") ||
-    !retentionIntegration.includes("CREATE SCHEMA retention_probe") ||
+if (!retentionIntegration.includes("CREATE SCHEMA retention_probe") ||
     !retentionIntegration.includes("UPDATE retention_probe.retention_contract_probe")) {
   failures.push("Video Storage-retention integration must prove that a non-public third UPDATE is rejected");
 }

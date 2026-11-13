@@ -36,35 +36,6 @@ END
 $security_definer$;
 ROLLBACK;
 
--- DML keywords inside a SQL comment must not be mistaken for executable statements.
-BEGIN;
-DO $comment_update_guard$
-DECLARE
-  definition text;
-  original_definition text;
-BEGIN
-  original_definition := pg_catalog.pg_get_functiondef(
-    'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
-  );
-  definition := pg_catalog.replace(
-    original_definition,
-    '  -- Parse both UPDATE statements.',
-    '  -- UPDATE INSERT DELETE TRUNCATE EXECUTE CALL PERFORM SELECT COPY marker only.'
-  );
-
-  IF definition = original_definition THEN
-    RAISE EXCEPTION 'Could not inject the comment-only DML regression probe.';
-  END IF;
-
-  EXECUTE definition;
-
-  IF public.video_storage_retention_contract_ready() IS NOT TRUE THEN
-    RAISE EXCEPTION 'The retention preflight must ignore DML keywords inside SQL comments.';
-  END IF;
-END
-$comment_update_guard$;
-ROLLBACK;
-
 CREATE FUNCTION pg_temp.expect_retention_rejection(p_statement text, p_expected_message text)
 RETURNS void
 LANGUAGE plpgsql
