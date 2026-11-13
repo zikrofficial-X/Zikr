@@ -1,7 +1,11 @@
 import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { uploadCloudinaryImage } from "@/features/media/services/cloudinary";
+import {
+  deleteCloudinaryImageIfUnreferenced,
+  uploadCloudinaryImage,
+  type CloudinaryImageUpload,
+} from "@/features/media/services/cloudinary";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set([
@@ -50,6 +54,48 @@ export async function getAdminMediaAssets(): Promise<AdminMediaAsset[]> {
   );
 }
 
+async function compensateOrphanedMediaAsset(
+  upload: CloudinaryImageUpload,
+  requestedPublicId: string,
+) {
+  try {
+    const result = await deleteCloudinaryImageIfUnreferenced({
+      publicId: upload.publicId,
+      expectedPublicId: requestedPublicId,
+      secureUrl: upload.secureUrl,
+      isReferenced: async ({ publicId, secureUrl }) => {
+        const [urlRows, storagePathRows] = await Promise.all([
+          supabaseServerAdminRequest<Array<{ id: string }>>(
+            "/rest/v1/media_assets?select=id&url=eq." +
+              encodeURIComponent(secureUrl) +
+              "&limit=1",
+            { method: "GET" },
+          ),
+          supabaseServerAdminRequest<Array<{ id: string }>>(
+            "/rest/v1/media_assets?select=id&storage_path=eq." +
+              encodeURIComponent(publicId) +
+              "&limit=1",
+            { method: "GET" },
+          ),
+        ]);
+        if (!Array.isArray(urlRows) || !Array.isArray(storagePathRows)) {
+          throw new Error("Unable to verify whether the uploaded media asset is still referenced.");
+        }
+        return urlRows.length > 0 || storagePathRows.length > 0;
+      },
+    });
+    if (result === "referenced") {
+      console.warn(
+        "[admin/media] orphan compensation skipped because the exact URL or public ID is still referenced.",
+      );
+    }
+  } catch (cleanupError) {
+    console.warn(
+      "[admin/media] orphan compensation failed safely; the Cloudinary asset was retained.",
+      cleanupError,
+    );
+  }
+}
 export async function createAdminMediaAsset(input: {
   file: File;
   title: string;
@@ -83,15 +129,18 @@ export async function createAdminMediaAsset(input: {
     if (!source[0]?.verified) throw new Error("المصدر المختار غير موثّق.");
   }
 
+  const requestedPublicId = `${input.createdBy}-${crypto.randomUUID()}`;
   const upload = await uploadCloudinaryImage({
     file: input.file,
     folder: `zikr/${input.folder}`,
-    publicId: `${input.createdBy}-${crypto.randomUUID()}`,
+    publicId: requestedPublicId,
     tags: ["zikr", "admin", "media", input.folder],
     maxBytes: MAX_IMAGE_BYTES,
   });
 
-  const rows = await supabaseServerAdminRequest<AdminMediaAsset[]>(
+  let rows: AdminMediaAsset[];
+  try {
+    rows = await supabaseServerAdminRequest<AdminMediaAsset[]>(
     "/rest/v1/media_assets",
     {
       method: "POST",
@@ -122,9 +171,16 @@ export async function createAdminMediaAsset(input: {
         alt_text_ar: input.altText,
       }),
     },
-  );
+    );
+  } catch (saveError) {
+    await compensateOrphanedMediaAsset(upload, requestedPublicId);
+    throw saveError;
+  }
 
-  if (!rows[0]) throw new Error("تعذر تسجيل أصل الوسائط بعد رفع الملف.");
+  if (!Array.isArray(rows) || !rows[0]) {
+    await compensateOrphanedMediaAsset(upload, requestedPublicId);
+    throw new Error("تعذر تسجيل أصل الوسائط بعد رفع الملف.");
+  }
   return rows[0];
 }
 
