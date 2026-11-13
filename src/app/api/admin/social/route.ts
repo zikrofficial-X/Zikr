@@ -856,6 +856,19 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         );
       }
+      // Remote deletion is intentionally limited to Facebook targets. Require an
+      // explicit platform list so an omitted/empty list cannot widen a destructive
+      // request, and reject YouTube server-side even if a client bypasses the UI.
+      if (requestedPlatforms.length === 0 || requestedPlatforms.includes("youtube")) {
+        return NextResponse.json(
+          {
+            error: requestedPlatforms.includes("youtube")
+              ? "youtube_remote_delete_not_supported"
+              : "explicit_platform_selection_required",
+          },
+          { status: 400, headers: { "Cache-Control": "no-store" } },
+        );
+      }
       const selectedFilter = ids.map(encodeURIComponent).join(",");
       const selectedItems = await supabaseServerAdminRequest<QueueItem[]>(
         "/rest/v1/social_publish_queue?id=in.(" + selectedFilter + ")&status=eq.published&select=id,content_type,content_id,title,video_url,target_platforms,status,scheduled_at,published_at,error_message,created_at,metadata",
