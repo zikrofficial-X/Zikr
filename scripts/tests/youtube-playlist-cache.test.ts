@@ -84,19 +84,17 @@ assert.match(
 );
 
 
-assert.match(
-  source,
-  /async function readCachedChannel\\(channelId: string\\)[\\s\\S]*?\\.eq\\('external_id', channelId\\)/,
+assert.ok(
+  source.includes("async function readCachedChannel(channelId: string)") &&
+    source.includes(".eq('external_id', channelId)"),
   "cached YouTube channel metadata must be scoped to the configured channel ID",
 );
-assert.match(
-  source,
-  /readCachedChannel\\(YOUTUBE_CHANNEL_ID\\)/,
+assert.ok(
+  source.includes("readCachedChannel(YOUTUBE_CHANNEL_ID)"),
   "the feed cache must reject a profile belonging to a previously configured channel",
 );
-assert.match(
-  source,
-  /readCachedChannel\\(channelId\\)/,
+assert.ok(
+  source.includes("readCachedChannel(channelId)"),
   "sync fallback paths must only return a profile matching the resolved channel ID",
 );
 
