@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import {
   deleteCloudinaryImageIfUnreferenced,
   uploadCloudinaryImage,
@@ -96,6 +97,7 @@ async function compensateOrphanedMediaAsset(
     );
   }
 }
+
 export async function createAdminMediaAsset(input: {
   file: File;
   title: string;
@@ -141,36 +143,36 @@ export async function createAdminMediaAsset(input: {
   let rows: AdminMediaAsset[];
   try {
     rows = await supabaseServerAdminRequest<AdminMediaAsset[]>(
-    "/rest/v1/media_assets",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify({
-        name: input.file.name,
-        title: input.title,
-        media_type: "image",
-        asset_type: input.folder,
-        url: upload.secureUrl,
-        storage_path: upload.publicId,
-        mime_type: input.file.type,
-        size_bytes: upload.bytes,
-        source_id: input.sourceId,
-        license: input.license,
-        attribution: input.attribution,
-        rights_verified: false,
-        verified_rights: false,
-        published: false,
-        metadata: {
-          provider: "cloudinary",
-          cloudinary_public_id: upload.publicId,
+      "/rest/v1/media_assets",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
         },
-        created_by: input.createdBy,
-        alt_text_ar: input.altText,
-      }),
-    },
+        body: JSON.stringify({
+          name: input.file.name,
+          title: input.title,
+          media_type: "image",
+          asset_type: input.folder,
+          url: upload.secureUrl,
+          storage_path: upload.publicId,
+          mime_type: input.file.type,
+          size_bytes: upload.bytes,
+          source_id: input.sourceId,
+          license: input.license,
+          attribution: input.attribution,
+          rights_verified: false,
+          verified_rights: false,
+          published: false,
+          metadata: {
+            provider: "cloudinary",
+            cloudinary_public_id: upload.publicId,
+          },
+          created_by: input.createdBy,
+          alt_text_ar: input.altText,
+        }),
+      },
     );
   } catch (saveError) {
     await compensateOrphanedMediaAsset(upload, requestedPublicId);
@@ -190,28 +192,13 @@ export async function updateAdminMediaAsset(
 ): Promise<AdminMediaResult> {
   if (!id.trim()) return { ok: false, error: "معرّف الأصل غير صالح." };
 
-  if (action === "verify_rights") {
-    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-      `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Prefer: "return=representation",
-        },
-        body: JSON.stringify({
-          rights_verified: true,
-          verified_rights: true,
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-    if (!updated.length) return { ok: false, error: "أصل الوسائط غير موجود." };
-    return { ok: true };
-  }
-
   const current = await supabaseServerAdminRequest<
-    Array<{ id: string; rights_verified: boolean; verified_rights: boolean; updated_at: string }>
+    Array<{
+      id: string;
+      rights_verified: boolean;
+      verified_rights: boolean;
+      updated_at: string;
+    }>
   >(
     `/rest/v1/media_assets?select=id,rights_verified,verified_rights,updated_at&id=eq.${encodeURIComponent(
       id,
@@ -219,7 +206,18 @@ export async function updateAdminMediaAsset(
     { method: "GET" },
   );
 
-  if (!current[0]) return { ok: false, error: "أصل الوسائط غير موجود." };
+  if (!Array.isArray(current) || !current[0]) {
+    return { ok: false, error: "أصل الوسائط غير موجود." };
+  }
+  if (
+    typeof current[0].updated_at !== "string" ||
+    !current[0].updated_at.trim()
+  ) {
+    return {
+      ok: false,
+      error: "تعذر التحقق من إصدار الأصل. حدّث الصفحة ثم أعد المحاولة.",
+    };
+  }
   if (
     action === "publish" &&
     !(current[0].rights_verified && current[0].verified_rights)
@@ -227,8 +225,14 @@ export async function updateAdminMediaAsset(
     return { ok: false, error: "لا يمكن نشر الأصل قبل توثيق حقوقه." };
   }
 
+  const patch =
+    action === "verify_rights"
+      ? { rights_verified: true, verified_rights: true }
+      : { published: action === "publish" };
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}&updated_at=eq.${encodeURIComponent(current[0].updated_at)}`,
+    `/rest/v1/media_assets?id=eq.${encodeURIComponent(
+      id,
+    )}&updated_at=eq.${encodeURIComponent(current[0].updated_at)}`,
     {
       method: "PATCH",
       headers: {
@@ -236,12 +240,17 @@ export async function updateAdminMediaAsset(
         Prefer: "return=representation",
       },
       body: JSON.stringify({
-        published: action === "publish",
-        updated_at: new Date().toISOString(),
+        ...patch,
+        updated_at: buildNextRowVersionUpdatedAt(current[0].updated_at),
       }),
     },
   );
-  if (!updated.length) {
+  if (
+    !Array.isArray(updated) ||
+    updated.length !== 1 ||
+    typeof updated[0]?.id !== "string" ||
+    !updated[0].id.trim()
+  ) {
     return { ok: false, error: "تم تعديل الأصل بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة." };
   }
 
