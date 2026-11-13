@@ -134,7 +134,9 @@ BEGIN
   END IF;
 
   RETURN
-    pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.social_publish_queue\s+SET', 1, 'i') = 1
+    -- Reject any additional UPDATE, even when the two expected tables are still updated safely.
+    pg_catalog.regexp_count(definition, '\mUPDATE\M', 1, 'i') = 2
+    AND pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.social_publish_queue\s+SET', 1, 'i') = 1
     AND pg_catalog.regexp_count(definition, '\mUPDATE\s+public\.video_generation_requests\s+SET', 1, 'i') = 1
     AND pg_catalog.regexp_count(
       definition,

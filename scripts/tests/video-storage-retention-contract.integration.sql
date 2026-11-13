@@ -273,3 +273,35 @@ BEGIN
   END IF;
 END
 $purged$;
+
+-- The preflight must reject a third UPDATE to any unrelated table, not merely
+-- validate the two expected queue/request UPDATE statements independently.
+CREATE TABLE public.retention_contract_probe (
+  touched_at timestamptz
+);
+
+DO $extra_update_guard$
+DECLARE
+  definition text;
+  original_definition text;
+BEGIN
+  original_definition := pg_catalog.pg_get_functiondef(
+    'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
+  );
+  definition := pg_catalog.replace(
+    original_definition,
+    '  GET DIAGNOSTICS request_rows = ROW_COUNT;',
+    '  UPDATE public.retention_contract_probe SET touched_at = now();' || E'\n  GET DIAGNOSTICS request_rows = ROW_COUNT;'
+  );
+
+  IF definition = original_definition THEN
+    RAISE EXCEPTION 'Could not inject the third-UPDATE regression probe into the retention RPC.';
+  END IF;
+
+  EXECUTE definition;
+
+  IF public.video_storage_retention_contract_ready() IS NOT FALSE THEN
+    RAISE EXCEPTION 'The retention preflight must reject an extra UPDATE outside the queue/request pair.';
+  END IF;
+END
+$extra_update_guard$;

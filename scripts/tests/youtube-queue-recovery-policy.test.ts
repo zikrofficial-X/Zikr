@@ -87,7 +87,7 @@ for (const blockedMetadata of [
   { manualReconciliationPlatforms: ["youtube"], authBlockedPlatforms: ["youtube"], platformResults: { youtube: { ok: false, error: "invalid_grant" } } },
   { authBlockedPlatforms: ["youtube"], platformResults: { youtube: { ok: true, remoteId: "youtube-video-1" } } },
   { authBlockedPlatforms: ["youtube"], platformResults: { youtube: { ok: false, error: "fetch failed" } } },
-  { authBlockedPlatforms: ["facebook"], platformResults: { youtube: { ok: false, error: "invalid_grant" } } },
+  { authBlockedPlatforms: ["facebook"], platformResults: { youtube: { ok: false, error: "network timeout" } } },
 ]) {
   assert.equal(
     buildYouTubeQueueRecoveryPatch(blockedMetadata, ["youtube", "facebook"], now, updatedAt),
