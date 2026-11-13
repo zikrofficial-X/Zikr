@@ -321,10 +321,10 @@ const previousRemoteDeletionRow = {
     platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } },
   },
 };
-let replacementDeletionPayload: { metadata: Record<string, unknown>; updated_at: string } | null = null;
+const replacementDeletionPayloads: Array<{ metadata: Record<string, unknown>; updated_at: string }> = [];
 const replacementDeletionRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
   if (!init) return [{ ...previousRemoteDeletionRow }] as T;
-  replacementDeletionPayload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  replacementDeletionPayloads.push(JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string });
   return [{ id: previousRemoteDeletionRow.id }] as T;
 };
 assert.equal(
@@ -335,8 +335,10 @@ assert.equal(
   "claimed",
   "a new successful provider ID may receive a new deletion claim without inheriting the old ID's terminal state",
 );
+const replacementDeletionPayload = replacementDeletionPayloads[0];
+assert.ok(replacementDeletionPayload, "the new provider ID must be persisted in a deletion lease");
 assert.equal(
-  (replacementDeletionPayload?.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
+  (replacementDeletionPayload.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
   "youtube-remote-2",
   "the new deletion lease must store the exact provider ID it protects",
 );
