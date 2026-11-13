@@ -35,6 +35,25 @@ assert.match(contentConsole, /canPublish \? <form action=\{safeTogglePublishActi
 assert.match(contentConsole, /canPublish && scheduledAvailable/);
 assert.match(contentConsole, /canDelete \? <form action=\{safeDeleteContentAction\}/);
 
+assert.equal(hasAdminPermission("moderator", "kids.manage"), true);
+assert.equal(hasAdminPermission("moderator", "media.manage"), false);
+assert.equal(hasAdminPermission("moderator", "content.publish"), false);
+assert.equal(hasAdminPermission("editor", "kids.manage"), true);
+assert.equal(hasAdminPermission("editor", "media.manage"), true);
+assert.equal(hasAdminPermission("editor", "content.publish"), true);
+
+const kidsContentPage = readFileSync("src/app/admin/kids/content/page.tsx", "utf8");
+const kidsContentManager = readFileSync("src/features/admin/components/kids-content-manager.tsx", "utf8");
+const kidsContentActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
+assert.match(kidsContentPage, /hasAdminPermission\(admin\.role, "content\.publish"\)/);
+assert.match(kidsContentPage, /hasAdminPermission\(admin\.role, "media\.manage"\)/);
+assert.match(kidsContentPage, /canPublish=\{canPublish\} canManageMedia=\{canManageMedia\}/);
+assert.match(kidsContentManager, /canManageMedia \? <CloudinaryImageUploadField/);
+assert.match(kidsContentManager, /canPublish \? <label/);
+assert.match(kidsContentActions, /if \(published\) await requireAdminStepUp\("content\.publish"/);
+assert.match(kidsContentActions, /requireAdminPermission\("media\.manage"\)/);
+
+
 assert.equal(resolveDestructiveMfaRequirement(false), false, "an explicit false setting may disable optional step-up MFA");
 assert.equal(resolveDestructiveMfaRequirement(true), true);
 assert.equal(resolveDestructiveMfaRequirement(undefined), true, "a missing MFA setting must fail closed");
