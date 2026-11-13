@@ -428,7 +428,14 @@ const releaseEnd = adminSocialRoute.indexOf('if (action === "run_worker")', rele
 const releaseBlock = adminSocialRoute.slice(releaseStart, releaseEnd);
 assert.match(releaseBlock, /queueUpdateFailed[\s\S]*status:\s*503/);
 assert.match(releaseBlock, /workerDispatchFailed:\s*released > 0 && !workerDispatched/);
-assert.ok(adminSocialClient.includes("payload.released") && adminSocialClient.includes("payload.queueUpdateFailed"), "the release action must display its actual count and an unconfirmed update as an error");
+assert.ok(adminSocialClient.includes("payload.released") && adminSocialClient.includes("payload.queueUpdateFailed"), "the dedicated release handler must consume the API's release count and reject unconfirmed queue updates");
+const runActionStart = adminSocialClient.indexOf("const runAction = useCallback");
+const runActionEnd = adminSocialClient.indexOf("const deletePublished", runActionStart + 1);
+const runActionBlock = adminSocialClient.slice(runActionStart, runActionEnd);
+assert.ok(runActionStart >= 0 && runActionEnd > runActionStart, "the generic queue action handler must remain discoverable for its contract checks");
+assert.doesNotMatch(runActionBlock, /release_auth_blocked_queue|payload\.released/, "the generic retry/delete/publish handler must not handle the separate auth-block release action");
+assert.match(runActionBlock, /async \(action: "retry" \| "retry_all_failed" \| "delete" \| "delete_failed" \| "publish_now"\)/, "the generic handler's action union must match the actions it actually dispatches");
+assert.match(adminSocialClient, /const releaseAuthBlockedQueue = useCallback[\s\S]*?action: "release_auth_blocked_queue"[\s\S]*?payload\.released/, "auth-block release must stay in its dedicated handler");
 
 console.log("Social platform isolation and independent readiness tests passed.");
 
