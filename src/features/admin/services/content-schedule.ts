@@ -15,7 +15,7 @@ export function formatLocalDateTimeInputValue(
 }
 
 export function getLocalDateTimeOffsetMinutes(value: string): number | null {
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value.trim());
   if (!match) return null;
 
   const [year, month, day, hour, minute] = match.slice(1).map(Number);
