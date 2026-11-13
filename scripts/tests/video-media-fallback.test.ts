@@ -5,6 +5,8 @@ import { supabaseServerAdminExactCount } from "../../src/lib/supabase/admin-rest
 import { test } from "node:test";
 import {
   getConfirmedYoutubeFallbackId,
+  reconcileYoutubeFallbackMetadata,
+  resolveLatestConfirmedYoutubeQueueState,
   resolveVideoMediaUrl,
   resolveVideoThumbnail,
   resolveVideoYoutubeId,
@@ -27,6 +29,9 @@ assert.equal(VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT, 1000, "the social queue audit
 const supabaseConfig = readFileSync("supabase/config.toml", "utf8");
 assert.match(supabaseConfig, /max_rows\s*=\s*1000/);
 const mediaAuditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+assert.ok(mediaAuditScript.includes("resolveLatestConfirmedYoutubeQueueState"), "media audit must resolve the latest publication/deletion event, not the first successful row");
+assert.ok(mediaAuditScript.includes("reconcileYoutubeFallbackMetadata"), "media audit must clear catalog fallback metadata after an explicit YouTube deletion");
+assert.ok(mediaAuditScript.includes("youtubeQueueRowsByRequest"), "media audit must group every queue event for each video-generation request");
 assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("videos"\)/);
 assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("social_publish_queue"\)/);
 assert.match(mediaAuditScript, /social_publish_queue[^\n]*limit=1000/);
@@ -62,6 +67,76 @@ const confirmed = {
     videoUrl: null,
   },
 };
+
+const publishedQueueRow = {
+  status: "published",
+  published_at: "2026-11-12T12:00:00.000Z",
+  metadata: { platformResults: { youtube: { ok: true, remoteId: id } } },
+};
+const deletedQueueRow = {
+  status: "published",
+  published_at: "2026-11-12T12:00:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: id } },
+    platformDeletions: {
+      youtube: { status: "deleted", remoteId: id, deletedAt: "2026-11-12T12:01:00.000Z" },
+    },
+  },
+};
+const deletedYoutubeState = { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" };
+assert.deepEqual(resolveLatestConfirmedYoutubeQueueState([publishedQueueRow, deletedQueueRow]), deletedYoutubeState);
+assert.deepEqual(resolveLatestConfirmedYoutubeQueueState([deletedQueueRow, publishedQueueRow]), deletedYoutubeState,
+  "a confirmed YouTube deletion must win independently of queue row order");
+const legacyArrayQueueRow = {
+  ...publishedQueueRow,
+  metadata: { platformResults: [{ platform: "youtube", ok: true, remoteId: id }] },
+};
+assert.deepEqual(
+  resolveLatestConfirmedYoutubeQueueState([legacyArrayQueueRow]),
+  { status: "published", id, publishedAt: publishedQueueRow.published_at },
+  "legacy array-shaped platform results must remain readable by the media audit",
+);
+const republishedQueueRow = {
+  status: "published",
+  published_at: "2026-11-12T12:02:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "newVideo99" } },
+    platformDeletions: {
+      youtube: { status: "deleted", remoteId: id, deletedAt: "2026-11-12T12:01:00.000Z" },
+    },
+  },
+};
+assert.deepEqual(
+  resolveLatestConfirmedYoutubeQueueState([deletedQueueRow, republishedQueueRow]),
+  { status: "published", id: "newVideo99", publishedAt: republishedQueueRow.published_at },
+  "a strictly later confirmed republish may restore the YouTube fallback",
+);
+const tiedDeletionRow = {
+  ...publishedQueueRow,
+  published_at: "2026-11-12T12:01:00.000Z",
+  metadata: {
+    ...publishedQueueRow.metadata,
+    platformDeletions: {
+      youtube: { status: "deleted", deletedAt: "2026-11-12T12:01:00.000Z" },
+    },
+  },
+};
+assert.deepEqual(
+  resolveLatestConfirmedYoutubeQueueState([tiedDeletionRow, publishedQueueRow]),
+  deletedYoutubeState,
+  "a deletion at the exact publication timestamp must win",
+);
+const clearedFallbackMetadata = reconcileYoutubeFallbackMetadata(confirmed.metadata, deletedYoutubeState);
+assert.equal(clearedFallbackMetadata.mediaFallbackAvailable, false);
+assert.equal(clearedFallbackMetadata.youtubePublishedVideoId, null);
+assert.equal(clearedFallbackMetadata.youtubePublishedUrl, null);
+assert.equal(clearedFallbackMetadata.youtubePublishedAt, null);
+assert.equal(
+  getConfirmedYoutubeFallbackId({ ...confirmed, metadata: clearedFallbackMetadata }),
+  null,
+  "an explicitly deleted YouTube publication must no longer be accepted as a public media fallback",
+);
+
 
 assert.equal(getConfirmedYoutubeFallbackId(confirmed), id);
 assert.equal(resolveVideoYoutubeId(confirmed), id);
