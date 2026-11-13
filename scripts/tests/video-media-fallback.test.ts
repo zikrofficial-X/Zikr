@@ -322,7 +322,7 @@ assert.ok(socialPublisher.includes("published: true"), "eligible late YouTube fa
 
 const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const kidsListStart = kidsVideoService.indexOf("export async function getKidsGeneratedVideos");
-const kidsListEnd = kidsVideoService.indexOf("type KidsVideoSocialQueueRow", kidsListStart);
+const kidsListEnd = kidsVideoService.indexOf("const VIDEO_GENERATION_REQUEST_ID_PATTERN", kidsListStart);
 assert.ok(kidsListStart >= 0 && kidsListEnd > kidsListStart, "Kids video list query must remain in its dedicated service");
 const kidsListSource = kidsVideoService.slice(kidsListStart, kidsListEnd);
 for (const filter of [
