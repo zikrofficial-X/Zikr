@@ -2205,3 +2205,15 @@ This section is a branch snapshot, not a change to the main-baseline matrix abov
 - The main-baseline backlog remains 1,525 REVIEW_REQUIRED rows and zero closed modules. Branch review status does not close the main-baseline backlog.
 - Two additional source repairs are recorded in the current ledger: server-side Facebook-only remote deletion enforcement and monotonic CAS row-version advancement in the scheduled media audit. Exact-head tests are pending on source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5; no code is certified by the previous head's checks.
 - Production remains on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; no audit branch deployment, production mutation, migration apply, social publishing, content generation, storage deletion, or mobile release occurred.
+
+
+## PR #320 branch reconciliation — 2026-11-13 — source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4
+
+- Branch tree 72b1ed0eb48f5172b82aa9ae163696e6c0f1d141: 2,266 entries (1,769 files, 497 directories); main tree 037a8e58e13187abe4198f366b2d38db6031789d: 2,154 entries (1,662 files, 492 directories); no main paths absent from the branch.
+- Full PR file listing: 311 paths (107 added, 204 modified, 0 removed); compare API is capped at 300 file entries.
+- Branch manifest docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl: 2,265 records from source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4, self-excluded. Main baseline manifest: 2,153 records, matching main except its self-entry.
+- PR overlay: 310 rows: 79 CONTENT_READ_TESTED_PASS, 22 CONTENT_READ_PENDING_TRACE, 198 REVIEW_REQUIRED, 11 FIXED_TESTED_PENDING_LIVE_APPLY.
+- Exact code-head verification: Quality Gate run 43360089461 SUCCESS with full scope, pnpm verify, pnpm verify:pr, PostgreSQL 17 integration tests; CircleCI run 43360089807 SUCCESS and all three required contexts SUCCESS.
+- Additional repairs: YouTube OAuth now selects the configured channel from the full channel list and fails closed on ambiguous multi-channel accounts; Facebook credential validation uses monotonic CAS row-version advancement.
+- Production Kids RLS still omits is_active from the public read policy; the local migration 20261110212000 is pending. Current production has 65 published active rows and zero published inactive rows. No production mutation was performed.
+- The main-baseline backlog remains 1,525 REVIEW_REQUIRED rows and zero closed modules. Production remains on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; no audit-branch deployment, migration apply, content generation, social publishing, storage deletion, or mobile release occurred.

@@ -847,3 +847,38 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 8. Only after source review, owner review, and exact-head gates pass: merge under protected-branch rules, deploy through the approved Vercel release path, verify READY on the merged SHA, then repeat production smoke checks.
 
 No repository-wide error-free or project-closed certification is made.
+
+
+## Audit checkpoint — 2026-11-13 — verified source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4
+
+**State: OPEN / IN PROGRESS.** The audit branch remains unmerged and has not been deployed.
+
+- Branch audit/zikr-kids-daily-priority-20261110; PR #320; base main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3. Source-code checkpoint 31376aaf947755f9f17b883345be4a5ebe9f6bb4; recursive tree 72b1ed0eb48f5172b82aa9ae163696e6c0f1d141; 2,266 entries (1,769 files, 497 directories). Main has 2,154 entries (1,662 files, 492 directories); no main paths are deleted.
+- PR file listing: 311 changed paths (107 added, 204 modified, 0 removed). GitHub's compare endpoint caps its file array at 300, so the full PR file listing is used.
+- Branch manifest docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl: 2,265 records from source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4, self-excluded. Main manifest remains 2,153 records (1,661 blobs, 492 directories), pinned to main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3.
+- Overlay: 310 rows, 79 CONTENT_READ_TESTED_PASS, 22 CONTENT_READ_PENDING_TRACE, 198 REVIEW_REQUIRED, 11 FIXED_TESTED_PENDING_LIVE_APPLY. The main-baseline matrix remains 1,525 REVIEW_REQUIRED and zero closed modules.
+- Full exact-head verification passed on source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4: GitHub Quality Gate run 43360089461 completed SUCCESS; the log records QUALITY_GATE_FULL_SCOPE=true, pnpm verify, pnpm verify:pr, PostgreSQL 17 integration checks, and QUALITY_GATE=PASSED_FULL. CircleCI config-validation run 43360089807 passed; config-guard, application-build-docs, and source-verify contexts are all SUCCESS. The documentation-only reconciliation after this source head is not a code repair and is not treated as a new code verification.
+- Repair batch C: YouTube OAuth no longer selects the first channel returned by Google and then rejects a valid configured channel if it appears later. It now selects the exact configured channel from all returned channels; without a configured ID, it only accepts one unambiguous channel and otherwise fails closed with channel_selection_required plus an admin UI instruction. Repair batch D: Facebook credential validation now advances updated_at monotonically with buildNextRowVersionUpdatedAt, preventing same-millisecond CAS token reuse. Commits: e1002a07fae6892b7a32f3ca4357efe83e4543ac and test correction 31376aaf947755f9f17b883345be4a5ebe9f6bb4.
+- Previous repairs remain covered by the same full gate: server-side YouTube remote deletion rejection and explicit platform selection; scheduled video-media audit monotonic CAS row-version advancement.
+- Kids public data snapshot: 65 published+active kids_content rows, 22 qualified generated Kids videos, 1 Kids written post, 8 published/partial Kids video queue rows, 0 qualified videos missing videoGenerationRequestId, and 0 published inactive kids_content rows. Current 1,000/60/12 API caps do not truncate these current counts.
+- Production RLS contract: public.kids_content_public_read currently checks published=true but not is_active=true. The Kids server API explicitly filters is_active=true, and there are currently zero published inactive rows, but direct anon Supabase reads can omit that filter. Migration 20261110212000_kids_content_public_read_respects_active_state.sql fixes the RLS policy and is among the 12 local-only migrations; it has not been applied. The production increment_kids_content_shares function is SECURITY DEFINER with search_path=public, but ACL checks show only service_role can execute it (anon/authenticated cannot); the pending migration hardens it to SECURITY INVOKER/search_path empty.
+- Kids admin media lifecycle remains open: saveKidsContentAction validates before upload, but if the Cloudinary upload succeeds and the subsequent DB insert fails, it has no verified compensating cleanup. No media was deleted; any future rollback must first verify that no database row references the exact newly created public_id and must fail closed if that check cannot be completed.
+- Workflow review: generate-ai-video uses BACKGROUND_JOB_TARGET=videos and does not invoke the social publish worker; it does run scheduled internal site-content publication when not dry-run. Social publishing remains a separate workflow. sync-social-insights uses BACKGROUND_JOB_TARGET=insights and SOCIAL_PUBLISH_ENABLED=false. No workflow was dispatched or run for this audit.
+- Supabase: 418 remote migrations through 20261110170000; 430 local; 12 pending versions: 20261110212000, 20261111000000, 20261111003000, 20261111010000, 20261111020000, 20261111030000, 20261111040000, 20261111050000, 20261111153000, 20261111170000, 20261112103200, 20261113000000. Eleven are test-backed/pending live apply; 20261111000000 remains REVIEW_REQUIRED. Security advisor: auth_leaked_password_protection WARN. Performance advisor: 81 unused-index findings; no index was removed.
+- Vercel production deployment dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu remains READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3. Read-only GET checks returned 200 for /api/health (main SHA c4560d9ccb222bea5814cc4db32d4c3f1a2101b3), /, /kids, /quran/1/1, and AASA. Production AASA currently returns 200 with empty applinks.details and webcredentials.apps. The audit-branch AASA route fails closed when IOS_ASSOCIATED_DOMAIN_APP_ID is missing; set the production variable before deploying the branch after merge.
+- Historical TypeError: fetch failed for /quran/[surah]/[ayah] last seen 2026-11-12 11:41 UTC; /quran/1/1 returned 200 on 2026-11-13, so the runtime error was not reproduced.
+- PR #320 remains open and unmerged with no owner review or reviewer request; mergeable state remains unstable. No CODEOWNERS or protected-branch gate was bypassed.
+- No production DB mutation, migration apply, content generation, Gemini request, social publishing, push notification, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment occurred.
+
+### Remaining work
+
+1. Complete 198 REVIEW_REQUIRED and 22 PENDING_TRACE PR rows, then continue the 1,525-row main-baseline backlog.
+2. Re-read and test migration 20261111000000; keep all 12 migrations unapplied until an owner-approved apply plan and safe rollback procedure exist.
+3. Obtain CODEOWNERS owner review; PR #320 has none.
+4. Resolve leaked-password protection in Supabase Auth and review the 81 unused-index findings without deleting indexes during audit.
+5. Add a safe Cloudinary orphan-compensation procedure for Kids content inserts, including a database-reference check before deleting only the exact newly uploaded asset.
+6. Supply Apple Team ID / app identifier values, populate AASA, verify Android assetlinks against the Play signing certificate, and complete physical iOS/Android deep-link, OAuth, notification, and signing acceptance.
+7. Diagnose the main-only english-content-sync failure from existing logs; do not rerun content generation or Gemini work.
+8. After source review and owner approval, merge under protection rules, deploy through the approved Vercel path, verify READY on the merged SHA, and repeat production smoke checks.
+
+No repository-wide error-free or project-closed certification is made.

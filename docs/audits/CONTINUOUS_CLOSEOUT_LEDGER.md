@@ -1218,3 +1218,43 @@ Audit status remains OPEN; no project-wide error-free or closed certification is
 - No production DB mutation, migration application, content generation, Gemini request, social publishing, push notification, media/storage deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment.
 - Owner review is required before merge. All 12 migrations remain unapplied. Supabase leaked-password protection, Apple AASA identifiers, physical Android/iOS acceptance, and the main-only english-content-sync failure remain open.
 - Exact-head CI is not complete. The documentation reconciliation commit created from this source head will trigger a new check set; pending checks must not be treated as successful.
+
+
+## Audit run — 2026-11-13 — source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4
+
+**State: OPEN.** This is the verified code head before the following documentation-only inventory refresh.
+
+### Exact verification
+
+- GitHub ZIKR / Quality Gate run 43360089461: SUCCESS on exact source head 31376aaf947755f9f17b883345be4a5ebe9f6bb4. Workflow logs show QUALITY_GATE_FULL_SCOPE=true, pnpm verify, pnpm verify:pr, PostgreSQL 17 integration checks, and QUALITY_GATE=PASSED_FULL.
+- CircleCI config-validation run 43360089807: SUCCESS. Required contexts config-guard, application-build-docs, and source-verify are all SUCCESS on this exact code head.
+- The focused video CAS regression was present in the successful run. The YouTube OAuth and Facebook credential tests were also included in the full test suite; the suite completed without failures.
+- This supersedes the earlier in-progress snapshot for source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5. The subsequent documentation commits do not alter source code.
+
+### Additional repairs
+
+1. **YouTube multi-channel OAuth.** The callback previously chose the first channel returned by channels.list(mine=true), then compared it to YOUTUBE_CHANNEL_ID. A valid configured channel later in the returned list was incorrectly rejected; with no configured ID, the first of multiple managed channels could be silently selected. The new selectYouTubeChannel helper selects the exact configured ID from all valid results, allows only one unambiguous channel without an override, and fails closed with channel_selection_required otherwise. The admin UI now explains the required configuration. Code and regression test changes are in commit e1002a07fae6892b7a32f3ca4357efe83e4543ac; the exact-head test assertion correction is 31376aaf947755f9f17b883345be4a5ebe9f6bb4.
+2. **Facebook validation CAS.** persistValidation previously wrote updated_at with Date.now()/new Date().toISOString() while using updated_at as its CAS token. Two writes in the same millisecond could reuse the token and permit a stale validation result to overwrite a newer one. It now uses buildNextRowVersionUpdatedAt(updatedAt); the same-millisecond regression assertion is included in the full gate. Implementation/test commit e1002a07fae6892b7a32f3ca4357efe83e4543ac; assertion correction 31376aaf947755f9f17b883345be4a5ebe9f6bb4.
+
+### Kids content, RLS, and media lifecycle
+
+- Production public.kids_content_public_read currently has qual published=true and does not include is_active=true. The Kids server API explicitly filters is_active=true; production currently has 65 published+active rows and 0 published inactive rows. However, direct anon Supabase REST requests can omit the server API filter, so RLS does not enforce the inactive-content contract. Migration 20261110212000_kids_content_public_read_respects_active_state.sql corrects this and remains unapplied among the 12 local-only migrations.
+- Production increment_kids_content_shares is SECURITY DEFINER with search_path=public, but has_function_privilege checks show anon and authenticated cannot execute; only service_role can. The pending migration changes it to SECURITY INVOKER and search_path empty. No public RPC execution was observed.
+- Current Kids data: 65 public content records, 22 qualified generated videos, 1 Kids written post, 8 published/partial Kids video queue rows, 0 qualified videos missing videoGenerationRequestId, and 0 published inactive kids_content rows. The current 1,000/60/12 caps do not truncate the current dataset.
+- saveKidsContentAction validates form data before upload, but a successful Cloudinary image upload followed by a failed database insert can leave an orphan asset. No cleanup was attempted. A future cleanup must query the exact new public_id/URL to prove no row references it, and must fail closed if that verification fails.
+- The Kids content manager explicitly labels its latest-300 view; the current dataset is 65. Kids video and social-post feeds currently contain 22 and 1 items respectively.
+
+### Workflow and mobile review
+
+- generate-ai-video uses BACKGROUND_JOB_TARGET=videos; it does not call the social-publish worker. It does run scheduled internal site-content publication when not dry-run. Social publishing is handled by a separate workflow.
+- sync-social-insights uses BACKGROUND_JOB_TARGET=insights and SOCIAL_PUBLISH_ENABLED=false; no publishing path is invoked.
+- No workflow was dispatched. No generation, Gemini, social publish, notification, retention apply, or release job was executed.
+- The branch AASA route fails closed when IOS_ASSOCIATED_DOMAIN_APP_ID is absent. Production AASA currently returns 200 with empty applinks.details and webcredentials.apps; configure the identifier before deploying the branch. Physical iOS/Android deep-link, OAuth, notification, and signing acceptance remains owner/device-only.
+
+### Current external blockers
+
+- Supabase: 418 remote applied migrations through 20261110170000; 430 local; 12 missing versions: 20261110212000, 20261111000000, 20261111003000, 20261111010000, 20261111020000, 20261111030000, 20261111040000, 20261111050000, 20261111153000, 20261111170000, 20261112103200, 20261113000000. Eleven are test-backed/pending live apply; 20261111000000 remains REVIEW_REQUIRED.
+- Security advisor: auth_leaked_password_protection WARN. Performance advisor: 81 unused-index findings. No indexes were deleted.
+- Vercel production deployment dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu remains READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; read-only smoke returned 200 for /api/health, /, /kids, /quran/1/1, and AASA (empty associations). No audit-branch deployment was created.
+- PR #320 remains open without owner review; mergeable state unstable. No merge or approval gate bypass.
+- No production database mutation, migration apply, content generation, Gemini request, social publishing, push notification, media/storage deletion, secret rotation, Android/iOS release, merge, or deployment occurred.
