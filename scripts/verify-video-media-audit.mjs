@@ -72,6 +72,13 @@ if (!mediaContract.includes("metadata.mediaState === \"unlinked\"") ||
     !audit.includes('state: "skipped"')) {
   failures.push("Explicitly unlinked internal media must remain hidden and must not be restored by the scheduled media audit");
 }
+if (!mediaContract.includes("metadata.mediaState === \"purged\"") ||
+    !audit.includes("isPurgedInternalVideoMedia(row)") ||
+    !audit.includes("const assetUrl = explicitlyPurged ? null : cloudinaryAssetUrl(metadata)") ||
+    !audit.includes('if (explicitlyPurged) mediaState = "purged"') ||
+    !audit.includes("row.thumbnail_url, !explicitlyPurged")) {
+  failures.push("An explicit purge tombstone must survive media reconciliation; retained source URLs must not be probed or promoted back into playback");
+}
 if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {
   failures.push("Public video service must use the canonical media resolver contract");
 }

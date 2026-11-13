@@ -223,6 +223,12 @@ export function isUnlinkedInternalVideoMedia(row: Record<string, unknown>): bool
   return metadata.generator === "zikr_internal_video_factory" && metadata.mediaState === "unlinked";
 }
 
+/** Keep an explicit purge tombstone until a confirmed publication recovery changes it. */
+export function isPurgedInternalVideoMedia(row: Record<string, unknown>): boolean {
+  const metadata = metadataFor(row);
+  return metadata.generator === "zikr_internal_video_factory" && metadata.mediaState === "purged";
+}
+
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
   if (isUnlinkedInternalVideoMedia(row)) return null;

@@ -2,6 +2,7 @@ import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
 import {
   getConfirmedYoutubeFallbackId,
+  isPurgedInternalVideoMedia,
   isUnlinkedInternalVideoMedia,
   reconcileYoutubeFallbackMetadata,
   resolveLatestConfirmedYoutubeQueueState,
@@ -103,9 +104,15 @@ async function probeCloudinary(url: string): Promise<MediaProbe> {
   }
 }
 
-function thumbnailFor(metadata: JsonRecord, youtubeId: string | null, current: string | null): string | null {
+function thumbnailFor(
+  metadata: JsonRecord,
+  youtubeId: string | null,
+  current: string | null,
+  allowCloudinary = true,
+): string | null {
   if (current?.trim()) return current.trim();
   if (youtubeId) return "https://i.ytimg.com/vi/" + youtubeId + "/hqdefault.jpg";
+  if (!allowCloudinary) return "/branding/og-image.jpg";
   const url = cloudinaryAssetUrl(metadata);
   if (url) {
     const parsed = new URL(url);
@@ -150,6 +157,7 @@ async function auditOne(
       reason: "media_explicitly_unlinked",
     };
   }
+  const explicitlyPurged = isPurgedInternalVideoMedia(row);
   const requestId = typeof metadata.videoGenerationRequestId === "string"
     ? metadata.videoGenerationRequestId
     : "";
@@ -175,11 +183,14 @@ async function auditOne(
   const hasConfirmedYoutubeFallback = Boolean(
     confirmedYoutubeFallbackId && confirmedYoutubeFallbackId === youtubeId,
   );
-  const assetUrl = cloudinaryAssetUrl(metadata);
+  // A purge tombstone is authoritative. sourceVideoUrl may remain as historical
+  // metadata, but it must never be probed and promoted back into public playback.
+  const assetUrl = explicitlyPurged ? null : cloudinaryAssetUrl(metadata);
   const probe = assetUrl ? await probeCloudinary(assetUrl) : null;
 
   let mediaState: string;
-  if (assetUrl && probe?.status === "available") mediaState = "cloudinary_ready";
+  if (explicitlyPurged) mediaState = "purged";
+  else if (assetUrl && probe?.status === "available") mediaState = "cloudinary_ready";
   else if (assetUrl && probe?.status === "missing") mediaState = "cloudinary_missing";
   else if (!assetUrl && hasConfirmedYoutubeFallback) mediaState = "youtube_only";
   else if (!assetUrl) mediaState = "unavailable";
@@ -190,11 +201,15 @@ async function auditOne(
     mediaState,
     mediaAudit: {
       checkedAt: now,
-      source: assetUrl ? "cloudinary_head_or_range" : hasConfirmedYoutubeFallback ? "published_youtube_reference" : "no_confirmed_playable_reference",
+      source: explicitlyPurged
+        ? "explicit_purge_tombstone"
+        : assetUrl ? "cloudinary_head_or_range" : hasConfirmedYoutubeFallback ? "published_youtube_reference" : "no_confirmed_playable_reference",
       httpStatus: probe?.httpStatus ?? null,
       contentType: probe?.contentType ?? null,
-      result: probe?.status ?? (hasConfirmedYoutubeFallback ? "youtube_fallback" : "unavailable"),
-      reason: probe?.reason ?? null,
+      result: probe?.status ?? (explicitlyPurged
+        ? hasConfirmedYoutubeFallback ? "youtube_fallback" : "purged"
+        : hasConfirmedYoutubeFallback ? "youtube_fallback" : "unavailable"),
+      reason: probe?.reason ?? (explicitlyPurged ? "media_explicitly_purged" : null),
       youtubeFallbackAvailable: hasConfirmedYoutubeFallback,
     },
     ...(queueYouTubeId ? {
@@ -204,7 +219,7 @@ async function auditOne(
       mediaFallbackAvailable: true,
     } : {}),
   };
-  const thumbnail = thumbnailFor(metadata, confirmedYoutubeFallbackId, row.thumbnail_url);
+  const thumbnail = thumbnailFor(metadata, confirmedYoutubeFallbackId, row.thumbnail_url, !explicitlyPurged);
   const patch: Record<string, unknown> = {
     metadata: nextMetadata,
   };

@@ -5,6 +5,7 @@ import { supabaseServerAdminExactCount } from "../../src/lib/supabase/admin-rest
 import { test } from "node:test";
 import {
   getConfirmedYoutubeFallbackId,
+  isPurgedInternalVideoMedia,
   reconcileYoutubeFallbackMetadata,
   resolveLatestConfirmedYoutubeQueueState,
   resolveVideoMediaUrl,
@@ -36,6 +37,11 @@ assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("videos"\)/);
 assert.match(mediaAuditScript, /supabaseServerAdminExactCount\("social_publish_queue"\)/);
 assert.match(mediaAuditScript, /social_publish_queue[^\n]*limit=1000/);
 assert.doesNotMatch(mediaAuditScript, /social_publish_queue[^\n]*limit=2000/);
+assert.ok(mediaAuditScript.includes("isPurgedInternalVideoMedia(row)"), "media audit must recognize an explicit purge tombstone");
+assert.ok(mediaAuditScript.includes("const assetUrl = explicitlyPurged ? null : cloudinaryAssetUrl(metadata)"), "purged source URLs must never be probed as active playback masters");
+assert.ok(mediaAuditScript.includes('if (explicitlyPurged) mediaState = "purged"'), "media audit must preserve the purge tombstone while reconciling YouTube queue events");
+assert.ok(mediaAuditScript.includes('source: explicitlyPurged'), "media audit evidence must distinguish an explicit purge from a missing Cloudinary asset");
+assert.ok(mediaAuditScript.includes("row.thumbnail_url, !explicitlyPurged"), "purged rows must not receive a new Cloudinary-derived thumbnail");
 
 assert.throws(
   () => assertCompleteVideoMediaAuditInventory(79, 1000),
@@ -49,6 +55,13 @@ assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_missing", you
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_missing", youtubeFallback: true }), false);
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "youtube_only" }), false);
 assert.equal(isBlockingVideoMediaAuditOutcome({ state: "cloudinary_ready" }), false);
+assert.equal(isBlockingVideoMediaAuditOutcome({ state: "purged" }), false, "an explicit purge is an intentional terminal state, not an availability failure");
+assert.equal(isPurgedInternalVideoMedia(confirmed), true, "a purged internal video must retain its explicit tombstone");
+assert.equal(
+  isPurgedInternalVideoMedia({ ...confirmed, metadata: { ...confirmed.metadata, mediaState: "youtube_fallback" } }),
+  false,
+  "a confirmed publication recovery may move the row out of the purge tombstone",
+);
 
 const id = "5pob7O7rLnU";
 const confirmed = {
