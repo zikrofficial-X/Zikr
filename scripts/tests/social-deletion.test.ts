@@ -17,6 +17,9 @@ const youtubeEnv = {
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "legacy-environment-refresh-token",
 };
+// This injected resolver models a future, separately approved delete-only credential.
+// Production upload/read credentials intentionally reject delete scopes; the admin UI keeps
+// YouTube deletion disabled until a dedicated credential flow is approved.
 const resolveStoredYouTubeRefreshToken = async () => "private-refresh-token";
 
 let youtubeDeleteRequests = 0;
@@ -370,7 +373,7 @@ assert.ok(
 );
 assert.match(
   readFileSync("src/app/admin/social/social-client.tsx", "utf8"),
-  /JSON\.stringify\(\{ action: "delete_published", ids, platforms, confirmed: true \}\)/,
+  /JSON\.stringify\(\{ action: "delete_published", ids, platforms: requestedPlatforms, confirmed: true \}\)/,
   "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
 );
 assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
