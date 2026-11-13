@@ -6,6 +6,16 @@ DECLARE
   job_command text;
   job_schedule text;
   job_active boolean;
+  expected_command constant text := $expected$
+    SELECT net.http_post(
+      url := 'https://zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/source-verified-content-agent',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || public.get_push_scheduler_secret()
+      ),
+      body := jsonb_build_object('source', 'pg_cron')
+    );
+  $expected$;
 BEGIN
   SELECT count(*) INTO job_count
   FROM cron.job
@@ -23,17 +33,9 @@ BEGIN
   IF job_schedule <> '0 3 * * *' OR job_active IS DISTINCT FROM true THEN
     RAISE EXCEPTION 'source-agent cron schedule must be active daily at 03:00 UTC';
   END IF;
-  IF position('https://zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/source-verified-content-agent' in job_command) = 0 THEN
-    RAISE EXCEPTION 'source-agent cron command points at the wrong Supabase project';
-  END IF;
-  IF position('net.http_post(' in job_command) = 0 THEN
-    RAISE EXCEPTION 'source-agent cron command must invoke net.http_post';
-  END IF;
-  IF position('public.get_push_scheduler_secret()' in job_command) = 0 THEN
-    RAISE EXCEPTION 'source-agent cron command must authenticate with the scheduler secret RPC';
-  END IF;
-  IF position('jsonb_build_object(''source'', ''pg_cron'')' in job_command) = 0 THEN
-    RAISE EXCEPTION 'source-agent cron command must identify the pg_cron source';
+  IF regexp_replace(btrim(job_command), '[[:space:]]+', ' ', 'g')
+       <> regexp_replace(btrim(expected_command), '[[:space:]]+', ' ', 'g') THEN
+    RAISE EXCEPTION 'source-agent cron command must exactly match the authenticated canonical request';
   END IF;
 END;
 $contract$;
