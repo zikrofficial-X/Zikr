@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   FACEBOOK_REELS_INSIGHT_METRICS,
+  facebookReelId,
   parseFacebookReelsInsights,
   resolveFacebookReelVideoIdFromPagePostsPayload,
   shouldRefreshFacebookReelsInsights,
@@ -18,6 +19,17 @@ assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
 }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({ data: [] }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload(null, "123456789012345"), null);
+const reelMetadata = (videoId: unknown, remoteId: unknown) => ({
+  platformResults: { facebook_reels: { ok: true, videoId, remoteId } },
+});
+assert.equal(facebookReelId(reelMetadata("123456789012345", "111111111111111_222222222222222")), "123456789012345");
+assert.equal(facebookReelId(reelMetadata(null, "111111111111111_222222222222222")), "111111111111111_222222222222222");
+assert.equal(
+  facebookReelId(reelMetadata("not-a-video-id", "111111111111111_222222222222222")),
+  "111111111111111_222222222222222",
+  "invalid optional video IDs must not suppress the legacy Page-post resolver",
+);
+assert.equal(facebookReelId(reelMetadata("invalid", "short")), null);
 
 assert.equal(shouldRefreshFacebookReelsInsights(null, now), true);
 assert.equal(shouldRefreshFacebookReelsInsights({
