@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { readFileSync } from "node:fs";
+import { resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import {
   buildKidsSeriesEpisode,
   KIDS_SERIES_EPISODES_PER_SEASON,
@@ -71,7 +71,7 @@ const kidsSeriesBranch = automationSource.slice(kidsSeriesStart, kidsSeriesEnd);
 assert.match(kidsSeriesBranch, /audience:\s*"kids"/, "only the canonical Kids series factory may seed Kids-audience video requests");
 assert.match(kidsSeriesBranch, /generationMode:\s*episode\.generationMode/, "Kids series requests must retain their deterministic factory provenance");
 
- // Social deletion state belongs to the exact remote post on its queue row.
+// Social deletion state belongs to the exact remote post on its queue row.
  // Deleting an older Facebook post must not hide a newer live post for the same
  // generated Kids video, even when the old deletion timestamp is later.
 const kidsVideoQueueRow = (

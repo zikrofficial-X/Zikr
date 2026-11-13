@@ -143,7 +143,6 @@ export function resolveKidsVideoSocialPublication(
   // older row into a platform-wide tombstone that hides a newer live post.
   for (const row of rows) {
     const record = row as Record<string, unknown>;
-    const metadata = asRecord(record.metadata);
     const rowPublishedAt = typeof record.published_at === "string" ? record.published_at : null;
     const parsedPublishedAt = rowPublishedAt ? Date.parse(rowPublishedAt) : Number.NaN;
     const publicationTimestamp = Number.isFinite(parsedPublishedAt)
