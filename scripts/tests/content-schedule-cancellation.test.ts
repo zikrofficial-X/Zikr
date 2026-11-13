@@ -90,6 +90,34 @@ await assert.rejects(
   "an active queue row without a valid CAS token must fail closed",
 );
 
+let unstablePatchCount = 0;
+let unstableReadCount = 0;
+const unstableWorker = async <T>(path: string, init?: RequestInitLike): Promise<T> => {
+  if (init?.method === "GET" && path.includes("content_table=eq.articles")) {
+    return [{ id: queueId, status: "processing", updated_at: firstVersion }] as unknown as T;
+  }
+  if (init?.method === "PATCH") {
+    unstablePatchCount += 1;
+    return [] as unknown as T;
+  }
+  if (init?.method === "GET" && path.includes(`id=eq.${queueId}`)) {
+    unstableReadCount += 1;
+    return [{
+      id: queueId,
+      status: "processing",
+      updated_at: new Date(Date.parse(firstVersion) + unstableReadCount).toISOString(),
+    }] as unknown as T;
+  }
+  throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${path}`);
+};
+await assert.rejects(
+  cancelActiveContentSchedules(unstableWorker, "articles", "article-1", "cancel"),
+  /kept changing while cancellation was in progress/,
+  "repeated worker lease changes must fail closed rather than unpublish under an active claim",
+);
+assert.equal(unstablePatchCount, 3);
+assert.equal(unstableReadCount, 3);
+
 const contentService = readFileSync("src/features/admin/services/content.ts", "utf8");
 assert.match(contentService, /import \{ cancelActiveContentSchedules \} from "\.\/content-schedule-cancellation"/);
 assert.equal(
