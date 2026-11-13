@@ -23,6 +23,10 @@ type CapacitorPlugin = Record<
   string,
   (...args: unknown[]) => Promise<unknown> | unknown
 >;
+type NativePluginListenerHandle = {
+  remove: () => Promise<void> | void;
+};
+
 type CapacitorWindow = Window & {
   zikrNative?: {
     isNative: boolean;
@@ -257,6 +261,31 @@ export function NativeCapacitorBridge() {
     const localNotifications = plugins.LocalNotifications;
 
     let disposed = false;
+    const listenerHandles: NativePluginListenerHandle[] = [];
+    const registerPluginListener = (
+      plugin: CapacitorPlugin | undefined,
+      eventName: string,
+      listener: (...args: unknown[]) => void,
+    ) => {
+      const pendingHandle = plugin?.addListener?.(eventName, listener);
+      if (pendingHandle === undefined) return;
+
+      void Promise.resolve(pendingHandle)
+        .then((handle) => {
+          const listenerHandle = handle as NativePluginListenerHandle | null;
+          if (!listenerHandle || typeof listenerHandle.remove !== "function") return;
+          if (disposed) {
+            void Promise.resolve(listenerHandle.remove()).catch((error: unknown) => {
+              console.warn("[native-bridge] Listener cleanup failed", error);
+            });
+            return;
+          }
+          listenerHandles.push(listenerHandle);
+        })
+        .catch((error: unknown) => {
+          console.warn("[native-bridge] Plugin listener registration failed", error);
+        });
+    };
     let audioSettingsRefreshQueue = Promise.resolve();
     const refreshNativeAudioSettings = (notifyReady = true) => {
       audioSettingsRefreshQueue = audioSettingsRefreshQueue
@@ -321,13 +350,15 @@ export function NativeCapacitorBridge() {
 
     // Browser emits this when the user closes the system Custom Tab. Notify
     // the login button so an interrupted OAuth flow never leaves the UI stuck.
-    void browser?.addListener?.("browserFinished", () => {
+    registerPluginListener(browser, "browserFinished", () => {
+      if (disposed) return;
       window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
     });
 
     const syncNetworkState = async () => {
       const status = (await network?.getStatus?.()) as
         { connected?: boolean } | undefined;
+      if (disposed) return;
       document.documentElement.dataset.network =
         status?.connected === false ? "offline" : "online";
       window.dispatchEvent(
@@ -336,7 +367,8 @@ export function NativeCapacitorBridge() {
     };
 
     void syncNetworkState();
-    void network?.addListener?.("networkStatusChange", (status: unknown) => {
+    registerPluginListener(network, "networkStatusChange", (status: unknown) => {
+      if (disposed) return;
       document.documentElement.dataset.network =
         (status as { connected?: boolean })?.connected === false
           ? "offline"
@@ -353,7 +385,8 @@ export function NativeCapacitorBridge() {
     // Universal links for public content must navigate the existing WebView.
     // OAuth callbacks are excluded from AASA; the HTTPS callback forwards the
     // authorization code to the custom scheme, where this WebView exchanges it.
-    void app?.addListener?.("appUrlOpen", (event: unknown) => {
+    registerPluginListener(app, "appUrlOpen", (event: unknown) => {
+      if (disposed) return;
       const incomingUrl = (event as { url?: string })?.url;
       if (!incomingUrl) return;
 
@@ -369,7 +402,8 @@ export function NativeCapacitorBridge() {
       }
     });
 
-    void app?.addListener?.("appStateChange", (state: unknown) => {
+    registerPluginListener(app, "appStateChange", (state: unknown) => {
+      if (disposed) return;
       const isActive = (state as { isActive?: boolean })?.isActive === true;
       if (isActive) {
         window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
@@ -382,6 +416,11 @@ export function NativeCapacitorBridge() {
 
     return () => {
       disposed = true;
+      for (const handle of listenerHandles.splice(0)) {
+        void Promise.resolve(handle.remove()).catch((error: unknown) => {
+          console.warn("[native-bridge] Listener cleanup failed", error);
+        });
+      }
       window.removeEventListener(
         "zikr:audio-settings-changed",
         handleAudioSettingsChanged,
