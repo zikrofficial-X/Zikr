@@ -24,6 +24,35 @@ import {
 
 const storageRetentionWorkflow = readFileSync(".github/workflows/storage-retention.yml", "utf8");
 const supabaseUrl = "https://zqtssvlvmkzeeyqghqfk.supabase.co";
+
+const retentionRpcMigration = readFileSync(
+  "supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql",
+  "utf8",
+);
+const updateRpcStart = retentionRpcMigration.indexOf("CREATE OR REPLACE FUNCTION public.update_video_storage_retention(");
+const contractRpcStart = retentionRpcMigration.indexOf("CREATE OR REPLACE FUNCTION public.video_storage_retention_contract_ready()");
+assert.ok(updateRpcStart >= 0 && contractRpcStart > updateRpcStart, "the hardened retention migration must define the update RPC before its contract guard");
+const hardenedUpdateRpc = retentionRpcMigration.slice(updateRpcStart, contractRpcStart);
+const updateStatements = [...hardenedUpdateRpc.matchAll(/UPDATE\\s+public\\.[a-z_]+\\s+SET([\\s\\S]*?)WHERE/gi)];
+assert.equal(updateStatements.length, 2, "the retention RPC must update exactly the queue and generation lifecycle metadata");
+for (const statement of updateStatements) {
+  assert.doesNotMatch(statement[1], /video_url\\s*=/i, "retention finalization must never rewrite a published playback URL");
+}
+assert.match(
+  retentionRpcMigration,
+  /CREATE OR REPLACE FUNCTION public\\.video_storage_retention_contract_ready\\(\\)[\\s\\S]*?RETURNS boolean/i,
+  "the migration must provide the fail-closed RPC contract guard",
+);
+assert.match(
+  retentionRpcMigration,
+  /REVOKE ALL ON FUNCTION public\\.video_storage_retention_contract_ready\\(\\) FROM PUBLIC, anon, authenticated/i,
+  "the retention contract guard must not be executable by untrusted roles",
+);
+assert.match(
+  retentionRpcMigration,
+  /GRANT EXECUTE ON FUNCTION public\\.video_storage_retention_contract_ready\\(\\) TO service_role/i,
+  "only the service role may verify the retention RPC contract",
+);
 assert.equal(assertExpectedSupabaseProject(supabaseUrl, "zqtssvlvmkzeeyqghqfk"), "zqtssvlvmkzeeyqghqfk");
 assert.throws(() => assertExpectedSupabaseProject(supabaseUrl, "wrong-project"), /20-character Supabase project ref/);
 assert.throws(() => assertExpectedSupabaseProject("https://other-project.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
