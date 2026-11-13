@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
+import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/cloudinary-orphan-compensation";
 import {
   deleteCloudinaryImageIfUnreferenced,
   uploadCloudinaryImage,
@@ -168,6 +169,7 @@ export async function createAdminMediaAsset(input: {
           metadata: {
             provider: "cloudinary",
             cloudinary_public_id: upload.publicId,
+            ...(input.folder === "kids" ? { scope: "kids", section: "kids" } : {}),
           },
           created_by: input.createdBy,
           alt_text_ar: input.altText,
@@ -175,7 +177,14 @@ export async function createAdminMediaAsset(input: {
       },
     );
   } catch (saveError) {
-    await compensateOrphanedMediaAsset(upload, requestedPublicId);
+    if (isDefinitiveSupabaseInsertRejection(saveError)) {
+      await compensateOrphanedMediaAsset(upload, requestedPublicId);
+    } else {
+      console.warn(
+        "[admin/media] database insert outcome is ambiguous; retaining the Cloudinary asset for reconciliation.",
+        saveError,
+      );
+    }
     throw saveError;
   }
 
