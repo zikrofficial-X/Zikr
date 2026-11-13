@@ -28,6 +28,8 @@ const ageGroupLabels: Record<string, string> = {
   "13-15": "13-15 سنة",
 };
 
+type Props = { canPublish: boolean; canManageMedia: boolean };
+
 type KidsRow = {
   id: string;
   title_ar: string;
@@ -96,7 +98,7 @@ async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean; totalCo
   return { rows: rowsResult.value, ok: true, totalCount };
 }
 
-export async function AdminKidsContentManager() {
+export async function AdminKidsContentManager({ canPublish, canManageMedia }: Props) {
   const { rows, ok, totalCount } = await getKidsContent();
   const publishedCount = rows.filter((item) => item.published && item.is_active).length;
   const draftCount = rows.length - publishedCount;
@@ -154,7 +156,7 @@ export async function AdminKidsContentManager() {
               {Object.entries(ageGroupLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
-          <CloudinaryImageUploadField name="featured_image_url" fileName="featured_image_file" label="الصورة المميزة" folder="kids" hint="حتى 3MB — JPG/PNG/WEBP/GIF" />
+          {canManageMedia ? <CloudinaryImageUploadField name="featured_image_url" fileName="featured_image_file" label="الصورة المميزة" folder="kids" hint="حتى 3MB — JPG/PNG/WEBP/GIF" /> : <p role="note" className="text-xs text-brand-cream/45 md:col-span-2">لا تتوفر صلاحية إدارة الوسائط لهذا الحساب؛ يمكن حفظ المحتوى النصي دون رفع صورة.</p>}
           <Field name="video_url" label="رابط فيديو تعليمي (مطلوب عند اختيار نوع فيديو)" placeholder="https://www.youtube.com/embed/..." />
           <label className="space-y-1 text-sm text-brand-cream/80">
             <span>معرف اللعبة</span>
@@ -170,10 +172,10 @@ export async function AdminKidsContentManager() {
             <input name="age_appropriate" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
             اعتماد ملاءمة القصة للعمر قبل النشر والتوليد الآلي (مطلوب لنشر القصة)
           </label>
-          <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
+          {canPublish ? <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="published" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
             نشر المحتوى بعد المراجعة
-          </label>
+          </label> : <p role="note" className="text-xs text-brand-cream/45 md:col-span-2">لا تتوفر صلاحية نشر المحتوى لهذا الحساب؛ سيتم حفظه كمسودة.</p>}
           <div className="md:col-span-2"><Button type="submit">حفظ المحتوى في قاعدة البيانات</Button></div>
         </form>
       </Card>
