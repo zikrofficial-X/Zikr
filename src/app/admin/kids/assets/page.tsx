@@ -22,6 +22,7 @@ type AssetRow = {
 function isKidsAsset(asset: AssetRow) {
   const metadata = asset.metadata ?? {};
   const tags = [
+    asset.asset_type, asset.media_type,
     metadata.scope, metadata.section, metadata.module, metadata.game_slug,
     metadata.game_id, metadata.asset_role,
   ].map((value) => String(value ?? "").toLowerCase()).join(" ");
@@ -56,7 +57,7 @@ export default async function KidsAssetsPage() {
         <Link href="/admin/kids/games" className="text-xs text-brand-gold/60 hover:text-brand-gold">← سجل الألعاب</Link>
         <p className="mt-4 text-xs tracking-[0.2em] text-brand-cream/30">KIDS / ASSET GOVERNANCE</p>
         <h1 className="text-3xl font-bold text-brand-gold">أصول الألعاب والأطفال</h1>
-        <p className="max-w-4xl text-sm leading-7 text-brand-cream/55">هذه الشاشة لا تعتبر كل الوسائط العامة أصولًا للأطفال. يتم ربط الأصل بقسم الأطفال عبر metadata.scope أو metadata.section أو metadata.game_slug أو metadata.game_id.</p>
+        <p className="max-w-4xl text-sm leading-7 text-brand-cream/55">هذه الشاشة لا تعتبر كل الوسائط العامة أصولًا للأطفال. يظهر الأصل عند تصنيفه صراحةً بنوع kids أو ببيانات metadata.scope أو metadata.section أو metadata.game_slug أو metadata.game_id.</p>
       </header>
 
       {!loaded && <div role="alert" className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-sm text-red-100">تعذر قراءة مكتبة الوسائط. حالة الأصول غير متاحة وليست صفرًا.</div>}
@@ -70,7 +71,7 @@ export default async function KidsAssetsPage() {
 
       {loaded && kidsAssets.length === 0 && (
         <div role="status" className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5 text-sm leading-7 text-amber-100">
-          لا توجد أصول موسومة حاليًا على أنها تخص الأطفال أو لعبة بعينها. هذا لا يعني أن مكتبة الوسائط العامة فارغة؛ يعني فقط أن ربطها بقسم الأطفال غير موثق في metadata. لا تنقل ملفات عامة إلى الألعاب قبل التحقق من الملكية والحقوق.
+          لا توجد أصول موسومة حاليًا على أنها تخص الأطفال أو لعبة بعينها. هذا لا يعني أن مكتبة الوسائط العامة فارغة؛ يعني فقط أن تصنيفها كأصل للأطفال غير موثق في asset_type أو metadata. لا تنقل ملفات عامة إلى الألعاب قبل التحقق من الملكية والحقوق.
         </div>
       )}
 
