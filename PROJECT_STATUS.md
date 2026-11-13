@@ -901,15 +901,39 @@ No repository-wide error-free or project-closed certification is made.
 - PR #320 remains open and unmerged with no owner review or reviewer request; mergeable state remains unstable. No CODEOWNERS or protected-branch gate was bypassed.
 - No production DB mutation, migration apply, content generation, Gemini request, social publishing, push notification, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment occurred.
 
-### Remaining work
+## Latest audit checkpoint — 2026-11-13T20:58Z
 
-1. Complete 198 REVIEW_REQUIRED and 22 PENDING_TRACE PR rows, then continue the 1,525-row main-baseline backlog.
-2. Re-read and test migration 20261111000000; keep all 12 migrations unapplied until an owner-approved apply plan and safe rollback procedure exist.
-3. Obtain CODEOWNERS owner review; PR #320 has none.
-4. Resolve leaked-password protection in Supabase Auth and review the 81 unused-index findings without deleting indexes during audit.
-5. Add a safe Cloudinary orphan-compensation procedure for Kids content inserts, including a database-reference check before deleting only the exact newly uploaded asset.
-6. Supply Apple Team ID / app identifier values, populate AASA, verify Android assetlinks against the Play signing certificate, and complete physical iOS/Android deep-link, OAuth, notification, and signing acceptance.
-7. Diagnose the main-only english-content-sync failure from existing logs; do not rerun content generation or Gemini work.
-8. After source review and owner approval, merge under protection rules, deploy through the approved Vercel path, verify READY on the merged SHA, and repeat production smoke checks.
+**Verified source/test head:** `251a8049e85a667bb94061bce47c218c30a3b783` on `audit/zikr-kids-daily-priority-20261110`; PR #320 remains open against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. At this source head the branch is 1,321 commits ahead and 0 behind. The PR contained 375 changed paths (147 added, 228 modified) before this audit-overlay artifact; the refreshed overlay adds one documentation path.
 
-No repository-wide error-free or project-closed certification is made.
+### Verification evidence at the source head
+
+- GitHub Actions Quality Gate run **43505578187**, job **132162253886**: **success**, full-scope path, with `QUALITY_GATE_FULL_SCOPE=true` and `QUALITY_GATE=PASSED_FULL`. The canonical `pnpm verify` suite completed, including the PostgreSQL 17 integration gates.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs`: all **success** at the same source head.
+- Android Native Login **Debug APK** workflow run **43505578326**: **success**. This was a debug test artifact only; no signed release, tag, or Play Store upload was created.
+- The prior storage-retention assertion mismatch was corrected in `scripts/tests/storage-retention.test.mjs`: the test now counts all SQL UPDATE tokens in the function definition, matching the migration's cross-schema guard. The PostgreSQL integration test verifies that an UPDATE against a non-public table is also rejected. No production migration was applied.
+
+### Repository inventory and status matrix
+
+- Branch tree at source head: **2,306 entries** (1,809 blobs, 497 directories). Main tree: **2,154 entries** (1,662 blobs, 492 directories).
+- PR changed paths at source head: **375** (147 added, 228 modified). The current overlay has **374 rows** and excludes only itself and the repository manifest. The baseline `FILE_STATUS_MATRIX_2026-11-01.md` remains the main-branch baseline; this PR overlay is the current changed-file matrix.
+- Current overlay status counts: **CONTENT_READ_PENDING_TRACE=31, REVIEW_REQUIRED=225, CONTENT_READ_TESTED_PASS=102, FIXED_TESTED_PENDING_LIVE_APPLY=16**.
+- The refreshed repository manifest is self-excluding; it records the full branch tree snapshot and leaves the `docs` and `docs/audits` directory hashes null to avoid self-reference. The exact row count is recorded in the closeout ledger.
+
+### Supabase production read-only audit
+
+- Project `zqtssvlvmkzeeyqghqfk` reports **ACTIVE_HEALTHY**. Local migrations: **435**; remote history: **418**; **17 local migrations are pending**, with no remote-only version missing from the repository. No migration was applied.
+- Production still has authenticated admin-scoped write policies and table privileges on `social_publish_queue`, `video_generation_requests`, `site_audio_assets`, `media_assets`, and `videos`, plus direct site-audio Storage insert/delete policies. The new hardening migrations are tested but pending; they must be owner-reviewed and applied through the approved release procedure. The existing policies are admin-scoped, not anonymous write grants.
+- Security advisor: leaked-password protection is disabled (owner setting); performance advisor: 81 unused-index notices (no indexes were removed); health advisor: no lints.
+- Active cron jobs for prayer dispatch and source-agent verification target the current Supabase project. In the last seven days, prayer dispatch had 5,372 runs and the source agent 3 runs, all reported successful. The legacy `zikr-youtube-facebook-sync` job is inactive and still references an old project; it was not changed.
+- Deployed Edge Function versions: prayer worker **77**, source agent **14**. The deployed source matches `main`; the audit branch contains a substantially newer prayer-worker refactor that is not deployed. The canonical Node verification suite does **not** run `deno check`, and Deno is not installed in this audit environment; Edge Function type/bundle validation remains open.
+
+### Vercel and governance
+
+- Latest production deployment remains **READY** on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, alias `zikrmediaofficial.vercel.app`. No audit-branch deployment was made. A read-only GET of the public `/kids` page was accessible; no production deployment or write smoke test was triggered.
+- `.github/CODEOWNERS` names `@Zikrmediaofficial`. PR #320 has no owner approval. The owner review and any production migration approval remain manual gates; no merge or deploy was attempted.
+
+### Confirmed residual findings and safety boundary
+
+- Site-audio upload lifecycle still needs a safe orphan-recovery design: if the signed upload succeeds but metadata persistence fails (or the client never commits), the object can remain unreferenced. The current POST path does not yet prove object metadata against Storage or perform reference-checked compensation. This was not exercised and no object was deleted.
+- The audit is **not closed**. Remaining review includes admin content-console routes, Facebook integration contracts, Quran/Hadith/Tasbeeh routes, Android workflow details, the full video automation worker, and complete consumer tracing for social/video and scheduling paths.
+- No Gemini/content generation, social publishing, push delivery, production database mutation, Storage deletion, index deletion, secret change, Android release, merge, or deployment was triggered during this audit batch.
