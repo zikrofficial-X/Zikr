@@ -14,6 +14,29 @@ export function formatLocalDateTimeInputValue(
   return localWallClock.toISOString().slice(0, 16);
 }
 
+export function getLocalDateTimeOffsetMinutes(value: string): number | null {
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})$/.exec(value.trim());
+  if (!match) return null;
+
+  const [year, month, day, hour, minute] = match.slice(1).map(Number);
+  const localDate = new Date(value.trim());
+  if (
+    !Number.isFinite(localDate.getTime()) ||
+    localDate.getFullYear() !== year ||
+    localDate.getMonth() !== month - 1 ||
+    localDate.getDate() !== day ||
+    localDate.getHours() !== hour ||
+    localDate.getMinutes() !== minute
+  ) {
+    // Browsers normalize wall-clock values that fall inside a DST gap.
+    // Reject them rather than silently scheduling a different local time.
+    return null;
+  }
+
+  const offset = localDate.getTimezoneOffset();
+  return Number.isInteger(offset) && Math.abs(offset) <= 14 * 60 ? offset : null;
+}
+
 export function localDateTimeToUtcIso(
   value: string,
   timezoneOffsetMinutes: number,
