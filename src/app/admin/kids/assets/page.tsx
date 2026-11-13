@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { classifyMediaAssetKind } from "@/features/media/services/media-asset-classification";
+import { areMediaAssetRightsVerified, classifyMediaAssetKind } from "@/features/media/services/media-asset-classification";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +47,7 @@ export default async function KidsAssetsPage() {
     console.error("[admin/kids/assets] failed to load assets:", error);
   }
   const kidsAssets = assets.filter(isKidsAsset);
-  const verified = kidsAssets.filter((asset) => asset.rights_verified === true || asset.verified_rights === true).length;
+  const verified = kidsAssets.filter(areMediaAssetRightsVerified).length;
   const unverified = kidsAssets.length - verified;
   const taggedAudio = kidsAssets.filter((asset) => classifyMediaAssetKind(asset) === "audio").length;
   const taggedVisual = kidsAssets.filter((asset) => classifyMediaAssetKind(asset) === "visual").length;
@@ -94,7 +94,7 @@ export default async function KidsAssetsPage() {
                     <td className="px-4 py-3 text-brand-cream/85">{asset.title || asset.name || asset.id}</td>
                     <td className="px-4 py-3 text-brand-cream/60" dir="ltr">{asset.asset_type || asset.media_type || asset.mime_type || "unknown"}</td>
                     <td className="px-4 py-3 text-brand-cream/60">{asset.size_bytes === null ? "غير معروف" : `${number(Math.round(asset.size_bytes / 1024))} KB`}</td>
-                    <td className="px-4 py-3">{asset.rights_verified || asset.verified_rights ? <span className="text-emerald-300">موثقة</span> : <span className="text-amber-300">تحتاج مراجعة</span>}</td>
+                    <td className="px-4 py-3">{areMediaAssetRightsVerified(asset) ? <span className="text-emerald-300">موثقة</span> : <span className="text-amber-300">تحتاج مراجعة</span>}</td>
                     <td className="px-4 py-3 text-brand-cream/50">{String(asset.metadata?.asset_role ?? asset.metadata?.game_slug ?? asset.metadata?.game_id ?? "غير محدد")}</td>
                   </tr>
                 ))}
