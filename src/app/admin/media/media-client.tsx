@@ -28,6 +28,7 @@ const folders = ["media", "homepage", "stories", "articles", "videos", "competit
 
 export default function AdminMediaPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -44,9 +45,10 @@ export default function AdminMediaPage() {
     setError("");
     try {
       const response = await fetch("/api/admin/media", { cache: "no-store" });
-      const payload = (await response.json().catch(() => ({}))) as { assets?: Asset[]; error?: string };
+      const payload = (await response.json().catch(() => ({}))) as { assets?: Asset[]; totalCount?: number | null; error?: string };
       if (!response.ok) throw new Error(payload.error || "تعذر تحميل مكتبة الوسائط.");
       setAssets(Array.isArray(payload.assets) ? payload.assets : []);
+      setTotalCount(typeof payload.totalCount === "number" && Number.isSafeInteger(payload.totalCount) ? payload.totalCount : null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تحميل مكتبة الوسائط.");
     } finally {
@@ -138,7 +140,7 @@ export default function AdminMediaPage() {
       <PurgeGeneratedVideosControl onCompleted={load} />
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">إجمالي الأصول</p><p className="mt-2 text-3xl font-bold text-brand-cream">{assets.length}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">إجمالي الأصول</p><p className="mt-2 text-3xl font-bold text-brand-cream">{totalCount ?? "غير متاح"}</p></div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">حقوق تحتاج مراجعة</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingRights}</p></div>
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">منشور</p><p className="mt-2 text-3xl font-bold text-emerald-200">{published}</p></div>
       </section>
@@ -155,6 +157,8 @@ export default function AdminMediaPage() {
         </div>
         <Button variant="primary" disabled={busy || !file} onClick={() => void upload()}>{busy ? "جاري التنفيذ..." : "رفع وتسجيل الأصل"}</Button>
       </section>
+
+      <p className="text-xs text-brand-cream/35">يعرض الجدول أحدث 300 أصل؛ إجمالي العدد أعلاه محسوب من قاعدة البيانات.</p>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/15 overflow-hidden">
         <div className="overflow-x-auto">
