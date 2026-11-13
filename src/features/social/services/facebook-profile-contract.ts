@@ -69,7 +69,8 @@ export function buildFacebookPublicProfileIdentityUpsert(input: {
     throw new Error("Facebook Page ID and name are required to update the public profile identity.");
   }
 
-  const pageChanged = Boolean(input.previousPageId?.trim() && input.previousPageId.trim() !== pageId);
+  const pageChanged = input.previousPageId !== undefined &&
+    (input.previousPageId?.trim() ?? "") !== pageId;
   return {
     platform: "facebook",
     external_id: pageId,
