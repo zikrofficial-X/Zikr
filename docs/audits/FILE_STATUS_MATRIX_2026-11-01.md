@@ -1,18 +1,19 @@
-# ZIKR file status matrix — refreshed 2026-11-13
+# ZIKR file status matrix — refreshed 2026-11-13T22:29Z
 
 **Current baseline:** `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`  
 **Main manifest:** `docs/audits/REPO_MANIFEST_2026-11-10.jsonl` (2,153 records, pinned to main; self-entry excluded).  
-**PR-branch manifest:** `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl` (2,271 records, generated from the complete recursive branch tree; self-entry excluded; `docs` and `docs/audits` directory hashes null to avoid self-reference).  
-**Main inventory:** 2,154 tracked entries — 1,662 files and 492 directories; recursive GitHub tree complete and not truncated.  
+**PR-branch manifest:** `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl` (2310 records, all branch files/directories except the manifest itself; `docs` and `docs/audits` directory hashes null to avoid self-reference).  
+**Main inventory:** 2,154 tracked entries — 1,662 files and 492 directories; recursive Git tree complete and not truncated.  
+**PR inventory:** 2311 tracked entries — 1814 files and 497 directories.  
 **Main review coverage:** automated inventory 1,662/1,662 main files (100%); 1,525 current-main rows remain `REVIEW_REQUIRED`; modules closed 0. Inventory coverage is not manual review coverage.  
-**PR #320 source-code head:** `f20bc346885654831c30895ed5472c1ea1848462`; 1,141 commits ahead, 0 behind; 323 changed paths (113 added, 210 modified, 0 removed). Recursive branch tree: 2,272 entries — 1,775 files and 497 directories. No main paths are deleted.  
-**PR #320 overlay:** 321 file rows; the overlay and branch-manifest artifacts are documented separately to avoid mutual-hash recursion. Counts: 202 `REVIEW_REQUIRED`, 88 `CONTENT_READ_TESTED_PASS`, 20 `CONTENT_READ_PENDING_TRACE`, and 11 `FIXED_TESTED_PENDING_LIVE_APPLY`.  
-**Exact code-head CI:** GitHub ZIKR Quality Gate run `43384291336` / job `131749029319` SUCCESS on `f20bc346885654831c30895ed5472c1ea1848462`. Log confirms `QUALITY_GATE_FULL_SCOPE=true`, `pnpm verify`, `pnpm verify:pr`, PostgreSQL 17 integration, lint, types, production build, and `QUALITY_GATE=PASSED_FULL`. CircleCI `config-guard`, `source-verify`, and `application-build-docs` SUCCESS on the same head. The subsequent documentation-only reconciliation commit requires its own exact-head gate.  
-**Main scheduled CI:** `ci/circleci: english-content-sync` remains FAILURE on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; it was not rerun because it may perform content/Gemini work.  
-**Production:** Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Automatic Git deployments are disabled; the audit branch has no deployment.  
-**Supabase:** 430 local migrations versus 418 remote; latest remote `20261110170000`; 12 branch migrations pending, 11 test-backed/pending owner-approved live apply and `20261111000000` still REVIEW_REQUIRED. Security advisor reports leaked-password protection disabled; performance advisor reports 81 unused-index findings. No production migration or index was removed.  
-**Governance:** PR #320 has zero submitted reviews and zero review threads. `.github/CODEOWNERS` requires `@Zikrmediaofficial`; connected identity permission is null.  
-**Safety:** no content generation, Gemini request, social publishing, push notification, production DB mutation, migration application, storage/media/index deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered.  
+**PR #320 source/test head:** `7b06aacfc650d6d31c51bb0681472f25666bca23`; 1,333 commits ahead, 0 behind; 381 changed paths (152 added, 229 modified, 0 removed). No main path is deleted.  
+**PR #320 overlay:** 379 file rows; 221 `REVIEW_REQUIRED`, 109 `CONTENT_READ_TESTED_PASS`, 33 `CONTENT_READ_PENDING_TRACE`, and 16 `FIXED_TESTED_PENDING_LIVE_APPLY`.  
+**Exact code-head CI:** GitHub Quality Gate run `43518937015` / job `132208106267` SUCCESS on `7b06aacfc650d6d31c51bb0681472f25666bca23`; Android Debug APK run `43518936970` SUCCESS; CircleCI `config-guard`, `source-verify`, and `application-build-docs` SUCCESS. Supabase Preview SKIPPED.  
+**Main scheduled CI:** `ci/circleci: english-content-sync` remains FAILURE on main and was not rerun because it may perform content/Gemini work.  
+**Production:** Vercel deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. Automatic Git deployments are disabled; no audit deployment exists.  
+**Supabase:** 435 local migrations / 418 remote / 17 pending; latest remote `20261110170000`. Security advisor reports leaked-password protection disabled; performance advisor reports 81 unused-index findings; health lints empty. No migration or index was removed.  
+**Governance:** PR #320 has zero submitted reviews and zero review threads. `.github/CODEOWNERS` requires `@Zikrmediaofficial`; owner review is outstanding.  
+**Safety:** no content generation, Gemini request, social publishing, push delivery, production DB mutation, migration application, storage/media/index deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered. Read-only production queries only.  
 **Historical detail:** the file-by-file main-baseline table below retains its earlier `035ea456` historical rows; the current-main delta remains pinned to `c4560d9`. The PR #320 overlay is a separate branch-delta view and must not be conflated with main-baseline review rows.
 
 ## Historical inventory delta — baseline 035ea456

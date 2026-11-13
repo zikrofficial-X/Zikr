@@ -1,39 +1,57 @@
-# PR #320 file-status overlay — 2026-11-13T20:58Z
+# PR #320 file-status overlay — 2026-11-13T22:29Z
 
 Repository: `zikrofficial-X/Zikr`  
 Branch: `audit/zikr-kids-daily-priority-20261110`  
-Verified source/test head: `251a8049e85a667bb94061bce47c218c30a3b783`  
+Verified source/test head: `7b06aacfc650d6d31c51bb0681472f25666bca23`  
 Base: `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`
 
-This is the current PR changed-file matrix. It contains **374 rows** and excludes only this overlay and `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl`. The historical `PR320_FILE_STATUS_OVERLAY_2026-11-12.md` is included as a tracked artifact. The companion JSONL manifest records exact modes, blob/tree SHAs, and byte sizes.
+This is the current PR changed-file matrix. It contains **379 file rows** and excludes only this overlay and `docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl`. The companion JSONL manifest contains every tracked file and directory except itself, with exact modes, blob/tree SHAs, and byte sizes.
 
 ## Status summary
 
 | Status | Count | Meaning |
 |---|---:|---|
-| `CONTENT_READ_PENDING_TRACE` | 31 | Contents read, but full consumer/permission/runtime trace is still open. |
-| `CONTENT_READ_TESTED_PASS` | 102 | Contents read and relevant automated checks passed; this does not imply live deployment. |
-| `FIXED_TESTED_PENDING_LIVE_APPLY` | 16 | Migration/repair tests passed; production apply is still owner-gated. |
-| `REVIEW_REQUIRED` | 225 | Not fully read or not fully traced; review remains open. |
+| `CONTENT_READ_PENDING_TRACE` | 33 | Contents read, but full consumer/permission/runtime trace remains open. |
+| `CONTENT_READ_TESTED_PASS` | 109 | Contents read and relevant automated checks passed; this does not imply live deployment. |
+| `FIXED_TESTED_PENDING_LIVE_APPLY` | 16 | Migration/repair tests passed; production apply remains owner-gated. |
+| `REVIEW_REQUIRED` | 221 | Not fully read or not fully traced; review remains open. |
 
-## Verified evidence at source head
+## Exact-head verification
 
-- GitHub Quality Gate run `43505578187`, job `132162253886`: full-scope success; `QUALITY_GATE_FULL_SCOPE=true`, `QUALITY_GATE=PASSED_FULL`.
-- CircleCI `config-guard`, `source-verify`, and `application-build-docs`: success.
-- Android Native Login Debug APK run `43505578326`: success; debug-only, no release.
-- The storage-retention test assertion now matches the migration's cross-schema UPDATE-token guard. No production migration was applied.
-- Supabase: 435 local migration files / 418 remote / 17 pending; production RLS still has admin-scoped direct-write policies awaiting owner-approved hardening.
-- Vercel: production remains READY on `main@c4560d9`; no audit deployment.
-- CODEOWNERS owner `@Zikrmediaofficial` has not approved PR #320.
+- GitHub [ZIKR Quality Gate run 43518937015](https://github.com/zikrofficial-X/Zikr/actions/runs/43518937015), job `132208106267`: **SUCCESS** on exact source/test head `7b06aacfc650d6d31c51bb0681472f25666bca23`; full-scope verification completed.
+- [Android Debug APK run 43518936970](https://github.com/zikrofficial-X/Zikr/actions/runs/43518936970): **SUCCESS**; debug artifact only, no signing/release.
+- CircleCI `config-guard`, `source-verify`, and `application-build-docs`: **SUCCESS** on the same head. Supabase Preview was **SKIPPED**; no failed or pending check was bypassed.
+- PR #320 is `1,333` commits ahead of main, `0` behind. Its `381` changed paths comprise 152 added, 229 modified, and 0 removed; the table below excludes the two added audit artifacts, so it contains 150 added, 229 modified, and 0 removed rows.
+- Main inventory: `2,154` entries (`1,662` files, `492` directories). Audit-branch inventory: `2311` entries (`1814` files, `497` directories). The manifest below is regenerated to `2310` records, excluding itself.
+
+## Repairs verified at this checkpoint
+
+- **Scheduled-content cancellation:** replaced same-millisecond `new Date().toISOString()` queue updates in unpublish/delete paths with per-row compare-and-set cancellation using the exact queue `updated_at` lease, monotonic row-version advancement, bounded rereads/retries, and fail-closed behavior. Regression coverage includes stale lease retry, worker completion winning the race, malformed lease token, repeated concurrent lease changes, and both service call sites.
+- **Site-audio registration:** metadata registration now validates the server-generated owner path, MIME type, size ceiling, exact Storage object existence, and stored size/MIME metadata before inserting `site_audio_assets`. The upload endpoint and registration share MIME/size limits. Post-mutation audit-log failures are returned as explicit `auditRecorded: false` warnings rather than false 500 failures; the Admin UI surfaces the warning.
+- The site-audio change does **not** add orphan deletion/cleanup. A successfully uploaded object can still be orphaned if metadata persistence never completes; no Storage object was deleted.
+
+## Read-only production evidence
+
+- Supabase project `zqtssvlvmkzeeyqghqfk` is active/healthy on PostgreSQL 17.11.0. There are **435 local migration files / 418 remote / 17 pending**; latest remote is `20261110170000`. Pending versions: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, `20261112103200`, `20261113000000`, `20261113190000`, `20261113200000`, `20261113210000`, `20261113220000`, and `20261113230000`. No production migration was applied.
+- Active Supabase Edge Functions: `prayer-notification-worker v77`, `source-verified-content-agent v14`, `spiritual-ai v2`, and `health v2`. The branch's Edge Function changes were not deployed. Canonical CI still does not run `deno check` for these functions.
+- Active database cron jobs: prayer push every minute, source-agent daily at 03:00 UTC, and cron-history cleanup daily at 03:30 UTC. The legacy `zikr-youtube-facebook-sync` cron is inactive and was left unchanged.
+- Seven latest source-agent run records are `succeeded` with `0 fetched / 0 queued / 0 skipped / 0 failed`. Only the Al Quran Cloud source is enabled; Quran Foundation and Sunnah sources are disabled. The enabled parser currently produces no queue items, so this is a no-op/observability gap, not evidence of content ingestion.
+- YouTube OAuth is connected for `ZIKR | ذكر` with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` scopes. The social queue currently has `125 published`, `9 queued`, and `4 partial` rows; all 13 queued/partial rows are due now. The latest publisher workflow run `43511995398` succeeded but processed five candidates with one success and four deferred by Facebook Reels cooldown. Queue alerts delivered `0`. The workflow's 15-minute schedule fallback has observable gaps (latest schedule event `18:47Z`; a later `21:35Z` run was a `workflow_run` trigger). No publisher was triggered by this audit.
+- Production advisors: leaked-password protection is disabled (WARN); 81 unused-index notices (INFO); health lints empty. No index was deleted.
+- Main's scheduled `ci/circleci: english-content-sync` remains **FAILURE** and was not rerun because it may synchronize/generate content or invoke Gemini.
+- Vercel production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains **READY** at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. No audit deployment or production smoke against the audit branch occurred.
 
 ## Known open findings and gates
 
-- Site-audio upload can leave an orphaned Storage object if the signed upload succeeds but metadata persistence or the client commit fails. No object was deleted; safe reference-checked compensation remains to be designed and tested.
-- Canonical CI does not run `deno check` for the updated Supabase Edge Functions. The prayer worker refactor is not deployed; Deno type/bundle validation remains open.
-- The production security advisor reports leaked-password protection disabled; owner setting change required.
-- The production performance advisor reports 81 unused-index notices. No index was deleted.
-- The inactive legacy `zikr-youtube-facebook-sync` cron job still references an old project. It was left unchanged.
-- Owner review, migration approval, manual device acceptance, and controlled Vercel release remain outstanding. No content generation, Gemini, social publishing, push delivery, production mutation, Android release, merge, or deployment was triggered.
+- Site-audio orphan compensation/TTL cleanup after a successful upload but failed metadata commit remains open; any future cleanup must recheck exact object path and database references and must be owner-approved.
+- Deno type/bundle verification for Supabase Edge Functions is absent from canonical CI.
+- Source-agent parser/telemetry currently reports successful no-op runs; owner must decide whether to implement the Quran/Hadith parsers or explicitly classify the source as monitoring-only.
+- Social publishing has 9 queued and 4 partial due rows; the scheduled fallback is not consistently observed and queue alerts delivered 0. Owner should verify scheduler configuration and alert destinations without replaying content during audit.
+- Seventeen migrations remain unapplied; the 81 unused-index notices are advisory only. No destructive cleanup or index deletion is authorized by this audit.
+- Security setting `auth_leaked_password_protection` requires owner action.
+- PR #320 has zero submitted reviews and zero review threads. `.github/CODEOWNERS` requires `@Zikrmediaofficial`; owner review is still required. Branch-protection details were not exposed to the connected identity, so no bypass or merge was attempted.
+- Android debug build passed, but no signed Android release or physical-device acceptance was performed. iOS build/device acceptance and real-device Google OAuth, push-permission, background audio, and deep-link tests remain manual.
+- No Vercel deployment, merge, production DB mutation, migration apply, Storage/media/index deletion, secret rotation, content generation, Gemini request, social publishing, push delivery, or Android/iOS release was triggered.
 
 ## Changed files
 
@@ -70,7 +88,7 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `mobile-shell/index.html` | ADDED | 2ebf7ae7b16b2d971cc009878b44be9d4b1b91ae | REVIEW_REQUIRED |
 | `mobile/capacitor-dependencies.json` | MODIFIED | dc9b7955207c96b7aadb8893cd23e9c67abe56e2 | REVIEW_REQUIRED |
 | `mobile/README.md` | MODIFIED | 85505a12b81e0de40fae4cf4dc8e6bfb5d511de0 | REVIEW_REQUIRED |
-| `package.json` | MODIFIED | f6ec1d805aceaf126d699159d2c9de58b41f65b2 | REVIEW_REQUIRED |
+| `package.json` | MODIFIED | 5eaf6ddc4d845277d020ff7ca77cd997a9716843 | REVIEW_REQUIRED |
 | `PROJECT_STATUS.md` | MODIFIED | 78d3bca943f0bc44b01f34dd26daef372075cb38 | REVIEW_REQUIRED |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | ef1cad9d7db75ee6677edc9dba3387debb95695a | REVIEW_REQUIRED |
 | `public/offline-content/v1/kids.json` | MODIFIED | dc32c0bdbd722f0f920d7db2a690074de0194fcc | REVIEW_REQUIRED |
@@ -116,7 +134,8 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `scripts/tests/contact-validation.test.ts` | MODIFIED | 2cd69798441b5a11af58af18e5357190ab92b725 | REVIEW_REQUIRED |
 | `scripts/tests/content-publish-active-queue.integration.sh` | ADDED | 67985458e65dbf8b6ae9e075a5b3daba11a83e8b | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/content-publish-active-queue.integration.sql` | ADDED | 499a480396dd6a9eacee08b38b180555877744d9 | CONTENT_READ_TESTED_PASS |
-| `scripts/tests/content-publishing-contract.test.mjs` | ADDED | 9c1d99bef75883b9593c6abd5142f04f39055d7a | REVIEW_REQUIRED |
+| `scripts/tests/content-publishing-contract.test.mjs` | ADDED | f11734817f25bd3da42fb6e384adf633d918646c | CONTENT_READ_PENDING_TRACE |
+| `scripts/tests/content-schedule-cancellation.test.ts` | ADDED | e04e984cf347c927885c7524e67771dd8b54e667 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/content-schedule-timezone.test.ts` | ADDED | f22119053c5b42be7f7f959a40b23395fdbd050c | REVIEW_REQUIRED |
 | `scripts/tests/english-content-sync-contract.test.mjs` | ADDED | 9e1333a0b50ed1e6a275ea9f11eb24966fd3531f | REVIEW_REQUIRED |
 | `scripts/tests/facebook-credentials.test.ts` | ADDED | 20fa75fbba3346c2e0615092bd854624eaee6603 | CONTENT_READ_TESTED_PASS |
@@ -157,6 +176,7 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `scripts/tests/route-params.test.ts` | ADDED | 968666813071ad095ac81e205e4894b09a2a9d34 | REVIEW_REQUIRED |
 | `scripts/tests/safe-redirect.test.ts` | ADDED | 4c35d8d5ce880dc4bd75f1c45622e7beb5304df0 | REVIEW_REQUIRED |
 | `scripts/tests/service-worker-ads-scope.test.ts` | ADDED | 76a8d632a2b3dac7da2ab155cdd32cbc89a9e1fe | CONTENT_READ_TESTED_PASS |
+| `scripts/tests/site-audio-upload-contract.test.ts` | ADDED | e7f67f9bdf9ec9fd2161688278b333816e101f5d | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/social-deletion.test.ts` | MODIFIED | ca98c9b7abace8e9d0ce94e365d7242803c29d7b | REVIEW_REQUIRED |
 | `scripts/tests/social-insights-worker-status.test.ts` | ADDED | 1651deeb245aafef23d0cfc656a80480f72be4a0 | CONTENT_READ_TESTED_PASS |
 | `scripts/tests/social-platform-isolation.test.ts` | MODIFIED | 55b79e24e99b5e79524ad2416e4baba582c5a8b0 | REVIEW_REQUIRED |
@@ -238,7 +258,8 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `src/app/admin/video/visuals/page.tsx` | MODIFIED | 0d119e8587eb6ea135c9de1a76a4c4e4c71af2f6 | CONTENT_READ_PENDING_TRACE |
 | `src/app/api/admin/cloudinary/image/route.ts` | MODIFIED | 5277adb612684240e6c2b62deeb31b37ff57f4c3 | REVIEW_REQUIRED |
 | `src/app/api/admin/media/route.ts` | MODIFIED | fa7493065570a5a80d57012db7db5e59530afaab | CONTENT_READ_TESTED_PASS |
-| `src/app/api/admin/site-audio/route.ts` | MODIFIED | 0fa43679606d1aaebc8fb870b09811cef1b48240 | REVIEW_REQUIRED |
+| `src/app/api/admin/site-audio/route.ts` | MODIFIED | c1ff5dbd5ce073dad3ead2c2b4dd3294a8a130fb | CONTENT_READ_TESTED_PASS |
+| `src/app/api/admin/site-audio/upload/route.ts` | MODIFIED | 2cc8ab8879134c742e6f2e434d2d0b7ec0228a52 | CONTENT_READ_TESTED_PASS |
 | `src/app/api/admin/social/facebook/callback/route.ts` | MODIFIED | 1aec41c28263175f6e9edc80603dbce93d31a61f | REVIEW_REQUIRED |
 | `src/app/api/admin/social/facebook/connect/route.ts` | MODIFIED | 28b509fc32eae6ed971ab320106501dc1809ff93 | REVIEW_REQUIRED |
 | `src/app/api/admin/social/route.ts` | MODIFIED | a1837fc9fb7e5146972aeb7f0abc31509eff96b6 | CONTENT_READ_PENDING_TRACE |
@@ -281,12 +302,13 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `src/features/admin/components/cloudinary-image-upload-field.tsx` | MODIFIED | b868bcbe03f30aa479911a874a58443541a15ddc | CONTENT_READ_PENDING_TRACE |
 | `src/features/admin/components/kids-content-manager.tsx` | MODIFIED | 3d8fea9418c0afec4c2c413a5d7150ae5ad8e97c | CONTENT_READ_PENDING_TRACE |
 | `src/features/admin/components/purge-generated-videos-control.tsx` | MODIFIED | 581da317f968b1461ffd1f79d28a44f042958ef6 | REVIEW_REQUIRED |
-| `src/features/admin/components/site-audio-manager.tsx` | MODIFIED | 70ecd31da1bcf0f7f7b5c4b11be3a0f7172089d2 | REVIEW_REQUIRED |
+| `src/features/admin/components/site-audio-manager.tsx` | MODIFIED | 80f0c3d1576afb647311772499c4226a08a0c08b | CONTENT_READ_PENDING_TRACE |
 | `src/features/admin/components/traffic-revenue-panel.tsx` | MODIFIED | f258774bacf3978417d92130aabf44ebf8059317 | REVIEW_REQUIRED |
 | `src/features/admin/components/users-table.tsx` | MODIFIED | 67c5d8fc334c6bb42a4d29b13ab3f6883463cdcf | REVIEW_REQUIRED |
 | `src/features/admin/services/admin.ts` | MODIFIED | b48cea6d914650825a396af9ffc875be8202e8d0 | REVIEW_REQUIRED |
+| `src/features/admin/services/content-schedule-cancellation.ts` | ADDED | e31a8d5175656c3fd541d9e8da7aeed357e36070 | CONTENT_READ_TESTED_PASS |
 | `src/features/admin/services/content-schedule.ts` | ADDED | 0062a7c01367d937c4f15c91ecb81e2307dcc9b2 | CONTENT_READ_PENDING_TRACE |
-| `src/features/admin/services/content.ts` | MODIFIED | 4cc0be3285570835832695ed0adda1ac80ad6e3c | REVIEW_REQUIRED |
+| `src/features/admin/services/content.ts` | MODIFIED | 656ca95646d36ad831a4b230296ffbd560971a6e | CONTENT_READ_TESTED_PASS |
 | `src/features/admin/services/permissions.ts` | MODIFIED | 476bdb4b401b540558f0ac6cedc3ce007c1c5140 | REVIEW_REQUIRED |
 | `src/features/admin/services/platform.ts` | MODIFIED | 0fce9022a4a8b415de95b51a39c9e94ed3103edb | REVIEW_REQUIRED |
 | `src/features/admin/services/security-policy.ts` | ADDED | 3d20551e56b1a5f8aa3f46ba50dcdda0b774514b | REVIEW_REQUIRED |
@@ -294,6 +316,7 @@ This is the current PR changed-file matrix. It contains **374 rows** and exclude
 | `src/features/admin/utils/step-up-client.ts` | ADDED | 60cb1d39c96f3c2c4a137c27e95391d63055bfed | REVIEW_REQUIRED |
 | `src/features/admin/video-requests/components/admin-video-requests-client.tsx` | MODIFIED | e5dcaccc04b337d5b9edc475cddc79755dd85153 | REVIEW_REQUIRED |
 | `src/features/articles/services/translation-queue-recovery.ts` | ADDED | a87da77a1344f89473be9212d1ffc6a1df512755 | REVIEW_REQUIRED |
+| `src/features/audio/services/site-audio-upload-contract.ts` | ADDED | 978ebb038b526c8bff05a5d764ecfbaf1eed3b26 | CONTENT_READ_TESTED_PASS |
 | `src/features/auth/actions.ts` | MODIFIED | c3b247562a3c0b0f68b86cc7cbbfb91650e82ad3 | REVIEW_REQUIRED |
 | `src/features/auth/components/google-oauth-button.tsx` | MODIFIED | 0f415ecef3ea3673e98e15160a15eb1c0604c271 | REVIEW_REQUIRED |
 | `src/features/auth/components/login-page.tsx` | MODIFIED | 5c77547f2294e2d17e3d93dec53ef9ce9b8e4c0e | REVIEW_REQUIRED |

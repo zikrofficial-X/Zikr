@@ -1,6 +1,39 @@
 # ZIKR — Project Status
 
-## Latest verified audit checkpoint — 2026-11-13T08:26:57Z
+## Latest verified audit checkpoint — 2026-11-13T22:29Z
+
+**State: IN PROGRESS.** PR #320 remains open and unmerged. The exact source/test head is green, but the repository review, owner gates, live migrations, and device acceptance remain incomplete.
+
+- **Repository / PR:** `zikrofficial-X/Zikr`, [PR #320](https://github.com/zikrofficial-X/Zikr/pull/320).
+- **Branch / base:** `audit/zikr-kids-daily-priority-20261110` against `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Verified source/test head:** `7b06aacfc650d6d31c51bb0681472f25666bca23`; 1,333 commits ahead, 0 behind; 381 changed paths (152 added, 229 modified, 0 removed). Branch inventory: 2,311 entries (1,814 files, 497 directories); main: 2,154 (1,662 files, 492 directories).
+- **PR overlay:** 379 rows — 109 tested pass, 33 read/pending trace, 16 fixed/tested but pending live apply, 221 review required. Main baseline still has 1,525 review-required rows; no module is certified closed.
+- **Exact-head checks:** GitHub Quality Gate run 43518937015/job 132208106267 SUCCESS; Android Debug APK run 43518936970 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS. Supabase Preview SKIPPED.
+- **Repair 1 — scheduled content cancellation:** added a monotonic per-row queue lease compare-and-set helper used by both unpublish and delete paths. It rereads/retries boundedly when a worker changes the lease and fails closed if the row keeps changing. Regression tests cover worker/cancel races, already-completed publication, invalid versions, and repeated races. Intermediate failures on 1bca88f and aa788e8 were fixed; exact final source/test head 9f63d741 passed the full gate.
+- **Repair 2 — site-audio registration:** registration now validates the owner-scoped generated path, MIME/size limits, and exact uploaded Storage object metadata before DB insertion. Audit failures after a committed mutation now return an explicit warning and the Admin UI surfaces it. A missing import caused the intermediate d57d765 failure; it was corrected on 7b06aac, which passed all exact-head checks. Orphan cleanup after a successful upload but failed metadata commit remains open.
+- **Supabase:** project `zqtssvlvmkzeeyqghqfk` is active/healthy on PostgreSQL 17.11.0. 435 local migrations versus 418 remote through `20261110170000`; 17 pending versions: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, `20261112103200`, `20261113000000`, `20261113190000`, `20261113200000`, `20261113210000`, `20261113220000`, `20261113230000`. None was applied. Security advisor: leaked-password protection disabled; performance advisor: 81 unused-index notices; health lints empty.
+- **Background jobs:** prayer push cron is active every minute; source agent daily at 03:00 UTC; history cleanup daily at 03:30 UTC; legacy YouTube/Facebook sync cron is inactive. Seven recent source-agent runs succeeded but each reported 0 fetched/queued/skipped/failed; only Al Quran Cloud is enabled and its parser currently yields no queue items. No content was generated.
+- **Social publishing:** YouTube OAuth is connected with upload/read/analytics scopes. Production queue: 125 published, 9 queued, 4 partial (all queued/partial due now). Latest publisher run 43511995398 succeeded with one success and four deferred due Facebook Reels cooldown; queue alerts delivered 0. The 15-minute schedule fallback has observable gaps; the later 21:35Z run was workflow-triggered. No publishing was triggered by this audit.
+- **Production / Vercel:** deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on main. No audit deployment or merge occurred.
+- **Governance / device gates:** PR #320 has zero reviews and zero review threads; `.github/CODEOWNERS` requires `@Zikrmediaofficial`. Android debug build passed, but no signed release or device acceptance was performed. iOS build/device and real OAuth/push/background-audio acceptance remain manual. Branch-protection details were not exposed to the connected identity; no bypass was attempted.
+- **Unrelated failure:** main's scheduled `english-content-sync` CircleCI context remains FAILURE and was not rerun because it may synchronize/generate content or invoke Gemini.
+- **Safety:** only read-only production queries were performed. No production DB writes, migration applies, Storage/media/index deletions, secret rotations, content generation, Gemini calls, social publishing, push delivery, Android/iOS release, merge, or audit deployment occurred.
+
+### Remaining work
+
+1. Continue the 221 `REVIEW_REQUIRED` PR rows and 33 pending consumer/permission/runtime traces; do not equate CI success with complete file review.
+2. Add/execute Deno type/bundle checks for all Supabase Edge Functions; resolve source-agent no-op/telemetry behavior.
+3. Design owner-approved site-audio orphan recovery with exact path/reference checks and a TTL; do not delete objects without a proven safe procedure.
+4. Verify social publisher schedule reliability and queue alert destinations; do not replay due posts as audit tests.
+5. Obtain CODEOWNERS review and owner approval for the 17 pending migrations; keep all production changes gated.
+6. Complete iOS build and physical Android/iOS acceptance.
+7. Only after code review and owner gates are closed: merge safely, deploy through the manual Vercel workflow, verify READY at the merged SHA, and run production smoke checks against that deployment.
+
+No repository-wide error-free or project-closed certification is made.
+
+---
+
+## Previous verified audit checkpoint — 2026-11-13T08:26:57Z
 
 **State: IN PROGRESS.** PR #320 remains open and unmerged. The code repair head below passed the canonical full gate; this inventory/ledger reconciliation is documentation-only and will receive its own exact-head checks.
 

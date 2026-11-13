@@ -1,6 +1,74 @@
 # ZIKR Continuous Closeout Ledger
 
-## Latest verified audit checkpoint — 2026-11-13T08:26:57Z
+## Latest verified audit checkpoint — 2026-11-13T22:29Z
+
+**State: OPEN / IN PROGRESS.** PR #320 is unmerged. Source/test head `7b06aacfc650d6d31c51bb0681472f25666bca23` passed all available exact-head checks; this is not a project-wide closure.
+
+### Repository inventory and governance
+
+- Repository `zikrofficial-X/Zikr`; PR #320; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- Compare: 1,333 commits ahead, 0 behind. PR file list: 381 paths (152 added, 229 modified, 0 removed). Recursive branch tree: 2,311 entries (1,814 blobs, 497 directories); main: 2,154 entries (1,662 blobs, 492 directories). No main path is absent from the branch.
+- Current overlay: 379 PR file rows, excluding the overlay and branch manifest. Counts: 109 `CONTENT_READ_TESTED_PASS`, 33 `CONTENT_READ_PENDING_TRACE`, 16 `FIXED_TESTED_PENDING_LIVE_APPLY`, 221 `REVIEW_REQUIRED`. Main-baseline matrix still has 1,525 `REVIEW_REQUIRED` rows; modules closed 0.
+- `.github/CODEOWNERS` assigns all paths to `@Zikrmediaofficial`. PR #320 has zero submitted reviews and zero review threads. Branch-protection details were not exposed to the connected identity; no merge/bypass was attempted.
+
+### Repair batch 1 — scheduled-content queue cancellation
+
+- Starting checkpoint: `5fec76f989a0ab0529d857b06d00883aef010697`.
+- Defect: `toggleManagedContent` and `deleteManagedContent` cancelled active `content_publish_queue` rows with a wall-clock timestamp but without comparing the exact worker lease version. A same-millisecond update could fail to advance the queue row-version token.
+- Fix: new `src/features/admin/services/content-schedule-cancellation.ts` reads active rows and uses `id + status + updated_at` compare-and-set; `buildNextRowVersionUpdatedAt` guarantees a monotonic version; bounded rereads retry if the worker changes the lease; uncertainty fails closed. Both unpublish and delete paths use this helper.
+- Tests: new `scripts/tests/content-schedule-cancellation.test.ts` covers stale lease retry, worker completion winning, malformed row version, repeated concurrent lease changes failing closed, and service wiring. `content-publishing-contract.test.mjs` was updated to assert the shared helper contract.
+- Intermediate failures were not bypassed: `1bca88f72d249d59773790c595215bd9b573436a` exposed TS7022 plus stale source assertions; `aa788e8e5c87099a22ad701caab4286c179eb7f9` exposed over-escaped regex assertions. These were corrected before the green source head `9f63d741ce2a821ea6dd679c0b7e58638b665b3`.
+- Exact head `9f63d741`: GitHub Quality Gate, Android Debug APK, CircleCI config-guard/source-verify/application-build-docs all SUCCESS.
+
+### Repair batch 2 — site-audio upload registration
+
+- Starting verified code head: `9f63d741ce2a821ea6dd679c0b7e58638b665b3`.
+- Defects: the metadata API accepted a path under the admin prefix without proving the Storage object existed or that stored MIME/size matched the request; audit logging could fail after a committed insert/delete and incorrectly return HTTP 500, leaving the client believing the mutation failed.
+- Fix: new `src/features/audio/services/site-audio-upload-contract.ts` validates the exact owner-scoped two-segment path, supported audio MIME type, 50 MiB ceiling, object existence, and actual Storage metadata before DB insertion. Upload and registration routes share the MIME/size constants. Post-mutation audit failures are logged and returned as `auditRecorded: false`; the Admin UI surfaces the warning.
+- Tests: new `scripts/tests/site-audio-upload-contract.test.ts` covers path ownership, nested-path rejection, MIME/size limits, missing objects, metadata mismatch, and route ordering/audit warning contract.
+- Intermediate head `d57d7656cf54fe092cd7335a2817838fbbc96e92` failed TypeScript because the upload route omitted the new shared-constants import. The import was added; no failure was bypassed.
+- Exact final source/test head `7b06aacfc650d6d31c51bb0681472f25666bca23`: GitHub Quality Gate run `43518937015` / job `132208106267` SUCCESS; Android Debug APK run `43518936970` SUCCESS; CircleCI `config-guard`, `source-verify`, `application-build-docs` SUCCESS. Supabase Preview was SKIPPED.
+- Residual: the fix does not delete or clean up a file uploaded successfully when metadata commit never occurs. Safe orphan recovery/TTL remains open; no Storage object was removed.
+
+### Supabase migration, function, and advisor evidence (read-only)
+
+- Project `zqtssvlvmkzeeyqghqfk`: active/healthy, PostgreSQL 17.11.0.
+- Local migration files: 435. Remote migrations: 418, latest `20261110170000`; 17 pending: `20261110212000`, `20261111000000`, `20261111003000`, `20261111010000`, `20261111020000`, `20261111030000`, `20261111040000`, `20261111050000`, `20261111153000`, `20261111170000`, `20261112103200`, `20261113000000`, `20261113190000`, `20261113200000`, `20261113210000`, `20261113220000`, `20261113230000`. No production migration was applied.
+- Deployed Edge Functions: `prayer-notification-worker v77`, `source-verified-content-agent v14`, `spiritual-ai v2`, `health v2`, all ACTIVE. Branch Edge Function changes were not deployed. Canonical CI still has no `deno check` step.
+- Active cron: `zikr-prayer-push-dispatch` every minute, `zikr-source-verified-content-agent` daily 03:00 UTC, `zikr-cron-history-cleanup` daily 03:30 UTC. Legacy `zikr-youtube-facebook-sync` remains inactive.
+- Seven latest `content_agent_runs` rows are all `succeeded` with 0 fetched, 0 queued, 0 skipped, and 0 failed. Only Al Quran Cloud is enabled; Quran Foundation and Sunnah sources are disabled. The enabled parser currently yields no queue items. Treat this as a no-op/observability gap, not successful content ingestion.
+- Advisors: `auth_leaked_password_protection` WARN (disabled); 81 `unused_index` INFO findings; health lints empty. No index was deleted.
+
+### Social publishing runtime evidence (read-only; no publishing triggered)
+
+- YouTube OAuth credential exists for `ZIKR | ذكر` with `youtube.upload`, `youtube.readonly`, and `yt-analytics.readonly` scopes.
+- Production `social_publish_queue`: 125 published, 9 queued, 4 partial; all 13 queued/partial items are due now.
+- Latest publisher workflow run `43511995398` succeeded; its log reports five candidates processed, one success, four deferred due Facebook Reels cooldown, and zero queue alerts delivered.
+- The workflow declares a 15-minute schedule, but observed schedule events have gaps (latest schedule event at 18:47Z; a later 21:35Z run was a `workflow_run` trigger). Queue alert destinations are not configured/observed as delivered. Owner should verify scheduler and alert configuration; no manual replay was run.
+- `social_sync_state` has no source channel/playlist identifiers and the legacy sync cron is inactive; this is separate from the current YouTube publishing queue and should not be mistaken for a YouTube OAuth failure.
+
+### Production, CI, and safety gates
+
+- Vercel production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; no audit deployment was created.
+- Main scheduled `ci/circleci: english-content-sync` remains FAILURE. It was not rerun because it may synchronize/generate content or call Gemini.
+- Android Debug APK passed; no signed Android release or physical-device acceptance. iOS build/device, real Google OAuth, push permission, deep links, and background-audio acceptance remain manual.
+- Only read-only production queries were performed. No production DB mutation, migration apply, storage/media/index deletion, secret rotation, content generation, Gemini request, social publishing, push delivery, Android/iOS release, merge, or deployment occurred.
+
+### Remaining closeout work
+
+1. Continue 221 `REVIEW_REQUIRED` PR rows and 33 pending consumer/permission/runtime traces; read actual file contents and trace all imports/callers.
+2. Add and run Deno type/bundle checks for all Supabase Edge Functions; resolve source-agent no-op/telemetry behavior.
+3. Design owner-approved site-audio orphan recovery with exact path/reference checks and a TTL; do not delete media without a proven safe procedure.
+4. Verify social publisher schedule reliability and queue alert destinations; do not replay due posts as audit tests.
+5. Obtain CODEOWNERS review and owner approval for all 17 pending migrations; retain the 81 unused-index notices without deletion until individually proven.
+6. Complete iOS build and physical Android/iOS acceptance.
+7. Only after code review and owner gates are closed: merge safely, deploy through the manual Vercel workflow, verify READY at the merged SHA, and run production smoke checks.
+
+No repository-wide error-free or project-closed certification is made.
+
+---
+
+## Previous verified audit checkpoint — 2026-11-13T08:26:57Z
 
 **State: OPEN / IN PROGRESS.** PR #320 is unmerged and the audit branch is not deployed. The exact code head is green; this documentation reconciliation will be checked independently on its resulting head.
 
