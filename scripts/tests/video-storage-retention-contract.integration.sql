@@ -276,7 +276,8 @@ $purged$;
 
 -- The preflight must reject a third UPDATE to any unrelated table, not merely
 -- validate the two expected queue/request UPDATE statements independently.
-CREATE TABLE public.retention_contract_probe (
+CREATE SCHEMA retention_probe;
+CREATE TABLE retention_probe.retention_contract_probe (
   touched_at timestamptz
 );
 
@@ -291,7 +292,7 @@ BEGIN
   definition := pg_catalog.replace(
     original_definition,
     '  GET DIAGNOSTICS request_rows = ROW_COUNT;',
-    '  UPDATE public.retention_contract_probe SET touched_at = now();' || E'\n  GET DIAGNOSTICS request_rows = ROW_COUNT;'
+    '  UPDATE retention_probe.retention_contract_probe SET touched_at = now();' || E'\n  GET DIAGNOSTICS request_rows = ROW_COUNT;'
   );
 
   IF definition = original_definition THEN
