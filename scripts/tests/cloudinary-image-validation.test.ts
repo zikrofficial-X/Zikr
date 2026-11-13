@@ -302,6 +302,8 @@ assert.ok(
 );
 
 const mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
+assert.match(mediaAssetsRouteSource, /supabaseServerAdminCount\([\'"]media_assets[\'"]\)/, "the admin media API must use an exact count instead of treating the latest 300 rows as the total");
+assert.ok(mediaClientSource.includes("totalCount") && mediaClientSource.includes("أحدث 300 أصل"), "the media UI must show the exact total and disclose its latest-300 table window");
 assert.match(
   mediaAssetsSource,
   /export class AdminMediaInputError/,
