@@ -104,6 +104,11 @@ jobs:
         run: bash scripts/tests/video-storage-retention-contract.integration.sh
         timeout-minutes: 5
 
+      - name: Verify admin-managed write permissions against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/admin-managed-write-rls.integration.sh
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |
