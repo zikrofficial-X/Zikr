@@ -431,6 +431,9 @@ assert.match(
 assert.equal(getReferenceOrderColumn("youtube_feed_cache"), "video_id");
 assert.equal(getReferenceOrderColumn("social_platform_profiles"), "platform");
 assert.equal(getReferenceOrderColumn("content_library"), "id");
+assert.equal(getReferenceOrderColumn("content_revisions"), "id");
+assert.equal(getReferenceOrderColumn("kids_game_levels"), "id");
+assert.equal(getReferenceOrderColumn("kids_game_questions"), "id");
 assert.equal(getReferenceOrderColumn("admin_settings"), "key");
 assert.equal(getReferenceOrderColumn("push_runtime_settings"), "key");
 assert.equal(getReferenceOrderColumn("site_settings"), "key");
@@ -463,6 +466,21 @@ for (const [table, column] of [
   ["battle_events", "content_ar"],
   ["companion_stories", "content_en"],
   ["conquest_events", "content_ar"],
+  ["content_library", "body_ar"],
+  ["content_library", "body_en"],
+  ["content_library", "summary_ar"],
+  ["content_library", "summary_en"],
+  ["kids_games", "description_ar"],
+  ["kids_games", "description_en"],
+  ["kids_games", "short_description_ar"],
+  ["kids_game_levels", "description_ar"],
+  ["kids_game_levels", "objective_ar"],
+  ["kids_game_levels", "objective_en"],
+  ["kids_game_questions", "prompt_ar"],
+  ["kids_game_questions", "question_ar"],
+  ["kids_game_questions", "question_en"],
+  ["kids_game_questions", "explanation_ar"],
+  ["kids_game_questions", "explanation_en"],
   ["social_sync_jobs", "source_url"],
   ["quran_audio", "source_url"],
   ["quran_tafsir", "source_url"],
@@ -477,6 +495,13 @@ for (const [table, column] of [
   ["admin_settings", "value"],
   ["articles", "metadata"],
   ["content_library", "metadata"],
+  ["content_library", "seo"],
+  ["content_revisions", "snapshot"],
+  ["kids_games", "config"],
+  ["kids_game_levels", "config"],
+  ["kids_game_questions", "options"],
+  ["kids_game_questions", "options_ar"],
+  ["kids_game_questions", "options_en"],
   ["kids_content", "metadata"],
   ["push_runtime_settings", "value"],
   ["quran_audio", "metadata"],
@@ -606,6 +631,16 @@ assert.match(
 assert.ok(
   retentionRpcMigration.includes("GRANT EXECUTE ON FUNCTION public.video_storage_retention_contract_ready()\n  TO service_role;"),
   "only the service role may call the retention contract preflight",
+);
+assert.deepEqual(
+  [...findManagedVideoReferences({
+    revision: { snapshot: { media: { sourceUrl: publicUrl } } },
+    game: { config: { background: publicUrl } },
+    level: { config: { preview: publicUrl } },
+    question: { options: [{ image: publicUrl }] },
+  }, encodedReferenceCandidates, supabaseUrl)],
+  [encodedReferencePath],
+  "historical content revisions and structured Kids game media fields must be recursively matchable",
 );
 assert.ok(
   storageRetentionSource.includes("async function assertRetentionRpcContractReady(client)"),
