@@ -5,7 +5,7 @@ import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeli
 import {
   buildNotificationTopic,
   isCurrentIntervalReminderSlot,
-  isCurrentPrayerReminderSchedule,
+  matchesAnyCurrentPrayerReminderSchedule,
   nextLocalDate,
   previousLocalDate,
   zonedDateTime,
@@ -766,28 +766,24 @@ async function deliverDue(
             .eq("location_id", location.id)
             .in("prayer_date", prayerDates);
           if (cacheError) throw cacheError;
-          const currentCache = (cacheRows ?? []).map(row => row as CachedSchedule).find(cache =>
+          const currentCaches = (cacheRows ?? []).map(row => row as CachedSchedule).filter(cache =>
             Number(cache.latitude) === Number(location.latitude) &&
             Number(cache.longitude) === Number(location.longitude) &&
             cache.timezone === timeZone &&
             cache.calculation_method === method &&
             cache.madhab === madhab
           );
-          const currentPrayerAt = currentCache
-            ? zonedDateTime(
-                currentCache.prayer_date,
-                timeZone,
-                currentCache.timings[delivery.prayer_name] ?? "",
-              )
-            : null;
-          if (
-            !currentPrayerAt ||
-            !isCurrentPrayerReminderSchedule({
-              scheduledAt: delivery.scheduled_at,
-              prayerAt: currentPrayerAt,
-              offsetMinutes: preference.prayer_reminders?.[delivery.prayer_name],
-            })
-          ) {
+          const currentScheduleMatches = matchesAnyCurrentPrayerReminderSchedule({
+            scheduledAt: delivery.scheduled_at,
+            timeZone,
+            prayerName: delivery.prayer_name,
+            offsetMinutes: preference.prayer_reminders?.[delivery.prayer_name],
+            candidates: currentCaches.map(cache => ({
+              prayer_date: cache.prayer_date,
+              timings: cache.timings,
+            })),
+          });
+          if (!currentScheduleMatches) {
             skipReason = "Prayer reminder schedule changed; stale delivery cancelled";
           }
         }
