@@ -35,6 +35,7 @@ type YoutubeSyncStateRow = {
   next_allowed_sync_at: string | null;
   last_error: string | null;
   updated_at: string;
+  playlists?: unknown;
 };
 
 export type YoutubeVideo = { id: string; title: string; description: string; publishedAt: string | null; thumbnailUrl: string | null };
@@ -60,6 +61,36 @@ export type YoutubeChannelFeed = {
   errorCode?: 'quota_exceeded' | 'http_error' | 'unknown';
   stale?: boolean;
 };
+
+export function normalizeCachedYoutubePlaylists(value: unknown): YoutubePlaylist[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((candidate) => {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
+    const row = candidate as Record<string, unknown>;
+    const id = typeof row.id === 'string' ? row.id.trim() : '';
+    const title = typeof row.title === 'string' ? row.title.trim() : '';
+    if (!id || id.length > 128 || !title || title.length > 500 || seen.has(id)) return [];
+    seen.add(id);
+    const description = typeof row.description === 'string' ? row.description.slice(0, 5000) : '';
+    let thumbnailUrl: string | null = null;
+    if (typeof row.thumbnailUrl === 'string') {
+      try {
+        const url = new URL(row.thumbnailUrl);
+        const allowedHost = url.hostname === 'youtube.com' || url.hostname.endsWith('.youtube.com')
+          || url.hostname.endsWith('.ytimg.com') || url.hostname.endsWith('.ggpht.com');
+        if (url.protocol === 'https:' && allowedHost) thumbnailUrl = url.toString();
+      } catch {
+        // Ignore malformed cached thumbnail URLs.
+      }
+    }
+    const itemCount = typeof row.itemCount === 'number' && Number.isSafeInteger(row.itemCount) && row.itemCount >= 0
+      ? row.itemCount
+      : null;
+    return [{ id, title, description, thumbnailUrl, itemCount }];
+  }).slice(0, 25);
+}
+
 export type YoutubeSyncHealth = {
   configured: boolean;
   status: YoutubeSyncStateRow['status'];
@@ -195,19 +226,41 @@ async function readCachedVideos(channelId: string): Promise<YoutubeVideo[]> {
   return ((data ?? []) as YoutubeCacheRow[]).map(toVideo);
 }
 
-async function readSyncHealth(channelId: string): Promise<YoutubeSyncHealth> {
+type YoutubeSyncSnapshot = YoutubeSyncHealth & { cachedPlaylists: YoutubePlaylist[] };
+
+async function readSyncHealth(channelId: string): Promise<YoutubeSyncSnapshot> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase.from('youtube_sync_state').select('id,channel_id,status,last_attempted_at,last_success_at,next_allowed_sync_at,last_error,updated_at').eq('id', 1).maybeSingle();
+  const { data, error } = await supabase.from('youtube_sync_state').select('id,channel_id,status,last_attempted_at,last_success_at,next_allowed_sync_at,last_error,updated_at,playlists').eq('id', 1).maybeSingle();
   if (error) throw error;
   const row = data as YoutubeSyncStateRow | null;
-  return { configured: true, status: row?.channel_id === channelId ? row.status : 'never_synced', lastAttemptedAt: row?.last_attempted_at ?? null, lastSuccessAt: row?.last_success_at ?? null, nextAllowedSyncAt: row?.next_allowed_sync_at ?? null, lastError: row?.last_error ? safeYoutubeErrorMessage(row.last_error) : null };
+  const sameChannel = row?.channel_id === channelId;
+  return {
+    configured: true,
+    status: sameChannel && row ? row.status : 'never_synced',
+    lastAttemptedAt: sameChannel ? row?.last_attempted_at ?? null : null,
+    lastSuccessAt: sameChannel ? row?.last_success_at ?? null : null,
+    nextAllowedSyncAt: sameChannel ? row?.next_allowed_sync_at ?? null : null,
+    lastError: sameChannel && row?.last_error ? safeYoutubeErrorMessage(row.last_error) : null,
+    cachedPlaylists: sameChannel ? normalizeCachedYoutubePlaylists(row?.playlists) : [],
+  };
 }
 
 export async function getYoutubeSyncHealth(): Promise<YoutubeSyncHealth> {
   const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = getServerEnv();
   if (!YOUTUBE_API_KEY || !YOUTUBE_CHANNEL_ID) return { configured: false, status: 'never_synced', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: null };
-  try { return await readSyncHealth(YOUTUBE_CHANNEL_ID); }
-  catch (error) { return { configured: true, status: 'error', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: safeYoutubeErrorMessage(error instanceof Error ? error.message : 'Failed to read YouTube sync state.') }; }
+  try {
+    const health = await readSyncHealth(YOUTUBE_CHANNEL_ID);
+    return {
+      configured: health.configured,
+      status: health.status,
+      lastAttemptedAt: health.lastAttemptedAt,
+      lastSuccessAt: health.lastSuccessAt,
+      nextAllowedSyncAt: health.nextAllowedSyncAt,
+      lastError: health.lastError,
+    };
+  } catch (error) {
+    return { configured: true, status: 'error', lastAttemptedAt: null, lastSuccessAt: null, nextAllowedSyncAt: null, lastError: safeYoutubeErrorMessage(error instanceof Error ? error.message : 'Failed to read YouTube sync state.') };
+  }
 }
 
 export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeChannelFeed> {
@@ -221,7 +274,7 @@ export async function getYoutubeChannelFeed(maxResults = 24): Promise<YoutubeCha
     ]);
     const nextAllowed = health.nextAllowedSyncAt ? new Date(health.nextAllowedSyncAt).getTime() : 0;
     if (videos.length === 0 || nextAllowed <= Date.now()) return await syncYoutubeFeed(maxResults);
-    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel, videos: videos.slice(0, maxResults), playlists: [] };
+    return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel, videos: videos.slice(0, maxResults), playlists: health.cachedPlaylists };
   } catch (error) {
     return { configured: true, channelId: YOUTUBE_CHANNEL_ID, channel: null, videos: [], playlists: [], error: safeYoutubeErrorMessage(error), errorCode: 'unknown' };
   }
@@ -240,7 +293,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
   const lastAttempted = health.lastAttemptedAt ? new Date(health.lastAttemptedAt).getTime() : 0;
   if (nextAllowed > now || (lastAttempted > now - SYNC_LOCK_MS && !health.lastSuccessAt)) {
     const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel()]);
-    return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: [], stale: true, error: health.lastError ?? 'YouTube sync is temporarily throttled.', errorCode: health.status === 'quota_exceeded' ? 'quota_exceeded' : 'unknown' };
+    return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: health.cachedPlaylists, stale: true, error: health.lastError ?? 'YouTube sync is temporarily throttled.', errorCode: health.status === 'quota_exceeded' ? 'quota_exceeded' : 'unknown' };
   }
 
   const attemptAt = new Date().toISOString();
@@ -290,7 +343,8 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
     const videos = await readCachedVideos(channelId);
     const channel = toYoutubeChannel(channelProfile);
     const playlists: YoutubePlaylist[] = (playlistsResponse.items ?? []).map((item) => ({ id: item.id, title: item.snippet.title, description: item.snippet.description ?? '', thumbnailUrl: pickThumbnail(item.snippet), itemCount: item.contentDetails?.itemCount ?? null }));
-    await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'ok', last_attempted_at: syncedAt, last_success_at: syncedAt, next_allowed_sync_at: new Date(Date.now() + CACHE_TTL_MS).toISOString(), last_error: null });
+    const { error: successStateError } = await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: 'ok', last_attempted_at: syncedAt, last_success_at: syncedAt, next_allowed_sync_at: new Date(Date.now() + CACHE_TTL_MS).toISOString(), last_error: null, playlists }, { onConflict: 'id' });
+    if (successStateError) throw successStateError;
     return { configured: true, channelId, channel, videos: videos.slice(0, maxResults), playlists, stale: false };
   } catch (error) {
     const errorCode = getYoutubeErrorCode(error);
@@ -298,6 +352,6 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
     const message = safeYoutubeErrorMessage(error);
     await supabase.from('youtube_sync_state').upsert({ id: 1, channel_id: channelId, status: errorCode === 'quota_exceeded' ? 'quota_exceeded' : 'error', last_attempted_at: new Date().toISOString(), next_allowed_sync_at: new Date(Date.now() + cooldown).toISOString(), last_error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted.' : message.slice(0, 500) });
     const [cached, channel] = await Promise.all([readCachedVideos(channelId), readCachedChannel()]);
-    return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: [], stale: cached.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
+    return { configured: true, channelId, channel, videos: cached.slice(0, maxResults), playlists: health.cachedPlaylists, stale: cached.length > 0 || health.cachedPlaylists.length > 0, error: errorCode === 'quota_exceeded' ? 'YouTube API quota is temporarily exhausted; cached content remains available.' : message, errorCode };
   }
 }

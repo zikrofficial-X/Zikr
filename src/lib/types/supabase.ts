@@ -4550,6 +4550,7 @@ export type Database = {
       }
       youtube_sync_state: {
         Row: {
+          playlists: Json
           channel_id: string | null
           id: number
           last_attempted_at: string | null
@@ -4560,6 +4561,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          playlists?: Json
           channel_id?: string | null
           id?: number
           last_attempted_at?: string | null
@@ -4570,6 +4572,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          playlists?: Json
           channel_id?: string | null
           id?: number
           last_attempted_at?: string | null
