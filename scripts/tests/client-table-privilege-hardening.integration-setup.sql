@@ -44,6 +44,14 @@ AS $function$
 $function$;
 GRANT EXECUTE ON FUNCTION public.is_admin_user() TO PUBLIC, authenticated;
 
+DO $legacy_admin_predicate_acl$
+BEGIN
+  IF NOT has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Legacy fixture did not reproduce public admin-predicate execution';
+  END IF;
+END
+$legacy_admin_predicate_acl$;
+
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES TO PUBLIC, anon, authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public

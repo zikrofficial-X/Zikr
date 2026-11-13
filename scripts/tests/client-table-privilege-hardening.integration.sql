@@ -1,13 +1,5 @@
 \set ON_ERROR_STOP on
 
-DO $admin_predicate_acl$
-BEGIN
-  IF NOT has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
-    RAISE EXCEPTION 'Legacy fixture did not reproduce public admin-predicate execution';
-  END IF;
-END
-$admin_predicate_acl$;
-
 CREATE TABLE public.client_privilege_hardening_postgres_after (
   id bigint PRIMARY KEY
 );
