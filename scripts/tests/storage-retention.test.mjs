@@ -45,12 +45,12 @@ assert.match(
 );
 assert.match(
   retentionRpcMigrationForInitialAssertions,
-  /REVOKE ALL ON FUNCTION public\.video_storage_retention_contract_ready\(\) FROM PUBLIC, anon, authenticated/i,
+  /REVOKE ALL ON FUNCTION public\.video_storage_retention_contract_ready\(\)\s+FROM PUBLIC, anon, authenticated/i,
   "the retention contract guard must not be executable by untrusted roles",
 );
 assert.match(
   retentionRpcMigrationForInitialAssertions,
-  /GRANT EXECUTE ON FUNCTION public\.video_storage_retention_contract_ready\(\) TO service_role/i,
+  /GRANT EXECUTE ON FUNCTION public\.video_storage_retention_contract_ready\(\)\s+TO service_role/i,
   "only the service role may verify the retention contract guard",
 );
 assert.equal(assertExpectedSupabaseProject(supabaseUrl, "zqtssvlvmkzeeyqghqfk"), "zqtssvlvmkzeeyqghqfk");
