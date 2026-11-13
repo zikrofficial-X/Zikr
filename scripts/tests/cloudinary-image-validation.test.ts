@@ -264,7 +264,8 @@ assert.equal(
   "unclassified",
   "unknown media types must not be silently counted as visual",
 );
-\nconst mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
+
+const mediaAssetsRouteSource = readFileSync("src/app/api/admin/media/route.ts", "utf8");
 assert.match(
   mediaAssetsSource,
   /export class AdminMediaInputError/,
