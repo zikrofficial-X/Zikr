@@ -821,7 +821,7 @@ assert.ok(
 
 assert.equal(
   (adminSocialRouteSource.match(/const auditRecorded = await recordSocialAuditEvent\(/g) ?? []).length,
-  9,
+  10,
   "every social mutation/connection-test audit write must use the best-effort wrapper",
 );
 assert.match(
