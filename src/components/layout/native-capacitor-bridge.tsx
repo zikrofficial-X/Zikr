@@ -13,7 +13,8 @@ import { Network } from "@capacitor/network";
 import { Share } from "@capacitor/share";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { StatusBar } from "@capacitor/status-bar";
-import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
+import { loadAudioSettings } from "@/lib/audio/config";
+import { ensureNativeNotificationChannels } from "@/features/notifications/services/native-notification-channels";
 import { syncQuranReminderFromAccount } from "@/features/notifications/services/quran-reminder";
 import { PRODUCTION_URL } from "@/lib/site";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
@@ -156,6 +157,35 @@ function installNativeFacade(
     },
     async scheduleLocalNotification(notification) {
       const localNotifications = plugins.LocalNotifications;
+
+    let disposed = false;
+    let audioSettingsRefreshQueue = Promise.resolve();
+    const refreshNativeAudioSettings = (notifyReady = true) => {
+      audioSettingsRefreshQueue = audioSettingsRefreshQueue
+        .then(async () => {
+          if (disposed) return;
+          await ensureNativeNotificationChannels(
+            localNotifications,
+            Capacitor.getPlatform(),
+          );
+          await syncQuranReminderFromAccount();
+          if (notifyReady && !disposed) {
+            window.dispatchEvent(
+              new CustomEvent("zikr:native-audio-channels-ready"),
+            );
+          }
+        })
+        .catch(error => {
+          console.warn(
+            "[native-bridge] Audio notification channel refresh failed",
+            error,
+          );
+        });
+      return audioSettingsRefreshQueue;
+    };
+    const handleAudioSettingsChanged = () => {
+      void refreshNativeAudioSettings();
+    };
       if (!localNotifications?.schedule) {
         throw new Error("Capacitor LocalNotifications plugin is unavailable");
       }
@@ -257,45 +287,15 @@ export function NativeCapacitorBridge() {
     void (async () => {
       try {
         await loadAudioSettings();
-        const prayerAudio = getNativeAudio("prayer");
-        const dhikrAudio = getNativeAudio("dhikr");
-        const salawatAudio = getNativeAudio("salawat");
-        const channels = [
-          {
-            ...prayerAudio,
-            name: "أوقات الصلاة والأذان",
-            description: "تنبيهات أوقات الصلاة بالصوت المختار",
-            importance: 5,
-          },
-          {
-            ...dhikrAudio,
-            name: "تذكير الذكر",
-            description: "تذكيرات الذكر بالصوت المختار",
-            importance: 3,
-          },
-          {
-            ...salawatAudio,
-            name: "الصلاة على النبي",
-            description: "تذكيرات الصلاة على النبي بالصوت المختار",
-            importance: 3,
-          },
-        ];
-        const uniqueChannels = Array.from(
-          new Map(
-            channels.map(channel => [channel.channelId, channel])
-          ).values()
+        if (disposed) return;
+        window.addEventListener(
+          "zikr:audio-settings-changed",
+          handleAudioSettingsChanged,
         );
-        for (const channel of uniqueChannels) {
-          await localNotifications?.createChannel?.({
-            id: channel.channelId,
-            name: channel.name,
-            description: channel.description,
-            importance: channel.importance,
-            sound: channel.sound,
-            vibration: true,
-            visibility: 1,
-          });
-        }
+        await ensureNativeNotificationChannels(
+          localNotifications,
+          Capacitor.getPlatform(),
+        );
 
         // Keep the account's Quran reminder schedule alive after app restart.
         await syncQuranReminderFromAccount();
@@ -310,7 +310,9 @@ export function NativeCapacitorBridge() {
       } finally {
         // Do not let prayer hooks race channel creation. They can now safely
         // schedule background alarms when this event is dispatched.
-        window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+        if (!disposed) {
+          window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+        }
       }
     })();
     // Push permission is requested only when the user explicitly enables
@@ -376,6 +378,14 @@ export function NativeCapacitorBridge() {
         new CustomEvent("zikr:native-app-state", { detail: state })
       );
     });
+
+    return () => {
+      disposed = true;
+      window.removeEventListener(
+        "zikr:audio-settings-changed",
+        handleAudioSettingsChanged,
+      );
+    };
   }, []);
 
   return null;

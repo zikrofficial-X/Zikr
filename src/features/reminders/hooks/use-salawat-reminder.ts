@@ -260,10 +260,12 @@ export function useSalawatReminder(
     };
     schedule();
     window.addEventListener("zikr:native-ready", schedule);
+    window.addEventListener("zikr:native-audio-channels-ready", schedule);
     window.addEventListener("zikr:native-app-state", schedule);
     document.addEventListener("visibilitychange", schedule);
     return () => {
       window.removeEventListener("zikr:native-ready", schedule);
+      window.removeEventListener("zikr:native-audio-channels-ready", schedule);
       window.removeEventListener("zikr:native-app-state", schedule);
       document.removeEventListener("visibilitychange", schedule);
     };

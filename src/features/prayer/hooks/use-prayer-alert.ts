@@ -445,6 +445,7 @@ export function usePrayerAlert(
       schedule();
     };
     window.addEventListener("zikr:native-ready", schedule);
+    window.addEventListener("zikr:native-audio-channels-ready", schedule);
     window.addEventListener("zikr:native-app-state", handleResume);
     window.addEventListener("zikr:prayer-location-updated", schedule);
     window.addEventListener("zikr:native-notification-permission", schedule);
@@ -453,6 +454,7 @@ export function usePrayerAlert(
       disposed = true;
       window.clearInterval(interval);
       window.removeEventListener("zikr:native-ready", schedule);
+      window.removeEventListener("zikr:native-audio-channels-ready", schedule);
       window.removeEventListener("zikr:native-app-state", handleResume);
       window.removeEventListener("zikr:prayer-location-updated", schedule);
       window.removeEventListener("zikr:native-notification-permission", schedule);
