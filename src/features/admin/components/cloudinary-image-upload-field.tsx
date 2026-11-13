@@ -2,9 +2,8 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES, MEDIA_IMAGE_ACCEPT } from '@/features/media/services/media-asset-limits';
 
-const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif';
-const MAX_BYTES = 3 * 1024 * 1024;
 
 type UploadStatus = 'idle' | 'selected' | 'error';
 
@@ -38,7 +37,7 @@ export function CloudinaryImageUploadField({
         id={`cloudinary-${name}`}
         name={fileName}
         type="file"
-        accept={ACCEPT}
+        accept={MEDIA_IMAGE_ACCEPT}
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           setMessage('');
@@ -47,14 +46,14 @@ export function CloudinaryImageUploadField({
             setStatus('idle');
             return;
           }
-          if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+          if (!isAllowedMediaImageType(file.type)) {
             event.currentTarget.value = '';
             setSelectedFileName('');
             setStatus('error');
             setMessage('الصيغة غير مدعومة. اختر JPG أو PNG أو WEBP أو GIF.');
             return;
           }
-          if (file.size <= 0 || file.size > MAX_BYTES) {
+          if (file.size <= 0 || file.size > MAX_MEDIA_IMAGE_BYTES) {
             event.currentTarget.value = '';
             setSelectedFileName('');
             setStatus('error');
