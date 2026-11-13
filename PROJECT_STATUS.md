@@ -815,3 +815,35 @@ No files or production data were deleted in this checkpoint. No Cloudinary asset
 - `.github/CODEOWNERS` assigns all paths, including auth, APIs, admin, Supabase, Android/iOS, workflows, and Vercel configuration, to `@Zikrmediaofficial`. PR #320 still has zero submitted reviews and zero review threads; the connected identity's collaborator permission for that owner is null. Owner approval cannot be obtained autonomously.
 - Main's separate scheduled `ci/circleci: english-content-sync` context remains FAILURE on `main@c4560d9`. It is not a PR #320 check. It was not rerun because the job may sync or generate content.
 - No content generation, Gemini request, social publishing, push notification, production database mutation, migration application, Storage/media deletion, secret decryption/rotation, Android/iOS release, merge, or deployment was triggered. Repository-wide review remains IN PROGRESS.
+
+ 
+## Audit checkpoint — 2026-11-13
+
+**State: OPEN / IN PROGRESS.** The audit branch remains unmerged and has not been deployed.
+
+- Repository / PR: zikrofficial-X/Zikr, PR #320; branch audit/zikr-kids-daily-priority-20261110; base main at c4560d9ccb222bea5814cc4db32d4c3f1a2101b3.
+- Source-code head reviewed in this checkpoint: 58ba74a709b96ff6017a0a0f3598c773c4ea3de5. Its recursive tree a4be94f5eb0d37cb9bcbda51c1cedbe8feea517c contains 2,265 entries (1,768 files, 497 directories). Main at c4560d9ccb222bea5814cc4db32d4c3f1a2101b3 contains 2,154 entries (1,662 files, 492 directories). No main paths are deleted.
+- GitHub's PR changed-file listing reports 310 files at this source head: 106 added, 204 modified, 0 removed. The compare endpoint's file array is capped at 300; the full PR file listing was used for reconciliation.
+- A branch snapshot manifest was added at docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl. It contains 2,265 records from source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5 / tree a4be94f5eb0d37cb9bcbda51c1cedbe8feea517c and intentionally excludes its own new file. The original docs/audits/REPO_MANIFEST_2026-11-10.jsonl remains the main-only baseline: 2,153 records (1,661 blobs, 492 directories), exactly matching main except its self-entry.
+- The refreshed PR overlay contains 310 rows (the overlay excludes itself). Status counts: 25 CONTENT_READ_PENDING_TRACE, 224 REVIEW_REQUIRED, 50 CONTENT_READ_TESTED_PASS, and 11 FIXED_TESTED_PENDING_LIVE_APPLY. The separate main-baseline matrix remains 1,525 REVIEW_REQUIRED rows and zero closed modules.
+- Repair batch A: the admin social deletion API now requires an explicit non-empty platform selection and rejects YouTube remote deletion before reading queue candidates or calling any provider. This closes a server/UI policy gap; the UI already disallowed YouTube deletion, but a step-up-authenticated direct API request could still request it. Commits: db7af471bf0fb04ddf429b8b4c254b0268a9f35f (route) and f20ed2200c77eaec0e3307da35cd30cae7e3d482 (regression assertion).
+- Repair batch B: the scheduled video-media audit now advances videos.updated_at with buildNextRowVersionUpdatedAt rather than writing Date.now() directly. This prevents a same-millisecond CAS write from reusing the observed row-version token. Commits: 48b52bdab385914f0c05f4c2cf9500db32ec4fe5 (implementation), 094d0b568cbca18e7bcbe4e2067cc466f936a343 (regression test), and 58ba74a709b96ff6017a0a0f3598c773c4ea3de5 (video-audit verifier).
+- Exact-head verification for source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5: GitHub ZIKR / Quality Gate is IN_PROGRESS (run 43358852165); CircleCI source-verify and application-build-docs are PENDING; CircleCI config-guard is SUCCESS. The preceding source head 2e489574e894e290aa3556a9e48e514673ec1183 had a successful full Quality Gate, but that result does not cover the two repair batches above. The documentation-only reconciliation commit created after this snapshot triggers a fresh exact-head run; do not treat pending checks as passed.
+- Supabase project zqtssvlvmkzeeyqghqfk reports 418 applied remote migrations through 20261110170000. The branch contains 430 local migration files, leaving 12 unapplied locally; none was applied to production. Eleven are already test-backed but owner-gated for live apply; one remains in REVIEW_REQUIRED pending re-read/retest. Security advisor still reports auth_leaked_password_protection WARN (disabled); performance advisor reports 81 unused-index findings. No indexes were dropped or altered.
+- Vercel production deployment dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu is READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3, not on this audit branch. Read-only GET checks on 2026-11-13 returned HTTP 200 for /api/health (reported c4560d9ccb222bea5814cc4db32d4c3f1a2101b3), /, /kids, and /quran/1/1. The iOS AASA endpoint also returns 200 but its applinks.details and webcredentials.apps arrays are empty. No preview or production deployment was created from the audit branch.
+- Runtime monitoring still contains a historical TypeError: fetch failed group for /quran/[surah]/[ayah] (last seen 2026-11-12 11:41 UTC); the /quran/1/1 smoke returned 200 on 2026-11-13, so the error was not reproduced by this smoke check.
+- PR #320 remains OPEN and unmerged, with no submitted owner review or reviewer request. The merge state is unstable; no merge, protected-branch bypass, CODEOWNERS bypass, or deployment was attempted.
+- Safety: no content generation, Gemini request, social publishing, push notification, production database mutation, Supabase migration application, storage/media deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment was triggered.
+
+### Remaining work
+
+1. Complete the 224 REVIEW_REQUIRED and 25 PENDING_TRACE PR rows, then continue the 1,525-row main-baseline review; do not infer completion from CI.
+2. Re-run the canonical full verification suite on the final documentation/source head and resolve every failed check; wait for CircleCI source-verify and application-build-docs.
+3. Re-read and re-test the one pending migration before marking it live-apply-ready; all 12 migrations remain unapplied until owner-approved release procedure.
+4. Obtain required CODEOWNERS owner review; PR #320 has none.
+5. Resolve leaked-password protection in Supabase Auth settings and investigate the 81 unused-index advisor findings without deleting indexes during audit.
+6. Supply Apple Team ID / app identifier values, populate AASA, and complete physical iOS Universal Links/OAuth acceptance; complete physical Android deep-link/OAuth/notification/signing acceptance.
+7. Diagnose the main-only scheduled english-content-sync failure from existing logs without rerunning content generation or Gemini work.
+8. Only after source review, owner review, and exact-head gates pass: merge under protected-branch rules, deploy through the approved Vercel release path, verify READY on the merged SHA, then repeat production smoke checks.
+
+No repository-wide error-free or project-closed certification is made.

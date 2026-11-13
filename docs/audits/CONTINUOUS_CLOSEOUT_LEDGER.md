@@ -1175,3 +1175,46 @@ No content generation, Gemini request, social publication, production database m
 6. After all reviewable defects and approvals close, merge safely, deploy through the manual Vercel workflow, verify READY at the merged SHA, and run production smoke checks.
 
 Audit status remains OPEN; no project-wide error-free or closed certification is made.
+
+ 
+## Audit run — 2026-11-13 — source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5
+
+**State: OPEN.** PR #320 remains unmerged; no deployment from the audit branch.
+
+### Repository and inventory reconciliation
+
+- Branch: audit/zikr-kids-daily-priority-20261110; PR #320; base main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3.
+- Source-code head: 58ba74a709b96ff6017a0a0f3598c773c4ea3de5; recursive tree a4be94f5eb0d37cb9bcbda51c1cedbe8feea517c; 2,265 entries = 1,768 files + 497 directories.
+- Main tree: 037a8e58e13187abe4198f366b2d38db6031789d; 2,154 entries = 1,662 files + 492 directories. No main paths are missing from the branch.
+- PR API file listing: 310 changed paths = 106 added + 204 modified + 0 removed. GitHub compare API returned a maximum of 300 file records, so the PR file listing was used to produce the full overlay.
+- Main manifest docs/audits/REPO_MANIFEST_2026-11-10.jsonl: 2,153 records = 1,661 blobs + 492 directories, exact against main except the manifest self-entry.
+- New branch manifest docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl: 2,265 records from source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5 / tree a4be94f5eb0d37cb9bcbda51c1cedbe8feea517c, self-excluded. This preserves the main-only manifest as a separate baseline.
+- New overlay has 310 rows excluding itself: 50 tested-pass, 25 pending trace, 224 review required, 11 fixed/tested/pending live apply. Main baseline remains 1,525 review required and 0 closed modules.
+
+### Repairs made
+
+1. **Social remote deletion policy.** The UI already rejected YouTube deletion, but the POST /api/admin/social route accepted a direct step-up-authenticated delete_published request with platforms containing youtube, or an empty platform list that widened the target set to all queue platforms. The route now rejects empty selections and YouTube before it reads candidate queue rows or calls any provider. Facebook and Facebook Reels remain the only supported remote-delete targets. Implementation commit db7af471bf0fb04ddf429b8b4c254b0268a9f35f; focused regression assertion commit f20ed2200c77eaec0e3307da35cd30cae7e3d482. No provider request was sent.
+2. **Video media audit CAS token.** scripts/jobs/audit-video-media.ts previously set updated_at to new Date().toISOString(). If an audit write shared the observed row's millisecond, the CAS token could remain unchanged and permit a stale writer to match again. The patch now uses buildNextRowVersionUpdatedAt(updatedAt); a same-millisecond regression assertion and the video-media verifier enforce the contract. Commits 48b52bdab385914f0c05f4c2cf9500db32ec4fe5, 094d0b568cbca18e7bcbe4e2067cc466f936a343, and 58ba74a709b96ff6017a0a0f3598c773c4ea3de5. No media audit job was executed.
+
+### Code paths read in this run
+
+- Social deletion: src/app/api/admin/social/route.ts, src/app/admin/social/social-client.tsx, src/features/social/services/social-deletion.ts, src/features/social/services/youtube-oauth-credentials.ts, scripts/tests/social-deletion.test.ts.
+- Social/queue workers: scripts/jobs/social-publishing.ts, scripts/jobs/content-publishing.ts, src/features/social/services/platform-availability.ts (targeted excerpts), src/features/social/services/social-queue-metadata.ts (targeted excerpts).
+- Video media audit: scripts/jobs/audit-video-media.ts, scripts/verify-video-media-audit.mjs, scripts/tests/video-media-url.test.ts, src/features/videos/services/video-media-audit-outcome.ts, src/features/videos/services/video-media-contract.ts, src/lib/supabase/row-version.ts.
+- Reminder delivery: the new background-reminder migration and integration SQL, reminder preference services, and prayer-notification-worker eligibility, pagination, time-zone, delivery-lease, and index code excerpts.
+- Automation/runtime definitions: .github/workflows/publish-social.yml, audit-video-media.yml, storage-retention.yml, release-finalization.yml, and .circleci/config.yml. These were read only; no workflow_dispatch, scheduled job, social worker, content worker, media audit, retention apply, or release was triggered.
+- This is a targeted read record, not a claim that each listed module or its full consumer graph is closed. The overlay retains 25 PENDING_TRACE rows and 224 REVIEW_REQUIRED rows.
+
+### Exact verification and external state
+
+- Source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5: GitHub ZIKR / Quality Gate run 43358852165 was IN_PROGRESS at snapshot time; CircleCI source-verify and application-build-docs were PENDING; CircleCI config-guard was SUCCESS. The prior head 2e489574e894e290aa3556a9e48e514673ec1183 had a full successful gate, but it does not cover these new repairs.
+- Supabase project zqtssvlvmkzeeyqghqfk: 418 remote migrations through 20261110170000; 430 local migration files; 12 pending locally. Eleven are already test-backed and remain owner-gated for live apply; one migration remains REVIEW_REQUIRED. No production migration was applied. Security advisor: auth_leaked_password_protection WARN. Performance advisor: 81 unused-index findings; no index was removed.
+- Vercel production deployment dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu is READY on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3. Read-only GET smoke checks: /api/health 200 with main SHA c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; / 200; /kids 200; /quran/1/1 200; AASA 200 but empty app-link and web-credentials details. No audit-branch deployment was created.
+- Historical runtime error group: TypeError: fetch failed on /quran/[surah]/[ayah], last seen 2026-11-12 11:41 UTC; the /quran/1/1 GET smoke on 2026-11-13 returned 200, so this was not reproduced.
+- PR #320 remains open; no owner review or reviewer request; mergeable state unstable. No approval or protection gate was bypassed.
+
+### Safety and blockers
+
+- No production DB mutation, migration application, content generation, Gemini request, social publishing, push notification, media/storage deletion, secret rotation, Android/iOS release, merge, or audit-branch deployment.
+- Owner review is required before merge. All 12 migrations remain unapplied. Supabase leaked-password protection, Apple AASA identifiers, physical Android/iOS acceptance, and the main-only english-content-sync failure remain open.
+- Exact-head CI is not complete. The documentation reconciliation commit created from this source head will trigger a new check set; pending checks must not be treated as successful.

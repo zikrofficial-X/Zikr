@@ -2191,3 +2191,17 @@ This section records a narrow source-path review and current production evidence
 - The main-only scheduled `english-content-sync` check remains failed and was not rerun because it may generate/sync content.
 - iOS Associated Domains remain unverified because `IOS_ASSOCIATED_DOMAIN_APP_ID` and `APPLE_TEAM_ID` are absent; physical Android/iOS acceptance remains manual.
 - Historical production runtime errors (two socket-level `fetch failed` events on home/Quran and one React streaming-boundary error on article) remain un-attributed; no recent matching logs were returned in the latest 30-minute window.
+
+ 
+## PR #320 branch reconciliation — 2026-11-13
+
+This section is a branch snapshot, not a change to the main-baseline matrix above.
+
+- Source-code head: 58ba74a709b96ff6017a0a0f3598c773c4ea3de5; tree: a4be94f5eb0d37cb9bcbda51c1cedbe8feea517c.
+- Audit branch inventory: 2,265 entries (1,768 files, 497 directories); main baseline: 2,154 entries (1,662 files, 492 directories); no main paths are absent from the branch.
+- PR changed-file listing: 310 files (106 added, 204 modified, 0 removed). The GitHub compare endpoint only returns 300 file entries, so the PR file listing is authoritative for the full count.
+- Branch inventory manifest: docs/audits/PR320_REPO_MANIFEST_2026-11-13.jsonl, 2,265 records from 58ba74a709b96ff6017a0a0f3598c773c4ea3de5, self-excluded. Main baseline manifest remains pinned to c4560d9ccb222bea5814cc4db32d4c3f1a2101b3, 2,153 records (1,661 blobs and 492 directories), matching the complete main tree except its self-entry.
+- PR overlay: 310 rows (overlay self-excluded): 50 CONTENT_READ_TESTED_PASS, 25 CONTENT_READ_PENDING_TRACE, 224 REVIEW_REQUIRED, 11 FIXED_TESTED_PENDING_LIVE_APPLY.
+- The main-baseline backlog remains 1,525 REVIEW_REQUIRED rows and zero closed modules. Branch review status does not close the main-baseline backlog.
+- Two additional source repairs are recorded in the current ledger: server-side Facebook-only remote deletion enforcement and monotonic CAS row-version advancement in the scheduled media audit. Exact-head tests are pending on source head 58ba74a709b96ff6017a0a0f3598c773c4ea3de5; no code is certified by the previous head's checks.
+- Production remains on main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3; no audit branch deployment, production mutation, migration apply, social publishing, content generation, storage deletion, or mobile release occurred.
