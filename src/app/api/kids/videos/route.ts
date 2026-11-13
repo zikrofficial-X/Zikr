@@ -6,6 +6,8 @@ import { loadKidsSocialQueueRows, type KidsSocialQueueRow } from "@/features/soc
 
 export const dynamic = "force-dynamic";
 
+const VIDEO_GENERATION_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -23,7 +25,8 @@ export async function GET() {
     const videos = await getKidsGeneratedVideos(60);
     const requestIds = [...new Set(videos
       .map((video) => video.metadata?.videoGenerationRequestId)
-      .filter((id): id is string => typeof id === "string" && id.length > 0))];
+      .filter((id): id is string => typeof id === "string" && VIDEO_GENERATION_REQUEST_ID_PATTERN.test(id.trim()))
+      .map((id) => id.trim()))];
 
     let requestContentById = new Map<string, Record<string, unknown>>();
     const socialQueueByRequestId = new Map<string, KidsSocialQueueRow[]>();
