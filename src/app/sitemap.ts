@@ -10,6 +10,7 @@ import { getKidsContent } from "@/features/kids/services/kids-content";
 import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
+import { getSitemapShard, getSitemapShardCountForEntryCount } from "@/lib/seo/sitemap-shards";
 import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
 import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/features/scholars/types/scholars";
@@ -24,7 +25,6 @@ type SlugRow = { slug: string };
 
 const MIN_INDEXABLE_EDITORIAL_CHARS = PUBLIC_CONTENT_THRESHOLDS.article;
 const MIN_INDEXABLE_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
-const SITEMAP_URL_LIMIT = 50_000;
 const NON_INDEXABLE_PATHS = new Set(["/admin", "/api", "/auth", "/favorites", "/profile", "/settings", "/search", "/qibla", "/prayer-times", "/tasbeeh", "/memorization", "/wird", "/zakat", "/offline-library", "/spiritual-ai", "/radio", "/reciters", "/tawasheeh"]);
 
 export const dynamic = "force-dynamic";
@@ -105,12 +105,12 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       ...kidsContentItems.map((item) => route(`/kids/${item.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.65 })),
     ];
 
-    const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]).slice(0, SITEMAP_URL_LIMIT);
+    const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]);
     sitemapCache = { entries: safeEntries, expiresAt: Date.now() + 60 * 60 * 1000 };
     return safeEntries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
-    const fallbackEntries = uniqueRoutes(staticRoutes).slice(0, SITEMAP_URL_LIMIT);
+    const fallbackEntries = uniqueRoutes(staticRoutes);
     sitemapCache = { entries: fallbackEntries, expiresAt: Date.now() + 10 * 60 * 1000 };
     return fallbackEntries;
   }
@@ -118,9 +118,9 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
 
 export async function getSitemapShardCount(): Promise<number> {
   const entries = await getSitemapEntries();
-  return Math.max(1, Math.ceil(entries.length / SITEMAP_URL_LIMIT));
+  return getSitemapShardCountForEntryCount(entries.length);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  return getSitemapEntries();
+  return getSitemapShard(await getSitemapEntries(), 0);
 }
