@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES } from "@/features/media/services/media-asset-limits";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/cloudinary-orphan-compensation";
 import {
@@ -10,13 +11,6 @@ import {
   type CloudinaryImageUpload,
 } from "@/features/media/services/cloudinary";
 
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-]);
 const ALLOWED_FOLDERS = new Set([
   "homepage",
   "stories",
@@ -48,10 +42,10 @@ export function normalizeMediaFolder(value: unknown): string | null {
 }
 
 function validateImage(file: File): string | null {
-  if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) {
-    return "حجم الصورة يجب ألا يتجاوز 8 ميجابايت.";
+  if (file.size <= 0 || file.size > MAX_MEDIA_IMAGE_BYTES) {
+    return "حجم الصورة يجب ألا يتجاوز 3 ميجابايت.";
   }
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+  if (!isAllowedMediaImageType(file.type)) {
     return "الصيغ المدعومة: JPG وPNG وWEBP وGIF.";
   }
   return null;
@@ -120,7 +114,7 @@ export async function createAdminMediaAsset(input: {
   const validationError = validateImage(input.file);
   if (validationError) throw new AdminMediaInputError(validationError);
   try {
-    await validateCloudinaryImage(input.file, MAX_IMAGE_BYTES);
+    await validateCloudinaryImage(input.file, MAX_MEDIA_IMAGE_BYTES);
   } catch (error) {
     throw new AdminMediaInputError(
       error instanceof Error ? error.message : "ملف الصورة غير صالح.",
@@ -153,7 +147,7 @@ export async function createAdminMediaAsset(input: {
     folder: `zikr/${input.folder}`,
     publicId: requestedPublicId,
     tags: ["zikr", "admin", "media", input.folder],
-    maxBytes: MAX_IMAGE_BYTES,
+    maxBytes: MAX_MEDIA_IMAGE_BYTES,
   });
 
   let rows: AdminMediaAsset[];
