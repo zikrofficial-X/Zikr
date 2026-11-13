@@ -1,3 +1,5 @@
+import { normalizeSocialPlatformResults } from "../../social/services/platform-availability";
+
 type VideoMetadata = Record<string, unknown>;
 
 function metadataFor(row: Record<string, unknown>): VideoMetadata {
@@ -48,6 +50,127 @@ export function getConfirmedYoutubeFallbackId(row: Record<string, unknown>): str
     : "";
   if (!isValidYoutubeId(id)) return null;
   return youtubeIdFromUrl(metadata.youtubePublishedUrl) === id ? id : null;
+}
+
+export type YoutubeQueuePublicationState =
+  | { status: "published"; id: string; publishedAt: string }
+  | { status: "deleted"; deletedAt: string | null }
+  | { status: "conflict" };
+
+/**
+ * Resolve the newest confirmed YouTube queue event for one video-generation
+ * request. A confirmed deletion wins equal timestamps and malformed deletion
+ * timestamps fail closed; a strictly later confirmed publication may restore
+ * the fallback.
+ */
+export function resolveLatestConfirmedYoutubeQueueState(
+  rows: unknown[],
+): YoutubeQueuePublicationState | null {
+  type LatestState =
+    | { status: "published"; id: string; publishedAt: string; timestamp: number }
+    | { status: "deleted"; deletedAt: string | null; timestamp: number }
+    | { status: "conflict"; timestamp: number };
+
+  let latest: LatestState | null = null;
+
+  for (const value of rows) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as Record<string, unknown>;
+    const metadata = metadataFor(row);
+    const results = normalizeSocialPlatformResults(metadata.platformResults);
+    const youtube = results.youtube && typeof results.youtube === "object" && !Array.isArray(results.youtube)
+      ? results.youtube as Record<string, unknown>
+      : {};
+    const publishedAt = typeof row.published_at === "string" ? row.published_at.trim() : "";
+    const publicationTimestamp = publishedAt ? Date.parse(publishedAt) : Number.NaN;
+
+    if (
+      (row.status === "published" || row.status === "partial") &&
+      Number.isFinite(publicationTimestamp) &&
+      youtube.ok === true &&
+      isValidYoutubeId(youtube.remoteId)
+    ) {
+      const id = youtube.remoteId.trim();
+      if (!latest || publicationTimestamp > latest.timestamp) {
+        latest = { status: "published", id, publishedAt, timestamp: publicationTimestamp };
+      } else if (
+        publicationTimestamp === latest.timestamp &&
+        latest.status === "published" &&
+        latest.id !== id
+      ) {
+        latest = { status: "conflict", timestamp: publicationTimestamp };
+      }
+    }
+
+    const deletionMap = metadata.platformDeletions &&
+      typeof metadata.platformDeletions === "object" &&
+      !Array.isArray(metadata.platformDeletions)
+      ? metadata.platformDeletions as Record<string, unknown>
+      : {};
+    const youtubeDeletion = deletionMap.youtube &&
+      typeof deletionMap.youtube === "object" &&
+      !Array.isArray(deletionMap.youtube)
+      ? deletionMap.youtube as Record<string, unknown>
+      : {};
+
+    if (youtubeDeletion.status === "deleted") {
+      const deletedAt = typeof youtubeDeletion.deletedAt === "string"
+        ? youtubeDeletion.deletedAt.trim()
+        : "";
+      const parsedDeletedAt = deletedAt ? Date.parse(deletedAt) : Number.NaN;
+      const deletionTimestamp = Number.isFinite(parsedDeletedAt)
+        ? parsedDeletedAt
+        : Number.POSITIVE_INFINITY;
+      if (!latest || deletionTimestamp >= latest.timestamp) {
+        latest = {
+          status: "deleted",
+          deletedAt: Number.isFinite(parsedDeletedAt) ? deletedAt : null,
+          timestamp: deletionTimestamp,
+        };
+      }
+    }
+  }
+
+  if (!latest) return null;
+  if (latest.status === "published") {
+    return { status: "published", id: latest.id, publishedAt: latest.publishedAt };
+  }
+  if (latest.status === "deleted") {
+    return { status: "deleted", deletedAt: latest.deletedAt };
+  }
+  return { status: "conflict" };
+}
+
+/** Keep the catalog's YouTube fallback in sync with an authoritative queue event. */
+export function reconcileYoutubeFallbackMetadata(
+  metadataValue: unknown,
+  state: YoutubeQueuePublicationState | null,
+): VideoMetadata {
+  const metadata = metadataValue && typeof metadataValue === "object" && !Array.isArray(metadataValue)
+    ? { ...metadataValue as VideoMetadata }
+    : {};
+
+  if (state?.status === "deleted") {
+    return {
+      ...metadata,
+      youtubePublishedVideoId: null,
+      youtubePublishedUrl: null,
+      youtubePublishedAt: null,
+      mediaFallbackAvailable: false,
+    };
+  }
+
+  if (state?.status === "published") {
+    return {
+      ...metadata,
+      youtubePublishedVideoId: state.id,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + state.id,
+      youtubePublishedAt: state.publishedAt,
+      mediaFallbackAvailable: true,
+    };
+  }
+
+  return metadata;
 }
 
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
