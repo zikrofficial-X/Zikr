@@ -18,6 +18,23 @@ assert.equal(hasAdminPermission("support", "users.roles"), false, "read-only sup
 assert.equal(hasAdminPermission("admin", "users.roles"), true);
 assert.equal(hasAdminPermission("admin", "audit.read"), true);
 assert.equal(hasAdminPermission("super_admin", "users.roles"), true);
+assert.equal(hasAdminPermission("moderator", "content.manage"), true);
+assert.equal(hasAdminPermission("moderator", "content.publish"), false, "moderators may review content but must not see publish controls");
+assert.equal(hasAdminPermission("moderator", "content.delete"), false, "moderators must not see delete controls");
+assert.equal(hasAdminPermission("editor", "content.publish"), true);
+assert.equal(hasAdminPermission("editor", "content.delete"), false, "editors may publish but may not delete content");
+assert.equal(hasAdminPermission("content_manager", "content.delete"), true);
+
+const contentPage = readFileSync("src/app/admin/content/page.tsx", "utf8");
+const contentConsole = readFileSync("src/app/admin/content/content-console.tsx", "utf8");
+assert.match(contentPage, /hasAdminPermission\(admin\.role, 'content\.publish'\)/);
+assert.match(contentPage, /hasAdminPermission\(admin\.role, 'content\.delete'\)/);
+assert.match(contentPage, /canPublish=\{canPublish\}/);
+assert.match(contentPage, /canDelete=\{canDelete\}/);
+assert.match(contentConsole, /canPublish \? <form action=\{safeTogglePublishAction\}/);
+assert.match(contentConsole, /canPublish && scheduledAvailable/);
+assert.match(contentConsole, /canDelete \? <form action=\{safeDeleteContentAction\}/);
+
 assert.equal(resolveDestructiveMfaRequirement(false), false, "an explicit false setting may disable optional step-up MFA");
 assert.equal(resolveDestructiveMfaRequirement(true), true);
 assert.equal(resolveDestructiveMfaRequirement(undefined), true, "a missing MFA setting must fail closed");
