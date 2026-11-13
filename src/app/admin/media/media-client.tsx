@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
 import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
+import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES, MEDIA_IMAGE_ACCEPT } from "@/features/media/services/media-asset-limits";
 
 type Asset = {
   id: string;
@@ -57,6 +58,27 @@ export default function AdminMediaPage() {
 
   const pendingRights = useMemo(() => assets.filter((a) => !(a.rights_verified && a.verified_rights)).length, [assets]);
   const published = useMemo(() => assets.filter((a) => a.published).length, [assets]);
+
+  function selectFile(nextFile: File | null, input: HTMLInputElement) {
+    setError("");
+    if (!nextFile) {
+      setFile(null);
+      return;
+    }
+    if (!isAllowedMediaImageType(nextFile.type)) {
+      input.value = "";
+      setFile(null);
+      setError("الصيغ المدعومة: JPG وPNG وWEBP وGIF.");
+      return;
+    }
+    if (nextFile.size <= 0 || nextFile.size > MAX_MEDIA_IMAGE_BYTES) {
+      input.value = "";
+      setFile(null);
+      setError("حجم الصورة يجب ألا يتجاوز 3 ميجابايت.");
+      return;
+    }
+    setFile(nextFile);
+  }
 
   async function upload() {
     setError(""); setMessage("");
@@ -124,12 +146,12 @@ export default function AdminMediaPage() {
       <section className="rounded-2xl border border-brand-gold/15 bg-black/20 p-5 space-y-4">
         <h2 className="text-lg font-bold text-brand-gold">رفع أصل جديد</h2>
         <div className="grid gap-3 md:grid-cols-2">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان الأصل" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="النص البديل بالعربية" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={license} onChange={(e) => setLicense(e.target.value)} placeholder="الترخيص" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={attribution} onChange={(e) => setAttribution(e.target.value)} placeholder="النسب / صاحب الحقوق" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان الأصل" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={altText} maxLength={500} onChange={(e) => setAltText(e.target.value)} placeholder="النص البديل بالعربية" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={license} maxLength={200} onChange={(e) => setLicense(e.target.value)} placeholder="الترخيص" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={attribution} maxLength={300} onChange={(e) => setAttribution(e.target.value)} placeholder="النسب / صاحب الحقوق" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
           <select value={folder} onChange={(e) => setFolder(e.target.value)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream">{folders.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-          <input id="media-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-2 text-xs text-brand-cream" />
+          <input id="media-file" type="file" accept={MEDIA_IMAGE_ACCEPT} onChange={(e) => selectFile(e.target.files?.[0] ?? null, e.currentTarget)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-2 text-xs text-brand-cream" />
         </div>
         <Button variant="primary" disabled={busy || !file} onClick={() => void upload()}>{busy ? "جاري التنفيذ..." : "رفع وتسجيل الأصل"}</Button>
       </section>
