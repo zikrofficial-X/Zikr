@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { deleteSocialPlatformPost } from "../../src/features/social/services/social-deletion";
-import { claimSocialQueuePlatformDeletion } from "../../src/features/social/services/social-queue-metadata";
+import { claimSocialQueuePlatformDeletion, mergeSocialQueueMetadata, patchSocialQueueMetadataWithCas } from "../../src/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
@@ -166,7 +166,10 @@ const deletionQueueRow: {
   id: "queue-delete-1",
   status: "published",
   video_url: "https://cdn.example.test/published.mp4",
-  metadata: { platformDeletions: {} },
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: {},
+  },
   updated_at: "2026-11-12T18:00:00.000Z",
 };
 const deletionClaimCalls: Array<{ path: string; init?: RequestInit }> = [];
@@ -185,6 +188,7 @@ const deletionClaimInput = {
   id: deletionQueueRow.id,
   expectedStatus: "published",
   expectedVideoUrl: deletionQueueRow.video_url,
+  expectedRemoteId: "youtube-remote-1",
   platform: "youtube",
   now: new Date("2026-11-12T18:00:00.000Z"),
 };
@@ -202,7 +206,10 @@ assert.equal(
 const expiredDeletionClaimRow: typeof deletionQueueRow = {
   ...deletionQueueRow,
   updated_at: "2026-11-12T18:00:00.000Z",
-  metadata: { platformDeletions: { youtube: { status: "deleting", attemptedAt: "2026-11-12T17:45:00.000Z" } } },
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleting", remoteId: "youtube-remote-1", attemptedAt: "2026-11-12T17:45:00.000Z" } },
+  },
 };
 const expiredDeletionClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
   if (!init) return [{ ...expiredDeletionClaimRow }] as T;
@@ -222,7 +229,10 @@ assert.equal(
 
 const invalidDeletionClaimRow = {
   ...deletionQueueRow,
-  metadata: { platformDeletions: { youtube: { status: "deleting", attemptedAt: "not-a-timestamp" } } },
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleting", remoteId: "youtube-remote-1", attemptedAt: "not-a-timestamp" } },
+  },
 };
 let invalidDeletionPatchCalls = 0;
 const invalidDeletionClaimRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
@@ -249,7 +259,10 @@ assert.equal(
 
 const alreadyDeletedRequest = async <T>(): Promise<T> => [{
   ...deletionQueueRow,
-  metadata: { platformDeletions: { youtube: { status: "deleted" } } },
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } },
+  },
 }] as T;
 assert.equal(
   await claimSocialQueuePlatformDeletion(deletionClaimInput, alreadyDeletedRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
@@ -259,7 +272,10 @@ assert.equal(
 
 const staleQueueRow = {
   ...deletionQueueRow,
-  metadata: { platformDeletions: {} },
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: {},
+  },
   updated_at: "2026-11-12T18:00:00.000Z",
 };
 const staleClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -274,6 +290,87 @@ assert.equal(
 );
 
 
+
+
+const mismatchedRemoteIdRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: {},
+  },
+};
+let mismatchedRemoteIdPatchCalls = 0;
+const mismatchedRemoteIdRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") mismatchedRemoteIdPatchCalls += 1;
+  return [{ ...mismatchedRemoteIdRow }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    deletionClaimInput,
+    mismatchedRemoteIdRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "stale",
+  "a changed successful provider ID must stop deletion before any remote provider call can be made",
+);
+assert.equal(mismatchedRemoteIdPatchCalls, 0, "a stale provider ID must not acquire a deletion lease");
+
+const previousRemoteDeletionRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } },
+  },
+};
+let replacementDeletionPayload: { metadata: Record<string, unknown>; updated_at: string } | null = null;
+const replacementDeletionRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...previousRemoteDeletionRow }] as T;
+  replacementDeletionPayload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  return [{ id: previousRemoteDeletionRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    { ...deletionClaimInput, expectedRemoteId: "youtube-remote-2" },
+    replacementDeletionRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "claimed",
+  "a new successful provider ID may receive a new deletion claim without inheriting the old ID's terminal state",
+);
+assert.equal(
+  (replacementDeletionPayload?.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
+  "youtube-remote-2",
+  "the new deletion lease must store the exact provider ID it protects",
+);
+
+const preservedOldDeletion = mergeSocialQueueMetadata(
+  { platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } } },
+  { platformDeletions: { youtube: { status: "failed", remoteId: "youtube-remote-1", error: "stale failure" } } },
+);
+assert.equal(
+  (preservedOldDeletion.platformDeletions as Record<string, Record<string, unknown>>).youtube.status,
+  "deleted",
+  "a stale failure for the same provider ID must never overwrite a confirmed deletion",
+);
+
+let staleMetadataPatchCalls = 0;
+const staleMetadataPatchRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") staleMetadataPatchCalls += 1;
+  return [{
+    ...deletionQueueRow,
+    metadata: { platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } }, platformDeletions: {} },
+  }] as T;
+};
+assert.equal(
+  await patchSocialQueueMetadataWithCas({
+    id: deletionQueueRow.id,
+    expectedStatus: "published",
+    expectedVideoUrl: deletionQueueRow.video_url,
+    expectedPlatformRemoteId: { platform: "youtube", remoteId: "youtube-remote-1" },
+    patch: { platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } } },
+  }, staleMetadataPatchRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  false,
+  "a provider result must not be attached to a queue row after its successful remote ID changes",
+);
+assert.equal(staleMetadataPatchCalls, 0, "a mismatched provider ID must prevent the metadata PATCH");
 
 assert.equal(LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, 50, "local queue cleanup must remain bounded to a small, auditable batch");
 
@@ -394,6 +491,8 @@ assert.equal(
 const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
+assert.match(socialAdminRoute, /expectedRemoteId:\s*remoteId/);
+assert.match(socialAdminRoute, /expectedPlatformRemoteId:\s*\{\s*platform,\s*remoteId\s*\}/);
 const remoteDeleteActionStart = socialAdminRoute.indexOf('if (action === "delete_published") {');
 const remoteDeleteConfirmationGuard = socialAdminRoute.indexOf("if (body.confirmed !== true)", remoteDeleteActionStart);
 const remoteDeletePlatformGuard = socialAdminRoute.indexOf(

@@ -6,6 +6,7 @@ import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
+import { dispatchSocialWorkerSafely } from "@/features/social/services/social-worker-dispatch";
 import {
   adoptServerConfiguredFacebookPageToken,
   getFacebookPageConnectionHealth,
@@ -275,6 +276,17 @@ async function triggerSocialWorker() {
   return dispatchGitHubWorkflow("publish-social.yml", {
     operation: "publish_queue",
   });
+}
+
+async function dispatchQueuedSocialWorker() {
+  const outcome = await dispatchSocialWorkerSafely(triggerSocialWorker);
+  if (!outcome.workerDispatched) {
+    console.error(
+      "[api/admin/social] queue state committed but immediate worker dispatch failed; scheduled publishing remains the fallback:",
+      outcome.error,
+    );
+  }
+  return { worker: outcome.worker, workerDispatched: outcome.workerDispatched };
 }
 
 export async function GET() {
@@ -800,27 +812,33 @@ export async function POST(request: NextRequest) {
         ? await retryItems("id=in.(" + approvedIds.map(encodeURIComponent).join(",") + ")&status=in.(queued,partial,failed)", true, false)
         : { affected: 0, manualReconciliationSkipped: 0, sourceMediaMissingSkipped: 0, staleSkipped: 0 };
       const affected = retryResult.affected;
-      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      const dispatch = affected > 0
+        ? await dispatchQueuedSocialWorker()
+        : { worker: null, workerDispatched: false };
+      const { worker, workerDispatched } = dispatch;
       const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.publish_now",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, approvalBlocked: blocked.length, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched },
       });
-      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
+      return NextResponse.json({ ok: true, affected, blocked, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, workerDispatched, workerDispatchFailed: affected > 0 && !workerDispatched, auditRecorded });
     }
 
     if (action === "retry_all_failed") {
       const retryResult = await retryItems("id=in.(" + ids.map(encodeURIComponent).join(",") + ")&status=in.(failed,partial)", false, false);
       const affected = retryResult.affected;
-      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      const dispatch = affected > 0
+        ? await dispatchQueuedSocialWorker()
+        : { worker: null, workerDispatched: false };
+      const { worker, workerDispatched } = dispatch;
       const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.retry_all_failed",
         permission: "social.publish",
         resourceType: "social_publish_queue",
-        metadata: { requestedIds: ids.length, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched: affected > 0 },
+        metadata: { requestedIds: ids.length, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, workerDispatched },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, workerDispatched, workerDispatchFailed: affected > 0 && !workerDispatched, auditRecorded });
     }
 
     const filter = ids.map(encodeURIComponent).join(",");
@@ -831,7 +849,10 @@ export async function POST(request: NextRequest) {
         confirmedNoRemotePublication,
       );
       const affected = retryResult.affected;
-      const worker = affected > 0 ? await triggerSocialWorker() : null;
+      const dispatch = affected > 0
+        ? await dispatchQueuedSocialWorker()
+        : { worker: null, workerDispatched: false };
+      const { worker, workerDispatched } = dispatch;
       const auditRecorded = await recordSocialAuditEvent({
         action: "social.queue.retry",
         permission: "social.publish",
@@ -843,10 +864,10 @@ export async function POST(request: NextRequest) {
           sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped,
           staleSkipped: retryResult.staleSkipped,
           confirmedNoRemotePublication,
-          workerDispatched: affected > 0,
+          workerDispatched,
         },
       });
-      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, auditRecorded });
+      return NextResponse.json({ ok: true, affected, manualReconciliationSkipped: retryResult.manualReconciliationSkipped, sourceMediaMissingSkipped: retryResult.sourceMediaMissingSkipped, staleSkipped: retryResult.staleSkipped, worker, workerDispatched, workerDispatchFailed: affected > 0 && !workerDispatched, auditRecorded });
     }
 
     if (action === "delete" || action === "delete_failed") {
@@ -936,12 +957,15 @@ export async function POST(request: NextRequest) {
         for (const platform of deletionTargets) {
           if (platform !== "youtube" && platform !== "facebook" && platform !== "facebook_reels") continue;
           const previousDeletion = asRecord(existingDeletions[platform]);
-          if (previousDeletion?.status === "deleted") {
+          const delivery = deliveryForPlatform(item.metadata, platform);
+          const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId.trim() : "";
+          const previousDeletedRemoteId = typeof previousDeletion?.remoteId === "string"
+            ? previousDeletion.remoteId.trim()
+            : "";
+          if (previousDeletion?.status === "deleted" && (!previousDeletedRemoteId || previousDeletedRemoteId === remoteId)) {
             results.push({ id: item.id, title: item.title, platform, status: "already_deleted" });
             continue;
           }
-          const delivery = deliveryForPlatform(item.metadata, platform);
-          const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId.trim() : "";
           if (delivery?.ok !== true || !remoteId) {
             results.push({ id: item.id, title: item.title, platform, status: "missing_remote_id", error: "معرّف المنشور الناجح غير محفوظ؛ لم يتم تخمينه أو إرسال طلب حذف." });
             missingRemoteId += 1;
@@ -950,6 +974,7 @@ export async function POST(request: NextRequest) {
               id: item.id,
               expectedStatus: "published",
               expectedVideoUrl: item.video_url,
+              expectedPlatformRemoteId: { platform, remoteId: null },
               patch: { platformDeletions: { [platform]: existingDeletions[platform] } },
             }).catch((error) => {
               console.error("[api/admin/social] Could not persist missing-remote-ID state:", item.id, platform, error);
@@ -968,6 +993,7 @@ export async function POST(request: NextRequest) {
             id: item.id,
             expectedStatus: "published",
             expectedVideoUrl: item.video_url,
+            expectedRemoteId: remoteId,
             platform,
           });
           if (claim === "already_deleted") {
@@ -1015,6 +1041,7 @@ export async function POST(request: NextRequest) {
             id: item.id,
             expectedStatus: "published",
             expectedVideoUrl: item.video_url,
+            expectedPlatformRemoteId: { platform, remoteId },
             patch: { platformDeletions: { [platform]: existingDeletions[platform] } },
           }).catch((error) => {
             console.error("[api/admin/social] Could not persist provider deletion result:", item.id, platform, error);

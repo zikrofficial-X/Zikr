@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { dispatchSocialWorkerSafely } from "../../src/features/social/services/social-worker-dispatch";
 import { resolve } from "node:path";
 import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
@@ -13,6 +14,27 @@ import {
   readStoredFacebookCredential,
   type StoredFacebookCredential,
 } from "../../src/features/social/services/facebook-credentials";
+
+
+let safeDispatchCalls = 0;
+const successfulDispatch = await dispatchSocialWorkerSafely(async () => {
+  safeDispatchCalls += 1;
+  return { workflowFile: "publish-social.yml" };
+});
+assert.deepEqual(successfulDispatch, {
+  workerDispatched: true,
+  worker: { workflowFile: "publish-social.yml" },
+  error: null,
+});
+const failedDispatchError = new Error("GitHub dispatch unavailable");
+const failedDispatch = await dispatchSocialWorkerSafely(async () => {
+  safeDispatchCalls += 1;
+  throw failedDispatchError;
+});
+assert.equal(failedDispatch.workerDispatched, false);
+assert.equal(failedDispatch.worker, null);
+assert.equal(failedDispatch.error, failedDispatchError);
+assert.equal(safeDispatchCalls, 2, "dispatch outcomes must be tested with injected functions, never the production GitHub workflow");
 
 const facebookRecoveryCandidate = {
   id: "queue-row-123",
@@ -363,6 +385,15 @@ assert.match(adminSocialRoute, /authBlockedPlatforms\(item\.metadata, item\.targ
 assert.match(adminSocialRoute, /authBlocked: remainingAuthBlockedPlatforms\.length > 0/);
 assert.match(adminSocialRoute, /item\.metadata\?\.sourceMediaMissing === true/);
 assert.match(adminSocialRoute, /sourceMediaMissingSkipped/);
+assert.match(adminSocialRoute, /async function dispatchQueuedSocialWorker[\s\S]*?dispatchSocialWorkerSafely\(triggerSocialWorker\)/);
+for (const action of ["publish_now", "retry_all_failed", "retry"]) {
+  const start = adminSocialRoute.indexOf(`if (action === "${action}")`);
+  const next = adminSocialRoute.indexOf("\\n    if (action ===", start + 1);
+  const block = start >= 0 ? adminSocialRoute.slice(start, next > start ? next : undefined) : "";
+  assert.ok(block.includes("dispatchQueuedSocialWorker"), `${action} must not turn a saved queue mutation into an HTTP 500 when worker dispatch fails`);
+  assert.ok(block.includes("workerDispatchFailed"), `${action} must report the dispatch fallback state`);
+}
+assert.ok(adminSocialClient.includes("payload.workerDispatchFailed") && adminSocialClient.includes("الناشر المجدول"), "the admin UI must explain that saved queue work will fall back to the scheduled publisher");
 
 console.log("Social platform isolation and independent readiness tests passed.");
 

@@ -15,6 +15,23 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function successfulPlatformRemoteId(
+  metadata: Record<string, unknown> | null | undefined,
+  platform: string,
+): string | null {
+  const values = metadata?.platformResults;
+  const candidate = Array.isArray(values)
+    ? values.find(value => isRecord(value) && value.platform === platform)
+    : isRecord(values)
+      ? values[platform]
+      : null;
+  if (!isRecord(candidate) || candidate.ok !== true || typeof candidate.remoteId !== "string") {
+    return null;
+  }
+  const remoteId = candidate.remoteId.trim();
+  return remoteId || null;
+}
+
 export function mergeSocialQueueMetadata(
   current: Record<string, unknown> | null | undefined,
   patch: Record<string, unknown>,
@@ -27,9 +44,16 @@ export function mergeSocialQueueMetadata(
       for (const [platform, result] of Object.entries(value)) {
         const prior = isRecord(existing[platform]) ? existing[platform] as Record<string, unknown> : {};
         const incoming = isRecord(result) ? result : {};
-        // A confirmed remote deletion is terminal; a stale failure must not
-        // overwrite it after another request has already persisted success.
-        if (prior.status === "deleted" && incoming.status !== "deleted") continue;
+        // A confirmed remote deletion is terminal for that exact provider ID.
+        // Only a new deletion claim for a different, verified remote ID may replace it.
+        const priorRemoteId = typeof prior.remoteId === "string" ? prior.remoteId.trim() : "";
+        const incomingRemoteId = typeof incoming.remoteId === "string" ? incoming.remoteId.trim() : "";
+        const isNewRemoteDeletionClaim =
+          prior.status === "deleted" &&
+          incoming.status === "deleting" &&
+          Boolean(incomingRemoteId) &&
+          incomingRemoteId !== priorRemoteId;
+        if (prior.status === "deleted" && incoming.status !== "deleted" && !isNewRemoteDeletionClaim) continue;
         next[platform] = { ...prior, ...incoming };
       }
       merged[key] = next;
@@ -97,6 +121,7 @@ export async function claimSocialQueuePlatformDeletion(
     id: string;
     expectedStatus: string;
     expectedVideoUrl: string | null;
+    expectedRemoteId: string;
     platform: string;
     now?: Date;
   },
@@ -105,6 +130,7 @@ export async function claimSocialQueuePlatformDeletion(
   if (!input.id.trim()) throw new Error("Remote social deletion requires a queue item ID.");
   if (!input.expectedStatus.trim()) throw new Error("Remote social deletion requires an expected queue status.");
   if (!input.platform.trim()) throw new Error("Remote social deletion requires a platform.");
+  if (!input.expectedRemoteId.trim()) throw new Error("Remote social deletion requires the exact successful provider ID.");
   const now = input.now ?? new Date();
   if (!Number.isFinite(now.getTime())) throw new Error("Remote social deletion requires a valid claim time.");
 
@@ -135,11 +161,17 @@ export async function claimSocialQueuePlatformDeletion(
   }
 
   const metadata = isRecord(row.metadata) ? row.metadata : {};
+  if (successfulPlatformRemoteId(metadata, input.platform) !== input.expectedRemoteId.trim()) {
+    return "stale";
+  }
   const deletions = isRecord(metadata.platformDeletions) ? metadata.platformDeletions : {};
   const previous = isRecord(deletions[input.platform])
     ? deletions[input.platform] as Record<string, unknown>
     : {};
-  if (previous.status === "deleted") return "already_deleted";
+  const previousRemoteId = typeof previous.remoteId === "string" ? previous.remoteId.trim() : "";
+  if (previous.status === "deleted" && (!previousRemoteId || previousRemoteId === input.expectedRemoteId.trim())) {
+    return "already_deleted";
+  }
   if (previous.status === "deleting") {
     const previousAttemptAt = typeof previous.attemptedAt === "string"
       ? Date.parse(previous.attemptedAt)
@@ -153,7 +185,7 @@ export async function claimSocialQueuePlatformDeletion(
   const attemptedAt = now.toISOString();
   const nextMetadata = mergeSocialQueueMetadata(row.metadata, {
     platformDeletions: {
-      [input.platform]: { status: "deleting", attemptedAt },
+      [input.platform]: { status: "deleting", remoteId: input.expectedRemoteId.trim(), attemptedAt },
     },
   });
   const updated = await request<Array<{ id: string }>>(
@@ -189,6 +221,7 @@ export async function patchSocialQueueMetadataWithCas(
     expectedStatus: string;
     expectedVideoUrl?: string | null;
     patch: Record<string, unknown>;
+    expectedPlatformRemoteId?: { platform: string; remoteId: string | null };
     maxAttempts?: number;
   },
   request: SocialQueueMetadataRequest = supabaseServerAdminRequest,
@@ -199,6 +232,9 @@ export async function patchSocialQueueMetadataWithCas(
   }
   if (!input.id.trim()) throw new Error("Social queue metadata update requires a queue item ID.");
   if (!input.expectedStatus.trim()) throw new Error("Social queue metadata update requires an expected status.");
+  if (input.expectedPlatformRemoteId && !input.expectedPlatformRemoteId.platform.trim()) {
+    throw new Error("Social queue metadata update requires an expected platform.");
+  }
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const lookupFilter = [
@@ -227,6 +263,12 @@ export async function patchSocialQueueMetadataWithCas(
       !Number.isFinite(Date.parse(row.updated_at))
     ) {
       return false;
+    }
+    if (input.expectedPlatformRemoteId) {
+      const expectedRemoteId = input.expectedPlatformRemoteId.remoteId?.trim() || null;
+      if (successfulPlatformRemoteId(row.metadata, input.expectedPlatformRemoteId.platform) !== expectedRemoteId) {
+        return false;
+      }
     }
 
     const updated = await request<Array<{ id: string }>>(

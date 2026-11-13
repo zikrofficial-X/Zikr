@@ -601,6 +601,8 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           error?: string;
           nextPath?: string;
           auditRecorded?: boolean;
+          workerDispatched?: boolean;
+          workerDispatchFailed?: boolean;
           affected?: number;
           preserved?: number;
           stale?: number;
@@ -612,12 +614,16 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
         const auditWarning = payload.auditRecorded === false ? " تحذير: تم تنفيذ الإجراء لكن تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذه." : "";
+        const dispatchWarning = payload.workerDispatchFailed
+          ? " تم حفظ العناصر في الطابور لكن تعذر تشغيل العامل فورًا؛ الناشر المجدول سيعالجها لاحقًا. لا تعِد تنفيذ الإجراء."
+          : "";
         if (action === "publish_now") {
           setMessage(
-            `تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.` +
+            `تم تجهيز ${payload.affected ?? 0} عنصرًا في طابور النشر.` +
+              ((payload.affected ?? 0) > 0 && payload.workerDispatched === true ? " تم إرسال طلب التشغيل الفوري." : "") +
               ((payload.manualReconciliationSkipped ?? 0) > 0
                 ? ` تم تجاوز ${payload.manualReconciliationSkipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.`
-                : "") + auditWarning,
+                : "") + dispatchWarning + auditWarning,
           );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
@@ -640,7 +646,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
           setMessage(
             `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
               (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
-              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + auditWarning,
+              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + dispatchWarning + auditWarning,
           );
         }
         await load();
