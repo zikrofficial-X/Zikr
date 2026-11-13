@@ -4,6 +4,7 @@ import { claimSocialQueuePlatformDeletion, mergeSocialQueueMetadata, patchSocial
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
+import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 
 const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
 assert.match(
@@ -161,6 +162,7 @@ const deletionQueueRow: {
   status: string;
   video_url: string | null;
   metadata: Record<string, unknown>;
+  published_at: string | null;
   updated_at: string;
 } = {
   id: "queue-delete-1",
@@ -170,6 +172,7 @@ const deletionQueueRow: {
     platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
     platformDeletions: {},
   },
+  published_at: "2026-11-12T17:00:00.000Z",
   updated_at: "2026-11-12T18:00:00.000Z",
 };
 const deletionClaimCalls: Array<{ path: string; init?: RequestInit }> = [];
@@ -269,6 +272,61 @@ assert.equal(
   "already_deleted",
   "a confirmed remote deletion must never be claimed again",
 );
+
+const legacyDeletedLaterDeliveryRow = {
+  ...deletionQueueRow,
+  published_at: "2026-11-13T10:00:00.000Z",
+  updated_at: "2026-11-13T11:00:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: {
+      youtube: { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    },
+  },
+};
+const legacyDeletionPayloads: Array<{ metadata: Record<string, unknown>; updated_at: string }> = [];
+const legacyDeletionRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...legacyDeletedLaterDeliveryRow }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected legacy deletion-claim method.");
+  legacyDeletionPayloads.push(JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string });
+  return [{ id: legacyDeletedLaterDeliveryRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    {
+      ...deletionClaimInput,
+      expectedRemoteId: "youtube-remote-2",
+      now: new Date("2026-11-13T12:00:00.000Z"),
+    },
+    legacyDeletionRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "claimed",
+  "a legacy deletion without a remote ID must not block a later delivery whose published_at is newer than deletedAt",
+);
+assert.equal(
+  (legacyDeletionPayloads[0]?.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
+  "youtube-remote-2",
+  "the replacement deletion lease must bind to the new provider ID",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(
+    { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    "youtube-remote-2",
+    "2026-11-13T10:00:00.000Z",
+  ),
+  false,
+  "a newer delivery must supersede a legacy deletion record without a provider ID",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(
+    { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    "youtube-remote-2",
+    null,
+  ),
+  true,
+  "missing publication time must fail closed for an ambiguous legacy deletion record",
+);
+
 
 const staleQueueRow = {
   ...deletionQueueRow,
@@ -494,6 +552,8 @@ const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
 assert.match(socialAdminRoute, /expectedRemoteId:\s*remoteId/);
+assert.match(socialAdminRoute, /isSocialPlatformDeletionCurrent\(previousDeletion,\s*remoteId,\s*item\.published_at\)/);
+assert.doesNotMatch(socialAdminRoute, /previousDeletion\?\.status === "deleted" && \(!previousDeletedRemoteId/);
 assert.match(socialAdminRoute, /expectedPlatformRemoteId:\s*\{\s*platform,\s*remoteId\s*\}/);
 const remoteDeleteActionStart = socialAdminRoute.indexOf('if (action === "delete_published") {');
 const remoteDeleteConfirmationGuard = socialAdminRoute.indexOf("if (body.confirmed !== true)", remoteDeleteActionStart);

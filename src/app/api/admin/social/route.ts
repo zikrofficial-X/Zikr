@@ -20,6 +20,7 @@ import { getTrafficRevenueSnapshot } from "@/features/admin/services/traffic-rev
 import { inspectVideoQueueItemApproval, isVideoContentType, type VideoPublishRequestSnapshot } from "@/features/videos/services/video-publish-approval";
 import { deleteSocialPlatformPost, type SocialDeletionPlatform } from "@/features/social/services/social-deletion";
 import { claimSocialQueuePlatformDeletion, patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
+import { isSocialPlatformDeletionCurrent } from "@/features/social/services/social-deletion-visibility";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, getEnabledSocialPlatforms, getLocalSocialQueueDeletionBlockers, getManualReconciliationPlatforms, getRetryableSocialPlatforms, isAuthBlocked, normalizeSocialPlatformResults, parseRequestedSocialPlatforms, type SocialPlatform } from "@/features/social/services/platform-availability";
 
 export const dynamic = "force-dynamic";
@@ -1050,10 +1051,7 @@ export async function POST(request: NextRequest) {
           const previousDeletion = asRecord(existingDeletions[platform]);
           const delivery = deliveryForPlatform(item.metadata, platform);
           const remoteId = typeof delivery?.remoteId === "string" ? delivery.remoteId.trim() : "";
-          const previousDeletedRemoteId = typeof previousDeletion?.remoteId === "string"
-            ? previousDeletion.remoteId.trim()
-            : "";
-          if (previousDeletion?.status === "deleted" && (!previousDeletedRemoteId || previousDeletedRemoteId === remoteId)) {
+          if (isSocialPlatformDeletionCurrent(previousDeletion, remoteId, item.published_at)) {
             results.push({ id: item.id, title: item.title, platform, status: "already_deleted" });
             continue;
           }

@@ -1,11 +1,13 @@
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
+import { isSocialPlatformDeletionCurrent } from "@/features/social/services/social-deletion-visibility";
 
 type SocialQueueMetadataRow = {
   id: string;
   status: string;
   video_url: string | null;
   metadata: Record<string, unknown> | null;
+  published_at?: string | null;
   updated_at: string | null;
 };
 
@@ -140,7 +142,7 @@ export async function claimSocialQueuePlatformDeletion(
     input.expectedVideoUrl === null
       ? "video_url=is.null"
       : `video_url=eq.${encodeURIComponent(input.expectedVideoUrl)}`,
-    "select=id,status,video_url,metadata,updated_at&limit=2",
+    "select=id,status,video_url,metadata,published_at,updated_at&limit=2",
   ].join("&");
   const rows = await request<SocialQueueMetadataRow[]>(
     `/rest/v1/social_publish_queue?${lookupFilter}`,
@@ -168,8 +170,7 @@ export async function claimSocialQueuePlatformDeletion(
   const previous = isRecord(deletions[input.platform])
     ? deletions[input.platform] as Record<string, unknown>
     : {};
-  const previousRemoteId = typeof previous.remoteId === "string" ? previous.remoteId.trim() : "";
-  if (previous.status === "deleted" && (!previousRemoteId || previousRemoteId === input.expectedRemoteId.trim())) {
+  if (isSocialPlatformDeletionCurrent(previous, input.expectedRemoteId, row.published_at)) {
     return "already_deleted";
   }
   if (previous.status === "deleting") {
