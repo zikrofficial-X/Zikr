@@ -178,7 +178,7 @@ assert.match(kidsVideoDetailPage, /sandbox="allow-scripts allow-same-origin allo
 assert.match(kidsVideoDetailPage, /referrerPolicy="strict-origin-when-cross-origin"/, "the public Kids video detail iframe must not leak full referrer paths");
 assert.match(kidsVideoDetailPage, /loading="lazy"/, "the public Kids video detail iframe must load lazily");
 
-assert.ok(kidsVideosApi.includes("metadata->>audience=eq.kids"), "the Kids video feed must never attach a general-audience social queue caption");
+assert.ok(kidsVideosApi.includes("loadKidsSocialQueueRows(requestIds"), "the Kids video feed must read the complete paginated Kids social history");
 assert.ok(kidsVideosApi.includes("resolveKidsVideoSocialPublication"), "the Kids video feed must aggregate all original and supplemental social queue rows");
 assert.ok(kidsVideosApi.includes("socialQueueReadSucceeded = true"), "stored social badges must be used only after a successful live queue read");
 assert.ok(kidsVideosApi.includes("Promise.allSettled"), "a social queue read failure must be distinguishable from a legitimate empty result");
@@ -487,11 +487,14 @@ assert.match(kidsSocialPostsApi, /status: 503/, "a missing production service-ro
 assert.match(kidsSocialPostsApi, /return NextResponse\.json\(\[\]/, "preview and development may retain their intentional empty-feed fallback");
 const kidsHomePage = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
+const kidsSocialQueryService = readFileSync("src/features/social/services/kids-video-social-query.ts", "utf8");
 assert.match(kidsVideoService, /resolveKidsVideoSocialPublicationForDetail/);
-assert.match(kidsVideoService, /social_publish_queue\?content_id=eq\./, "the Kids video detail route must reconcile live social queue rows");
-assert.match(kidsVideoService, /metadata->>audience=eq\.kids/, "the Kids video detail route must never use general-audience social rows");
+assert.match(kidsVideoService, /loadKidsSocialQueueRows\(\[requestId\]/, "the Kids video detail route must reconcile every page of live social queue history");
+assert.match(kidsSocialQueryService, /metadata->>audience=eq\.kids/, "the shared Kids social queue reader must never use general-audience rows");
+assert.match(kidsSocialQueryService, /order=created_at\.desc,id\.desc/, "the shared Kids social queue reader must use a stable keyset order");
+assert.match(kidsSocialQueryService, /KIDS_SOCIAL_QUEUE_MAX_ROWS = 5_000/, "an oversized social history must fail closed instead of returning a truncated badge");
+assert.doesNotMatch(kidsVideoService, /limit=600/, "the Kids video detail must not silently truncate supplemental publication history");
 assert.match(kidsVideoService, /metadata:\s*\{\s*\.\.\.metadata,\s*socialPublication\s*\}/, "the Kids video detail response must replace stale catalog social badges with the live result");
-assert.ok(kidsVideoService.includes("order=created_at.desc&limit=600"), "the Kids video detail must inspect the same bounded queue history as the public feed");
 assert.match(kidsVideoDetailPage, /نص منشور مُجهّز/, "unpublished generated copy must be labelled as prepared copy, not a published post");
 assert.match(kidsVideoDetailPage, /لم يتم نشره بعد/, "the Kids video detail page must state when a generated caption has no confirmed platform delivery");
 const kidsGamesAdminPage = readFileSync("src/app/admin/kids/games/page.tsx", "utf8");
