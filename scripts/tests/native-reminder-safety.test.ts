@@ -59,14 +59,12 @@ async function main() {
   assert.match(prayerHook, /createAsyncSerialQueue/, "prayer schedule refreshes must be serialized");
   assert.match(prayerHook, /enqueueNativePrayerSchedule/, "prayer alarm cancellation and replacement must share one queue");
   assert.match(salawatHook, /createAsyncSerialQueue/, "salawat schedule refreshes must be serialized");
-  assert.match(
-    salawatHook,
-    /import type \\{ AuthChangeEvent, Session \\} from "@supabase\\/supabase-js"/,
+  assert.ok(
+    salawatHook.includes('import type { AuthChangeEvent, Session } from "@supabase/supabase-js";'),
     "the Supabase auth listener must import the concrete callback types under strict TypeScript",
   );
-  assert.match(
-    salawatHook,
-    /onAuthStateChange\\(\\(event: AuthChangeEvent,\\s*session: Session \\| null\\) =>/,
+  assert.ok(
+    salawatHook.includes("onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {"),
     "the Salawat auth-state callback must explicitly type both parameters",
   );
 
