@@ -218,8 +218,14 @@ export function reconcileYoutubeFallbackMetadata(
   return metadata;
 }
 
+export function isUnlinkedInternalVideoMedia(row: Record<string, unknown>): boolean {
+  const metadata = metadataFor(row);
+  return metadata.generator === "zikr_internal_video_factory" && metadata.mediaState === "unlinked";
+}
+
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
+  if (isUnlinkedInternalVideoMedia(row)) return null;
   if (metadata.generator === "zikr_internal_video_factory") {
     // Internal factory IDs are usable only after the publisher recorded the
     // remote ID and matching canonical URL, regardless of the current media state.
@@ -240,6 +246,7 @@ export function shouldKeepPublishedVideoAfterMediaPurge(
 
 export function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
+  if (isUnlinkedInternalVideoMedia(row)) return null;
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
   const youtubeId = resolveVideoYoutubeId(row);
   const youtubeUrl = youtubeId
@@ -292,6 +299,7 @@ export function resolveVideoThumbnail(
   fallbackImage: string,
 ): string {
   const metadata = metadataFor(row);
+  if (isUnlinkedInternalVideoMedia(row)) return fallbackImage;
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
   const internalFallbackState = metadata.generator === "zikr_internal_video_factory" &&
     ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState);
