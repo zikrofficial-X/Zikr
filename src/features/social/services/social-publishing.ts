@@ -1157,7 +1157,7 @@ export async function processSocialPublishItem(
     }
     const blockedFacebook = platforms.some(platform => {
       const result = previous[platform] as PlatformResult | undefined;
-      return result?.ok === false && isFacebookAuthFailure(result.error);
+      return result?.ok === false && platform.startsWith("facebook") && isAuthBlocked(platform, result.error);
     });
     const updated = await markQueueItem(item.id, platforms.some(platform => previous[platform] && (previous[platform] as PlatformResult).ok === true) ? "partial" : "failed", {
       error_message: "No eligible target remains; repair the platform connection or review the channel-specific failure.",
@@ -1217,9 +1217,9 @@ export async function processSocialPublishItem(
   });
 
   const hasAuthFailure = operationalFailures.some(failure =>
-    (failure.platform === "facebook" || failure.platform === "facebook_reels") && isFacebookAuthFailure(failure.error),
+    isAuthBlocked(failure.platform, failure.error),
   );
-  const hasNonAuthFailure = operationalFailures.some(failure => !isFacebookAuthFailure(failure.error));
+  const hasNonAuthFailure = operationalFailures.some(failure => !isAuthBlocked(failure.platform, failure.error));
   const hasTransientFailure = operationalFailures.some(failure => {
     const message = failure.error?.toLowerCase() || "";
     return /http\s+(408|425|429|500|502|503|504)|timeout|timed out|fetch failed|temporar|rate limit|overloaded|quota/i.test(message);
@@ -1246,7 +1246,7 @@ export async function processSocialPublishItem(
     const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
     return currentPlatformAttempts < maxAttempts &&
       !failure.requiresReconciliation &&
-      !isFacebookAuthFailure(failure.error) &&
+      !isAuthBlocked(failure.platform, failure.error) &&
       !isPermanentSocialFailure(failure.error);
   });
   const hasDeferredTargets = unavailablePlatforms.length > 0 || approvalDeferredPlatforms.length > 0 || deferredFailures.length > 0;

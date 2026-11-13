@@ -27,8 +27,8 @@ export async function unblockYouTubeAuthBlockedQueue(): Promise<number> {
   const inventory: YouTubeAuthBlockedQueueRow[] = [];
 
   while (true) {
-    const cursorFilter = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
-    const rows = await supabaseServerAdminRequest<YouTubeAuthBlockedQueueRow[]>(
+    const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const rows: YouTubeAuthBlockedQueueRow[] = await supabaseServerAdminRequest<YouTubeAuthBlockedQueueRow[]>(
       "/rest/v1/social_publish_queue?status=in.(failed,partial)&created_at=gte." +
         encodeURIComponent(publishAfter) +
         "&select=id,target_platforms,metadata,status,updated_at,created_at&order=id.asc&limit=" +

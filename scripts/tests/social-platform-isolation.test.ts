@@ -846,6 +846,11 @@ assert.ok(
 );
 
 const youtubeAuthError = "YouTube OAuth token refresh failed (HTTP 400): invalid_grant";
+assert.equal(
+  isAuthBlocked("facebook", "Facebook OAuthException: Error validating access token"),
+  true,
+  "Facebook access-token OAuth failures must remain auth-blocked",
+);
 assert.equal(isAuthBlocked("youtube", youtubeAuthError), true, "YouTube invalid_grant and OAuth refresh failures must be classified as auth blocks");
 assert.equal(isPermanentSocialFailure(youtubeAuthError), false, "YouTube auth failures must not be mislabeled as permanent media/provider failures");
 assert.equal(isAuthBlocked("youtube", "HTTP 422 invalid media"), false, "confirmed media validation failures are not auth blocks");
@@ -878,6 +883,20 @@ assert.deepEqual(youtubeRecovery.metadata.platformAttempts, { youtube: 0, facebo
 assert.deepEqual(getRetryableSocialPlatforms(["youtube"], youtubeRecovery.metadata), ["youtube"], "YouTube becomes retryable only after explicit recovery");
 assert.deepEqual(getRetryableSocialPlatforms(["facebook"], youtubeRecovery.metadata), [], "YouTube recovery must not release Facebook");
 assert.deepEqual(getRetryableSocialPlatforms(["facebook_reels"], youtubeRecovery.metadata), [], "YouTube recovery must not clear a Reels permanent failure");
+const malformedPermanentFailureRecovery = buildYouTubeQueueRecoveryPatch(
+  {
+    authBlockedPlatforms: ["youtube"],
+    permanentFailurePlatforms: ["facebook_reels", null, 17],
+    platformResults: { youtube: { ok: false, error: youtubeAuthError } },
+  },
+  ["youtube", "facebook_reels"],
+  "2026-11-13T10:00:00.000Z",
+);
+assert.deepEqual(
+  malformedPermanentFailureRecovery?.metadata.permanentFailurePlatforms,
+  ["facebook_reels"],
+  "untrusted non-string permanent-failure metadata must be ignored without clearing valid platform holds",
+);
 assert.equal(
   buildYouTubeQueueRecoveryPatch(
     { platformResults: { youtube: { ok: false, error: "HTTP 422 invalid media" } }, permanentFailurePlatforms: ["youtube"] },
@@ -932,6 +951,15 @@ const youtubeRecoveryServiceSource = readFileSync(
 );
 assert.match(youtubeRecoveryServiceSource, /status=in\.\(failed,partial\)/, "YouTube recovery must scan only failed or partial queue rows");
 assert.match(youtubeRecoveryServiceSource, /created_at=gte\./, "YouTube recovery must respect the current publish cutoff");
+assert.match(youtubeRecoveryServiceSource, /const pageSize = 250/, "YouTube recovery must page its bounded queue inventory");
+assert.match(youtubeRecoveryServiceSource, /const maxRows = 5_000/, "YouTube recovery must stop before mutating an oversized queue inventory");
+assert.match(youtubeRecoveryServiceSource, /const cursorFilter: string =/, "YouTube recovery must use a typed stable cursor filter");
+assert.match(youtubeRecoveryServiceSource, /const rows: YouTubeAuthBlockedQueueRow\[\] = await/, "YouTube recovery must type its queue page rows explicitly");
+assert.match(youtubeRecoveryServiceSource, /buildYouTubeQueueRecoveryFilter\(item, publishAfter\)/, "each recovery update must use the exact candidate row version and cutoff");
+assert.match(socialPublisherSource, /const hasAuthFailure = operationalFailures\.some\(failure =>[\s\S]*?isAuthBlocked\(failure\.platform, failure\.error\)/, "the publisher must classify authentication failures for every provider");
+assert.match(socialPublisherSource, /const hasNonAuthFailure = operationalFailures\.some\(failure => !isAuthBlocked\(failure\.platform, failure\.error\)\)/, "provider auth blocks must not be misclassified as retryable operational failures");
+assert.match(socialPublisherSource, /!isAuthBlocked\(failure\.platform, failure\.error\) &&/, "auth-blocked providers must not enter transient retry scheduling");
+assert.doesNotMatch(socialPublisherSource, /isFacebookAuthFailure/, "the publisher must not retain a stale Facebook-only classifier");
 assert.match(adminSocialRouteSource, /unblockYouTubeAuthBlockedQueue\(\)/, "the admin route must call the dedicated YouTube recovery service");
 assert.match(adminSocialRouteSource, /getYouTubeUploadRefreshToken\(\)/, "the admin route must verify an upload-scoped credential before release");
 assert.match(adminSocialRouteSource, /body\.platform/, "the release action must distinguish Facebook and YouTube");

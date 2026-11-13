@@ -100,9 +100,10 @@ export function buildYouTubeQueueRecoveryPatch(
     metadata.authBlocked === true &&
     declaredAuth.length === 0 &&
     targets.some((platform) => platform.startsWith("facebook"));
-  const hasPermanentFailureList = Array.isArray(metadata.permanentFailurePlatforms);
+  const rawPermanentFailurePlatforms = metadata.permanentFailurePlatforms;
+  const hasPermanentFailureList = Array.isArray(rawPermanentFailurePlatforms);
   const declaredPermanent = hasPermanentFailureList
-    ? metadata.permanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
+    ? rawPermanentFailurePlatforms.filter((platform): platform is string => typeof platform === "string")
     : [];
   const remainingPermanentFailurePlatforms = declaredPermanent.filter((platform) => platform !== "youtube");
   const legacyPermanentFailureRemains =
