@@ -5,7 +5,7 @@ import {
   assertCloudinaryVideoUrl,
   isGeneratedCloudinaryVideoUrl,
 } from "../../src/features/videos/services/video-media-url";
-import { resolveLatestConfirmedYoutubeQueueState, resolveVideoMediaUrl, resolveVideoThumbnail } from "../../src/features/videos/services/video-media-contract";
+import { isUnlinkedInternalVideoMedia, resolveLatestConfirmedYoutubeQueueState, resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "../../src/features/videos/services/video-media-contract";
 
 const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
   assertCloudinaryVideoUrl(url, target, "zikr");
@@ -102,6 +102,8 @@ test("scheduled media audit avoids checkedAt-only database writes and reports un
   assert.match(auditScript, /else if \(!assetUrl && hasConfirmedYoutubeFallback\) mediaState = "youtube_only"/);
   assert.match(auditScript, /else if \(!assetUrl\) mediaState = "unavailable"/);
   assert.match(auditScript, /thumbnailFor\(metadata, confirmedYoutubeFallbackId, row\.thumbnail_url\)/);
+  assert.match(auditScript, /isUnlinkedInternalVideoMedia\(row\)/);
+  assert.match(auditScript, /state: "skipped"/);
 
 });
 
@@ -201,6 +203,26 @@ test("confirmed YouTube fallback covers every unavailable internal-media state",
     };
     assert.equal(resolveVideoMediaUrl(row), youtubeUrl, `confirmed YouTube fallback for ${mediaState}`);
   }
+});
+
+test("explicitly unlinked internal videos remain hidden and are skipped by the media audit", () => {
+  const youtubeId = "abc123xyz_1";
+  const unlinkedVideo = {
+    youtube_id: youtubeId,
+    thumbnail_url: "https://res.cloudinary.com/zikr/video/upload/so_0/unlinked.jpg",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "unlinked",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/unlinked.mp4",
+      mediaFallbackAvailable: true,
+      youtubePublishedVideoId: youtubeId,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + youtubeId,
+    },
+  };
+  assert.equal(isUnlinkedInternalVideoMedia(unlinkedVideo), true);
+  assert.equal(resolveVideoMediaUrl(unlinkedVideo), null);
+  assert.equal(resolveVideoYoutubeId(unlinkedVideo), null);
+  assert.equal(resolveVideoThumbnail(unlinkedVideo, "/branding/og-image.jpg"), "/branding/og-image.jpg");
 });
 
 test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
