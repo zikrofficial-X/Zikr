@@ -744,3 +744,28 @@ assert.ok(
   "an explicit retry must clear only the selected resolved source/manual holds while preserving unrelated approval gates",
 );
 
+
+assert.equal(
+  (adminSocialRouteSource.match(/const auditRecorded = await recordSocialAuditEvent\(/g) ?? []).length,
+  9,
+  "every social mutation/connection-test audit write must use the best-effort wrapper",
+);
+assert.match(
+  adminSocialRouteSource,
+  /async function recordSocialAuditEvent[\s\S]*?try[\s\S]*?await recordAdminAuditEvent\(event\)[\s\S]*?catch/,
+  "audit logging failure must not turn an already-dispatched publish/delete into a retryable 500",
+);
+assert.match(
+  adminSocialRouteSource,
+  /return NextResponse\.json\(\{ ok: true, worker, auditRecorded \}\)/,
+  "worker dispatch responses must report whether their audit record was saved",
+);
+const socialClientAuditSource = readFileSync(
+  resolve(process.cwd(), "src/app/admin/social/social-client.tsx"),
+  "utf8",
+);
+assert.ok(
+  socialClientAuditSource.includes("payload.auditRecorded === false") &&
+    socialClientAuditSource.includes("لا تعِد"),
+  "the admin UI must warn about audit gaps and explicitly discourage repeating committed social actions",
+);
