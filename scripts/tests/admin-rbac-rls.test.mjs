@@ -33,6 +33,18 @@ const revokePublicAdminPredicateMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql"),
   "utf8",
 );
+const publicAdminPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260929062722_security_seo_hardening_20260929.sql"),
+  "utf8",
+);
+const contentHubPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260901123902_final_rls_security_cleanup.sql"),
+  "utf8",
+);
+const publicReadPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261008082203_20261008120000_consolidate_duplicate_public_read_policies.sql"),
+  "utf8",
+);
 const contentService = readFileSync(
   resolve(process.cwd(), "src/features/admin/services/content.ts"),
   "utf8",
