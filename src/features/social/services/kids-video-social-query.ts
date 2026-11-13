@@ -32,9 +32,10 @@ export async function loadKidsSocialQueueRows(
   request: KidsSocialQueueRequest,
   snapshotAtInput = new Date().toISOString(),
 ): Promise<KidsSocialQueueRow[]> {
-  const requestIds = [...new Set(requestIdsInput.filter(
-    (value): value is string => typeof value === "string" && value.trim().length > 0,
-  ))];
+  const requestIds = [...new Set(requestIdsInput
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0))];
   if (requestIds.length === 0) return [];
 
   const snapshotTimestamp = Date.parse(snapshotAtInput);
