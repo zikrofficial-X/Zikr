@@ -1,5 +1,6 @@
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
@@ -221,8 +222,9 @@ async function persistValidation(
   code: string | null,
 ) {
   try {
+    const updatedAt = credential.updated_at?.trim() ?? "";
     const filter = buildFacebookCredentialValidationFilter(credential);
-    if (!filter) return;
+    if (!filter || !updatedAt) return;
     await supabaseServerAdminRequest(
       `/rest/v1/social_platform_credentials?${filter}`,
       {
@@ -233,7 +235,7 @@ async function persistValidation(
           last_validated_at: status === "connected" || status === "disabled" ? new Date().toISOString() : credential.last_validated_at,
           last_error_code: code,
           last_error_message: message,
-          updated_at: new Date().toISOString(),
+          updated_at: buildNextRowVersionUpdatedAt(updatedAt),
         }),
       },
     );

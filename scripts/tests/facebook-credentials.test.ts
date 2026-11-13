@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import {
   buildFacebookCredentialValidationFilter,
   readStoredFacebookCredential,
@@ -18,6 +19,11 @@ assert.equal(
 assert.equal(buildFacebookCredentialValidationFilter({ page_id: " ", updated_at: validCredential.updated_at }), null);
 assert.equal(buildFacebookCredentialValidationFilter({ page_id: "123", updated_at: null }), null);
 assert.equal(buildFacebookCredentialValidationFilter({ page_id: "123", updated_at: "not-a-date" }), null);
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
+  "2026-11-13T01:30:00.124Z",
+  "a same-millisecond Facebook validation write must advance its CAS row-version token",
+);
 
 const paths: string[] = [];
 const emptyRequest = async <T,>(path: string): Promise<T> => {
@@ -72,5 +78,7 @@ const persistSource = source.slice(persistStart, persistEnd);
 assert.match(persistSource, /buildFacebookCredentialValidationFilter\(credential\)/);
 assert.match(persistSource, /if \(!filter\) return;/);
 assert.doesNotMatch(persistSource, /social_platform_credentials\?platform=eq\.facebook/);
+assert.match(persistSource, /updated_at: buildNextRowVersionUpdatedAt\\(updatedAt\\)/);
+assert.doesNotMatch(persistSource, /updated_at: new Date\\(\\)\\.toISOString\\(\\)/);
 
 console.log("Facebook credential row-shape and validation CAS checks passed.");

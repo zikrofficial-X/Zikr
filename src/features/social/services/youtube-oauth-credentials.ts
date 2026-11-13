@@ -14,6 +14,21 @@ export function matchesConfiguredYouTubeChannel(
   return Boolean(stored) && (!configured || stored === configured);
 }
 
+export function selectYouTubeChannel<T extends { id?: string }>(
+  channels: readonly T[],
+  configuredChannelId?: string,
+): T | null {
+  const validChannels = channels.filter(
+    (channel) => typeof channel.id === "string" && channel.id.trim().length > 0,
+  );
+  const configured = configuredChannelId?.trim() ?? "";
+  if (configured) {
+    return validChannels.find((channel) => channel.id === configured) ?? null;
+  }
+  // Never silently bind the first channel when a Google account manages several.
+  return validChannels.length === 1 ? validChannels[0] : null;
+}
+
 export type YouTubeOAuthCredentialInput = {
   refreshToken: string;
   grantedScopes: string[];

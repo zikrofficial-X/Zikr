@@ -313,6 +313,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         refresh_token_missing: "لم يُرجع Google Refresh Token جديدًا. أعد الربط مع الموافقة على Offline access.",
         channel_read_failed: "تم التفويض لكن تعذرت قراءة القناة المرتبطة بحساب Google.",
         channel_mismatch: "القناة التي تم تفويضها لا تطابق YOUTUBE_CHANNEL_ID المضبوط في ZIKR.",
+        channel_selection_required: "حساب Google يدير أكثر من قناة. حدّد YOUTUBE_CHANNEL_ID للقناة المطلوبة ثم أعد الربط؛ لم يتم استبدال الاعتماد الحالي.",
         oauth_failed: "فشل تفويض Google. تحقق من إعدادات OAuth Authorized redirect URI وحاول مرة أخرى.",
       };
       setError(youtubeMessages[youtubeStatus] || "تعذر إكمال ربط YouTube.");

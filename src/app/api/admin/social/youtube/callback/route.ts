@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { getServerEnv } from "@/lib/env";
-import { hasYouTubeUploadScopes, saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
+import { hasYouTubeUploadScopes, saveYouTubeOAuthCredential, selectYouTubeChannel } from "@/features/social/services/youtube-oauth-credentials";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -162,15 +162,21 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(20_000),
     });
     const channelPayload = await channelResponse.json().catch(() => ({})) as YouTubeChannelResponse;
-    const channel = channelPayload.items?.find((item) => typeof item.id === "string");
-    if (!channelResponse.ok || !channel?.id) {
+    const channels = Array.isArray(channelPayload.items) ? channelPayload.items : [];
+    const validChannels = channels.filter(
+      (item) => typeof item.id === "string" && item.id.trim().length > 0,
+    );
+    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim();
+    const channel = selectYouTubeChannel(validChannels, configuredChannelId);
+    if (!channel?.id) {
+      if (channelResponse.ok && !configuredChannelId && validChannels.length > 1) {
+        return redirectResult("channel_selection_required");
+      }
+      if (channelResponse.ok && configuredChannelId) {
+        return redirectResult("channel_mismatch");
+      }
       const reason = channelPayload.error?.errors?.[0]?.reason;
       return redirectResult(reason === "insufficientPermissions" ? "permission_missing" : "channel_read_failed");
-    }
-
-    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim();
-    if (configuredChannelId && configuredChannelId !== channel.id) {
-      return redirectResult("channel_mismatch");
     }
 
     await saveYouTubeOAuthCredential({

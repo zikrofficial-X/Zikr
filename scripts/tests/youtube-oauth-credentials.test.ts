@@ -1,11 +1,37 @@
 import assert from "node:assert/strict";
 import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
-import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
+import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken, selectYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
 
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC999"), false, "a token for a different channel must fail closed");
 assert.equal(matchesConfiguredYouTubeChannel("", "UC123"), false, "missing stored provider ID must fail closed");
+
+const channelCandidates = [
+  { id: "UC-first", snippet: { title: "First channel" } },
+  { id: "UC-configured", snippet: { title: "Configured channel" } },
+];
+assert.equal(
+  selectYouTubeChannel(channelCandidates, "UC-configured")?.id,
+  "UC-configured",
+  "OAuth must select the configured channel even when Google returns it after another managed channel",
+);
+assert.equal(
+  selectYouTubeChannel(channelCandidates),
+  null,
+  "OAuth must not silently connect the first of multiple managed channels when no channel ID is configured",
+);
+assert.equal(
+  selectYouTubeChannel([channelCandidates[0]])?.id,
+  "UC-first",
+  "a single unambiguous managed channel may be selected without an environment override",
+);
+assert.equal(
+  selectYouTubeChannel(channelCandidates, "UC-missing"),
+  null,
+  "a configured channel that is not in the granted account channel list must fail closed",
+);
+
 
 const originalConfiguredChannelId = process.env.YOUTUBE_CHANNEL_ID;
 try {
@@ -241,6 +267,10 @@ const youtubeCallbackSource = readFileSync(
   "utf8",
 );
 assert.match(youtubeCallbackSource, /hasYouTubeUploadScopes\(scopes\)/, "OAuth callback must reject a grant that includes delete-capable scopes");
+assert.match(youtubeCallbackSource, /selectYouTubeChannel\(validChannels, configuredChannelId\)/, "OAuth callback must select the configured channel from all channels returned by Google");
+assert.match(youtubeCallbackSource, /channel_selection_required/, "OAuth callback must fail closed when multiple channels are returned without a configured channel ID");
+const socialClientSource = readFileSync(new URL("../../src/app/admin/social/social-client.tsx", import.meta.url), "utf8");
+assert.match(socialClientSource, /channel_selection_required/, "the admin UI must explain how to resolve an ambiguous multi-channel OAuth result");
 
 const youtubeConnectSource = readFileSync(
   new URL("../../src/app/api/admin/social/youtube/connect/route.ts", import.meta.url),
