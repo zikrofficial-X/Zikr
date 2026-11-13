@@ -154,4 +154,14 @@ assert.doesNotMatch(
   /android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"[\s\S]*?android:pathPrefix="\/auth\/callback"/,
   "Android App Links must not intercept the HTTPS OAuth callback",
 );
+const androidWorkflow = read(".github/workflows/android-native-login-test.yml");
+assert.match(androidWorkflow, /pull_request:\s*[\s\S]*?paths:/, "native Android OAuth changes must trigger a PR debug build");
+assert.ok(androidWorkflow.includes('"android/**"'), "Android source changes must trigger the debug build");
+assert.ok(androidWorkflow.includes('"src/features/auth/**"'), "native OAuth source changes must trigger the debug build");
+assert.ok(androidWorkflow.includes(":app:assembleDebug"), "the PR workflow must build a debug APK");
+assert.ok(
+  !androidWorkflow.includes(":app:assembleRelease") && !androidWorkflow.includes(":app:bundleRelease"),
+  "the PR workflow must never create a release APK/AAB",
+);
+
 console.log("Native Google OAuth and canonical-host contracts passed.");
