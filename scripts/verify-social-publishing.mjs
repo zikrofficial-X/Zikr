@@ -332,6 +332,7 @@ if (facebookConnect.includes("pages_manage_engagement") || facebookCallback.incl
 if (!facebookConnect.includes('requireAdminApi("social.manage")') ||
     !facebookConnect.includes('requireAdminStepUpApi("social.publish"') ||
     !facebookConnect.includes("dialog/oauth") ||
+    !facebookConnect.includes("FACEBOOK_REQUESTED_PERMISSIONS.join") ||
     !facebookConnect.includes("pages_manage_posts") ||
     facebookConnect.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth connect must start a scoped Meta Page authorization flow");
@@ -346,7 +347,7 @@ if (!facebookCallback.includes('requireAdminApi("social.manage")') ||
     facebookCallback.includes("FACEBOOK_INTEGRATION_RETIRED")) {
   failures.push("Facebook OAuth callback must require publishing scopes, report missing optional insights separately, and validate the selected managed Page");
 }
-const facebookRequiredScopes = /const required = \\[([\\s\\S]*?)\\];/.exec(socialWorkflow)?.[1] ?? "";
+const facebookRequiredScopes = /const required = \[([\s\S]*?)\];/.exec(socialWorkflow)?.[1] ?? "";
 if (!facebookRequiredScopes.includes("pages_show_list") ||
     !facebookRequiredScopes.includes("pages_read_engagement") ||
     !facebookRequiredScopes.includes("pages_manage_posts") ||
