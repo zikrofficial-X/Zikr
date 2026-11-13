@@ -490,6 +490,21 @@ assert.deepEqual(
   [],
   "a confirmed deletion must still hide the exact provider delivery it removed",
 );
+
+for (const explicitLedger of [{}, [], "malformed"]) {
+  const rowWithExplicitEmptyOrMalformedLedger = {
+    ...originalYoutubeQueueRow,
+    metadata: {
+      audience: "kids",
+      platformResults: explicitLedger,
+    },
+  };
+  assert.deepEqual(
+    getConfirmedPublicKidsVideoSocialPlatforms(rowWithExplicitEmptyOrMalformedLedger),
+    [],
+    "an explicit empty or malformed result ledger must not fall back to target_platforms",
+  );
+}
 const sameTimestampPublication = {
   ...originalYoutubeQueueRow,
   published_at: "2026-11-11T12:06:00.000Z",
