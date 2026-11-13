@@ -67,3 +67,33 @@ BEGIN
   END IF;
 END
 $assert$;
+
+DO $disabled_intervals$
+DECLARE
+  inserted_count integer;
+BEGIN
+  UPDATE public.background_reminder_preferences
+  SET dhikr_interval_minutes = 0
+  WHERE user_id = '10000000-0000-4000-8000-000000000001';
+
+  UPDATE public.background_reminder_preferences
+  SET salawat_interval_minutes = 0
+  WHERE user_id = '10000000-0000-4000-8000-000000000002';
+
+  SELECT public.plan_background_reminder_deliveries('2026-11-11 21:37:35+00'::timestamptz)
+  INTO inserted_count;
+
+  IF inserted_count <> 0 THEN
+    RAISE EXCEPTION 'Expected disabled zero-minute intervals to create no reminders, received %', inserted_count;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.prayer_notification_deliveries
+    WHERE notification_kind IN ('dhikr', 'salawat')
+      AND scheduled_at > '2026-11-11 21:37:35+00'::timestamptz
+  ) THEN
+    RAISE EXCEPTION 'A disabled zero-minute interval created a future background reminder';
+  END IF;
+END
+$disabled_intervals$;
