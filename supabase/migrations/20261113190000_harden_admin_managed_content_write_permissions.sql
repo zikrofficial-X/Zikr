@@ -14,6 +14,12 @@ DROP POLICY IF EXISTS social_publish_queue_admin_read ON public.social_publish_q
 DROP POLICY IF EXISTS social_publish_queue_admin_write ON public.social_publish_queue;
 DROP POLICY IF EXISTS social_publish_queue_authenticated_read_published_or_admin ON public.social_publish_queue;
 
+-- These are the policy names in the deployed historical migration
+-- 20260630000017_0017_video_automation.sql. Keep the alternate names too
+-- because older preview databases may have been created from the audit fixture.
+DROP POLICY IF EXISTS select_video_requests_admin ON public.video_generation_requests;
+DROP POLICY IF EXISTS insert_video_requests_admin ON public.video_generation_requests;
+DROP POLICY IF EXISTS update_video_requests_admin ON public.video_generation_requests;
 DROP POLICY IF EXISTS admin_select_video_generation_requests ON public.video_generation_requests;
 DROP POLICY IF EXISTS admin_insert_video_generation_requests ON public.video_generation_requests;
 DROP POLICY IF EXISTS admin_update_video_generation_requests ON public.video_generation_requests;
