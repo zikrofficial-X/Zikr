@@ -209,6 +209,11 @@ assert.equal("inFlightPlatforms" in completedMetadata, false, "completed attempt
 assert.equal("inFlightStartedAt" in completedMetadata, false, "completed attempts must clear the in-flight timestamp");
 assert.deepEqual(completedMetadata.lastAttemptPlatforms, ["youtube"]);
 
+const socialPublisherSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+
 const inFlightMarkerPosition = socialPublisherSource.indexOf("const inFlightMetadata = buildSocialPublishInFlightMetadata");
 const providerCallPosition = socialPublisherSource.indexOf("const results = await Promise.all(runnablePlatforms.map");
 assert.ok(inFlightMarkerPosition >= 0 && providerCallPosition > inFlightMarkerPosition, "the durable in-flight marker must be written before any provider call");
@@ -932,8 +937,5 @@ assert.match(adminSocialRouteSource, /getYouTubeUploadRefreshToken\(\)/, "the ad
 assert.match(adminSocialRouteSource, /body\.platform/, "the release action must distinguish Facebook and YouTube");
 assert.match(socialClientAuditSource, /youtubeAuthBlocked/, "the admin UI must surface YouTube auth-blocked rows");
 assert.match(socialClientAuditSource, /releaseAuthBlockedQueue\("youtube"\)/, "the admin UI must expose an explicit YouTube recovery action");
-const socialPublisherSource = readFileSync(
-  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
-  "utf8",
-);
+
 assert.match(socialPublisherSource, /isAuthBlocked\(failure\.platform, failure\.error\)/, "the worker must classify YouTube OAuth failures as per-platform auth blocks");
