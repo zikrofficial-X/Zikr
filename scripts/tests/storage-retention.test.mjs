@@ -556,8 +556,12 @@ assert.ok(retentionPreflightBody.includes("pg_catalog.has_function_privilege"));
 for (const role of ["anon", "authenticated", "service_role"]) {
   assert.ok(retentionPreflightBody.includes("'" + role + "'"), "the live preflight must verify the " + role + " EXECUTE grant");
 }
-assert.ok(retentionPreflightBody.includes("SECURITY INVOKER") && retentionPreflightBody.includes("search_path"),
-  "the live preflight must reject a retention RPC that changes its execution security contract");
+assert.ok(
+  retentionPreflightBody.includes("pg_catalog.pg_proc") &&
+  retentionPreflightBody.includes("prosecdef IS FALSE") &&
+  retentionPreflightBody.includes("search_path"),
+  "the live preflight must verify invoker security through pg_proc and retain the empty search_path contract",
+);
 assert.match(retentionRpcMigration, /content_id = p_request_id::text/,
   "the queue row must be linked to the exact video-generation request being updated");
 assert.match(retentionRpcMigration, /metadata->'storageRetention'->>'path' = p_retention->>'path'/,

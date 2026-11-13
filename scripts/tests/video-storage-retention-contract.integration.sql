@@ -23,6 +23,19 @@ BEGIN
 END
 $contract$;
 
+-- PostgreSQL omits the default SECURITY INVOKER clause from pg_get_functiondef().
+-- The preflight must therefore inspect pg_proc.prosecdef, not search the deparsed SQL.
+BEGIN;
+ALTER FUNCTION public.update_video_storage_retention(uuid, uuid, text, jsonb, boolean) SECURITY DEFINER;
+DO $security_definer$
+BEGIN
+  IF public.video_storage_retention_contract_ready() IS NOT FALSE THEN
+    RAISE EXCEPTION 'The retention preflight must reject a SECURITY DEFINER RPC.';
+  END IF;
+END
+$security_definer$;
+ROLLBACK;
+
 CREATE FUNCTION pg_temp.expect_retention_rejection(p_statement text, p_expected_message text)
 RETURNS void
 LANGUAGE plpgsql

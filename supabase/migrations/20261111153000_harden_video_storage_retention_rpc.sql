@@ -161,7 +161,13 @@ BEGIN
     AND request_update[2] ~* '\mvideo_url\M\s*=\s*p_expected_url'
     AND request_update[2] !~* '\mvideo_url\M\s+IS\s+NULL'
     AND request_update[2] ~* 'content->''storageRetention''->>''path''\s*=\s*p_retention->>''path'''
-    AND definition ~* 'SECURITY INVOKER'
+    AND EXISTS (
+      SELECT 1
+      FROM pg_catalog.pg_proc AS retention_proc
+      WHERE retention_proc.oid =
+        'public.update_video_storage_retention(uuid,uuid,text,jsonb,boolean)'::regprocedure
+        AND retention_proc.prosecdef IS FALSE
+    )
     AND definition ~* $pattern$SET\s+search_path\s+(?:=|TO)\s*''$pattern$
     AND definition ~* $pattern$coalesce\(retention_state,\s*''\)\s+NOT\s+IN\s*\('purge_pending',\s*'purged'\)$pattern$
     AND definition ~* $pattern$p_finalize\s+IS\s+DISTINCT\s+FROM\s*\(retention_state\s*=\s*'purged'\)$pattern$
