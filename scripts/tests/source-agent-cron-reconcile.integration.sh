@@ -36,6 +36,24 @@ psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zi
 "${psql[@]}" -f /workspace/supabase/migrations/20261113210000_reconcile_source_agent_cron_project_ref.sql
 "${psql[@]}" -f /workspace/scripts/tests/source-agent-cron-reconcile.integration.sql
 
+# A comment can contain every security-related substring while the executable
+# command is unrelated. The migration must still replace this spoofed command.
+"${psql[@]}" <<'SQL'
+UPDATE cron.job
+SET command = $spoof$
+-- net.http_post(
+-- url := 'https://zqtssvlvmkzeeyqghqfk.supabase.co/functions/v1/source-verified-content-agent'
+-- headers := jsonb_build_object(
+-- 'Authorization', 'Bearer ' || public.get_push_scheduler_secret()
+-- )
+-- body := jsonb_build_object('source', 'pg_cron')
+SELECT 1;
+$spoof$
+WHERE jobname = 'zikr-source-verified-content-agent';
+SQL
+"${psql[@]}" -f /workspace/supabase/migrations/20261113210000_reconcile_source_agent_cron_project_ref.sql
+"${psql[@]}" -f /workspace/scripts/tests/source-agent-cron-reconcile.integration.sql
+
 # A duplicate job name must be removed and recreated as one canonical job.
 "${psql[@]}" -c "INSERT INTO cron.job (jobname, schedule, command, active) VALUES
   ('zikr-source-verified-content-agent', '0 4 * * *', 'SELECT 1', true),
