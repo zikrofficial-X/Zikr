@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
@@ -51,6 +51,11 @@ export async function safeTogglePublishAction(formData: FormData) {
   const { table, id, updatedAt } = getTarget(formData);
   const next = String(formData.get("next") ?? "false") === "true";
   await toggleManagedContent(table, id, next, updatedAt);
+  if (table === "articles") {
+    revalidateTag("public-articles");
+    revalidatePath("/articles");
+    revalidatePath("/articles/[slug]", "page");
+  }
 
   await recordContentAuditEvent({
     action: next ? "content.publish" : "content.unpublish",
@@ -69,6 +74,11 @@ export async function safeDeleteContentAction(formData: FormData) {
   await enforceAdminRateLimit(admin, "content.delete", 10, 60);
   const { table, id, updatedAt } = getTarget(formData);
   await deleteManagedContent(table, id, updatedAt);
+  if (table === "articles") {
+    revalidateTag("public-articles");
+    revalidatePath("/articles");
+    revalidatePath("/articles/[slug]", "page");
+  }
 
   await recordContentAuditEvent({
     action: "content.delete",

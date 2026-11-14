@@ -165,7 +165,7 @@ async function getDatabaseProphets(): Promise<Prophet[] | null> {
     return null;
   });
 
-  return rows?.length ? rows.map(mapProphetRow) : null;
+  return rows === null ? null : rows.map(mapProphetRow);
 }
 
 export async function getProphets(): Promise<Prophet[]> {
@@ -177,7 +177,11 @@ export async function getProphets(): Promise<Prophet[]> {
   }
 
   const database = isSupabaseConfigured() ? await getDatabaseProphets() : null;
-  if (database?.length) return resolveCanonicalPublished(database, offline);
+  if (database !== null) {
+    if (database.length) return resolveCanonicalPublished(database, offline);
+    // A successful empty published query must not fall back to an old DB snapshot.
+    return FALLBACK_PROPHETS.map(mapFallbackProphet);
+  }
 
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }

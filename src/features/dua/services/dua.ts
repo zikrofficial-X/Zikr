@@ -144,14 +144,21 @@ export async function getDuas(
 
   query += `&limit=${safeLimit}`;
 
+  let databaseLookupFailed = false;
   const rows = await supabaseServerAnonRequest<DuaRow[]>(query).catch(
     (error) => {
+      databaseLookupFailed = true;
       console.error("[dua] Failed to fetch duas:", error);
       return [];
     },
   );
 
-  if (rows.length === 0) return fallback.slice(0, safeLimit);
+  if (rows.length === 0) {
+    const source = databaseLookupFailed ? fallbackBase : FALLBACK_DUAS.filter(
+      dua => !categoryId || categoryId === "all" || dua.categoryId === categoryId,
+    );
+    return source.filter(localeReady).slice(0, safeLimit);
+  }
 
   const mapped = rows
     .map(mapDuaRow)
@@ -161,6 +168,7 @@ export async function getDuas(
 }
 
 export async function searchDuas(query: string, locale: Locale = "ar"): Promise<Dua[]> {
+  let databaseLookupFailed = false;
   const cleanQuery = query.trim().slice(0, 100);
   const normalizedQuery = normalizeArabicSearchText(cleanQuery);
   if (!normalizedQuery) return [];
@@ -177,12 +185,20 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
           : Boolean(dua.titleAr?.trim() && dua.textAr?.trim())),
       );
       if (matches.length) return matches;
+      return FALLBACK_DUAS.filter((dua) =>
+        [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
+          .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+      ).slice(0, 6);
     } catch (error) {
+      databaseLookupFailed = true;
       console.error("[dua] Indexed search failed; using bounded fallback:", error);
     }
   }
 
-  return (await getOfflineOrFallbackDuas()).filter((dua) =>
+  const fallbackSource = !isSupabaseConfigured() || databaseLookupFailed
+    ? await getOfflineOrFallbackDuas()
+    : FALLBACK_DUAS;
+  return fallbackSource.filter((dua) =>
     [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);

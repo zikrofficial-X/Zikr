@@ -193,33 +193,36 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
 
       const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         query,
-        { cache: "force-cache", next: { revalidate: 1800 } },
+        { cache: "force-cache", next: { revalidate: 60, tags: ["public-articles"] } },
       );
 
-      const publicArticles = rows
-        .map((row) => mapRow(row, activeLocale))
-        .filter(article => article.title && normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS);
-
-      if (publicArticles.length > 0) {
-        let offlineArticles: Article[] = [];
-        try {
-          offlineArticles = await loadOfflineArticles(activeLocale);
-        } catch (error) {
-          console.error("[articles] Offline catalogue unavailable:", error);
-        }
-
-        return withLongformArticles(
-          resolveCanonicalPublished(publicArticles, [...offlineArticles, ...getFallbackArticles(activeLocale)])
-            .filter(
-              (article) =>
-                !categoryId ||
-                categoryId === "all" ||
-                article.categoryId === categoryId,
-            ),
-          activeLocale,
-          categoryId,
-        ).slice(0, safeLimit);
+      if (rows.length === 0) {
+        // A successful empty published query is authoritative. Do not resurrect
+        // stale database snapshots; retain only bundled editorial fallbacks.
+        const staticFallback = getFallbackArticles(activeLocale).filter(
+          article => !categoryId || categoryId === "all" || article.categoryId === categoryId,
+        );
+        return withLongformArticles(staticFallback, activeLocale, categoryId).slice(0, safeLimit);
       }
+
+      let offlineArticles: Article[] = [];
+      try {
+        offlineArticles = await loadOfflineArticles(activeLocale);
+      } catch (error) {
+        console.error("[articles] Offline catalogue unavailable:", error);
+      }
+
+      const canonicalArticles = resolveCanonicalPublished(
+        rows.map((row) => mapRow(row, activeLocale)),
+        [...offlineArticles, ...getFallbackArticles(activeLocale)],
+      ).filter(
+        (article) =>
+          article.title &&
+          normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS &&
+          (!categoryId || categoryId === "all" || article.categoryId === categoryId),
+      );
+
+      return withLongformArticles(canonicalArticles, activeLocale, categoryId).slice(0, safeLimit);
     } catch (error) {
       if (!isUnavailableArticlesTable(error)) {
         console.error("[articles] Failed to fetch published articles:", error);
@@ -296,7 +299,7 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
     try {
       rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&slug=eq.${encodeURIComponent(safeSlug)}&published=eq.true&limit=1`,
-        { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 1800 } },
+        { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 60, tags: ["public-articles"] } },
       );
     } catch (error) {
       databaseLookupFailed = true;

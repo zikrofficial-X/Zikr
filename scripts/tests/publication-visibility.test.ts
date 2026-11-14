@@ -23,10 +23,16 @@ const serviceContracts = [
 ] as const;
 
 const articleService = readFileSync("src/features/articles/services/articles.ts", "utf8");
+assert.match(articleService, /revalidate: 60, tags: \["public-articles"\]/, "article list and detail caches must have a short, invalidatable publication tag");
+assert.match(articleService, /if \(rows\.length === 0\)/, "a successful empty published query must not reuse a stale database snapshot");
+const contentActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
+assert.match(contentActions, /revalidateTag\("public-articles"\)/, "admin publish and delete actions must invalidate public article caches");
 assert.match(articleService, /if \(hasOfflineFallback\)/, "article visibility checks must run only when an offline fallback would otherwise render");
 const duaService = readFileSync("src/features/dua/services/dua.ts", "utf8");
+assert.match(duaService, /databaseLookupFailed \? fallbackBase : FALLBACK_DUAS/, "successful empty dua queries must not reuse an old offline DB snapshot");
 assert.match(duaService, /!databaseLookupFailed && localMatch/, "dua visibility checks must not run for arbitrary unknown slugs");
 const prophetService = readFileSync("src/features/prophets/services/prophets.ts", "utf8");
+assert.match(prophetService, /database !== null/, "successful empty prophet queries must be distinguished from failed queries");
 assert.match(prophetService, /!databaseLookupFailed && hasLocalFallback/, "prophet visibility checks must be limited to known fallback slugs");
 
 for (const [path, lookup] of serviceContracts) {
