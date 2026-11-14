@@ -370,6 +370,18 @@ assert.equal(
  null,
  "duplicate platform result entries must not be normalized into a false public Kids publication",
 );
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook"],
+  metadata: {
+   ...queueRow.metadata,
+   platformResults: { facebook: { ok: true, remoteId: "fb-held", requiresReconciliation: true } },
+  },
+ }, liveKidsStory),
+ null,
+ "a written Kids platform awaiting manual reconciliation must not be exposed as confirmed",
+);
 assert.deepEqual(
  buildPublicKidsWrittenPost({
   ...queueRow,
