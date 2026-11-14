@@ -1,9 +1,16 @@
-const CRISIS_PATTERNS = [
-  'انتحار', 'أنتحر', 'عايز أنتحر', 'نفسي أنتحر', 'أفكر في الانتحار',
+const DIRECT_CRISIS_PATTERNS = [
+  'انتحار', 'أنتحر', 'عايز أنتحر', 'عاوز أنتحر', 'نفسي أنتحر', 'أفكر في الانتحار',
   'أقتل نفسي', 'اقتُل نفسي', 'أؤذي نفسي', 'ايذاء نفسي', 'إيذاء نفسي',
-  'عايز أموت', 'نفسي أموت', 'أتمنى أموت', 'أريد أن أموت', 'أريد الموت', 'أتمنى الموت',
   'مش عايز أعيش', 'لا أريد أن أعيش', 'لن أعيش', 'مش عايز أصحى', 'لا أريد أن أستيقظ',
   'أختفي للأبد', 'اختفي للأبد', 'أنهي حياتي', 'أنهي كل شيء', 'وداعا للأبد',
+];
+const DEATH_WISH_PATTERNS = [
+  'عايز أموت', 'عاوز أموت', 'نفسي أموت', 'أتمنى أموت', 'أريد أن أموت', 'أريد الموت', 'أتمنى الموت',
+];
+const NON_LITERAL_DEATH_CONTEXTS = [
+  'اموت من الضحك', 'اموت من الجوع', 'اموت من العطش', 'اموت من الحر',
+  'اموت من البرد', 'اموت من النعاس', 'اموت من النوم', 'اموت من الكسل',
+  'اموت من الفرح', 'اموت من الفرحة',
 ];
 
 function normalizeCrisisText(text: string): string {
@@ -17,15 +24,23 @@ function normalizeCrisisText(text: string): string {
     .toLowerCase();
 }
 
-const NORMALIZED_CRISIS_PATTERNS = CRISIS_PATTERNS.map(normalizeCrisisText);
+const NORMALIZED_DIRECT_CRISIS_PATTERNS = DIRECT_CRISIS_PATTERNS.map(normalizeCrisisText);
+const NORMALIZED_DEATH_WISH_PATTERNS = DEATH_WISH_PATTERNS.map(normalizeCrisisText);
+const NORMALIZED_NON_LITERAL_DEATH_CONTEXTS = NON_LITERAL_DEATH_CONTEXTS.map(normalizeCrisisText);
 
 export function isCrisisMessage(text: string): boolean {
   const normalized = normalizeCrisisText(text);
 
-  // Keep an isolated "I am dying" statement safety-sensitive, but do not
-  // classify ordinary colloquial expressions such as "أموت من الضحك" as crisis.
+  // Explicit self-harm intent always takes precedence over colloquial context.
+  if (NORMALIZED_DIRECT_CRISIS_PATTERNS.some(pattern => normalized.includes(pattern))) return true;
+
+  // Common "I could die from ..." expressions are not, by themselves, a wish
+  // to self-harm. Pain and other distress contexts remain safety-sensitive.
+  if (NORMALIZED_NON_LITERAL_DEATH_CONTEXTS.some(context => normalized.includes(context))) return false;
+
+  // Keep an isolated "I am dying" statement safety-sensitive.
   const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(normalized);
-  return isolatedDeathStatement || NORMALIZED_CRISIS_PATTERNS.some(pattern => normalized.includes(pattern));
+  return isolatedDeathStatement || NORMALIZED_DEATH_WISH_PATTERNS.some(pattern => normalized.includes(pattern));
 }
 
 export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' | 'general' {

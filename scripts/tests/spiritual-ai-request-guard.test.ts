@@ -65,6 +65,16 @@ assert.equal(isCrisisMessage('أنا أموت من الضحك على الموق�
   'a common colloquial expression must not trigger an emergency crisis response');
 assert.equal(isCrisisMessage('أموت من الجوع'), false,
   'ordinary hyperbole about hunger must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('أنا عايز أموت من الضحك'), false,
+  'a desire phrase followed by a clear laughter idiom must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('نفسي أموت من الجوع'), false,
+  'a desire phrase followed by a common hunger idiom must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('أنا عايز أموت من الوجع'), true,
+  'pain-related death wishes must remain safety-sensitive');
+assert.equal(isCrisisMessage('أنا عاوز أموت'), true,
+  'the common Egyptian spelling عاوز must be recognized as a death wish');
+assert.equal(isCrisisMessage('أنا عايز أموت من الضحك وعايز أقتل نفسي'), true,
+  'explicit self-harm intent must take precedence over a colloquial expression');
 assert.equal(isCrisisMessage('نفسي أموت'), true,
   'an explicit first-person wish to die must trigger the crisis safety response');
 assert.equal(isCrisisMessage('أنا عايز أموت'), true,
