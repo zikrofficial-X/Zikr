@@ -43,6 +43,10 @@ assert.ok(
   "production Supabase health checks must not mutate rate-limit state",
 );
 assert.ok(
+  supabaseProductionGate.includes('method: "GET"'),
+  "production Supabase health checks must use explicit read-only GET requests",
+);
+assert.ok(
   !supabaseProductionGate.includes("/rest/v1/rpc/consume_admin_rate_limit"),
   "the mutating rate-limit RPC must be tested locally, never invoked by production smoke",
 );
