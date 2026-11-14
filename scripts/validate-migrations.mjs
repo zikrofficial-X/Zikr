@@ -640,6 +640,33 @@ if (failed === 0) {
   `;
   const clientDefaultFunctionPrivileges = await db.query(clientDefaultFunctionPrivilegesSql);
 
+  // Prove the effective privileges of functions created after the migration.
+  // Inspecting pg_default_acl alone misses PostgreSQL's implicit global PUBLIC
+  // EXECUTE default, which a schema-only REVOKE cannot override.
+  async function verifyNewPublicFunctionIsNotBrowserCallable(ownerRole, suffix) {
+    const functionName = `default_function_execute_probe_${suffix}`;
+    await db.exec(`SET ROLE ${ownerRole}`);
+    try {
+      await db.exec(`CREATE FUNCTION public.${functionName}() RETURNS integer LANGUAGE sql SECURITY DEFINER AS $ SELECT 1 $`);
+    } finally {
+      await db.exec("RESET ROLE");
+    }
+    const probe = await db.query(`SELECT
+      has_function_privilege('anon', 'public.${functionName}()', 'EXECUTE') AS anon_execute,
+      has_function_privilege('authenticated', 'public.${functionName}()', 'EXECUTE') AS authenticated_execute
+    `);
+    await db.exec(`DROP FUNCTION public.${functionName}()`);
+    const row = probe.rows[0] ?? {};
+    if (row.anon_execute || row.authenticated_execute) {
+      failed++;
+      console.error(`CLIENT_DEFAULT_FUNCTION_EXECUTE_REGRESSION: ${ownerRole} created ${functionName} with browser EXECUTE privileges.`);
+    } else {
+      console.log(`CLIENT_DEFAULT_FUNCTION_EXECUTE_PROBE_PASSED: ${ownerRole}`);
+    }
+  }
+  await verifyNewPublicFunctionIsNotBrowserCallable("postgres", "postgres");
+  await verifyNewPublicFunctionIsNotBrowserCallable("supabase_admin", "supabase_admin");
+
   await db.exec("BEGIN");
   let globalDefaultFunctionPrivilegeDetected = false;
   try {

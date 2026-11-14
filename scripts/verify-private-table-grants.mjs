@@ -82,16 +82,24 @@ console.log("Private-table anonymous-grant hardening contract passed.");
 
 const defaultFunctionMigration = readFileSync("supabase/migrations/20261114020000_revoke_client_default_function_execute.sql", "utf8");
 assert.ok(
+  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE postgres\n  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;"),
+  "future functions created by postgres must revoke the global PUBLIC/browser EXECUTE default",
+);
+assert.ok(
   defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public"),
-  "future public functions created by postgres must use hardened defaults",
+  "future public functions created by postgres must also remove explicit public-schema browser grants",
 );
 assert.ok(
   defaultFunctionMigration.includes("REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
   "future public functions must not inherit browser-role EXECUTE",
 );
 assert.ok(
+  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
+  "future functions created by supabase_admin must revoke the global PUBLIC/browser EXECUTE default",
+);
+assert.ok(
   defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public"),
-  "future public functions created by supabase_admin must use hardened defaults",
+  "future public functions created by supabase_admin must also remove explicit public-schema browser grants",
 );
 assert.ok(
   defaultFunctionMigration.includes("BEGIN;") && defaultFunctionMigration.includes("COMMIT;"),
