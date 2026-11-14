@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/video-purge/route.ts");
+assert.ok(route.includes("readBoundedJsonBody(request)"), "video purge confirmation must use the bounded JSON reader");
+assert.ok(!route.includes("request.json()"), "video purge must not buffer an unbounded request body");
 const adminSystemActions = read("src/app/admin/system-actions.ts");
 const videoGenerationRoute = read("src/app/api/admin/video-generation/route.ts");
 const videoMediaContract = read("src/features/videos/services/video-media-contract.ts");

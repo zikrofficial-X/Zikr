@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
@@ -331,11 +332,24 @@ export async function POST(request: NextRequest) {
   let destructiveWorkStarted = false;
   let dataCleanupFinished = false;
   try {
-    const body = await request.json().catch(() => ({})) as { confirmation?: unknown; scope?: unknown };
+    const parsedBody = await readBoundedJsonBody(request);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const body = parsedBody.value as { confirmation?: unknown; scope?: unknown };
     if (body.confirmation !== CONFIRMATION_PHRASE) {
       return NextResponse.json(
         { error: `اكتب العبارة التالية حرفيًا للتأكيد: ${CONFIRMATION_PHRASE}` },
-        { status: 400 },
+        { status: 400, headers: { "Cache-Control": "no-store" } },
       );
     }
     const scope = body.scope;
