@@ -409,7 +409,8 @@ function getConfirmedPublicWrittenPlatforms(
   return targets.filter((platform) => {
    const result = asWrittenRecord(results[platform]);
    const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
-   return result.ok === true &&
+   return targets.includes(platform) &&
+    result.ok === true &&
     remoteId.length > 0 &&
     !manualReconciliationPlatforms.has(platform) &&
     !isDeleted(platform, remoteId);
