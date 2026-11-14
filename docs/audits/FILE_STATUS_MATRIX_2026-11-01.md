@@ -1,4 +1,14 @@
-# ZIKR file status matrix — refreshed 2026-11-14T1336Z
+ZIKR file status matrix — refreshed 2026-11-14T1357Z
+
+## Latest PR #320 reconciliation — 2026-11-14T1357Z
+
+- Exact code/test head: `4e518b71d9c3f88a8b2bbfec8fc6e43cd23e2b86`; base main: `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- PR paths before this snapshot: 507. New overlay and manifest add two paths; expected PR total: 509.
+- Overlay covers all 507 pre-snapshot paths: 235 `CONTENT_READ_TESTED_PASS`; 205 `REVIEW_REQUIRED`; 45 `CONTENT_READ_PENDING_TRACE`; 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Source tree at code/test head: 2,370 entries (1,871 blobs, 499 directories). New manifest records 2,371 pre-manifest entries; final tree contains 2,372 entries (1,873 blobs, 499 directories).
+- Historical 1157Z and 1336Z manifests are retained but marked review-required because their recorded hashes do not match their claimed snapshots. The 1336Z overlay is a valid historical snapshot; the 1357Z overlay/manifest supersede it.
+- Main-baseline review backlog: 1,525 `REVIEW_REQUIRED` rows. Not closed.
+
 
 ## Latest PR #320 snapshot — 2026-11-14
 
