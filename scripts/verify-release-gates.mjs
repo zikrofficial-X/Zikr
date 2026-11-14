@@ -5,6 +5,11 @@ import { hasCurrentCodeOwnerApproval } from "./lib/release-gate-approval.mjs";
 const repository = process.env.GITHUB_REPOSITORY?.trim();
 const commitSha = process.env.GITHUB_SHA?.trim();
 const token = process.env.GITHUB_TOKEN?.trim();
+const requireVercelStatusSetting = process.env.REQUIRE_VERCEL_STATUS?.trim().toLowerCase();
+if (requireVercelStatusSetting && !["true", "false"].includes(requireVercelStatusSetting)) {
+  throw new Error("REQUIRE_VERCEL_STATUS must be true or false when provided.");
+}
+const requireVercelStatus = requireVercelStatusSetting !== "false";
 
 if (!repository || !commitSha || !token) {
   throw new Error("GITHUB_REPOSITORY, GITHUB_SHA, and GITHUB_TOKEN are required.");
@@ -142,9 +147,9 @@ await requireSuccessfulCheckRuns(
 );
 await requireCircleCiStatuses(pullRequest.head.sha, "PR #" + pullRequest.number + " head statuses", false);
 await requireSuccessfulCheckRuns(commitSha, ["ZIKR / Quality Gate"], "Merged commit checks");
-await requireCircleCiStatuses(commitSha, "Merged commit statuses", true);
+await requireCircleCiStatuses(commitSha, "Merged commit statuses", requireVercelStatus);
 
 console.log(
   "RELEASE_PREFLIGHT_PASSED: commit=" + commitSha + "; PR=#" + pullRequest.number +
-  "; head=" + pullRequest.head.sha + "; CODEOWNERS=" + owners.join(",") + "; checks=success.",
+  "; head=" + pullRequest.head.sha + "; CODEOWNERS=" + owners.join(",") + "; VercelStatusRequired=" + requireVercelStatus + "; checks=success.",
 );

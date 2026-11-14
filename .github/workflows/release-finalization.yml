@@ -17,6 +17,7 @@ permissions:
   contents: read
   checks: read
   statuses: read
+  pull-requests: read
 
 concurrency:
   group: zikr-finalization-production-release
@@ -145,6 +146,12 @@ jobs:
           set -euo pipefail
           test "$(tr -d '\r\n' < docs/finalization/PRODUCTION_RELEASE.flag)" = "RELEASE"
           test "${{ github.ref }}" = "refs/heads/main"
+
+      - name: Verify current PR CODEOWNER approval before production changes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REQUIRE_VERCEL_STATUS: "false"
+        run: node scripts/verify-release-gates.mjs
 
       - name: Verify release contract
         run: pnpm release:contract:check
