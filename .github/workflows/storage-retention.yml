@@ -39,8 +39,6 @@ jobs:
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout canonical main
@@ -86,8 +84,6 @@ jobs:
           test "${EXPECTED_PROJECT_REF:-}" = "zqtssvlvmkzeeyqghqfk" || { echo "::error::Unexpected EXPECTED_PROJECT_REF" >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing protected SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
           test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing CLOUDINARY_CLOUD_NAME" >&2; exit 1; }
-          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing CLOUDINARY_API_KEY" >&2; exit 1; }
-          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing CLOUDINARY_API_SECRET" >&2; exit 1; }
           test -n "${GITHUB_TOKEN:-}" || { echo "::error::Missing GitHub release read token" >&2; exit 1; }
 
       - name: Install runtime dependencies
