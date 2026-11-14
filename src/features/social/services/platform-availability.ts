@@ -74,7 +74,7 @@ function isValidSocialPlatformResult(value: unknown): boolean {
   return typeof result.error === "string" && result.error.trim().length > 0;
 }
 
-function hasMalformedSocialPlatformResults(value: unknown): boolean {
+export function hasMalformedSocialPlatformResults(value: unknown): boolean {
   if (value === undefined || value === null) return false;
   if (Array.isArray(value)) {
     const seenPlatforms = new Set<string>();
