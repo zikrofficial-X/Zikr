@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { hasHadithPageRows, resolveHadithBookName, resolveHadithDisplay } from "../../src/features/hadith/types/hadith";
+import { createOfflineHadithBooksLoader } from "../../src/features/hadith/services/offline-books-loader";
 
 const translated = resolveHadithDisplay(
   { number: 1, arab: "النص العربي", english: "English translation", contentLocale: "en" },
@@ -37,8 +38,28 @@ assert.equal(resolveHadithBookName("صحيح البخاري", null, "en"), "صح
 assert.equal(hasHadithPageRows([]), false, "an empty local search result must allow the remote fallback");
 assert.equal(hasHadithPageRows([{ number: 1 }]), true, "non-empty local search rows remain authoritative");
 
+const offlineRows = [
+  {
+    slug: "bukhari",
+    name_ar: "صحيح البخاري",
+    name_en: "Sahih al-Bukhari",
+    hadith_count: 7009,
+  },
+];
+let offlineReadCount = 0;
+const loadOfflineBooks = createOfflineHadithBooksLoader(async () => {
+  offlineReadCount += 1;
+  return offlineRows;
+});
+const englishOfflineBooks = await loadOfflineBooks("en");
+const arabicOfflineBooks = await loadOfflineBooks("ar");
+assert.equal(offlineReadCount, 1, "locale changes must reuse the locale-neutral offline source read");
+assert.equal(englishOfflineBooks[0]?.name, "Sahih al-Bukhari");
+assert.equal(arabicOfflineBooks[0]?.name, "صحيح البخاري");
+
 const hadithService = readFileSync("src/features/hadith/services/hadith.ts", "utf8");
 assert.ok(hadithService.includes("loadOfflineHadithBooks(locale)"), "offline collection names must use the requested locale");
+assert.ok(hadithService.includes("createOfflineHadithBooksLoader"), "the offline catalogue cache must retain locale-neutral rows and map each request locale");
 assert.ok(hadithService.includes("if (hasHadithPageRows(dbHadiths))"), "empty local search results must fall through to the remote provider");
 assert.ok(hadithService.includes("return dbHadiths.map(mapDbHadith)"), "Arabic originals must remain available when English translation is missing");
 
