@@ -145,8 +145,8 @@ export function SiteAudioManager() {
       if (!response.ok) throw new Error(payload.error ?? "تعذر حذف المقطع.");
       setAssets(current => current.filter(item => item.id !== asset.id));
       const warnings = [
-        payload.storageCleanupPending ? "ملف التخزين سيُعاد تنظيفه تلقائيًا بعد فترة الاحتفاظ." : "",
-        payload.intentFinalizationPending ? "سجل التخزين سيُسوّى تلقائيًا." : "",
+        payload.storageCleanupPending ? "ملف التخزين ينتظر مهمة التنظيف اليدوية بعد فترة الاحتفاظ." : "",
+        payload.intentFinalizationPending ? "سجل التخزين ينتظر التسوية اليدوية." : "",
         payload.auditRecorded === false ? "تعذر تسجيل حدث التدقيق الإداري؛ راجع مسؤول النظام." : "",
       ].filter(Boolean);
       setStatus(warnings.length ? "تم حذف المقطع. " + warnings.join(" ") : "تم حذف المقطع.");
