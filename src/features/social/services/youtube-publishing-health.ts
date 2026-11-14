@@ -125,8 +125,19 @@ export async function getYouTubePublishingConnectionHealth(
 ): Promise<YouTubePublishingConnectionHealth> {
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
   const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = await resolveReadOnlyRefreshToken();
-  if (!clientId || !clientSecret || !refreshToken) {
+  if (!clientId || !clientSecret) {
+    const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
+    return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");
+  }
+
+  let refreshToken: string | null;
+  try {
+    refreshToken = await resolveReadOnlyRefreshToken();
+  } catch {
+    const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
+    return publicRead ?? result("unavailable", "تعذر قراءة اعتماد YouTube المحفوظ. أعد الاختبار لاحقًا؛ لم يتم تغيير حالة النشر.");
+  }
+  if (!refreshToken) {
     const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
     return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");
   }
