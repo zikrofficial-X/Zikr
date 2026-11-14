@@ -1,5 +1,58 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T05:08:20Z — exact-head audit continuation
+
+- Source/test head: `5a9392df4a3221139ac7dbef684fa4e369ea1ac1`; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,457 ahead / 0 behind. PR #320 has 428 source/operational paths (173 added, 255 modified, no removals); two audit snapshot artifacts are added by the following documentation commit.
+- Current branch inventory: 2,333 entries (1,835 blobs, 498 trees), 142,201,328 bytes; recursive tree not truncated.
+- Current 428-path status overlay: 163 `CONTENT_READ_TESTED_PASS`, 23 `CONTENT_READ_PENDING_TRACE`, 222 `REVIEW_REQUIRED`, 20 `FIXED_TESTED_PENDING_LIVE_APPLY`. Compared with the 2026-11-13T2326Z overlay, 98 blobs changed: 39 newly appearing PR paths and 59 previously listed paths with changed content. Changed blobs were reset to review-required unless re-read and re-tested in this run.
+- Code repair commits, in chronological order:
+  - `61c03ffc7620a4ccfa0f8a6570831dbff25aa881` — release finalization guard for stale main SHA before second Edge Function deployment.
+  - `c7f476249c4e1a73c531925d298e7dadd16148a7` — scope storage-retention credentials and redact site-audio storage paths in logs.
+  - `6b6d9ca5cfc57280cff32cb6b94dabb6b4fb1140` — skip unsupported source parsers before network access; add timeout and redirect rejection.
+  - `5474ee7f7bea0cf266c1dfb54298cae9fa852714` — correct bounded source-agent fetch assertions.
+  - `9238d1040430afcb9ef97c6de48be2cc6fc24d1e` — move production secrets out of job-level env blocks across 11 GitHub workflows; add a generic workflow secret-scope regression test.
+  - `a1bd8dbed25e13145a7ac01e0d68f29088561333` — fix nullable indentation parsing in the workflow-scope test.
+  - `82e3b05ec2f30aa6894378b97be8a85b6be7010e` — prevent write-capable checkout credentials from persisting; configure GitHub CLI authentication only in the offline-content commit step.
+  - `5a9392df4a3221139ac7dbef684fa4e369ea1ac1` — add strict TypeScript parameter types to the workflow test helper.
+- Exact-head verification evidence:
+  - [Quality Gate run 43559620412](https://github.com/zikrofficial-X/Zikr/actions/runs/43559620412) SUCCESS, completed 2026-11-14T05:08:20Z; log includes `QUALITY_GATE=PASSED_FULL`, source-agent parser/fetch-safety test, `github-workflow-dispatch-policy.test.ts`, `site-audio-orphan-cleanup.test.mjs`, and `storage-retention.test.mjs`.
+  - [Android Debug APK run 43559620378](https://github.com/zikrofficial-X/Zikr/actions/runs/43559620378) SUCCESS, completed 05:05:01Z; no signed release.
+  - [CircleCI configuration validation run 43559620383](https://github.com/zikrofficial-X/Zikr/actions/runs/43559620383) SUCCESS, completed 05:03:29Z.
+  - CircleCI `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS on this head. Supabase Preview SKIPPED (no linked preview project).
+- Production checks were read-only:
+  - Supabase has 438 local migrations and 418 remote migrations; 20 local migrations remain pending. No `db push`, function deploy, DML, storage deletion, or production mutation was performed.
+  - Live client table ACLs: `anon MAINTAIN=46`; `authenticated MAINTAIN=75`; `authenticated REFERENCES=74`, `TRIGGER=74`, `TRUNCATE=74`. The local `20261112103200` hardening migration passed PostgreSQL 17 verification; live grants remain until approved apply.
+  - Live `public.is_admin_user()` still has anon EXECUTE; inspected function is SECURITY INVOKER, and `20261111000000` is pending.
+  - Live default EXECUTE ACL rows exist for anon/authenticated in public/storage/graphql/graphql_public. `20261114020000` is scoped to public; exposed storage/graphql_public defaults need separate DBA review.
+  - Production source-agent cron `zikr-source-verified-content-agent` remains daily at 03:00 UTC. The 2026-11-14 run succeeded with zero work. No source-agent function deploy or generation request was triggered.
+  - Latest production Vercel deployment remains READY at `main@c4560d9`; no branch deployment or production smoke was run.
+  - Main `english-content-sync` CircleCI status is FAILURE at 2026-11-14T04:18:17Z; not rerun because it may sync content and call Gemini.
+- CircleCI owner-only review: the `english-content-sync` job has no dedicated context in repository config; its secrets are externally injected and may be project-level. Owner must verify/move them to a restricted context and separate dependency installation from secret-bearing execution. The `supabase-production-gate` job attaches `android-signing`; owner must confirm that context does not expose Android keystore secrets to the DB health job.
+- Owner gate: `.github/CODEOWNERS` assigns `@Zikrmediaofficial`; PR #320 has zero reviews/comments. Branch protection API returned 403. No merge, release, or Vercel deployment attempted.
+- Safety: no content generation, Gemini request, social publishing, production DB mutation, storage-object deletion, Android release, merge, or deployment was used as an audit test.
+- Pending local migrations (all production apply remains owner-gated):
+- `20261110212000_kids_content_public_read_respects_active_state.sql`
+- `20261111000000_revoke_anon_public_admin_predicate.sql`
+- `20261111003000_expand_kids_content_supported_types.sql`
+- `20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `20261111040000_kids_game_levels_require_published_game.sql`
+- `20261111050000_admin_role_assignments_service_role_only.sql`
+- `20261111153000_harden_video_storage_retention_rpc.sql`
+- `20261111170000_kids_game_questions_require_published_parent.sql`
+- `20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `20261113200000_youtube_sync_state_playlist_cache.sql`
+- `20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `20261113230000_content_publish_queue_one_active_item.sql`
+- `20261114000000_site_audio_upload_intents.sql`
+- `20261114010000_social_publish_queue_target_platform_contract.sql`
+- `20261114020000_revoke_client_default_function_execute.sql`
+
+
 ## 2026-11-13T23:26:31.388Z — verified source head d9782c24230ad3c7e72b5993d434ee0c022a978a
 
 - Branch `audit/zikr-kids-daily-priority-20261110`; base/merge base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,343 ahead / 0 behind.

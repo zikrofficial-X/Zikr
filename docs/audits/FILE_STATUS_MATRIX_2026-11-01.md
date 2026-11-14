@@ -1,4 +1,17 @@
-# ZIKR file status matrix — refreshed 2026-11-13T22:29Z
+# ZIKR file status matrix — refreshed 2026-11-14T05:08Z
+
+## Latest PR #320 audit overlay — 2026-11-14T05:08Z
+
+- **Code/test source head:** `5a9392df4a3221139ac7dbef684fa4e369ea1ac1`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,457 ahead / 0 behind.
+- **PR source/operational delta:** 428 paths (173 added, 255 modified, 0 removed). The documentation snapshot adds two additional audit artifacts; the overlay table itself covers the 428 source/operational paths and excludes itself and the new manifest.
+- **Branch inventory before snapshot artifacts:** 2,333 entries (1,835 files, 498 directories), 142,201,328 bytes; complete recursive tree.
+- **Status counts:** 163 `CONTENT_READ_TESTED_PASS`; 23 `CONTENT_READ_PENDING_TRACE`; 222 `REVIEW_REQUIRED`; 20 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- **Delta from prior overlay `2026-11-13T2326Z`:** 98 blob changes (39 PR paths not previously listed and 59 existing PR paths with new blob SHAs). Changed files were reopened and reset to `REVIEW_REQUIRED` unless their contents and relevant tests were rechecked at this head.
+- **Exact-head evidence:** Quality Gate run 43559620412 SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK run 43559620378 SUCCESS; CircleCI config validation run 43559620383 SUCCESS; CircleCI `config-guard`, `source-verify`, `application-build-docs` SUCCESS; Supabase Preview SKIPPED.
+- **Main baseline remains open:** 1,525 current-main files remain `REVIEW_REQUIRED`; inventory completeness is not manual content review. This snapshot does not certify the entire repository error-free.
+- **Snapshot files:** `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-14T0508Z.md` and `docs/audits/PR320_REPO_MANIFEST_2026-11-14T0508Z.jsonl`. The manifest is self-excluding and includes the overlay.
+
+
 
 > **Snapshot boundary (2026-11-14):** This remains the baseline matrix for `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` (1,662 tracked files), not the live PR #320 branch matrix. Use `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-13T2326Z.md` for the current audit-branch delta at source head `d9782c24230ad3c7e72b5993d434ee0c022a978a` (389 changed paths). Baseline rows are retained as historical evidence; unchanged main files have not been re-reviewed by the PR overlay.
 
