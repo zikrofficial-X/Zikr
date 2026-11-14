@@ -56,11 +56,9 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   // original target list. An explicit result ledger with no live success is
   // authoritative and must not be replaced by that optimistic fallback.
   if (hasPlatformResultLedger || row.status !== "published") return [];
-  const targets = Array.isArray(row.target_platforms) ? row.target_platforms : [];
-  return [...new Set(targets.filter(
-    (platform): platform is string =>
-      typeof platform === "string" && SOCIAL_PLATFORMS.has(platform) && !manualReconciliationPlatforms.has(platform) && !isDeleted(platform),
-  ))];
+  return [...targets].filter(
+    (platform) => !manualReconciliationPlatforms.has(platform) && !isDeleted(platform),
+  );
 }
 
 export function isPublicKidsVideoSocialQueueRow(value: unknown): boolean {
