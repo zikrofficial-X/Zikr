@@ -193,9 +193,10 @@ assert.equal(isPublicKidsVideoSocialQueueRow({ content_type: "kids_video", statu
 assert.equal(isPublicKidsVideoSocialQueueRow({
   content_type: "kids_video",
   status: "partial",
+  target_platforms: ["youtube"],
   published_at: "2026-11-11T12:00:00.000Z",
   metadata: { audience: "kids", platformResults: { youtube: { ok: true, remoteId: "yt-video-123" } } },
-}), true, "partial rows are public only when at least one platform has a confirmed remote ID");
+}), true, "partial rows are public only when a requested platform has a confirmed remote ID");
 assert.equal(isPublicKidsVideoSocialQueueRow({
   content_type: "kids_video",
   status: "partial",
