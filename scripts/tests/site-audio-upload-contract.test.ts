@@ -161,7 +161,7 @@ assert.ok(primaryPatch.includes("auditRecorded: true"));
 assert.equal(primaryPatch.includes("recordAuditSafely"), false, "the audited primary-switch RPC must not create a duplicate API audit event");
 
 const deleteHandler = adminRoute.slice(deleteStart);
-const cleanupScript = readFileSync("scripts/cleanup-site-audio-orphans.mjs", "utf8");
+const uploadIntentMigration = readFileSync("supabase/migrations/20261114000000_site_audio_upload_intents.sql", "utf8");
 const primaryDeleteGuard = deleteHandler.indexOf("if (asset.is_primary === true)");
 const deletionIntent = deleteHandler.indexOf('.from("site_audio_upload_intents").upsert');
 const rowDelete = deleteHandler.indexOf('.from("site_audio_assets")\n    .delete');
@@ -170,26 +170,22 @@ assert.ok(primaryDeleteGuard >= 0 && primaryDeleteGuard < rowDelete, "the API mu
 assert.ok(deletionIntent >= 0 && deletionIntent < rowDelete, "a durable cleanup intent must exist before the asset row is deleted");
 assert.ok(deleteHandler.includes('.eq("is_primary", false)'), "the delete must recheck primary state atomically");
 assert.ok(rowDelete >= 0 && storageRemove > rowDelete, "the Storage object must not be removed before the non-primary DB row is deleted");
-const referenceCheck = deleteHandler.indexOf("const { data: remainingAssetReferences");
+const intentUpsertStart = deleteHandler.indexOf('.from("site_audio_upload_intents").upsert');
+const intentUpsertEnd = deleteHandler.indexOf("if (intentError)", intentUpsertStart);
+const intentUpsertBlock = deleteHandler.slice(intentUpsertStart, intentUpsertEnd);
+assert.ok(intentUpsertBlock.includes("asset_id: asset.id"), "the deleting intent must identify the canonical asset before its row is removed");
+assert.match(uploadIntentMigration, /asset_id uuid REFERENCES public[.]site_audio_assets\(id\) ON DELETE SET NULL/,
+  "the database must clear the intent pointer atomically when the referenced asset row is deleted");
+
 const restoreIntentStart = deleteHandler.indexOf("const { data: restoredIntent");
 const restoreIntentEnd = deleteHandler.indexOf("if (restoreIntentError || !restoredIntent)", restoreIntentStart);
-const restoreIntentBlock = deleteHandler.slice(restoreIntentStart, restoreIntentEnd);
-assert.ok(referenceCheck >= 0 && restoreIntentStart > referenceCheck, "remaining references must be checked before restoring a shared-path intent");
-assert.ok(restoreIntentBlock.includes('.eq("asset_id", asset.id)'), "the restore CAS must match the asset ID stored by the deleting intent");
-assert.ok(restoreIntentBlock.includes("asset_id: survivingAsset.id"), "a surviving asset reference must restore the intent to its canonical asset ID");
-assert.equal(restoreIntentBlock.includes('.is("asset_id", null)'), false, "the restore CAS must not expect null after the delete intent records the original asset ID");
+assert.ok(deleteHandler.slice(restoreIntentStart, restoreIntentEnd).includes('.is("asset_id", null)'),
+  "after the FK clears the deleted asset pointer, a surviving same-path asset must restore the intent from null");
+const finalizeIntentStart = deleteHandler.indexOf("const { data: finalizedIntent");
+const finalizeIntentEnd = deleteHandler.indexOf("if (intentUpdateError || !finalizedIntent)", finalizeIntentStart);
+assert.ok(deleteHandler.slice(finalizeIntentStart, finalizeIntentEnd).includes('.is("asset_id", null)'),
+  "the intent may be marked cleaned only after the FK has detached the deleted asset");
 
-const detachIntentStart = deleteHandler.indexOf("const { data: detachedIntent");
-const detachIntentEnd = deleteHandler.indexOf('const { error: storageError }', detachIntentStart);
-const detachIntentBlock = deleteHandler.slice(detachIntentStart, detachIntentEnd);
-assert.ok(detachIntentStart > referenceCheck && detachIntentEnd > detachIntentStart, "the deleted asset pointer must be detached after the reference check");
-assert.ok(detachIntentBlock.includes("asset_id: null"), "an unreferenced deleted asset must clear its stale asset_id pointer");
-assert.ok(detachIntentBlock.includes('.eq("asset_id", asset.id)'), "detaching must compare-and-set the exact deleted asset ID");
-assert.ok(detachIntentBlock.includes("if (detachIntentError || !detachedIntent)"), "Storage removal must fail closed when the cleanup intent cannot be detached");
-assert.ok(storageRemove > detachIntentEnd, "Storage removal must occur only after the cleanup intent is safely detached");
-
-assert.ok(cleanupScript.includes('const candidates = validatedExpiredIntents.filter((intent) => intent?.asset_id === null)'), "the retention worker must only remove detached intents with no asset pointer");
-assert.ok(cleanupScript.includes('intent?.asset_id !== null'), "an intent with an asset pointer must remain protected until its canonical asset is verified");
 const storageVerify = deleteHandler.indexOf('.list(storageDirectory');
 const intentCleaned = deleteHandler.indexOf('status: "cleaned"');
 assert.ok(storageVerify >= 0 && intentCleaned > storageVerify, "the intent must not be marked cleaned until Storage absence is verified");
