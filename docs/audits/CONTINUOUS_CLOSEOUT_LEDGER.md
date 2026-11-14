@@ -1633,3 +1633,14 @@ Audit status remains OPEN; no project-wide error-free or closed certification is
 - Remaining blockers: owner review; 22 migration approvals/application; iOS app ID; Android/iOS device-level OAuth/deep-link acceptance; post-deploy production smoke after a permitted deployment. The audit remains open.
 
 Status overlay: `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`. Recursive manifest: `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`.
+
+## 2026-11-14 — final snapshot verification at `4f45cfd198f18b26a3f28d32c8333d37d56b4eb8`
+
+- PR #320 head `4f45cfd198f18b26a3f28d32c8333d37d56b4eb8`; 507 changed files, 62,887 additions, 5,189 deletions; open and unmerged.
+- GitHub Quality Gate run `43600995568`: success, `QUALITY_GATE=PASSED_FULL`.
+- CircleCI `source-verify`, `application-build-docs`, and `config-guard`: success.
+- Android Debug APK run `43600995586`: success; artifact `zikr-android-debug-48f9cb757f5d3df878e8e5740a6d96b4b269109d` (26,441,944 bytes). Debug-only; no release.
+- Status overlay `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`: 505 pre-snapshot paths, 235 pass, 203 review required, 45 pending trace, 22 tested but pending live migration apply.
+- Recursive manifest `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`: self-excluding JSONL snapshot of the repository tree including the overlay.
+- PR #320 remains open/unmerged with no owner approval or review threads. The 22 local-only migrations, iOS app ID, device acceptance, and post-deploy smoke checks remain open.
+- No production DB writes, content generation, Gemini requests, social publishing, storage deletion, secret changes, Android/iOS releases, merge, or deployment were performed.
