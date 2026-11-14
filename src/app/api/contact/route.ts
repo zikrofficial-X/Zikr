@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { submitContactMessage } from "@/features/contact/services/contact";
 import { consumePublicContactRateLimit } from "@/features/contact/services/rate-limit";
 import { getTrustedClientAddress } from "@/lib/request/client-address";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,17 +30,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
+    const parsedBody = await readBoundedJsonBody(req, 8 * 1024);
+    if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: "صيغة JSON غير صالحة." },
-        { status: 400 },
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { "Cache-Control": "no-store" } },
       );
     }
 
-    const result = await submitContactMessage(body);
+    const result = await submitContactMessage(parsedBody.value);
     if (!result.ok) {
       const status =
         result.error === "صيغة الطلب غير صالحة." ||

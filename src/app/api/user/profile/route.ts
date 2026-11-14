@@ -4,6 +4,7 @@ import {
 } from '@/features/profile/services/profile';
 import { requireSupabaseAuth } from '@/lib/supabase/guard';
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 function getUserMetadataValue(
   metadata: Record<string, unknown>,
@@ -57,8 +58,14 @@ export async function PUT(request: NextRequest) {
   if (unauthenticated) return unauthenticated;
 
   try {
-    const body: unknown = await request.json();
-    const result = await updateCurrentProfile(body);
+    const parsedBody = await readBoundedJsonBody(request, 8 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    const result = await updateCurrentProfile(parsedBody.value);
 
     if (!result.ok) {
       if (result.error === 'Unauthorized') {

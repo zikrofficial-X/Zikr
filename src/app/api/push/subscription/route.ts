@@ -10,6 +10,7 @@ import {
   getSupabaseUser,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 export const dynamic = "force-dynamic";
 
@@ -178,9 +179,14 @@ export async function POST(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = normalizePushSubscriptionRequestBody(
-    await request.json().catch(() => null)
-  ) as SubscriptionBody;
+  const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  const body = normalizePushSubscriptionRequestBody(parsedBody.value) as SubscriptionBody;
   const parsed = parseSubscription(body);
   const prayerContext = parsePrayerContext(body);
   if (!parsed || !prayerContext) {
@@ -238,9 +244,14 @@ export async function DELETE(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = normalizePushSubscriptionRequestBody(
-    await request.json().catch(() => null)
-  );
+  const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  const body = normalizePushSubscriptionRequestBody(parsedBody.value);
   const endpoint = asBoundedString(body.endpoint, 4096);
   if (!endpoint)
     return NextResponse.json(

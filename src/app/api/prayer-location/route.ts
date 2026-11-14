@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json().catch(() => ({}))) as LocationPayload;
+  const parsedBody = await readBoundedJsonBody(request, 8 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  if (
+    !parsedBody.value ||
+    typeof parsedBody.value !== "object" ||
+    Array.isArray(parsedBody.value)
+  ) {
+    return NextResponse.json({ error: "Invalid prayer location." }, { status: 400 });
+  }
+  const body = parsedBody.value as LocationPayload;
   const city = boundedText(body.city, 160);
   const country = boundedText(body.country, 160);
   const timezone = boundedText(body.timezone, 120);
