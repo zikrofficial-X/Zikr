@@ -13,12 +13,13 @@ import {
 } from "@/features/admin/services/content";
 import { parseExplicitScheduledAt } from "@/features/admin/services/content-schedule";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
+import { invalidateStoriesCache } from "@/features/stories/services/stories";
 
 
 type ContentAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
 
-async function recordContentAuditEvent(event: ContentAuditEvent): Promise<boolean> {
-  return runPostCommitAudit(
+async function recordContentAuditEvent(event: ContentAuditEvent): Promise<void> {
+  const recorded = await runPostCommitAudit(
     () => recordAdminAuditEvent(event),
     (error) => console.error("[admin/content] committed mutation but audit event failed:", {
       action: event.action,
@@ -27,6 +28,9 @@ async function recordContentAuditEvent(event: ContentAuditEvent): Promise<boolea
       error,
     }),
   );
+  if (!recorded) {
+    throw new Error("The content mutation was committed, but its audit event could not be recorded. Do not repeat it; notify an owner.");
+  }
 }
 
 const TABLES = new Set<ManagedContentTable>([
@@ -45,17 +49,39 @@ function getTarget(formData: FormData) {
   return { table, id, updatedAt: updatedAt || null };
 }
 
-export async function safeTogglePublishAction(formData: FormData) {
-  const admin = await requireAdminStepUp("content.publish", "/admin/content");
-  await enforceAdminRateLimit(admin, "content.publish", 30, 60);
-  const { table, id, updatedAt } = getTarget(formData);
-  const next = String(formData.get("next") ?? "false") === "true";
-  await toggleManagedContent(table, id, next, updatedAt);
+function invalidatePublicContentCache(table: ManagedContentTable): void {
   if (table === "articles") {
     updateTag("public-articles");
     revalidatePath("/articles");
     revalidatePath("/articles/[slug]", "page");
+  } else if (table === "stories") {
+    invalidateStoriesCache();
+    updateTag("public-stories");
+    revalidatePath("/stories");
+    revalidatePath("/stories/[slug]", "page");
   }
+
+  if (table === "articles" || table === "stories") {
+    revalidatePath("/sitemap.xml");
+    revalidatePath("/sitemap-index.xml");
+    revalidatePath("/sitemap-content/[id]", "page");
+  }
+}
+
+export async function safeTogglePublishAction(formData: FormData) {
+  const admin = await requireAdminStepUp("content.publish", "/admin/content");
+  await enforceAdminRateLimit(admin, "content.publish", 30, 60);
+  const { table, id, updatedAt } = getTarget(formData);
+  if (!updatedAt) throw new Error("The content changed or the page is stale. Refresh before publishing.");
+  const nextValue = formData.get("next");
+  if (nextValue !== "true" && nextValue !== "false") {
+    throw new Error("حالة النشر غير صالحة.");
+  }
+  const next = nextValue === "true";
+  await toggleManagedContent(table, id, next, updatedAt);
+  invalidatePublicContentCache(table);
+  revalidatePath("/admin/content");
+  revalidatePath("/admin");
 
   await recordContentAuditEvent({
     action: next ? "content.publish" : "content.unpublish",
@@ -64,21 +90,17 @@ export async function safeTogglePublishAction(formData: FormData) {
     resourceId: id,
     metadata: { next, optimisticUpdatedAt: updatedAt },
   });
-
-  revalidatePath("/admin/content");
-  revalidatePath("/admin");
 }
 
 export async function safeDeleteContentAction(formData: FormData) {
   const admin = await requireAdminStepUp("content.delete", "/admin/content");
   await enforceAdminRateLimit(admin, "content.delete", 10, 60);
   const { table, id, updatedAt } = getTarget(formData);
+  if (!updatedAt) throw new Error("The content changed or the page is stale. Refresh before deleting.");
   await deleteManagedContent(table, id, updatedAt);
-  if (table === "articles") {
-    updateTag("public-articles");
-    revalidatePath("/articles");
-    revalidatePath("/articles/[slug]", "page");
-  }
+  invalidatePublicContentCache(table);
+  revalidatePath("/admin/content");
+  revalidatePath("/admin");
 
   await recordContentAuditEvent({
     action: "content.delete",
@@ -87,9 +109,6 @@ export async function safeDeleteContentAction(formData: FormData) {
     resourceId: id,
     metadata: { protectedPublishedDelete: true, optimisticUpdatedAt: updatedAt },
   });
-
-  revalidatePath("/admin/content");
-  revalidatePath("/admin");
 }
 
 export async function scheduleContentPublishAction(formData: FormData) {
@@ -143,6 +162,7 @@ export async function scheduleContentPublishAction(formData: FormData) {
     headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify({ content_table: table, content_id: id, scheduled_at: date.toISOString(), created_by: admin.id, status: "queued" }),
   });
+  revalidatePath("/admin/content");
   await recordContentAuditEvent({
     action: "content.publish.schedule",
     permission: "content.publish",
@@ -150,7 +170,6 @@ export async function scheduleContentPublishAction(formData: FormData) {
     resourceId: id,
     metadata: { scheduledAt: date.toISOString() },
   });
-  revalidatePath("/admin/content");
 }
 
 export async function cancelContentPublishAction(formData: FormData) {
@@ -186,6 +205,7 @@ export async function cancelContentPublishAction(formData: FormData) {
     throw new Error("تغيرت حالة موعد النشر أثناء الإلغاء؛ حدّث الصفحة ثم أعد المحاولة.");
   }
 
+  revalidatePath("/admin/content");
   await recordContentAuditEvent({
     action: "content.publish.schedule_cancel",
     permission: "content.publish",
@@ -193,5 +213,4 @@ export async function cancelContentPublishAction(formData: FormData) {
     resourceId: queueId,
     metadata: { previousStatus: current.status },
   });
-  revalidatePath("/admin/content");
 }
