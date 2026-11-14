@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const contentType = typeof body?.contentType === 'string' ? body.contentType.toLowerCase().trim() : '';
   const contentLength = Number(body?.contentLength);
   if (!filename || filename.length > 180 || !ALLOWED_TYPES.has(contentType) || !Number.isSafeInteger(contentLength) || contentLength <= 0 || contentLength > MAX_BYTES) {
-    return NextResponse.json({ error: 'ملف الصوت غير صالح. استخدم MP3 أو WAV أو OGG أو M4A بحجم لا يتجاوز 50MB.' }, { status: 400 });
+    return NextResponse.json({ error: 'ملف الصوت غير صالح. استخدم MP3 أو WAV أو OGG أو M4A أو AAC أو WebM بحجم لا يتجاوز 50MB.' }, { status: 400 });
   }
 
   const safeName = sanitizeStorageSegment(filename) || 'audio';

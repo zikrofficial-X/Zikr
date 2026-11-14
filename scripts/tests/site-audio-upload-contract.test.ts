@@ -138,6 +138,7 @@ assert.ok(
 );
 assert.match(uploadRoute, /SITE_AUDIO_ALLOWED_MIME_TYPES/);
 assert.match(uploadRoute, /SITE_AUDIO_MAX_BYTES/);
+assert.match(uploadRoute, /MP3 أو WAV أو OGG أو M4A أو AAC أو WebM/, "the upload error must list every supported audio format");
 const signedUrlPosition = uploadRoute.indexOf("createSignedUploadUrl");
 const auditEventPosition = uploadRoute.indexOf("await recordAdminAuditEvent", signedUrlPosition);
 assert.ok(signedUrlPosition >= 0 && auditEventPosition > signedUrlPosition, "the audit event is recorded after the signed URL is created");
