@@ -127,4 +127,31 @@ for (const workflowFile of workflowFiles) {
   }
 }
 
+const offlineWorkflow = readFileSync(".github/workflows/refresh-offline-content.yml", "utf8");
+const androidReleaseWorkflow = readFileSync(".github/workflows/publish-android-release-assets.yml", "utf8");
+function getWorkflowStep(workflowText, stepName) {
+  const start = workflowText.indexOf("- name: " + stepName);
+  assert.ok(start >= 0, "missing workflow step: " + stepName);
+  const next = workflowText.indexOf("\n      - name:", start + 1);
+  return workflowText.slice(start, next < 0 ? workflowText.length : next);
+}
+assert.match(
+  getWorkflowStep(offlineWorkflow, "Checkout canonical main branch"),
+  /persist-credentials:\s*false/,
+  "write-capable offline-content jobs must not persist the checkout token"
+);
+const offlineCommitStep = getWorkflowStep(offlineWorkflow, "Commit and open a reviewable snapshot pull request");
+assert.match(offlineCommitStep, /gh auth setup-git/, "offline-content git push must use the step-scoped GH_TOKEN");
+assert.match(offlineCommitStep, /GH_TOKEN:\s*\$\{\{\s*secrets\.GH_TOKEN\s*\|\|\s*github\.token\s*\}\}/);
+assert.match(
+  getWorkflowStep(androidReleaseWorkflow, "Checkout exact release ref"),
+  /persist-credentials:\s*false/,
+  "release asset jobs must not persist their write-capable checkout token"
+);
+for (const step of androidReleaseWorkflow.split(/(?=^      - name: )/m)) {
+  if (/\n        run:/.test(step) && /\bgh\s+(?:api|release|run|pr|repo|auth)\b/.test(step)) {
+    assert.match(step, /GH_TOKEN:\s*\$\{\{\s*github\.token\s*\}\}/, "every GitHub CLI step must receive its token explicitly");
+  }
+}
+
 console.log("GitHub workflow dispatch environment policy checks passed.");
