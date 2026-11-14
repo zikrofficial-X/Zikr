@@ -70,13 +70,13 @@ assert.ok(MAX_MEMORIZATION_AUDIO_BYTES < 4 * 1024 * 1024, 'audio payload cap mus
 
 const apiDocs = readFileSync('docs/api/README.md', 'utf8');
 const poetryDocsStart = apiDocs.indexOf('### POST /api/poetry-insight');
-const poetryDocsEnd = apiDocs.indexOf('\\n---', poetryDocsStart);
+const poetryDocsEnd = apiDocs.indexOf("\n---", poetryDocsStart);
 const poetryDocs = apiDocs.slice(poetryDocsStart, poetryDocsEnd);
-assert.match(apiDocs, /\\| POST \\| `\\/api\\/poetry-insight` \\|[^\\n]*\\| Required \\|/);
-assert.match(poetryDocs, /\\*\\*Authentication:\\*\\* Required \\(authenticated Supabase session\\)/);
-assert.match(poetryDocs, /\\*\\*Authorization:\\*\\* Any signed-in user; no admin role required/);
+assert.match(apiDocs, /\| POST \| \x60\/api\/poetry-insight\x60 \|[^\n]*\| Required \|/);
+assert.match(poetryDocs, /\*\*Authentication:\*\* Required \(authenticated Supabase session\)/);
+assert.match(poetryDocs, /\*\*Authorization:\*\* Any signed-in user; no admin role required/);
 assert.match(poetryDocs, /401 Unauthorized/);
-assert.doesNotMatch(poetryDocs, /\\*\\*Authentication:\\*\\* None/);
+assert.doesNotMatch(poetryDocs, /\*\*Authentication:\*\* None/);
 assert.match(apiDocs, /3 evaluations per 10 minutes/);
 assert.match(apiDocs, /maximum 3 MiB/);
 
