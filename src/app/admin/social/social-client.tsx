@@ -27,7 +27,7 @@ type Health = {
   youtubeConfigured: boolean;
   youtubeUploadReady: boolean;
   youtubeAuthBlocked: number;
-  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "channel_selection_required" | "unavailable";
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "channel_selection_required" | "channel_lookup_incomplete" | "unavailable";
   youtubeReadSource?: "oauth" | "api_key" | null;
   youtubeChannelId?: string | null;
   youtubeChannelName?: string | null;
@@ -318,6 +318,7 @@ export default function AdminSocialClient({ canPublish }: { canPublish: boolean 
         channel_read_failed: "تم التفويض لكن تعذرت قراءة القناة المرتبطة بحساب Google.",
         channel_mismatch: "القناة التي تم تفويضها لا تطابق YOUTUBE_CHANNEL_ID المضبوط في ZIKR.",
         channel_selection_required: "حساب Google يدير أكثر من قناة. حدّد YOUTUBE_CHANNEL_ID للقناة المطلوبة ثم أعد الربط؛ لم يتم استبدال الاعتماد الحالي.",
+        channel_lookup_incomplete: "لم تكتمل قراءة قائمة قنوات Google ضمن الحد الآمن للصفحات. لم يتم استبدال الاعتماد الحالي؛ أعد المحاولة أو تحقق من YOUTUBE_CHANNEL_ID.",
         oauth_failed: "فشل تفويض Google. تحقق من إعدادات OAuth Authorized redirect URI وحاول مرة أخرى.",
       };
       setError(youtubeMessages[youtubeStatus] || "تعذر إكمال ربط YouTube.");
