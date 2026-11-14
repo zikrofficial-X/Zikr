@@ -166,6 +166,20 @@ $public_read$;
 COMMIT;
 
 BEGIN;
+SET LOCAL ROLE authenticated;
+DO $authenticated_kids_read$
+DECLARE
+  kids_rows integer;
+BEGIN
+  SELECT count(*) INTO kids_rows FROM public.kids_content;
+  IF kids_rows <> 1 THEN
+    RAISE EXCEPTION 'authenticated must read only active published Kids content; found %', kids_rows;
+  END IF;
+END
+$authenticated_kids_read$;
+COMMIT;
+
+BEGIN;
 SET LOCAL ROLE anon;
 DO $storage_public_read$
 DECLARE
