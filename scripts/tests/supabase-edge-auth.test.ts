@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import {
   AuthVerificationError,
   requireAuthenticatedUser,
-} from "../../supabase/functions/_shared/auth.ts";
+} from "../../supabase/functions/_shared/auth";
 
 const makeRequest = (authorization?: string) =>
   new Request("https://edge.example.test/spiritual-ai", {
