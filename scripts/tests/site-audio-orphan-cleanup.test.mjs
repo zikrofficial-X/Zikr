@@ -75,6 +75,13 @@ assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
 assert.match(cleanupScript, /listExactObject\(client, directory, fileName\)/);
+assert.ok(cleanupScript.includes(".range(offset, offset + pageSize - 1)"), "intent inventory must use bounded pages instead of the PostgREST max_rows-limited single query");
+assert.ok(cleanupScript.includes('.order("storage_path", { ascending: true })'), "intent pages must use a stable tie-breaker");
+await assert.rejects(
+  () => collectExpiredSiteAudioUploadIntents(async () => null),
+  /page was invalid/,
+  "an invalid page must fail closed",
+);
 assert.match(migrationText, /ENABLE ROW LEVEL SECURITY/);
 assert.match(migrationText, /REVOKE ALL ON TABLE public\.site_audio_upload_intents FROM PUBLIC, anon, authenticated/);
 assert.match(migrationText, /GRANT ALL ON TABLE public\.site_audio_upload_intents TO service_role/);
