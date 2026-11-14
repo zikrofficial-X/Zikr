@@ -10,6 +10,8 @@ import {
 
 import type { DuaCategory, Dua } from "@/features/dua/types/dua";
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 import {
   FALLBACK_DUA_CATEGORIES,
   FALLBACK_DUAS,
@@ -214,14 +216,22 @@ export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua |
   }
 
   const safeSlug = encodeURIComponent(cleanSlug);
+  let databaseLookupFailed = false;
   const rows = await supabaseServerAnonRequest<DuaRow[]>(
     `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&slug=eq.${safeSlug}&published=eq.true&limit=1`,
     { timeoutMs: 8000, retries: 1, cache: "no-store" },
   ).catch(error => {
+    databaseLookupFailed = true;
     console.error("[dua] Failed to fetch dua by slug:", error);
     return [];
   });
 
+  if (!rows.length && !databaseLookupFailed) {
+    const publicationState = await getDatabasePublicationState("duas", cleanSlug);
+    if (shouldSuppressOfflineFallback(publicationState)) return null;
+  }
+
   if (!rows.length) return resolveDuaLocale(localMatch, activeLocale);
+
   return resolveDuaLocale(mapDuaRow(rows[0]), activeLocale) ?? resolveDuaLocale(localMatch, activeLocale);
 }

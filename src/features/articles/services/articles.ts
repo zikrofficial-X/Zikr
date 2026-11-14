@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 import { getPublicEnv } from "@/lib/env";
 import { normalizedText } from "@/lib/content-quality";
 import type { ArticleCategory, Article } from "@/features/articles/types/articles";
@@ -289,27 +291,34 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
   if (!safeSlug) return null;
 
   if (hasSupabaseConfig()) {
+    let databaseLookupFailed = false;
+    let rows: Array<Record<string, unknown>> = [];
     try {
-      const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+      rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&slug=eq.${encodeURIComponent(safeSlug)}&published=eq.true&limit=1`,
         { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 1800 } },
       );
-      const row = rows[0];
-      if (row) {
-        const localized = mapRow(row, activeLocale);
-        if (isSubstantialPublicArticle(localized)) return localized;
-
-        // English translations are incomplete for part of the published catalogue.
-        // Keep the canonical Arabic article accessible instead of turning it into a 404.
-        if (activeLocale === "en") {
-          const arabicSource = mapRow(row, "ar");
-          if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
-        }
-      }
     } catch (error) {
+      databaseLookupFailed = true;
       if (!isUnavailableArticlesTable(error)) {
         console.error("[articles] Failed to fetch article:", error);
       }
+    }
+
+    const row = rows[0];
+    if (row) {
+      const localized = mapRow(row, activeLocale);
+      if (isSubstantialPublicArticle(localized)) return localized;
+
+      // English translations are incomplete for part of the published catalogue.
+      // Keep the canonical Arabic article accessible instead of turning it into a 404.
+      if (activeLocale === "en") {
+        const arabicSource = mapRow(row, "ar");
+        if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
+      }
+    } else if (!databaseLookupFailed) {
+      const publicationState = await getDatabasePublicationState("articles", safeSlug);
+      if (shouldSuppressOfflineFallback(publicationState)) return null;
     }
   }
 

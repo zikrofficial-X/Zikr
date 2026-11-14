@@ -5,6 +5,8 @@ import path from "node:path";
 
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
 import { prophets as FALLBACK_PROPHETS } from "@/features/prophets/data/fallback";
@@ -225,14 +227,21 @@ export async function getProphetBySlug(slug: string): Promise<ProphetDetail | nu
   }
 
   const encodedSlug = encodeURIComponent(cleanSlug);
+  let databaseLookupFailed = false;
   const dbRows = isSupabaseConfigured()
     ? await supabaseServerAnonRequest<ProphetRow[]>(
         `/rest/v1/prophets?slug=eq.${encodedSlug}&published=eq.true&limit=1`,
       ).catch((error) => {
+        databaseLookupFailed = true;
         console.error("[prophets] Failed to fetch prophet detail:", error);
         return [];
       })
     : [];
+
+  if (isSupabaseConfigured() && !dbRows.length && !databaseLookupFailed) {
+    const publicationState = await getDatabasePublicationState("prophets", cleanSlug);
+    if (shouldSuppressOfflineFallback(publicationState)) return null;
+  }
 
   const dbProphet = dbRows[0] ? mapProphetRow(dbRows[0]) : null;
   if (dbProphet) {
