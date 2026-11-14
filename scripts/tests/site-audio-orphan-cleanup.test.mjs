@@ -105,7 +105,9 @@ assert.ok(cleanupLogLines.every((line) => !line.includes("intent.storage_path") 
 assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
-assert.ok(cleanupScript.includes("const protectedIntents = expiredIntents.filter"), "expired intents with an asset pointer must be reconciled separately from Storage deletion candidates");
+const intentValidationIndex = cleanupScript.indexOf("const validatedExpiredIntents = selectExpiredSiteAudioUploadIntents");
+const protectedIntentIndex = cleanupScript.indexOf("const protectedIntents = validatedExpiredIntents.filter");
+assert.ok(intentValidationIndex >= 0 && intentValidationIndex < protectedIntentIndex, "all expired intent metadata must be validated before protected rows are reconciled or updated");
 assert.ok(cleanupScript.includes(".filter((intent) => intent?.asset_id === null)"), "only detached intents may enter the Storage deletion loop");
 assert.ok(cleanupScript.includes("status.in.(pending,deleting),and(status.eq.registered,asset_id.is.null)"), "the worker must include delete-locked and detached registered intents without scanning live registered assets");
 assert.ok(cleanupScript.includes('.eq("status", expectedStatus)'), "intent state changes must use compare-and-set updates");

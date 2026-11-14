@@ -184,7 +184,8 @@ async function main() {
     return data ?? [];
   });
 
-  const protectedIntents = expiredIntents.filter((intent) =>
+  const validatedExpiredIntents = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
+  const protectedIntents = validatedExpiredIntents.filter((intent) =>
     (intent?.status === "pending" || intent?.status === "deleting") &&
     Number.isFinite(Date.parse(intent?.cleanup_after ?? "")) &&
     Date.parse(intent.cleanup_after) <= now.getTime() &&
@@ -204,8 +205,7 @@ async function main() {
     console.log("KEEP referenced site-audio object and reconcile protected intent (" + safePathLogReference(intent.storage_path) + ").");
   }
 
-  const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime())
-    .filter((intent) => intent?.asset_id === null);
+  const candidates = validatedExpiredIntents.filter((intent) => intent?.asset_id === null);
   console.log("ZIKR site-audio orphan reconciliation: " + (apply ? "APPLY" : "DRY RUN"));
   console.log("Expired pending/deleting/detached registered intents: " + candidates.length);
   console.log("Protected referenced intents: " + protectedIntents.length);
