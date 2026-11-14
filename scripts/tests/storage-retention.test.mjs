@@ -882,6 +882,8 @@ assert.ok(
 assert.ok(retentionWorkflow.includes("github.event_name == 'workflow_dispatch' && inputs.apply == true"), "destructive cleanup must require manual dispatch");
 assert.equal(retentionWorkflow.includes("github.event_name == 'schedule' ||"), false, "scheduled retention runs must never apply deletion");
 assert.ok(retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk"));
+assert.equal(retentionWorkflow.includes("CLOUDINARY_API_KEY"), false, "the retention job must not receive an unused Cloudinary API key");
+assert.equal(retentionWorkflow.includes("CLOUDINARY_API_SECRET"), false, "the retention job must not receive an unused Cloudinary API secret");
 assert.ok(retentionWorkflow.includes("RETENTION_CONFIRMATION: ${{ inputs.confirmation }}"));
 assert.ok(retentionWorkflow.includes("if: github.ref == 'refs/heads/main'"), "storage retention must only run from canonical main");
 assert.ok(retentionWorkflow.includes("ref: main"), "storage retention must check out canonical main before accessing production credentials");
