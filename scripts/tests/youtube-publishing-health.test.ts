@@ -18,6 +18,9 @@ const fakeFetch: typeof fetch = async (input, init) => {
     return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
   }
   assert.ok(url.includes("youtube/v3/channels"));
+  const channelUrl = new URL(url);
+  assert.equal(channelUrl.searchParams.get("maxResults"), "50");
+  assert.equal(channelUrl.searchParams.get("mine"), "true");
   assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer private-access-token");
   return new Response(JSON.stringify({
     items: [
@@ -51,11 +54,17 @@ const multipleChannelsFetch: typeof fetch = async (input) => {
     return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
   }
   ambiguousChannelRequests += 1;
+  const url = new URL(String(input));
+  assert.equal(url.searchParams.get("maxResults"), "50");
+  if (!url.searchParams.has("pageToken")) {
+    return new Response(JSON.stringify({
+      items: [{ id: "UC-first", snippet: { title: "First Channel" } }],
+      nextPageToken: "next-channel-page",
+    }), { status: 200 });
+  }
+  assert.equal(url.searchParams.get("pageToken"), "next-channel-page");
   return new Response(JSON.stringify({
-    items: [
-      { id: "UC-first", snippet: { title: "First Channel" } },
-      { id: "UC-second", snippet: { title: "Second Channel" } },
-    ],
+    items: [{ id: "UC-second", snippet: { title: "Second Channel" } }],
   }), { status: 200 });
 };
 const ambiguousChannel = await getYouTubePublishingConnectionHealth({
@@ -65,7 +74,42 @@ const ambiguousChannel = await getYouTubePublishingConnectionHealth({
 assert.equal(ambiguousChannel.status, "channel_selection_required");
 assert.equal(ambiguousChannel.channelId, null);
 assert.match(ambiguousChannel.message, /YOUTUBE_CHANNEL_ID/);
-assert.equal(ambiguousChannelRequests, 1, "an ambiguous OAuth account must not be reported as connected or trigger a guessed channel");
+assert.equal(ambiguousChannelRequests, 2, "an account with channels on multiple pages must not be reported as connected or trigger a guessed channel");
+
+let configuredChannelPageRequests = 0;
+const configuredChannelAcrossPagesFetch: typeof fetch = async (input) => {
+  const url = String(input);
+  if (url.includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+  }
+  configuredChannelPageRequests += 1;
+  const channelUrl = new URL(url);
+  assert.equal(channelUrl.searchParams.get("maxResults"), "50");
+  if (!channelUrl.searchParams.has("pageToken")) {
+    return new Response(JSON.stringify({
+      items: [{ id: "UC-first", snippet: { title: "First Channel" } }],
+      nextPageToken: "next-channel-page",
+    }), { status: 200 });
+  }
+  assert.equal(channelUrl.searchParams.get("pageToken"), "next-channel-page");
+  return new Response(JSON.stringify({
+    items: [{
+      id: "UC123456789",
+      snippet: { title: "ZIKR Channel on page two" },
+      statistics: { subscriberCount: "4321", viewCount: "87654", videoCount: "51" },
+    }],
+  }), { status: 200 });
+};
+const configuredChannelAcrossPages = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, configuredChannelAcrossPagesFetch, async () => "verified-read-only-refresh-token");
+assert.equal(configuredChannelAcrossPages.status, "connected");
+assert.equal(configuredChannelAcrossPages.channelId, "UC123456789");
+assert.equal(configuredChannelAcrossPages.channelName, "ZIKR Channel on page two");
+assert.equal(configuredChannelAcrossPages.subscribers, 4321);
+assert.equal(configuredChannelPageRequests, 2, "health must follow nextPageToken when the configured channel is not on the first page");
 
 assert.equal(JSON.stringify(connected).includes("private-access-token"), false);
 assert.equal(JSON.stringify(connected).includes("private-refresh-token"), false);
