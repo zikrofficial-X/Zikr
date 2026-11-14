@@ -17,7 +17,8 @@ assert.doesNotMatch(workflow, /Quality gate:\s*PASSED/i, "the workflow must not 
 
 assert.match(gate, /CODEOWNERS/);
 assert.match(gate, /merge_commit_sha === commitSha/);
-assert.match(gate, /APPROVED/);
+const approval = readFileSync("scripts/lib/release-gate-approval.mjs", "utf8");
+assert.match(approval, /APPROVED/);
 assert.ok(gate.includes("hasCurrentCodeOwnerApproval(reviews, owner, pullRequest.head.sha)"),
   "release preflight must bind CODEOWNER approval to the exact current PR head");
 assert.ok(gate.includes("owners.find("),
