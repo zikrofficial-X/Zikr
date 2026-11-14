@@ -52,6 +52,7 @@ assert.deepEqual(normalizeCachedYoutubePlaylists({ items: [] }), []);
 
 const priorChannelState = {
   channel_id: "UC-previous-channel",
+  last_success_at: "2026-11-12T12:00:00.000Z",
   playlists: normalized,
 };
 assert.deepEqual(
@@ -68,8 +69,14 @@ const switchedChannelLock = buildYoutubeSyncAttemptState({
   channelId: "UC-new-channel",
   attemptedAt: "2026-11-13T12:00:00.000Z",
   nextAllowedSyncAt: "2026-11-13T12:10:00.000Z",
+  lastSuccessAt: null,
   cachedPlaylists: getCachedPlaylistsForChannel(priorChannelState, "UC-new-channel"),
 });
+assert.equal(
+  switchedChannelLock.last_success_at,
+  null,
+  "a channel change must not inherit the previous channel's successful sync timestamp",
+);
 assert.deepEqual(
   switchedChannelLock.playlists,
   [],
@@ -79,8 +86,14 @@ const sameChannelLock = buildYoutubeSyncAttemptState({
   channelId: "UC-previous-channel",
   attemptedAt: "2026-11-13T12:00:00.000Z",
   nextAllowedSyncAt: "2026-11-13T12:10:00.000Z",
+  lastSuccessAt: priorChannelState.last_success_at,
   cachedPlaylists: getCachedPlaylistsForChannel(priorChannelState, "UC-previous-channel"),
 });
+assert.equal(
+  sameChannelLock.last_success_at,
+  priorChannelState.last_success_at,
+  "a same-channel sync attempt must preserve its last successful sync timestamp",
+);
 assert.deepEqual(
   sameChannelLock.playlists,
   normalized,
