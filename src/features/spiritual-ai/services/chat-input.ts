@@ -24,7 +24,7 @@ export function sanitizeChatHistory(value: unknown): SanitizedSpiritualChatMessa
       if (candidate.role !== 'user' && candidate.role !== 'assistant') return [];
       if (typeof candidate.content !== 'string') return [];
 
-      const content = candidate.content.trim().slice(0, MAX_SPIRITUAL_CHAT_HISTORY_MESSAGE_LENGTH);
+      const content = candidate.content.slice(0, MAX_SPIRITUAL_CHAT_HISTORY_MESSAGE_LENGTH).trim();
       if (!content) return [];
 
       return [{ role: candidate.role, content }];
