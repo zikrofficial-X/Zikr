@@ -1,6 +1,64 @@
 # ZIKR Project Status
 
-## Latest verified checkpoint — 2026-11-14T06:05:46Z
+## Latest verified checkpoint — 2026-11-14T1150Z
+
+**Audit remains OPEN.** No merge, production migration apply, content generation, Gemini request, social publishing, storage cleanup, index deletion, secret change, Android release, or Vercel deployment was initiated by this audit. Production DB calls were read-only SELECT/advisor inspection only.
+
+- **Code/test source head:** `1b571a3c3379536bcf674a7bf3fa48fe96e28c1a` on `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. PR #320 has 495 changed paths before this snapshot; overlay and manifest add two artifacts.
+- **Inventory:** 2359 tracked tree entries (1860 files, 499 directories), 143,688,693 bytes; recursive Git tree complete and not truncated.
+- **File-status overlay:** 214 `CONTENT_READ_TESTED_PASS`, 51 `CONTENT_READ_PENDING_TRACE`, 209 `REVIEW_REQUIRED`, 21 `FIXED_TESTED_PENDING_LIVE_APPLY`. The 1,525-file main-baseline review backlog remains open.
+- **Exact-head checks:** Quality Gate run 43590826319 SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK run 43590826380 SUCCESS; CircleCI Config Validation run 43590826350 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS; Supabase Preview SKIPPED.
+- **Governance:** PR #320 remains open/unmerged with no owner reviews; CODEOWNERS names `@Zikrmediaofficial`. Owner approval and protected-branch gates remain mandatory. No merge attempted.
+- **Production Vercel baseline:** READY at `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, URL `https://zikr-232iamzh2-zikr3.vercel.app`, created 2026-11-10T22:09:20Z. Not the audit head; no audit deployment or post-merge smoke.
+- **Supabase:** 439 local / 418 remote / 21 pending local-only migrations; zero remote-only and duplicate versions. None applied. See `supabase/REMOTE_MIGRATION_LEDGER.md`.
+- **Operational automation:** scheduled video run 43585489092 seeded 9 requests; 8 completed with video URLs, 1 cancelled; HF free quota exhausted and fallback used; one Kids story contract failed. Scheduled social run 43586200573 recorded 5 YouTube successes, 1 Facebook Reels success, 4 Reels deferrals; both providers ready and YouTube privacy public. These were independent production schedules, not audit-triggered.
+- **Main-only failure:** CircleCI `english-content-sync` on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` failed at 2026-11-14T04:18:17Z (job `698fd245-9e13-492a-a870-eb721e6b0537`). Scheduled and may run Gemini article translation/Hadith sync; audit did not trigger it. Cause unverified; do not bypass.
+- **Open manual acceptance:** owner review; approval/application of 21 migrations; SQL-only RLS/default-ACL/constraint/index preflight; enable leaked-password protection; physical Android/iOS OAuth/deep-link acceptance and Apple `IOS_ASSOCIATED_DOMAIN_APP_ID`; YouTube/Facebook owner acceptance; site-audio/video staging retention acceptance; production smoke after approved merge/deploy.
+- **Remaining review:** 209 PR paths require full review; 51 are partially traced; 1,525 main-baseline files remain. Not certified error-free or closed.
+
+
+
+## 2026-11-14 scheduled production automation observation — read-only evidence
+
+- Scheduled video worker run `43585489092` on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` completed SUCCESS at 10:29Z. It seeded 9 video requests; a read-only aggregate query found 8 completed requests with video URLs and 1 cancelled. Logs report Hugging Face ZeroGPU free quota exhaustion and fallback; one Kids story contract failed and no Kids social post was queued. Workflow logs state free-only mode skips paid Gemini/custom endpoints. The audit did not dispatch the workflow or call Gemini.
+- Scheduled social publisher run `43586200573` on `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` completed SUCCESS at 10:37Z. Facebook and YouTube readiness both logged true; YouTube privacy was `public`. Read-only queue metadata showed 5 successful YouTube results, 1 successful Facebook Reels result, and 4 Facebook Reels attempts deferred until 10:50:33Z. The worker summary reported 5 processed, 1 fully succeeded, 4 deferred, 0 failed. This was independently scheduled production activity, not triggered by the audit.
+- Main video worker is scheduled at `17 3,9,15,21 * * *`; social publisher runs every 15 minutes and after successful video-worker runs. Automated QA is configured to publish without manual approval. Neither workflow was dispatched by this audit.
+- Production video-staging and site-audio orphan-cleanup RPCs are absent, so guarded cleanup paths cannot currently perform their intended cleanup. No storage object was deleted.
+
+
+## 2026-11-14T1150Z live migration and schema comparison — read-only
+
+- Supabase project `zqtssvlvmkzeeyqghqfk`: 439 local migrations, 418 remote, 21 local-only, 0 remote-only, 0 duplicate local versions. No migration was pushed or applied.
+- Pending local-only migrations:
+- `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql`
+- `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql`
+- `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql`
+- `supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql`
+- `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql`
+- `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql`
+- `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql`
+- `supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `supabase/migrations/20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `supabase/migrations/20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `supabase/migrations/20261113200000_youtube_sync_state_playlist_cache.sql`
+- `supabase/migrations/20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `supabase/migrations/20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `supabase/migrations/20261113230000_content_publish_queue_one_active_item.sql`
+- `supabase/migrations/20261114000000_site_audio_upload_intents.sql`
+- `supabase/migrations/20261114010000_social_publish_queue_target_platform_contract.sql`
+- `supabase/migrations/20261114020000_revoke_client_default_function_execute.sql`
+- `supabase/migrations/20261114030000_scope_video_storage_writes.sql`
+- Missing production contracts: `site_audio_upload_intents`; `background_reminder_preferences.timezone`; `youtube_sync_state.playlists`; `social_publish_queue_target_platforms_check`; `content_publish_queue_one_active_item` partial unique index. Existing social target arrays have zero invalid rows; active content-publish queue has zero duplicate pairs; background reminder preferences currently have zero rows.
+- Live RLS still permits direct authenticated admin writes to `kids_content`, `videos`, `video_generation_requests`, `social_publish_queue`, and `site_audio_assets`; `admin_role_assignments` still has super-admin direct writes. Kids public-read policy checks `published=true` but not `is_active=true`. Storage still has direct site-audio, video-assets, and legacy public-assets admin policies. Pending migrations harden these; none was applied.
+- Default function ACLs still grant EXECUTE to `anon` and `authenticated` for defaults owned by `postgres` in `public`/`storage` and `supabase_admin` in `graphql`/`graphql_public`/`public`. The specific Kids share-count function is already service-role-only.
+- Baseline production contracts verified read-only: `kids_games`, `kids_content`, `content_library`, `content_translation_queue`, and `admin_rate_limits` exist; `content_library.summary_en` exists; anon cannot SELECT `content_translation_queue`; service_role can read `admin_rate_limits`.
+- Kids data: 65 rows, all published and active; 35 games, 3 quizzes, 26 stories, 1 wudu item. Every row has an age_group; 20 of 26 stories lack explicit `metadata.age_appropriate=true` and require editorial review. No data was edited.
+- Supabase Advisors: Health clean; Security leaked-password protection disabled; Performance 79 unused-index INFO findings. No indexes were removed.
+- SQL-only RLS, default-ACL, CHECK-constraint, and partial-index review remains owner-only. No production database, policy, index, function, or storage object was mutated.
+## Historical checkpoint — 2026-11-14T06:05:46Z
 
 **Audit remains OPEN. No merge, production migration apply, content generation, Gemini request, social publishing, storage cleanup, Android release, or Vercel deployment was performed.**
 

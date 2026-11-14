@@ -1,6 +1,17 @@
-# ZIKR file status matrix — refreshed 2026-11-14T06:05Z
+# ZIKR file status matrix — refreshed 2026-11-14T1150Z
 
-## Latest PR #320 audit overlay — 2026-11-14T06:05Z
+## Latest PR #320 overlay — 2026-11-14T1150Z
+
+- Source head `1b571a3c3379536bcf674a7bf3fa48fe96e28c1a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 495 PR paths before the new overlay/manifest; no PR file deletions at this source head.
+- Inventory 2359 entries (1860 files, 499 directories), 143,688,693 bytes; complete recursive tree.
+- Status counts: 214 `CONTENT_READ_TESTED_PASS`; 51 `CONTENT_READ_PENDING_TRACE`; 209 `REVIEW_REQUIRED`; 21 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Exact-head evidence: Quality Gate 43590826319 SUCCESS; Android Debug APK 43590826380 SUCCESS; CircleCI Config Validation 43590826350 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS; Supabase Preview SKIPPED.
+- Production blockers: 21 pending migrations; direct admin RLS/storage policies and default function ACLs; missing site-audio intent table, reminder timezone, YouTube playlist cache, social target CHECK, active queue unique index; leaked-password protection disabled; 79 unused-index INFO findings.
+- Scheduled production video/social runs were observed but not triggered by audit; details in PROJECT_STATUS.md. Main English content sync remains failed and unbypassed.
+- PR has no owner review; owner approval, migration approval, device/OAuth and post-merge production smoke remain open. 1,525 main-baseline files remain review required; no full closure claim.
+- Snapshot files: `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-14T1150Z.md`, `docs/audits/PR320_REPO_MANIFEST_2026-11-14T1150Z.jsonl`.
+
+## Historical PR #320 audit overlay — 2026-11-14T06:05Z
 
 - **Code/test source head:** `48ec0a2ed20b921525f9bc7cfc84f6fa776fdecc`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,468 ahead / 0 behind.
 - **PR delta before this snapshot:** 437 paths, including prior audit overlays/manifests. This snapshot adds two more artifacts; the new overlay table covers the 437 existing PR paths and excludes itself and its new manifest.
