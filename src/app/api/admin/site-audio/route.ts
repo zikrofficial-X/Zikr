@@ -8,6 +8,17 @@ import { validateSiteAudioStorageObject, validateSiteAudioUploadPath } from "@/f
 const KINDS = new Set(["adhan", "salawat", "dhikr"]);
 const select = "id,kind,title,storage_path,mime_type,size_bytes,is_primary,created_at,updated_at";
 
+type SiteAudioUploadIntent = {
+  storage_path: string;
+  owner_user_id: string;
+  mime_type: string;
+  size_bytes: number;
+  upload_expires_at: string;
+  cleanup_after: string;
+  status: "pending" | "registered" | "cleaned";
+  asset_id: string | null;
+};
+
 async function recordAuditSafely(
   event: Parameters<typeof recordAdminAuditEvent>[0],
   context: string,
@@ -63,6 +74,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error }, { status: 400 });
   }
 
+  const intentPath = `/rest/v1/site_audio_upload_intents?storage_path=eq.${encodeURIComponent(storagePath)}&owner_user_id=eq.${encodeURIComponent(guard.profile.id)}&select=storage_path,owner_user_id,mime_type,size_bytes,upload_expires_at,cleanup_after,status,asset_id&limit=1`;
+  let intents: SiteAudioUploadIntent[];
+  try {
+    intents = await supabaseServerAdminRequest<SiteAudioUploadIntent[]>(intentPath);
+  } catch (intentError) {
+    console.error("[api/admin/site-audio] upload intent lookup failed:", intentError);
+    return NextResponse.json({ error: "تعذر التحقق من جلسة الرفع الآمنة." }, { status: 503 });
+  }
+  const uploadIntent = Array.isArray(intents) ? intents[0] : null;
+  if (
+    !uploadIntent ||
+    uploadIntent.owner_user_id !== guard.profile.id ||
+    uploadIntent.status !== "pending"
+  ) {
+    return NextResponse.json({ error: "جلسة الرفع غير موجودة أو لم تعد صالحة." }, { status: 409 });
+  }
+  const uploadExpiresAt = Date.parse(uploadIntent.upload_expires_at);
+  if (!Number.isFinite(uploadExpiresAt) || uploadExpiresAt <= Date.now()) {
+    return NextResponse.json({ error: "انتهت صلاحية جلسة الرفع. ابدأ رفعًا جديدًا." }, { status: 409 });
+  }
+  if (
+    uploadIntent.mime_type.trim().toLowerCase() !== mimeType.trim().toLowerCase() ||
+    uploadIntent.size_bytes !== sizeBytes
+  ) {
+    return NextResponse.json({ error: "بيانات الملف لا تطابق جلسة الرفع." }, { status: 400 });
+  }
+
   const db = createAdminClient();
   const { data: objects, error: storageListError } = await db.storage
     .from("site-audio")
@@ -109,7 +147,28 @@ export async function POST(request: NextRequest) {
     resourceId: data.id,
     metadata: { kind, mimeType, sizeBytes },
   }, "asset creation");
-  return NextResponse.json({ asset: data, auditRecorded }, { status: 201 });
+  let uploadIntentFinalized = true;
+  try {
+    await supabaseServerAdminRequest(
+      `/rest/v1/site_audio_upload_intents?storage_path=eq.${encodeURIComponent(storagePath)}&owner_user_id=eq.${encodeURIComponent(guard.profile.id)}&status=eq.pending`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          status: "registered",
+          asset_id: data.id,
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    );
+  } catch (intentUpdateError) {
+    // The asset row is already the authoritative reference. The guarded
+    // retention command will reconcile this intent instead of deleting it.
+    uploadIntentFinalized = false;
+    console.error("[api/admin/site-audio] upload intent finalization deferred:", intentUpdateError);
+  }
+
+  return NextResponse.json({ asset: data, auditRecorded, uploadIntentFinalized }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {

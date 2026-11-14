@@ -133,6 +133,11 @@ jobs:
         run: bash scripts/tests/content-publish-active-queue.integration.sh
         timeout-minutes: 5
 
+      - name: Verify site-audio upload-intent retention contract against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/site-audio-upload-intents.integration.sh
+        timeout-minutes: 5
+
       - name: Run canonical source and architecture gate
         shell: bash
         run: |

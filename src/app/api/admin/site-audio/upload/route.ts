@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
-import { createAdminClient } from '@/lib/supabase/server';
-import { sanitizeStorageSegment } from '@/lib/services/storage';
+import { createAdminClient, supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { sanitizeStorageSegment, SIGNED_UPLOAD_URL_TTL_SECONDS } from '@/lib/services/storage';
 import { SITE_AUDIO_ALLOWED_MIME_TYPES, SITE_AUDIO_MAX_BYTES } from '@/features/audio/services/site-audio-upload-contract';
 
 const ALLOWED_TYPES = new Set<string>(SITE_AUDIO_ALLOWED_MIME_TYPES);
@@ -21,9 +21,33 @@ export async function POST(request: NextRequest) {
   }
 
   const safeName = sanitizeStorageSegment(filename) || 'audio';
-  const path = `${sanitizeStorageSegment(guard.profile.id)}/${crypto.randomUUID()}-${safeName}`;
+  const ownerId = sanitizeStorageSegment(guard.profile.id);
+  if (!ownerId) return NextResponse.json({ error: 'تعذر تحديد مالك الملف.' }, { status: 500 });
+  const path = `${ownerId}/${crypto.randomUUID()}-${safeName}`;
+  const uploadExpiresAt = new Date(Date.now() + SIGNED_UPLOAD_URL_TTL_SECONDS * 1000);
+  const cleanupAfter = new Date(uploadExpiresAt.getTime() + 24 * 60 * 60 * 1000);
+
+  try {
+    await supabaseServerAdminRequest('/rest/v1/site_audio_upload_intents', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({
+        storage_path: path,
+        owner_user_id: guard.profile.id,
+        mime_type: contentType,
+        size_bytes: contentLength,
+        upload_expires_at: uploadExpiresAt.toISOString(),
+        cleanup_after: cleanupAfter.toISOString(),
+        status: 'pending',
+      }),
+    });
+  } catch (intentError) {
+    console.error('[api/admin/site-audio/upload] intent creation failed:', intentError);
+    return NextResponse.json({ error: 'تعذر تجهيز سجل الرفع الآمن. أعد المحاولة.' }, { status: 503 });
+  }
+
   const supabase = createAdminClient();
-  const { data, error } = await supabase.storage.from('site-audio').createSignedUploadUrl(path);
+  const { data, error } = await supabase.storage.from('site-audio').createSignedUploadUrl(path, { upsert: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   await recordAdminAuditEvent({
     action: "site_audio.upload_url.create",
@@ -32,5 +56,5 @@ export async function POST(request: NextRequest) {
     resourceId: path,
     metadata: { contentType, contentLength },
   });
-  return NextResponse.json({ path, token: data.token, uploadUrl: data.signedUrl });
+  return NextResponse.json({ path, token: data.token, uploadUrl: data.signedUrl, expiresAt: uploadExpiresAt.toISOString() });
 }

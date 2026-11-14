@@ -1,0 +1,103 @@
+name: ZIKR Site-Audio Orphan Retention
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply the reviewed site-audio orphan cleanup plan (leave false for a dry run)"
+        required: true
+        default: false
+        type: boolean
+      reference_writes_paused:
+        description: "Confirm all site-audio upload and registration writers are paused for the entire apply window"
+        required: true
+        default: false
+        type: boolean
+      confirmation:
+        description: "Type DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS to authorize exact-path cleanup"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zikr-site-audio-orphan-retention
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
+      EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
+      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      SITE_AUDIO_CLEANUP_CONFIRMATION: \${{ inputs.confirmation }}
+      SITE_AUDIO_UPLOAD_WRITES_PAUSED: \${{ inputs.reference_writes_paused }}
+    steps:
+      - name: Checkout canonical main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Require explicit owner confirmation before cleanup
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "\${SITE_AUDIO_UPLOAD_WRITES_PAUSED}" = "true" || {
+            echo "::error::Pause all site-audio upload and registration writers before cleanup." >&2
+            exit 1
+          }
+          test "\${SITE_AUDIO_CLEANUP_CONFIRMATION}" = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS" || {
+            echo "::error::Typed site-audio cleanup confirmation is required." >&2
+            exit 1
+          }
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+          run_install: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate protected runtime credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "\${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+            echo "::error::Missing protected Supabase service-role key." >&2
+            exit 1
+          }
+          test "\${EXPECTED_PROJECT_REF}" = "zqtssvlvmkzeeyqghqfk"
+
+      - name: Install runtime dependencies
+        run: pnpm install --frozen-lockfile --prod
+
+      - name: Verify site-audio cleanup safety tests
+        run: node scripts/tests/site-audio-orphan-cleanup.test.mjs
+
+      - name: Print exact-path cleanup plan (dry run)
+        run: pnpm site-audio:cleanup
+
+      - name: Apply manually approved site-audio orphan cleanup
+        if: \${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS' }}
+        run: pnpm site-audio:cleanup -- --apply
+
+      - name: Report cleanup scope
+        if: success()
+        run: |
+          echo "Site-audio cleanup completed for commit \${GITHUB_SHA}."
+          echo "Only expired, server-issued site-audio upload intents are inspected."
+          echo "Every candidate is rechecked against site_audio_assets before exact-path removal."
+          echo "No other Storage bucket or media type is in scope."
