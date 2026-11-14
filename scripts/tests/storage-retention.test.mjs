@@ -351,6 +351,16 @@ assert.equal(
   "unsupported database platform values must never authorize storage deletion",
 );
 assert.equal(
+  hasConfirmedPlatformResults(["youtube", "youtube"], goodMetadata),
+  false,
+  "duplicate database platform targets must never authorize staging-object deletion",
+);
+assert.equal(
+  hasConfirmedPlatformResults([], goodMetadata),
+  false,
+  "an empty database target list must never authorize staging-object deletion",
+);
+assert.equal(
   hasConfirmedPlatformResults(targets, { platformResults: { youtube: goodMetadata.platformResults.youtube } }),
   false,
   "A missing target platform blocks deletion",
