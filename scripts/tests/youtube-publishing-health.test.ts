@@ -172,6 +172,27 @@ assert.equal(oauthMissingPublic.readSource, "api_key");
 assert.equal(oauthMissingPublic.totalViews, 77);
 assert.equal(oauthMissingPublic.subscribers, null);
 
+const storedCredentialReadFailure = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+  YOUTUBE_API_KEY: "private-api-key",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, oauthMissingPublicFetch, async () => {
+  throw new Error("database unavailable");
+});
+assert.equal(storedCredentialReadFailure.status, "public_data_only");
+assert.equal(storedCredentialReadFailure.readSource, "api_key");
+
+const storedCredentialReadFailureWithoutFallback = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+}, async () => {
+  throw new Error("fetch must not be reached");
+}, async () => {
+  throw new Error("database unavailable");
+});
+assert.equal(storedCredentialReadFailureWithoutFallback.status, "unavailable");
+
 const permissionFailureFetch: typeof fetch = async (input) => {
   if (String(input).includes("oauth2.googleapis.com/token")) {
     return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
