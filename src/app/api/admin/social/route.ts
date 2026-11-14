@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
@@ -478,7 +479,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    const body = (await request.json().catch(() => ({}))) as {
+    const parsedBody = await readBoundedJsonBody(request);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)) {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
+    const body = parsedBody.value as {
       action?: unknown;
       ids?: unknown;
       platforms?: unknown;

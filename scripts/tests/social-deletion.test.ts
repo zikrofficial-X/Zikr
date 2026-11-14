@@ -3,6 +3,7 @@ import { deleteSocialPlatformPost } from "../../src/features/social/services/soc
 import { claimSocialQueuePlatformDeletion, mergeSocialQueueMetadata, patchSocialQueueMetadataWithCas } from "../../src/features/social/services/social-queue-metadata";
 import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
 import { readFileSync } from "node:fs";
+import { readBoundedJsonBody } from "../../src/lib/request/bounded-json-body";
 import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 
@@ -548,6 +549,29 @@ assert.equal(
   "missing source media requires a separate reconciliation path and cannot be erased by queue cleanup",
 );
 
+assert.ok(socialAdminRoute.includes("readBoundedJsonBody(request)"), "social admin actions must parse a bounded JSON body");
+assert.equal(socialAdminRoute.includes("request.json()"), false, "social admin actions must not buffer unbounded JSON");
+assert.ok(
+  socialAdminRoute.includes('!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)'),
+  "null, primitive and array request bodies must be rejected before reading action fields",
+);
+const nullSocialRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/social", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: "null",
+});
+const parsedNullSocialBody = await readBoundedJsonBody(nullSocialRequest);
+assert.deepEqual(parsedNullSocialBody, { ok: true, value: null }, "JSON null must reach the route's explicit object guard");
+const oversizedSocialRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/social", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ action: "retry_all_failed", padding: "x".repeat(20_000) }),
+});
+assert.deepEqual(
+  await readBoundedJsonBody(oversizedSocialRequest),
+  { ok: false, status: 413, error: "Request body is too large" },
+  "social admin actions must reject oversized JSON before buffering it",
+);
 const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
