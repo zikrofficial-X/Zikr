@@ -1,12 +1,12 @@
 # PR #320 File Status Overlay — 2026-11-14T1336Z
 
-- **Code/test head:** `f9346878b80e0b645eb72a30e92abb5c6134bf10` (branch `audit/zikr-kids-daily-priority-20261110`); code/test Quality Gate run `43599803892` succeeded with `QUALITY_GATE=PASSED_FULL`.
-- **Documentation base head:** `96ec0df9b65cfbfd36291614a77f162bf91e78d0`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
-- **Scope:** 505 current PR paths at the documentation base. This table excludes this new overlay and its new self-excluding manifest; adding those two artifacts makes 507 PR paths.
-- **Inventory at documentation base:** 2,368 entries (1,869 files, 499 directories), 144,723,785 bytes. The overlay adds one file; the manifest snapshot includes that overlay and excludes itself.
+- **Code/test head:** `f9346878b80e0b645eb72a30e92abb5c6134bf10`; canonical Quality Gate run `43599803892` succeeded with `QUALITY_GATE=PASSED_FULL`.
+- **Overlay source head:** `5b5090de65be7a25d3caf6c9dc54983982752219` (branch `audit/zikr-kids-daily-priority-20261110`); base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- **Scope:** 505 PR paths excluding this overlay and its new self-excluding manifest; adding those two snapshot artifacts makes 507 PR paths.
+- **Inventory at overlay source head:** 2,369 entries (1,870 files, 499 directories); manifest includes this overlay and excludes itself.
 - **Status counts:** 235 `CONTENT_READ_TESTED_PASS`; 203 `REVIEW_REQUIRED`; 45 `CONTENT_READ_PENDING_TRACE`; 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
-- **Exact-head evidence:** GitHub Quality Gate run `43599803892` SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK run `43599803874` SUCCESS; CircleCI `source-verify`, `application-build-docs`, `config-guard` SUCCESS. Android output is debug-only; no release was created.
-- **External read-only evidence:** Supabase local migrations 440, remote 418, 22 local-only; Vercel production baseline remains READY on main commit `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; `IOS_ASSOCIATED_DOMAIN_APP_ID` is absent from the 55-name environment inventory.
+- **Exact-head evidence:** GitHub Quality Gate run `43599803892` SUCCESS; Android Debug APK run `43599803874` SUCCESS; CircleCI `source-verify`, `application-build-docs`, and `config-guard` SUCCESS.
+- **External read-only evidence:** Supabase local migrations 440, remote 418, 22 local-only; Vercel production baseline READY on main commit `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; `IOS_ASSOCIATED_DOMAIN_APP_ID` absent from the 55-name environment inventory.
 - **Governance:** PR #320 remains open/unmerged with no owner approvals or review threads; CODEOWNERS approval and protected-branch gates remain mandatory.
 - **Open gates:** 203 paths still require full review; 45 need additional trace; 22 migrations require owner-approved live apply. This is not a repository closure certification.
 
@@ -41,7 +41,7 @@
 | `docs/admin/SOCIAL_PUBLISHING_OPERATIONS.md` | MODIFIED | `8adadaf3b3a6bb2abdede5d2fcf9eb8f26f1da13` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `docs/api/README.md` | MODIFIED | `deb39774b22fccfb21eaefd8ffe741c36a3d2244` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. New PR path since 06:05Z; full read and trace required. |
 | `docs/audits/CONTINUOUS_CLOSEOUT_LEDGER.md` | MODIFIED | `8167e85a6ce6cd305c97ab8d3d898eca81c7c0b2` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
-| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `315f73f19b95f3937edee8156dfaa9b3b21320d5` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
+| `docs/audits/FILE_STATUS_MATRIX_2026-11-01.md` | MODIFIED | `e6500e38cbdf11c528ea08375814538a2eb9eab3` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
 | `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-12.md` | ADDED | `db70e3574a7f2bc45c1c654bd20e509f58a9a4b7` | CONTENT_READ_TESTED_PASS | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-13T2058Z.md` | ADDED | `03a6eef13ff63a440553047cdc7267b28842d6f8` | CONTENT_READ_TESTED_PASS | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-13T2326Z.md` | ADDED | `b3e65a97981157b2a9c616e2856d8ca9827ce40c` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
@@ -72,7 +72,7 @@
 | `mobile/capacitor-dependencies.json` | MODIFIED | `dc9b7955207c96b7aadb8893cd23e9c67abe56e2` | CONTENT_READ_TESTED_PASS | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `mobile/README.md` | MODIFIED | `85505a12b81e0de40fae4cf4dc8e6bfb5d511de0` | CONTENT_READ_TESTED_PASS | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `package.json` | MODIFIED | `0daecfe0b3fcc62a20abfebcb390219bcb0c7113` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
-| `PROJECT_STATUS.md` | MODIFIED | `e4c074232764e71af834d52e1e044d2ce85bd0e9` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
+| `PROJECT_STATUS.md` | MODIFIED | `ae03bc93a84f773df7f8e1d754128379a512dbaa` | CONTENT_READ_TESTED_PASS | Read and traced at code/test head f9346878; exact-head Quality Gate 43599803892 passed. |
 | `public/offline-content/v1/companion_stories.json` | MODIFIED | `ef1cad9d7db75ee6677edc9dba3387debb95695a` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `public/offline-content/v1/kids.json` | MODIFIED | `dc32c0bdbd722f0f920d7db2a690074de0194fcc` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
 | `public/offline-content/v1/manifest.json` | MODIFIED | `9d95f4df6b9e85227aed64e171a207a89da787ad` | REVIEW_REQUIRED | Blob unchanged from 11:50Z overlay; prior evidence retained. Blob unchanged from 06:05Z overlay; prior evidence retained. Blob unchanged from 2026-11-14T0536Z overlay; prior status retained. |
