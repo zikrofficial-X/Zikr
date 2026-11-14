@@ -33,9 +33,11 @@ assert.match(ga4CacheDefinition, /zikr-ga4-analytics-readonly-v2/);
 assert.match(service, /getCachedGa4AnalyticsSnapshot\(ga4CredentialFingerprint\)/);
 const youtubeFingerprintStart = service.indexOf("const youtubeCredentialFingerprint = createHash");
 const ga4FingerprintStart = service.indexOf("const ga4CredentialFingerprint = createHash");
-const ga4FingerprintEnd = service.indexOf("\\n  const [", ga4FingerprintStart);
+const ga4FingerprintEnd = service.indexOf("\n  const [", ga4FingerprintStart);
 const youtubeFingerprintBlock = service.slice(youtubeFingerprintStart, ga4FingerprintStart);
 const ga4FingerprintBlock = service.slice(ga4FingerprintStart, ga4FingerprintEnd);
+assert.ok(youtubeFingerprintStart >= 0 && ga4FingerprintStart > youtubeFingerprintStart);
+assert.ok(ga4FingerprintEnd > ga4FingerprintStart, "GA4 fingerprint block must end before the metrics request.");
 for (const value of ["process.env.YOUTUBE_CLIENT_ID", "process.env.YOUTUBE_CLIENT_SECRET", "youtubeRefreshToken"]) {
   assert.ok(youtubeFingerprintBlock.includes(value), `YouTube cache fingerprint must include ${value}.`);
 }
