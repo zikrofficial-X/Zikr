@@ -302,6 +302,18 @@ assert.deepEqual(
   [],
   "an explicit failed result ledger must not fall back to optimistic target_platforms",
 );
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    status: "published",
+    target_platforms: ["youtube"],
+    metadata: {
+      audience: "kids",
+      platformResults: { youtube: { ok: true, remoteId: "yt-held", requiresReconciliation: true } },
+    },
+  }),
+  [],
+  "a platform awaiting manual reconciliation must not be advertised as a confirmed Kids publication",
+);
 const legacyArraySuccessRow = {
   status: "published",
   target_platforms: ["youtube", "facebook"],
@@ -499,6 +511,9 @@ for (const explicitLedger of [
     { platform: "youtube", ok: false, remoteId: null, error: "first delivery result" },
     { platform: "youtube", ok: true, remoteId: "yt-duplicate-success" },
   ],
+  {
+    youtube: { ok: true, remoteId: "yt-manual-review", requiresReconciliation: true },
+  },
 ]) {
   const rowWithExplicitEmptyOrMalformedLedger = {
     ...originalYoutubeQueueRow,
