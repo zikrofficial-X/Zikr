@@ -16,7 +16,7 @@ if (/video_automation_ai_enabled"\s*\|\|\s*\)/.test(systemActions)) {
 }
 const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
-if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
+if (!createRoute.includes('requireAdminStepUpApi("video.manage"')) failures.push("video create API must require video.manage step-up");
 if (!createRoute.includes("SOURCE_LOCKED_CATEGORIES")) failures.push("video create API must enforce source-locked categories");
 if (!createRoute.includes("resolveVideoSource")) failures.push("video create API must resolve the canonical source");
 if (!createRoute.includes("sourceVerifiedAtRequest: true")) failures.push("video create API must stamp source verification");
@@ -74,7 +74,7 @@ const sources = read("src/app/api/admin/video-generation/sources/route.ts");
 if (!sources.includes('requireAdminApi("video.manage")')) failures.push("video source API must require video.manage");
 
 const upload = read("src/app/api/admin/video-generation/narration-upload/route.ts");
-if (!upload.includes('requireAdminApi("video.manage")')) failures.push("narration upload must require video.manage");
+if (!upload.includes('requireAdminStepUpApi("video.manage"')) failures.push("narration upload must require video.manage step-up");
 if (!upload.includes("hasValidAudioSignature")) failures.push("narration upload must validate file signatures");
 for (const token of ["ID3", "ftyp", "RIFF", "WAVE", "OggS", "0x1a", "0x45", "0xdf", "0xa3"]) if (!upload.includes(token)) failures.push(`audio signature contract missing: ${token}`);
 if (!upload.includes("audio-human-") || !upload.includes("/video/upload")) failures.push("narration upload must use the dedicated Cloudinary audio prefix");

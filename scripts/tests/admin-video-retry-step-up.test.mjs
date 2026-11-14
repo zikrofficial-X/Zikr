@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/videos/[id]/retry/route.ts");
@@ -69,5 +70,12 @@ assert.match(studioClient, /redirectToAdminStepUp/);
 assert.match(studioClient, /payload\.error === ["']step_up_required["'][\s\S]*?redirectToAdminStepUp\(payload\.nextPath\)/);
 assert.match(templateClient, /payload\.error === ["']step_up_required["'][\s\S]*?redirectToAdminStepUp\(payload\.nextPath\)/);
 assert.match(uploadField, /presignData\.error === ["']step_up_required["'][\s\S]*?redirectToAdminStepUp\(presignData\.nextPath\)/);
+
+const verifierRun = spawnSync(process.execPath, ["scripts/verify-admin-video-factory.mjs"], { encoding: "utf8" });
+assert.equal(
+  verifierRun.status,
+  0,
+  `Admin Video Factory verification must accept the step-up-protected create and narration-upload routes.\\n${verifierRun.stdout}\\n${verifierRun.stderr}`,
+);
 
 console.log("Admin video generation and retry step-up regression contract passed.");
