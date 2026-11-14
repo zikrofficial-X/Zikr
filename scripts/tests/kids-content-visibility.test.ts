@@ -710,7 +710,7 @@ const quizRequiredPosition = adminAction.indexOf("if (type === \"quiz\" && !quiz
 assert.ok(quizRequiredPosition > 0 && quizRequiredPosition < imageUploadPosition, "a quiz record must require a valid non-empty question set before media upload");
 assert.match(adminAction, /formData\.get\("age_appropriate"\) === "on"/, "age approval must be true only for a checked checkbox");
 assert.match(adminAction, /formData\.get\("published"\) === "on"/, "publication must be true only for a checked checkbox");
-assert.match(adminAction, /if \(published\) await requireAdminStepUp\("content\.publish"/, "creating a published Kids item must require the dedicated content.publish permission and MFA step-up");
+assert.match(adminAction, /if \(published \|\| ageAppropriate\) await requireAdminStepUp\("content\.publish"/, "publishing a Kids item or approving its age suitability must require the dedicated content.publish permission and MFA step-up");
 assert.doesNotMatch(adminAction, /formData\.has\("(?:age_appropriate|published)"\)/, "false checkbox values must never be interpreted as approval or publication");
 assert.match(adminAction, /const quizData = type === "quiz" \? parseKidsQuizData[\s\S]*?: null;/, "non-quiz Kids records must not persist quiz metadata");
 assert.ok(
