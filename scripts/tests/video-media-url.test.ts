@@ -262,6 +262,7 @@ test("purged internal Kids videos never fall back to stale Cloudinary source URL
 
 test("video upload requests are bounded and signed capabilities require a persisted audit event", () => {
   const videoUploadRouteSource = readFileSync("src/app/api/admin/videos/upload/route.ts", "utf8");
+  assert.match(videoUploadRouteSource, /from ["']@\/lib\/request\/bounded-json-body["']/);
   assert.match(videoUploadRouteSource, /readBoundedJsonBody\(request\)/);
   assert.doesNotMatch(videoUploadRouteSource, /request\.json\(\)/);
   assert.match(videoUploadRouteSource, /if \(!auditRecorded\)[\s\S]*return jsonError\([\s\S]*?, 503\)/);

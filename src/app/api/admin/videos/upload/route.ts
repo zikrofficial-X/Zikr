@@ -3,6 +3,7 @@ import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { createPresignedUploadUrl } from '@/lib/services/storage';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
