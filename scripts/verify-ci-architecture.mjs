@@ -103,7 +103,8 @@ assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI And
 assert.ok(androidDraftJob.includes("if (isReleasePreparationCommit)") && androidDraftJob.includes("process.exit(0)"), "CircleCI must fail closed for a new release but avoid breaking ordinary main CI for legacy duplicate drafts.");
 assert.ok(!androidDraftJob.includes('api("/releases", "POST"') && !androidDraftJob.includes('api("/git/tags", "POST"'), "CircleCI must verify, not create, Admin Release manager artifacts");
 const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
-const supabaseGateJob = circle.split("  supabase-production-gate:")[1]?.split("\n  security-audit:")[0] ?? "";
+const supabaseGateJob =
+  circle.match(/^  supabase-production-gate:\n([\\s\\S]*?)(?=^  [a-z0-9_-]+:\n|^workflows:\n)/m)?.[1] ?? "";
 const supabaseGateWorkflow = circle.split("      - supabase-production-gate:")[1]?.split("\n      - android-rebuild:")[0] ?? "";
 assert.ok(
   supabaseGateJob.includes("SUPABASE_SERVICE_ROLE_KEY") &&
