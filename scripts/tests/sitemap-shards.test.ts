@@ -33,6 +33,12 @@ assert.match(shardRouteSource, /getSitemapShard\(allEntries, id\)/);
 assert.doesNotMatch(shardRouteSource, /SITEMAP_PAGE_SIZE\s*=/);
 assert.match(indexRouteSource, /getSitemapShardCount\(\)/);
 assert.match(indexRouteSource, /sitemap-content\/\$\{id\}\.xml/);
+const llmsSource = readFileSync("src/app/llms.txt/route.ts", "utf8");
+assert.match(llmsSource, /siteConfig\.url\.replace/);
+assert.match(llmsSource, /Public sitemap index: \$\{SITE_URL\}\/sitemap-index\.xml/);
+assert.doesNotMatch(llmsSource, /Public sitemap: \$\{SITE_URL\}\/sitemap\.xml/);
+assert.doesNotMatch(llmsSource, /https:\/\/zikrmediaofficial\.vercel\.app/);
+
 const robotsSource = readFileSync("src/app/robots.ts", "utf8");
 assert.ok(
   robotsSource.includes('sitemap: `${baseUrl}/sitemap-index.xml`'),
