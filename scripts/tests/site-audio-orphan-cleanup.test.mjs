@@ -34,6 +34,8 @@ assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, owner_user_id: "aaaaa
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, mime_type: "application/pdf" }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, size_bytes: 0 }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }), false);
+assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-11-13T21:59:59.000Z" }), false, "the cleanup worker must preserve the full 24-hour grace period");
+assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, asset_id: "123e4567-e89b-12d3-a456-426614174001" }), false, "a pending intent with an asset pointer must be reconciled, never deleted");
 const pagedRows = Array.from({ length: 1001 }, (_, index) => ({ index }));
 const pageOffsets = [];
 const pagedInventory = await collectExpiredSiteAudioUploadIntents(async (offset, pageSize) => {
@@ -84,6 +86,7 @@ await assert.rejects(
 );
 assert.match(migrationText, /ENABLE ROW LEVEL SECURITY/);
 assert.match(migrationText, /REVOKE ALL ON TABLE public\.site_audio_upload_intents FROM PUBLIC, anon, authenticated/);
+assert.match(migrationText, /cleanup_after >= upload_expires_at \+ interval '24 hours'/, "the database must enforce the same 24-hour cleanup grace period");
 assert.match(migrationText, /GRANT ALL ON TABLE public\.site_audio_upload_intents TO service_role/);
 assert.match(workflow, /workflow_dispatch:/);
 assert.ok(workflow.includes("${{ secrets.SUPABASE_SERVICE_ROLE_KEY"), "GitHub expressions must remain executable in the manual workflow");

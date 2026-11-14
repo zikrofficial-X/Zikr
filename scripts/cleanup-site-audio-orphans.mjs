@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 const BUCKET = "site-audio";
 const MAX_PENDING_INTENTS = 5000;
+const MIN_CLEANUP_GRACE_MS = 24 * 60 * 60 * 1000;
 const INTENT_PAGE_SIZE = 500;
 const CLEANUP_CONFIRMATION = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS";
 const ALLOWED_MIME_TYPES = new Set([
@@ -46,6 +47,7 @@ export function isSafeSiteAudioUploadIntent(intent) {
   const mimeType = asString(intent?.mime_type).toLowerCase();
   return (
     intent?.status === "pending" &&
+    intent?.asset_id === null &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(ownerId) &&
     parts.length === 2 &&
     parts[0] === ownerId &&
@@ -56,7 +58,7 @@ export function isSafeSiteAudioUploadIntent(intent) {
     intent.size_bytes <= 52428800 &&
     Number.isFinite(uploadExpiresAt) &&
     Number.isFinite(cleanupAfter) &&
-    cleanupAfter > uploadExpiresAt
+    cleanupAfter - uploadExpiresAt >= MIN_CLEANUP_GRACE_MS
   );
 }
 

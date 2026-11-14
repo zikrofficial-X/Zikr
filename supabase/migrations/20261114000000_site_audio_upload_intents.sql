@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS public.site_audio_upload_intents (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT site_audio_upload_intents_cleanup_after_check
-    CHECK (cleanup_after > upload_expires_at)
+    CHECK (cleanup_after >= upload_expires_at + interval '24 hours')
 );
 
 CREATE INDEX IF NOT EXISTS site_audio_upload_intents_pending_cleanup_idx
