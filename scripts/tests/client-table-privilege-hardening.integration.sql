@@ -10,6 +10,14 @@ CREATE TABLE public.client_privilege_hardening_supabase_admin_after (
 );
 RESET ROLE;
 
+CREATE OR REPLACE FUNCTION public.client_default_execute_postgres_after()
+RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+
+SET ROLE supabase_admin;
+CREATE OR REPLACE FUNCTION public.client_default_execute_supabase_admin_after()
+RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+RESET ROLE;
+
 DO $admin_predicate_acl_after$
 BEGIN
   IF has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
