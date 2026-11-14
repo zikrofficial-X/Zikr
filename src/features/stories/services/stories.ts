@@ -142,7 +142,7 @@ export async function searchStories(query: string): Promise<Story[]> {
 }
 
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
-  const stories = await getStories();
+  const stories = await getStories(1000);
   const story = stories.find((s) => s.slug === slug);
   return story || null;
 }

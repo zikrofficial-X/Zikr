@@ -62,5 +62,14 @@ assert.ok(hadithService.includes("loadOfflineHadithBooks(locale)"), "offline col
 assert.ok(hadithService.includes("createOfflineHadithBooksLoader"), "the offline catalogue cache must retain locale-neutral rows and map each request locale");
 assert.ok(hadithService.includes("if (hasHadithPageRows(dbHadiths))"), "empty local search results must fall through to the remote provider");
 assert.ok(hadithService.includes("return dbHadiths.map(mapDbHadith)"), "Arabic originals must remain available when English translation is missing");
+assert.ok(
+  hadithService.includes("return getUmmahBook(clean, page, limit, locale);"),
+  "English and Arabic book pages must both use the remote fallback when local book rows are unavailable",
+);
+assert.doesNotMatch(
+  hadithService,
+  /return locale === "en"\s*\?\s*null/,
+  "English book pages must not disappear solely because the local catalogue is unavailable",
+);
 
 console.log("Hadith localization and empty-search fallback contracts passed.");

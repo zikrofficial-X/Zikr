@@ -279,9 +279,7 @@ export async function getHadithBook(
     if (remoteLocalized) return remoteLocalized;
   }
 
-  return locale === "en"
-    ? null
-    : getUmmahBook(clean, page, limit, locale);
+  return getUmmahBook(clean, page, limit, locale);
 }
 
 export async function getHadithByNumber(

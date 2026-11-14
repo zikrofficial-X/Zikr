@@ -73,6 +73,14 @@ assert.equal(isCrisisMessage('أنا عايز أموت من الوجع'), true,
   'pain-related death wishes must remain safety-sensitive');
 assert.equal(isCrisisMessage('أنا عاوز أموت'), true,
   'the common Egyptian spelling عاوز must be recognized as a death wish');
+assert.equal(isCrisisMessage('أنا مش عايز أموت'), false,
+  'an explicit negation of a death wish must not trigger a crisis response');
+assert.equal(isCrisisMessage('مش عاوز أنتحر'), false,
+  'an explicit negation of suicidal intent must not trigger a crisis response');
+assert.equal(isCrisisMessage('لا أريد الانتحار'), false,
+  'a formal negation of suicidal intent must not trigger a crisis response');
+assert.equal(isCrisisMessage('مش عايز أموت، لكن بفكر أقتل نفسي'), true,
+  'a separate explicit self-harm statement must still take precedence after negation is removed');
 assert.equal(isCrisisMessage('أنا عايز أموت من الضحك وعايز أقتل نفسي'), true,
   'explicit self-harm intent must take precedence over a colloquial expression');
 assert.equal(isCrisisMessage('نفسي أموت'), true,

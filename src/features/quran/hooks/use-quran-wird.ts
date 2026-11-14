@@ -13,6 +13,7 @@ import {
 import { getWirdProgress, saveWirdProgress } from '@/app/wird/actions';
 import {
   DEFAULT_WIRD_PROGRESS_STATE,
+  advanceWirdProgressByAyahs,
   hasWirdProgress,
   mergeWirdProgressStates,
   normalizeWirdProgressState,
@@ -226,10 +227,10 @@ export function useQuranWird(): WirdReturn {
   }, [applyProgress, persist]);
 
   const logAyahs = useCallback((count: number) => {
-    if (!Number.isSafeInteger(count) || count < 1 || count > TOTAL_AYAHS) return;
-    const current = stateRef.current;
-    persist(applyProgress(current, Math.min(current.position + count, TOTAL_AYAHS)));
-  }, [applyProgress, persist]);
+    const next = advanceWirdProgressByAyahs(stateRef.current, count, todayISO());
+    if (!next) return;
+    persist(next.todayCount >= next.dailyTarget && next.dailyTarget > 0 ? creditStreak(next) : next);
+  }, [creditStreak, persist]);
 
   const setDailyTarget = useCallback((n: number) => {
     if (!Number.isFinite(n)) return;

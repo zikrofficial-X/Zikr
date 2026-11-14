@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
+import { hasCurrentCodeOwnerApproval } from "./lib/release-gate-approval.mjs";
 
 const repository = process.env.GITHUB_REPOSITORY?.trim();
 const commitSha = process.env.GITHUB_SHA?.trim();
@@ -109,7 +110,8 @@ const globalOwnerLine = codeownersSource
   .map((line) => line.split("#", 1)[0].trim())
   .filter(Boolean)
   .map((line) => line.split(/\s+/))
-  .find((tokens) => tokens[0] === "*");
+  .filter((tokens) => tokens[0] === "*")
+  .at(-1);
 
 if (!globalOwnerLine || globalOwnerLine.length < 2) {
   throw new Error("A global CODEOWNERS rule with at least one owner is required for release.");
@@ -120,16 +122,17 @@ if (owners.some((owner) => owner.includes("/"))) {
 }
 
 const reviews = await allPages("/repos/" + repository + "/pulls/" + pullRequest.number + "/reviews");
-reviews.sort((left, right) => Date.parse(left.submitted_at || 0) - Date.parse(right.submitted_at || 0));
-const latestReviewByLogin = new Map();
-for (const review of reviews) {
-  const login = review.user?.login?.toLowerCase();
-  if (login) latestReviewByLogin.set(login, review.state?.toUpperCase() || "PENDING");
-}
-for (const owner of owners) {
-  if (latestReviewByLogin.get(owner.toLowerCase()) !== "APPROVED") {
-    throw new Error("Required CODEOWNER @" + owner + " has not left a current APPROVED review on PR #" + pullRequest.number + ".");
-  }
+const approvedOwner = owners.find((owner) =>
+  hasCurrentCodeOwnerApproval(reviews, owner, pullRequest.head.sha),
+);
+if (!approvedOwner) {
+  throw new Error(
+    "At least one global CODEOWNER must approve the current PR head " +
+      pullRequest.head.sha.slice(0, 12) +
+      " on PR #" +
+      pullRequest.number +
+      ".",
+  );
 }
 
 await requireSuccessfulCheckRuns(

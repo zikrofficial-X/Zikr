@@ -9,6 +9,7 @@ import {
 } from '../../src/features/quran/utils/quran-progress';
 import {
   DEFAULT_WIRD_PROGRESS_STATE,
+  advanceWirdProgressByAyahs,
   hasWirdProgress,
   mergeWirdProgressStates,
   normalizeWirdProgressState,
@@ -50,6 +51,20 @@ assert.deepEqual(normalizeWirdProgressState({ position: 10 }), {
   position: 10,
 }, 'older partial state objects should receive safe defaults');
 assert.equal(normalizeWirdProgressState({ ...validWird, position: 6237 }), null);
+assert.deepEqual(
+  normalizeWirdProgressState({ ...validWird, position: 6236, khatmaCount: 2 }),
+  { ...validWird, position: 0, khatmaCount: 3 },
+  "a legacy completed-position state must be canonicalized into a completed khatma",
+);
+const wrappedWird = advanceWirdProgressByAyahs({
+  ...DEFAULT_WIRD_PROGRESS_STATE,
+  position: 6220,
+  todayDate: "2026-11-14",
+}, 50, "2026-11-14");
+assert.equal(wrappedWird?.position, 34, "ayahs beyond the end of a khatma must carry into the next one");
+assert.equal(wrappedWird?.khatmaCount, 1, "crossing the Quran boundary must complete exactly one khatma");
+assert.equal(wrappedWird?.todayCount, 50, "all manually logged ayahs must be credited to today's count");
+assert.equal(advanceWirdProgressByAyahs(DEFAULT_WIRD_PROGRESS_STATE, 6237, "2026-11-14"), null);
 assert.equal(normalizeWirdProgressState({ ...validWird, dailyTarget: 0 }), null);
 assert.equal(normalizeWirdProgressState({ ...validWird, todayCount: '7' }), null);
 assert.equal(normalizeWirdProgressState({ ...validWird, khatmaCount: 1.5 }), null);
@@ -93,6 +108,8 @@ assert.ok(wirdHook.includes('onAuthStateChange((_event: AuthChangeEvent, session
 assert.ok(wirdHook.includes('getSession().then(({ data: sessionData }: { data: { session: Session | null } })'), 'session bootstrap must remain strictly typed');
 assert.match(wirdHook, /getStorageKey\(userId\)/, 'local progress must be stored per account');
 assert.match(wirdHook, /mergeWirdProgressStates\(localState, remoteToday, today\)/, 'offline progress must be merged instead of discarded');
+assert.match(wirdHook, /advanceWirdProgressByAyahs\(stateRef\.current, count, todayISO\(\)\)/, 'manual ayah logging must preserve overflow across khatma boundaries');
+assert.doesNotMatch(wirdHook, /Math\.min\(current\.position \+ count, TOTAL_AYAHS\)/, 'manual ayah logging must not silently discard verses beyond the current khatma');
 assert.match(wirdHook, /if \(readError \|\| invalidState\)/, 'failed or malformed account reads must not overwrite the local cache');
 assert.match(wirdHook, /saveWirdProgress\(next, expectedUserId\)\.catch/, 'remote writes must be bound to the expected user and never create unhandled rejections');
 

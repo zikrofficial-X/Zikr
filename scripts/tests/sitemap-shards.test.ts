@@ -47,6 +47,8 @@ assert.match(libraryServiceSource, /Math\.min\(1000, Math\.trunc\(limit\)\)/);
 const scholarsServiceSource = readFileSync("src/features/scholars/services/scholars.ts", "utf8");
 assert.match(scholarsServiceSource, /&limit=1000&order=created_at\.desc/);
 assert.match(sitemapSource, /getStories\(1000\)/);
+const storyDetailLookup = storiesServiceSource.slice(storiesServiceSource.indexOf("export async function getStoryBySlug"));
+assert.match(storyDetailLookup, /getStories\(1000\)/, "story detail lookup must cover every story admitted to the sitemap catalogue");
 assert.match(sitemapSource, /getDuas\(undefined, 1000\)/);
 assert.match(sitemapSource, /getPublicContentLibrary\(1000\)/);
 assert.match(sitemapSource, /getArticles\(undefined, 1000\)/);

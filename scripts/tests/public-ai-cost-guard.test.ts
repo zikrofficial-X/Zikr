@@ -54,8 +54,15 @@ assert.match(voiceRecorder, /MEMORIZATION_AUDIO_LIMIT_MESSAGE/);
 
 const poetryRoute = readFileSync('src/app/api/poetry-insight/route.ts', 'utf8');
 const authIndex = poetryRoute.indexOf('const user = await getSupabaseUser()');
+const poetryBodyReadIndex = poetryRoute.indexOf('readBoundedJsonBody(request, MAX_POETRY_INSIGHT_REQUEST_BYTES)');
 const poetryLimitIndex = poetryRoute.indexOf('consumePoetryInsightRateLimit(user.id)');
 const poetryGeminiIndex = poetryRoute.indexOf('generatePoetryInsight(poem, title)');
+assert.ok(authIndex >= 0 && authIndex < poetryBodyReadIndex, 'poetry insight must authenticate before reading the request body');
+assert.ok(poetryBodyReadIndex >= 0 && poetryBodyReadIndex < poetryLimitIndex, 'poetry insight must bound streamed request bytes before rate limiting');
+assert.ok(poetryBodyReadIndex < poetryGeminiIndex, 'poetry insight must bound request bytes before Gemini');
+assert.match(poetryRoute, /MAX_POETRY_INSIGHT_REQUEST_BYTES = 64 \* 1024/);
+assert.match(poetryRoute, /status: parsedBody\.status/);
+assert.doesNotMatch(poetryRoute, /request\.json\(\)/, 'poetry insight must not buffer an unbounded JSON body');
 assert.ok(authIndex >= 0 && authIndex < poetryLimitIndex, 'poetry insight must resolve the authenticated user before rate limiting');
 assert.ok(poetryLimitIndex >= 0 && poetryLimitIndex < poetryGeminiIndex, 'poetry insight must rate-limit before Gemini');
 assert.match(poetryRoute, /status: 429/);

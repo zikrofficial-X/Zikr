@@ -7,6 +7,15 @@ const DIRECT_CRISIS_PATTERNS = [
 const DEATH_WISH_PATTERNS = [
   'عايز أموت', 'عاوز أموت', 'نفسي أموت', 'أتمنى أموت', 'أريد أن أموت', 'أريد الموت', 'أتمنى الموت',
 ];
+const NEGATED_CRISIS_PATTERNS = [
+  'مش عايز أموت', 'مش عاوز أموت', 'لا أريد أن أموت', 'مش نفسي أموت',
+  'مش عايز أنتحر', 'مش عاوز أنتحر', 'لا أريد أن أنتحر', 'لا أريد الانتحار',
+  'مش بفكر في الانتحار', 'لا أفكر في الانتحار',
+  'مش عايز أؤذي نفسي', 'مش عاوز أؤذي نفسي', 'لا أريد إيذاء نفسي',
+  'مش بفكر أؤذي نفسي', 'لا أفكر في إيذاء نفسي',
+  'مش عايز أقتل نفسي', 'مش عاوز أقتل نفسي', 'لا أريد قتل نفسي',
+  'مش بفكر أقتل نفسي', 'لا أفكر في قتل نفسي',
+];
 const NON_LITERAL_DEATH_CONTEXTS = [
   'اموت من الضحك', 'اموت من الجوع', 'اموت من العطش', 'اموت من الحر',
   'اموت من البرد', 'اموت من النعاس', 'اموت من النوم', 'اموت من الكسل',
@@ -26,21 +35,28 @@ function normalizeCrisisText(text: string): string {
 
 const NORMALIZED_DIRECT_CRISIS_PATTERNS = DIRECT_CRISIS_PATTERNS.map(normalizeCrisisText);
 const NORMALIZED_DEATH_WISH_PATTERNS = DEATH_WISH_PATTERNS.map(normalizeCrisisText);
+const NORMALIZED_NEGATED_CRISIS_PATTERNS = NEGATED_CRISIS_PATTERNS.map(normalizeCrisisText);
 const NORMALIZED_NON_LITERAL_DEATH_CONTEXTS = NON_LITERAL_DEATH_CONTEXTS.map(normalizeCrisisText);
 
 export function isCrisisMessage(text: string): boolean {
   const normalized = normalizeCrisisText(text);
+  // Remove only explicit negated statements. A separate positive self-harm
+  // statement elsewhere in the same message remains visible to the detector.
+  const withoutNegatedStatements = NORMALIZED_NEGATED_CRISIS_PATTERNS.reduce(
+    (remaining, pattern) => remaining.replaceAll(pattern, " "),
+    normalized,
+  );
 
   // Explicit self-harm intent always takes precedence over colloquial context.
-  if (NORMALIZED_DIRECT_CRISIS_PATTERNS.some(pattern => normalized.includes(pattern))) return true;
+  if (NORMALIZED_DIRECT_CRISIS_PATTERNS.some(pattern => withoutNegatedStatements.includes(pattern))) return true;
 
   // Common "I could die from ..." expressions are not, by themselves, a wish
   // to self-harm. Pain and other distress contexts remain safety-sensitive.
-  if (NORMALIZED_NON_LITERAL_DEATH_CONTEXTS.some(context => normalized.includes(context))) return false;
+  if (NORMALIZED_NON_LITERAL_DEATH_CONTEXTS.some(context => withoutNegatedStatements.includes(context))) return false;
 
   // Keep an isolated "I am dying" statement safety-sensitive.
-  const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(normalized);
-  return isolatedDeathStatement || NORMALIZED_DEATH_WISH_PATTERNS.some(pattern => normalized.includes(pattern));
+  const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(withoutNegatedStatements.trim());
+  return isolatedDeathStatement || NORMALIZED_DEATH_WISH_PATTERNS.some(pattern => withoutNegatedStatements.includes(pattern));
 }
 
 export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' | 'general' {

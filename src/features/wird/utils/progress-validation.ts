@@ -62,7 +62,61 @@ export function normalizeWirdProgressState(value: unknown): WirdProgressState | 
   if (!isIsoDateOrEmpty(todayDate) || !isIsoDateOrEmpty(lastStreakDate)) return null;
   if (!isIntegerInRange(streak, 0, MAX_COUNTER)) return null;
 
-  return { dailyTarget, position, khatmaCount, todayCount, todayDate, streak, lastStreakDate };
+  const completedKhatma = position === TOTAL_AYAHS;
+  return {
+    dailyTarget,
+    position: completedKhatma ? 0 : position,
+    khatmaCount: completedKhatma ? Math.min(khatmaCount + 1, MAX_COUNTER) : khatmaCount,
+    todayCount,
+    todayDate,
+    streak,
+    lastStreakDate,
+  };
+}
+
+/** Add a bounded number of read ayahs, carrying overflow into the next khatma. */
+export function advanceWirdProgressByAyahs(
+  value: unknown,
+  count: number,
+  today: string,
+): WirdProgressState | null {
+  const state = normalizeWirdProgressState(value);
+  if (
+    !state ||
+    !Number.isSafeInteger(count) ||
+    count < 1 ||
+    count > TOTAL_AYAHS ||
+    !today ||
+    !isIsoDateOrEmpty(today)
+  ) {
+    return null;
+  }
+
+  let position = state.position;
+  let khatmaCount = state.khatmaCount;
+  let todayCount = state.todayDate === today ? state.todayCount : 0;
+  let remaining = count;
+
+  while (remaining > 0) {
+    const available = TOTAL_AYAHS - position;
+    const delta = Math.min(remaining, available);
+    if (delta <= 0) {
+      position = 0;
+      khatmaCount = Math.min(khatmaCount + 1, MAX_COUNTER);
+      continue;
+    }
+
+    position += delta;
+    todayCount = Math.min(todayCount + delta, MAX_COUNTER);
+    remaining -= delta;
+
+    if (position >= TOTAL_AYAHS) {
+      position = 0;
+      khatmaCount = Math.min(khatmaCount + 1, MAX_COUNTER);
+    }
+  }
+
+  return { ...state, position, khatmaCount, todayCount, todayDate: today };
 }
 
 /** True when local progress contains anything worth synchronizing. */
