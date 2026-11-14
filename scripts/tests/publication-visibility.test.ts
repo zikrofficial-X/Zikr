@@ -26,7 +26,7 @@ const articleService = readFileSync("src/features/articles/services/articles.ts"
 assert.match(articleService, /revalidate: 60, tags: \["public-articles"\]/, "article list and detail caches must have a short, invalidatable publication tag");
 assert.match(articleService, /if \(rows\.length === 0\)/, "a successful empty published query must not reuse a stale database snapshot");
 const contentActions = readFileSync("src/app/admin/content-actions.ts", "utf8");
-assert.match(contentActions, /revalidateTag\("public-articles"\)/, "admin publish and delete actions must invalidate public article caches");
+assert.match(contentActions, /updateTag\("public-articles"\)/, "admin publish and delete server actions must immediately invalidate public article caches");
 assert.match(articleService, /if \(hasOfflineFallback\)/, "article visibility checks must run only when an offline fallback would otherwise render");
 const duaService = readFileSync("src/features/dua/services/dua.ts", "utf8");
 assert.match(duaService, /databaseLookupFailed \? fallbackBase : FALLBACK_DUAS/, "successful empty dua queries must not reuse an old offline DB snapshot");

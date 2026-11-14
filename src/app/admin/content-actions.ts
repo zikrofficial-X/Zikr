@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
@@ -52,7 +52,7 @@ export async function safeTogglePublishAction(formData: FormData) {
   const next = String(formData.get("next") ?? "false") === "true";
   await toggleManagedContent(table, id, next, updatedAt);
   if (table === "articles") {
-    revalidateTag("public-articles");
+    updateTag("public-articles");
     revalidatePath("/articles");
     revalidatePath("/articles/[slug]", "page");
   }
@@ -75,7 +75,7 @@ export async function safeDeleteContentAction(formData: FormData) {
   const { table, id, updatedAt } = getTarget(formData);
   await deleteManagedContent(table, id, updatedAt);
   if (table === "articles") {
-    revalidateTag("public-articles");
+    updateTag("public-articles");
     revalidatePath("/articles");
     revalidatePath("/articles/[slug]", "page");
   }
