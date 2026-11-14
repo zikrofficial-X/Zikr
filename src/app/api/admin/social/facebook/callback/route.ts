@@ -161,8 +161,8 @@ export async function GET(request: NextRequest) {
 
     if (pageLookup.error) {
       const code = String(pageLookup.error.code ?? "");
-      if (code === "190") return redirectResult("reauthorization_required");
-      if (code === "10" || code === "200") return redirectResult("permission_missing");
+      if (code === "190" || pageLookup.error.status === 401) return redirectResult("reauthorization_required");
+      if (code === "10" || code === "200" || pageLookup.error.status === 403) return redirectResult("permission_missing");
       return redirectResult("oauth_failed");
     }
     if (!pageLookup.page) {

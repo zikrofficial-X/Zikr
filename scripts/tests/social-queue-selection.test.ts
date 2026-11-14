@@ -229,7 +229,7 @@ assert.throws(
 const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
 assert.match(
   socialPublisher,
-  /buildStaleSocialPublishRecoveryFilter\(item\.id, staleBefore\)/,
+  /buildStaleSocialPublishRecoveryFilter\(item\.id, staleBefore, item\.updated_at\)/,
   "stale recovery updates must include the same stale cutoff that selected the candidate",
 );
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
