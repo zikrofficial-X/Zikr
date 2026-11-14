@@ -207,14 +207,23 @@ assert.throws(
 );
 
 assert.equal(
-  buildStaleSocialPublishRecoveryFilter("queue id/1", "2026-11-11T17:30:00.000Z"),
-  "id=eq.queue%20id%2F1&status=eq.processing&updated_at=lt.2026-11-11T17%3A30%3A00.000Z",
-  "stale recovery must recheck updated_at in the UPDATE to avoid overwriting a row refreshed by a live publisher",
+  buildStaleSocialPublishRecoveryFilter(
+    "queue id/1",
+    "2026-11-11T17:30:00.000Z",
+    "2026-11-11T17:20:00.000Z",
+  ),
+  "id=eq.queue%20id%2F1&status=eq.processing&and=(updated_at.eq.2026-11-11T17%3A20%3A00.000Z,updated_at.lt.2026-11-11T17%3A30%3A00.000Z)",
+  "stale recovery must compare the exact row version and cutoff to avoid overwriting a row refreshed by a live publisher",
 );
 assert.throws(
-  () => buildStaleSocialPublishRecoveryFilter("queue-1", "not-a-date"),
-  /valid cutoff timestamp/,
+  () => buildStaleSocialPublishRecoveryFilter("queue-1", "not-a-date", "2026-11-11T17:20:00.000Z"),
+  /valid row-version timestamps/,
   "stale recovery must reject an invalid cutoff instead of weakening the compare-and-set",
+);
+assert.throws(
+  () => buildStaleSocialPublishRecoveryFilter("queue-1", "2026-11-11T17:30:00.000Z", "2026-11-11T17:30:00.000Z"),
+  /older than the stale cutoff/,
+  "stale recovery must reject a row version that is not older than the cutoff",
 );
 
 const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");

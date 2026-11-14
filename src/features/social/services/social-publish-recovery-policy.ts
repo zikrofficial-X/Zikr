@@ -14,12 +14,23 @@ function normalizePlatforms(value: unknown): SocialPlatform[] {
  * the UPDATE itself so a row refreshed by a live publisher after the SELECT
  * cannot be recovered from a stale snapshot.
  */
-export function buildStaleSocialPublishRecoveryFilter(id: string, staleBefore: string): string {
-  if (!id.trim()) throw new Error("Stale social recovery filter requires a queue item ID.");
-  if (!Number.isFinite(Date.parse(staleBefore))) {
-    throw new Error("Stale social recovery filter requires a valid cutoff timestamp.");
+export function buildStaleSocialPublishRecoveryFilter(
+  id: string,
+  staleBefore: string,
+  expectedUpdatedAt: string,
+): string {
+  const safeId = id.trim();
+  const stale = staleBefore.trim();
+  const expected = expectedUpdatedAt.trim();
+  const staleTimestamp = Date.parse(stale);
+  const expectedTimestamp = Date.parse(expected);
+  if (!safeId || !Number.isFinite(staleTimestamp) || !Number.isFinite(expectedTimestamp)) {
+    throw new Error("Stale social recovery filter requires a queue ID and valid row-version timestamps.");
   }
-  return `id=eq.${encodeURIComponent(id)}&status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}`;
+  if (expectedTimestamp >= staleTimestamp) {
+    throw new Error("Stale social recovery filter requires the expected row version to be older than the stale cutoff.");
+  }
+  return `id=eq.${encodeURIComponent(safeId)}&status=eq.processing&and=(updated_at.eq.${encodeURIComponent(expected)},updated_at.lt.${encodeURIComponent(stale)})`;
 }
 
 function isSuccessfulResult(value: unknown): boolean {

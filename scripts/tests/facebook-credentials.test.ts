@@ -9,6 +9,7 @@ import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version
 import {
   FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS,
   FACEBOOK_REQUESTED_PERMISSIONS,
+  findFacebookPageAcrossPages,
   hasFacebookInsightsPermission,
   hasFacebookPublishingPermissions,
 } from "../../src/features/social/services/facebook-oauth-policy";
@@ -24,6 +25,46 @@ assert.equal(hasFacebookPublishingPermissions(publishOnlyScopes), true);
 assert.equal(hasFacebookInsightsPermission(publishOnlyScopes), false);
 assert.equal(hasFacebookPublishingPermissions([...publishOnlyScopes, "read_insights"]), true);
 assert.equal(hasFacebookInsightsPermission([...publishOnlyScopes, "read_insights"]), true);
+
+const facebookPageAfterRequests: Array<string | undefined> = [];
+const configuredFacebookPage = await findFacebookPageAcrossPages(async (after) => {
+  facebookPageAfterRequests.push(after);
+  if (!after) {
+    return {
+      data: [{ id: "page-first" }],
+      paging: { next: "https://graph.facebook.com/v26.0/me/accounts?after=page-cursor-two" },
+    };
+  }
+  return { data: [{ id: "page-configured" }] };
+}, "page-configured");
+assert.equal(configuredFacebookPage.page?.id, "page-configured");
+assert.equal(configuredFacebookPage.complete, true);
+assert.equal(configuredFacebookPage.pagesFetched, 2);
+assert.deepEqual(facebookPageAfterRequests, [undefined, "page-cursor-two"]);
+
+const multipleFacebookPages = await findFacebookPageAcrossPages(async (after) => (
+  after
+    ? { data: [{ id: "page-second" }] }
+    : {
+        data: [{ id: "page-first" }],
+        paging: { cursors: { after: "page-cursor-two" }, next: "https://graph.facebook.com/v26.0/me/accounts?after=page-cursor-two" },
+      }
+));
+assert.equal(multipleFacebookPages.page, null);
+assert.equal(multipleFacebookPages.multiplePages, true);
+assert.equal(multipleFacebookPages.complete, true, "pages on later cursors must still require explicit selection");
+
+const incompleteFacebookPageLookup = await findFacebookPageAcrossPages(
+  async () => ({
+    data: [{ id: "page-first" }],
+    paging: { next: "https://graph.facebook.com/v26.0/me/accounts?after=page-cursor-two" },
+  }),
+  "page-not-on-scanned-pages",
+  1,
+);
+assert.equal(incompleteFacebookPageLookup.page, null);
+assert.equal(incompleteFacebookPageLookup.complete, false, "a bounded scan must not falsely report a configured Page as missing");
+
 assert.equal(
   hasFacebookPublishingPermissions(["pages_show_list", "pages_read_engagement", "read_insights"]),
   false,

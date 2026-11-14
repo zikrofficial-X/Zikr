@@ -1,6 +1,7 @@
 import { getServerEnv } from "@/lib/env";
 import { readStoredFacebookCredential } from "@/features/social/services/facebook-credentials";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { requireSocialQueueRows } from "@/features/social/services/social-queue-selection";
 
 type QueueRow = {
   id: string;
@@ -277,10 +278,10 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
 
   for (let page = 0; page < maxPages && candidates.length < limit; page += 1) {
     const rows = await supabaseServerAdminRequest<QueueRow[]>(
-      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.asc,id.asc&limit=" +
+      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.desc,id.desc&limit=" +
         pageSize + "&offset=" + page * pageSize,
     );
-    const batch = Array.isArray(rows) ? rows : [];
+    const batch = requireSocialQueueRows<QueueRow>(rows, "Facebook Reels queue candidate query");
     if (batch.length === 0) break;
 
     const withVideoIds = batch.flatMap((row) => {
@@ -292,9 +293,13 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
       const existing = await supabaseServerAdminRequest<ExistingFacebookInsightRow[]>(
         "/rest/v1/social_post_insights?platform=eq.facebook_reels&queue_id=in.(" +
           queueIds.join(",") + ")&select=queue_id,captured_at",
-      ).catch(() => []);
+      );
+      const validatedExisting = requireSocialQueueRows<ExistingFacebookInsightRow>(
+        existing,
+        "Facebook Reels insight freshness query",
+      );
       const capturedAtByQueueId = new Map(
-        (existing ?? []).map((row) => [row.queue_id, row.captured_at]),
+        validatedExisting.map((row) => [row.queue_id, row.captured_at]),
       );
 
       for (const item of withVideoIds) {

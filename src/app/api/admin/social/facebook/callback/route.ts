@@ -5,6 +5,7 @@ import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { saveFacebookPageCredential, saveFacebookPublicProfile } from "@/features/social/services/facebook-credentials";
 import { getServerEnv } from "@/lib/env";
 import {
+  findFacebookPageAcrossPages,
   hasFacebookInsightsPermission,
   hasFacebookPagePublishingTask,
   hasFacebookPublishingPermissions,
@@ -34,6 +35,8 @@ type MetaPagesResponse = {
     access_token?: string;
     tasks?: string[];
   }>;
+  paging?: { cursors?: { after?: string }; next?: string };
+  error?: { code?: number; message?: string };
 };
 
 type MetaPageResponse = {
@@ -68,13 +71,13 @@ function matchesState(expected: string, actual: string) {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-async function graphGet<T>(url: URL): Promise<{ ok: boolean; data: T }> {
+async function graphGet<T>(url: URL, timeoutMs = 20_000): Promise<{ ok: boolean; status: number; data: T }> {
   const response = await fetch(url, {
     cache: "no-store",
-    signal: AbortSignal.timeout(20_000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const data = await response.json().catch(() => ({})) as T;
-  return { ok: response.ok, data };
+  return { ok: response.ok, status: response.status, data };
 }
 
 export async function GET(request: NextRequest) {
@@ -133,23 +136,43 @@ export async function GET(request: NextRequest) {
       return redirectResult("permission_missing");
     }
 
-    const pagesUrl = new URL(base + "/me/accounts");
-    pagesUrl.searchParams.set("fields", "id,name,access_token,tasks");
-    pagesUrl.searchParams.set("limit", "100");
-    pagesUrl.searchParams.set("access_token", userToken);
-    const pagesResult = await graphGet<MetaPagesResponse>(pagesUrl);
-    if (!pagesResult.ok) return redirectResult("oauth_failed");
-    const pages = Array.isArray(pagesResult.data.data) ? pagesResult.data.data : [];
     const configuredPageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
-    const selectedPage = configuredPageId
-      ? pages.find((page) => page.id === configuredPageId)
-      : pages.length === 1 ? pages[0] : undefined;
+    const pageLookup = await findFacebookPageAcrossPages(async (after) => {
+      const pagesUrl = new URL(base + "/me/accounts");
+      pagesUrl.searchParams.set("fields", "id,name,access_token,tasks");
+      pagesUrl.searchParams.set("limit", "100");
+      pagesUrl.searchParams.set("access_token", userToken);
+      if (after) pagesUrl.searchParams.set("after", after);
+      const pagesResult = await graphGet<MetaPagesResponse>(pagesUrl, 8_000);
+      if (!pagesResult.ok || pagesResult.data.error) {
+        return {
+          data: [],
+          error: {
+            status: pagesResult.status,
+            code: pagesResult.data.error?.code ?? null,
+          },
+        };
+      }
+      return {
+        data: Array.isArray(pagesResult.data.data) ? pagesResult.data.data : [],
+        paging: pagesResult.data.paging,
+      };
+    }, configuredPageId, 3);
 
-    if (!selectedPage) {
-      if (configuredPageId) return redirectResult("page_not_found");
-      if (pages.length > 1) return redirectResult("page_selection_required");
+    if (pageLookup.error) {
+      const code = String(pageLookup.error.code ?? "");
+      if (code === "190") return redirectResult("reauthorization_required");
+      if (code === "10" || code === "200") return redirectResult("permission_missing");
+      return redirectResult("oauth_failed");
+    }
+    if (!pageLookup.page) {
+      if (!pageLookup.complete) return redirectResult("page_lookup_incomplete");
+      if (!configuredPageId && pageLookup.multiplePages) {
+        return redirectResult("page_selection_required");
+      }
       return redirectResult("page_not_found");
     }
+    const selectedPage = pageLookup.page;
     if (!selectedPage.id || !selectedPage.access_token) return redirectResult("page_validation_failed");
     if (!hasFacebookPagePublishingTask(selectedPage.tasks)) {
       return redirectResult("permission_missing");

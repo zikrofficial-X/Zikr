@@ -307,10 +307,11 @@ async function recoverStaleSocialPublishItems() {
   const createdSince = encodeURIComponent(resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER));
   try {
     const stale = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&created_at=gte.${createdSince}&select=id,metadata,target_platforms&order=updated_at.asc,id.asc&limit=50`,
+      `/rest/v1/social_publish_queue?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&created_at=gte.${createdSince}&select=id,metadata,target_platforms,updated_at&order=updated_at.asc,id.asc&limit=50`,
     );
+    const staleRows = requireSocialQueueRows<SocialPublishQueueItem>(stale, "stale social publish query");
     let recovered = 0;
-    for (const item of stale ?? []) {
+    for (const item of staleRows) {
       const metadata = item.metadata ?? {};
       const recoveredAt = new Date().toISOString();
       const recovery = buildStaleSocialPublishRecoveryMetadata(metadata, item.target_platforms ?? [], recoveredAt);
@@ -326,7 +327,7 @@ async function recoverStaleSocialPublishItems() {
         ? "Manual reconciliation required for uncertain provider outcome(s): " + manualReconciliationPlatforms.join(", ")
         : "تمت استعادة عملية نشر عالقة تلقائيًا وسيُعاد تشغيل المنصات غير المكتملة.";
       const updated = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?${buildStaleSocialPublishRecoveryFilter(item.id, staleBefore)}`,
+        `/rest/v1/social_publish_queue?${buildStaleSocialPublishRecoveryFilter(item.id, staleBefore, item.updated_at)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },

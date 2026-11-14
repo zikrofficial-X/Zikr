@@ -472,8 +472,19 @@ assert.equal(
 );
 
 const facebookOAuthCallbackSource = readFileSync(resolve(process.cwd(), "src/app/api/admin/social/facebook/callback/route.ts"), "utf8");
+assert.match(facebookOAuthCallbackSource, /findFacebookPageAcrossPages/, "Facebook OAuth must inspect paginated Page results");
+assert.match(facebookOAuthCallbackSource, /limit", "100"/, "Facebook OAuth must request the maximum Page-list page size");
+assert.match(facebookOAuthCallbackSource, /searchParams\.set\("after", after\)/, "Facebook OAuth must follow Meta cursor pagination");
+assert.match(facebookOAuthCallbackSource, /page_lookup_incomplete/, "Facebook OAuth must not misreport a bounded incomplete scan as a missing Page");
 assert.match(facebookOAuthCallbackSource, /hasFacebookPagePublishingTask\(selectedPage\.tasks\)/, "OAuth must validate a publish-capable Page task before storing credentials");
 
+const socialPublishQueueSource = readFileSync(
+  resolve("src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+assert.match(socialPublishQueueSource, /select=id,metadata,target_platforms,updated_at/);
+assert.match(socialPublishQueueSource, /requireSocialQueueRows<SocialPublishQueueItem>\(stale, "stale social publish query"\)/);
+assert.match(socialPublishQueueSource, /buildStaleSocialPublishRecoveryFilter\(item\.id, staleBefore, item\.updated_at\)/);
 const adminSocialRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
   "utf8",
