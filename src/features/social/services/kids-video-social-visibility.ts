@@ -1,4 +1,4 @@
-import { normalizeSocialPlatformResults } from "./platform-availability";
+import { hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
 import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
@@ -20,9 +20,12 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   if (row.status !== "published" && row.status !== "partial") return [];
   const metadata = asRecord(row.metadata);
   const rawPlatformResults = metadata.platformResults;
+  // Duplicate or malformed result entries are ambiguous even if normalization
+  // would otherwise keep the last entry for a platform. Public feeds must fail closed.
+  if (hasMalformedSocialPlatformResults(rawPlatformResults)) return [];
   const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
-  // Only an absent/null field is a legacy row. An explicit empty or malformed
-  // ledger is authoritative and must not fall back to target_platforms.
+  // Only an absent/null field is a legacy row. An explicit empty ledger is
+  // authoritative and must not fall back to target_platforms.
   const hasPlatformResultLedger = rawPlatformResults !== undefined && rawPlatformResults !== null;
   const platformDeletions = asRecord(metadata.platformDeletions);
   const isDeleted = (platform: string, deliveryRemoteId?: string) =>
