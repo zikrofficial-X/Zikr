@@ -356,8 +356,39 @@ function assertEnv() {
   return { supabaseUrl: supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl, serviceRoleKey };
 }
 
-async function listDirectory(client, bucket, prefix) {
-  return collectPaginatedRows(async (offset, end) => {
+const MAX_STORAGE_INVENTORY_OBJECTS = 5000;
+
+export function createStorageInventoryBudget(maxObjects = MAX_STORAGE_INVENTORY_OBJECTS) {
+  if (!Number.isInteger(maxObjects) || maxObjects < 1) {
+    throw new Error("Storage inventory budget must be a positive integer.");
+  }
+  const paths = new Set();
+  return {
+    record(bucket, prefix, entries) {
+      if (!Array.isArray(entries)) {
+        throw new Error("Storage inventory returned malformed entries; refusing cleanup.");
+      }
+      const bucketName = asString(bucket);
+      const directory = asString(prefix);
+      if (!bucketName) throw new Error("Storage inventory bucket is required.");
+      for (const entry of entries) {
+        const name = asString(entry?.name);
+        if (!name || name.includes("\\0")) {
+          throw new Error("Storage inventory contains an invalid object name; refusing cleanup.");
+        }
+        const path = [bucketName, directory, name].filter(Boolean).join("/");
+        paths.add(path);
+        if (paths.size > maxObjects) {
+          throw new Error(`Storage inventory exceeded the global safety cap of ${maxObjects} objects; refusing cleanup.`);
+        }
+      }
+      return entries;
+    },
+    get count() { return paths.size; },
+  };
+}
+async function listDirectory(client, bucket, prefix, inventoryBudget = null) {
+  const rows = await collectPaginatedRows(async (offset, end) => {
     const { data, error } = await client.storage.from(bucket).list(prefix, {
       limit: end - offset + 1,
       offset,
@@ -367,6 +398,7 @@ async function listDirectory(client, bucket, prefix) {
     if (!Array.isArray(data)) throw new Error(`Storage list returned an incomplete inventory for ${bucket}/${prefix}; refusing cleanup.`);
     return data;
   }, `Storage inventory ${bucket}/${prefix}`);
+  return inventoryBudget ? inventoryBudget.record(bucket, prefix, rows) : rows;
 }
 
 export async function verifyStoragePathsAbsent(paths, listDirectoryForPrefix) {
@@ -907,6 +939,7 @@ async function main() {
   console.log(`ZIKR Storage retention: ${apply ? "APPLY" : "DRY RUN"}`);
   console.log(`Video retention cutoff: ${cutoffIso}`);
 
+  const storageInventoryBudget = createStorageInventoryBudget();
   const [queueRows, requestRows, videoFiles, androidRoot] = await Promise.all([
     collectPaginatedRows(async (offset, end) => {
       const { data, error } = await client.from("social_publish_queue")
@@ -924,10 +957,11 @@ async function main() {
       if (error) throw new Error(`Cannot read video generation requests: ${error.message}`);
       return data ?? [];
     }, "video_generation_requests.video_url"),
-    listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX),
-    listDirectory(client, ANDROID_BUCKET, "android"),
+    listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX, storageInventoryBudget),
+    listDirectory(client, ANDROID_BUCKET, "android", storageInventoryBudget),
   ]);
   const requestById = new Map(requestRows.map((row) => [row.id, row]));
+  console.log(`Storage preflight inventory: ${storageInventoryBudget.count} entries across the inspected prefixes.`);
   const filesByPath = new Map(
     videoFiles
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
@@ -1085,7 +1119,7 @@ async function main() {
 
   for (const version of (videosOnly ? [] : androidVersions)) {
     if (protectedTags.has(version)) continue;
-    const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`);
+    const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`, storageInventoryBudget);
     androidVersionFiles.set(version, versionFiles);
     const verification = await verifyAndroidReleaseCopy(client, version, versionFiles);
     if (!verification.ok) {
