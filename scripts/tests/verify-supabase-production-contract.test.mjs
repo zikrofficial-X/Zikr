@@ -7,7 +7,7 @@ const adminStart = source.indexOf("async function runAdminSchemaContractCheck");
 assert.ok(adminStart >= 0, "the production health check must include the optional admin schema probe");
 const adminProbe = source.slice(adminStart);
 
-assert.match(ordinaryProbe, /const timeoutMs = 15000/);
+assert.match(source, /const timeoutMs = 15000/, "all production health checks must use the same bounded timeout");
 assert.match(ordinaryProbe, /signal: controller\.signal/);
 assert.match(ordinaryProbe, /clearTimeout\(timeout\)/);
 
