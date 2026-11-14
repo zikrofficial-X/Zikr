@@ -49,12 +49,24 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from('site-audio').createSignedUploadUrl(path, { upsert: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  await recordAdminAuditEvent({
-    action: "site_audio.upload_url.create",
-    permission: "audio.manage",
-    resourceType: "site_audio_assets",
-    resourceId: path,
-    metadata: { contentType, contentLength },
+  let auditRecorded = true;
+  try {
+    await recordAdminAuditEvent({
+      action: "site_audio.upload_url.create",
+      permission: "audio.manage",
+      resourceType: "site_audio_assets",
+      resourceId: path,
+      metadata: { contentType, contentLength },
+    });
+  } catch (auditError) {
+    auditRecorded = false;
+    console.error("[api/admin/site-audio/upload] audit event failed after signed URL creation:", auditError);
+  }
+  return NextResponse.json({
+    path,
+    token: data.token,
+    uploadUrl: data.signedUrl,
+    expiresAt: uploadExpiresAt.toISOString(),
+    auditRecorded,
   });
-  return NextResponse.json({ path, token: data.token, uploadUrl: data.signedUrl, expiresAt: uploadExpiresAt.toISOString() });
 }
