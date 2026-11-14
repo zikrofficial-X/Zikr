@@ -23,6 +23,15 @@ assert.match(adminProbe, /finally \{\s*clearTimeout\(timeout\);\s*\}/,
   "the service-role schema probe must always clear its timeout");
 assert.match(adminProbe, /admin_rate_limits\?select=actor_id&limit=0/,
   "the production schema probe must remain a zero-row, read-only query");
+for (const path of [
+  "site_audio_upload_intents?select=id&limit=0",
+  "background_reminder_preferences?select=timezone&limit=0",
+  "youtube_sync_state?select=playlists&limit=0",
+  "social_publish_queue?select=target_platforms&limit=0",
+]) {
+  assert.ok(adminProbe.includes(path), "the production gate must verify " + path);
+}
+assert.match(adminProbe, /redirect: "error"/, "all new admin schema probes must reject redirects");
 assert.doesNotMatch(adminProbe, /method:\s*["'](?:POST|PATCH|DELETE)["']/i,
   "the production health check must not mutate rate-limit rows");
 

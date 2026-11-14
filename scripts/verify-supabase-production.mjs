@@ -147,6 +147,32 @@ async function runAdminSchemaContractCheck() {
       );
     }
     console.log("PASS: admin_rate_limits schema contract (read-only HTTP " + tableResponse.status + ")");
+
+    const requiredContracts = [
+      { name: "site_audio_upload_intents table", path: "/rest/v1/site_audio_upload_intents?select=id&limit=0" },
+      { name: "background_reminder_preferences.timezone", path: "/rest/v1/background_reminder_preferences?select=timezone&limit=0" },
+      { name: "youtube_sync_state.playlists", path: "/rest/v1/youtube_sync_state?select=playlists&limit=0" },
+      { name: "social_publish_queue.target_platforms", path: "/rest/v1/social_publish_queue?select=target_platforms&limit=0" },
+    ];
+
+    for (const contract of requiredContracts) {
+      const response = await fetch(baseUrl + contract.path, {
+        method: "GET",
+        headers: adminHeaders,
+        signal: controller.signal,
+        redirect: "error",
+      });
+      if (!response.ok) {
+        throw new Error(
+          contract.name + " schema contract returned HTTP " +
+            response.status + ": " +
+            (await response.text()).replace(/\\s+/g, " ").slice(0, 300)
+        );
+      }
+      console.log("PASS: " + contract.name + " (read-only HTTP " + response.status + ")");
+    }
+
+    console.log("INFO: SQL-only RLS, default-ACL, CHECK-constraint, and partial-index contracts still require the owner SQL preflight.");
   } finally {
     clearTimeout(timeout);
   }
