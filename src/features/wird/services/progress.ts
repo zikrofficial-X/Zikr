@@ -17,10 +17,11 @@ async function getCurrentUser() {
 
 export async function getCurrentWirdProgress(): Promise<{
   loggedIn: boolean;
+  userId: string | null;
   state: WirdProgressState | null;
 }> {
   const session = await getCurrentUser();
-  if (!session) return { loggedIn: false, state: null };
+  if (!session) return { loggedIn: false, userId: null, state: null };
 
   const { data, error } = await session.supabase
     .from("reading_progress")
@@ -31,17 +32,19 @@ export async function getCurrentWirdProgress(): Promise<{
     .maybeSingle();
 
   if (error || !data?.progress_json) {
-    return { loggedIn: true, state: null };
+    return { loggedIn: true, userId: session.user.id, state: null };
   }
 
   return {
     loggedIn: true,
+    userId: session.user.id,
     state: normalizeWirdProgressState(data.progress_json),
   };
 }
 
 export async function saveCurrentWirdProgress(
   state: unknown,
+  expectedUserId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const normalizedState = normalizeWirdProgressState(state);
   if (!normalizedState) {
@@ -49,10 +52,10 @@ export async function saveCurrentWirdProgress(
   }
 
   const session = await getCurrentUser();
-  if (!session) {
+  if (!session || session.user.id !== expectedUserId) {
     return {
       success: false,
-      error: "يجب تسجيل الدخول لمزامنة تقدمك",
+      error: "انتهت جلسة الحساب أو تغير المستخدم قبل المزامنة",
     };
   }
 

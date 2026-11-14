@@ -15,8 +15,9 @@ export async function getWirdProgress() {
 
 export async function saveWirdProgress(
   state: WirdProgressState,
+  expectedUserId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const result = await saveCurrentWirdProgress(state);
+  const result = await saveCurrentWirdProgress(state, expectedUserId);
 
   if (result.success) {
     revalidatePath("/profile");

@@ -9,6 +9,8 @@ import {
 } from '../../src/features/quran/utils/quran-progress';
 import {
   DEFAULT_WIRD_PROGRESS_STATE,
+  hasWirdProgress,
+  mergeWirdProgressStates,
   normalizeWirdProgressState,
 } from '../../src/features/wird/utils/progress-validation';
 
@@ -54,6 +56,18 @@ assert.equal(normalizeWirdProgressState({ ...validWird, khatmaCount: 1.5 }), nul
 assert.equal(normalizeWirdProgressState({ ...validWird, streak: -1 }), null);
 assert.equal(normalizeWirdProgressState({ ...validWird, todayDate: '2026-02-31' }), null);
 assert.equal(normalizeWirdProgressState(null), null);
+assert.equal(hasWirdProgress({ ...DEFAULT_WIRD_PROGRESS_STATE, khatmaCount: 1 }), true, 'a completed Khatma must count as local progress even when position resets to zero');
+assert.equal(hasWirdProgress(DEFAULT_WIRD_PROGRESS_STATE), false);
+const localOffline = { ...DEFAULT_WIRD_PROGRESS_STATE, khatmaCount: 1, position: 100, todayCount: 50, todayDate: '2026-11-14', dailyTarget: 50 };
+const remoteOlder = { ...DEFAULT_WIRD_PROGRESS_STATE, position: 6000, todayCount: 20, todayDate: '2026-11-14', dailyTarget: 20 };
+assert.deepEqual(mergeWirdProgressStates(localOffline, remoteOlder, '2026-11-14'), {
+  ...DEFAULT_WIRD_PROGRESS_STATE,
+  dailyTarget: 50,
+  khatmaCount: 1,
+  position: 100,
+  todayCount: 50,
+  todayDate: '2026-11-14',
+});
 
 const readingProgress = readFileSync('src/features/quran/services/reading-progress.ts', 'utf8');
 assert.match(readingProgress, /isValidQuranPosition\(surahId, ayahNumber\)/, 'server writes must validate the actual surah ayah count');
@@ -64,11 +78,16 @@ assert.doesNotMatch(readingProgress, /function validAyahNumber/, 'a generic 286-
 const wirdService = readFileSync('src/features/wird/services/progress.ts', 'utf8');
 assert.match(wirdService, /normalizeWirdProgressState\(data\.progress_json\)/, 'remote JSONB state must be validated before returning to the client');
 assert.match(wirdService, /normalizeWirdProgressState\(state\)/, 'server writes must reject malformed progress JSON');
+assert.match(wirdService, /userId: session\.user\.id/, 'the account id must be returned for local cache isolation');
+assert.match(wirdService, /session\.user\.id !== expectedUserId/, 'server writes must be bound to the account that initiated the sync');
 
 const wirdHook = readFileSync('src/features/quran/hooks/use-quran-wird.ts', 'utf8');
 assert.match(wirdHook, /isValidQuranPosition\(surah, ayah\)/, 'Wird reads must validate the actual surah and ayah');
 assert.match(wirdHook, /normalizeWirdProgressState\(JSON\.parse\(raw\)\)/, 'localStorage must be validated before arithmetic');
 assert.match(wirdHook, /revisionRef\.current !== initialRevision/, 'late account reads must not overwrite progress changed while loading');
-assert.match(wirdHook, /saveWirdProgress\(next\)\.catch/, 'failed background sync must not create an unhandled rejection');
+assert.match(wirdHook, /auth\.onAuthStateChange/, 'the local cache must switch when the signed-in account changes');
+assert.match(wirdHook, /getStorageKey\(userId\)/, 'local progress must be stored per account');
+assert.match(wirdHook, /mergeWirdProgressStates\(localState, remoteToday, today\)/, 'offline progress must be merged instead of discarded');
+assert.match(wirdHook, /saveWirdProgress\(next, expectedUserId\)\.catch/, 'remote writes must be bound to the expected user and never create unhandled rejections');
 
 console.log('Quran and Wird reading-progress integrity contracts passed.');

@@ -64,3 +64,56 @@ export function normalizeWirdProgressState(value: unknown): WirdProgressState | 
 
   return { dailyTarget, position, khatmaCount, todayCount, todayDate, streak, lastStreakDate };
 }
+
+/** True when local progress contains anything worth synchronizing. */
+export function hasWirdProgress(value: unknown): boolean {
+  const state = normalizeWirdProgressState(value);
+  if (!state) return false;
+  return state.position > 0
+    || state.khatmaCount > 0
+    || state.todayCount > 0
+    || state.streak > 0
+    || state.lastStreakDate !== ""
+    || state.dailyTarget !== DEFAULT_WIRD_PROGRESS_STATE.dailyTarget;
+}
+
+/**
+ * Merge the per-user offline cache with the account copy without discarding
+ * reading completed while the device was offline. The account target remains
+ * authoritative unless the local user has a non-default target.
+ */
+export function mergeWirdProgressStates(
+  localValue: unknown,
+  remoteValue: unknown,
+  today: string,
+): WirdProgressState {
+  const local = normalizeWirdProgressState(localValue) ?? { ...DEFAULT_WIRD_PROGRESS_STATE };
+  const remote = normalizeWirdProgressState(remoteValue) ?? { ...DEFAULT_WIRD_PROGRESS_STATE };
+  const localTotal = local.khatmaCount * TOTAL_AYAHS + local.position;
+  const remoteTotal = remote.khatmaCount * TOTAL_AYAHS + remote.position;
+  const lifetime = localTotal > remoteTotal ? local : remote;
+  const localStreakIsLater = local.lastStreakDate > remote.lastStreakDate;
+  const remoteStreakIsLater = remote.lastStreakDate > local.lastStreakDate;
+  const streakSource = localStreakIsLater ? local : remote;
+  const streak = localStreakIsLater || remoteStreakIsLater
+    ? streakSource.streak
+    : Math.max(local.streak, remote.streak);
+  const lastStreakDate = localStreakIsLater
+    ? local.lastStreakDate
+    : remote.lastStreakDate;
+  const localTodayCount = local.todayDate === today ? local.todayCount : 0;
+  const remoteTodayCount = remote.todayDate === today ? remote.todayCount : 0;
+  const dailyTarget = local.dailyTarget !== DEFAULT_WIRD_PROGRESS_STATE.dailyTarget
+    ? local.dailyTarget
+    : remote.dailyTarget;
+
+  return {
+    dailyTarget,
+    position: lifetime.position,
+    khatmaCount: lifetime.khatmaCount,
+    todayCount: Math.max(localTodayCount, remoteTodayCount),
+    todayDate: today,
+    streak,
+    lastStreakDate,
+  };
+}
