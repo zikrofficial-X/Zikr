@@ -96,7 +96,7 @@ BEGIN
     FROM public.prayer_locations
     WHERE user_id = '10000000-0000-4000-8000-000000000002'
   ) <> 0 THEN
-    RAISE EXCEPTION 'RLS must hide another user\'s prayer locations';
+    RAISE EXCEPTION 'RLS must hide another user''s prayer locations';
   END IF;
 END
 $new_location$;
