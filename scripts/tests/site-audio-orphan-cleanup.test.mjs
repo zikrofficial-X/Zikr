@@ -90,7 +90,7 @@ const adminPostEnd = adminRoute.indexOf("export async function PATCH", adminPost
 const adminPost = adminRoute.slice(adminPostStart, adminPostEnd);
 assert.ok(adminPost.indexOf("upload_expires_at") < adminPost.indexOf("validateSiteAudioStorageObject"), "the registration route must reject expired intents before checking Storage");
 assert.ok(adminPost.indexOf('.from("site_audio_assets")') < adminPost.indexOf('status: "registered"'), "the asset row must be authoritative before an intent is marked registered");
-assert.match(adminPost, /asset_id=is\\.null/);
+assert.ok(adminPost.includes("asset_id=is.null"), "registration must only finalize a pending intent with no existing asset pointer");
 assert.match(adminPost, /Prefer: "return=representation"/);
 assert.ok(adminPost.includes("finalizedIntent.length === 1"), "registration must confirm exactly one pending intent was finalized");
 assert.ok(adminPost.includes('.delete()') && adminPost.includes('.eq("id", data.id)'), "a failed intent compare-and-set must roll back the row created by this request");
@@ -98,7 +98,7 @@ assert.ok(adminPost.indexOf("const auditRecorded") > adminPost.indexOf("uploadIn
 const adminDeleteStart = adminRoute.indexOf("export async function DELETE");
 const adminDelete = adminRoute.slice(adminDeleteStart);
 assert.match(adminDelete, /status: "deleting"/, "delete must lock the intent before removing the asset row");
-assert.match(adminDelete, /\\.eq\\("status", "deleting"\\)/);
+assert.ok(adminDelete.includes('.eq("status", "deleting")'), "delete finalization must remain scoped to the deleting lock");
 assert.ok(adminDelete.indexOf('.from("site_audio_assets")') < adminDelete.indexOf('.remove([asset.storage_path])'), "the delete route must recheck references before removing Storage bytes");
 const cleanupLogLines = cleanupScript.split(/\r?\n/).filter((line) => line.includes("console.log("));
 assert.ok(cleanupLogLines.every((line) => !line.includes("intent.storage_path") || line.includes("safePathLogReference(intent.storage_path)")), "public workflow logs must use a path fingerprint instead of owner UUIDs or uploaded filenames");
