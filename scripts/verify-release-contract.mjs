@@ -23,6 +23,16 @@ assert.ok(releaseManager.includes("/releases"), "Admin release manager must crea
 assert.ok(releaseManager.includes("draft: true"), "Admin release manager must create Android releases as drafts until artifacts are verified");
 assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrofficial-X/Zikr";'), "Admin release manager must use the canonical repository");
 assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
+
+assert.ok(releaseAction.includes('requireAdminStepUp("release.manage", "/admin/release")'), "Android release preparation must honor the destructive-action step-up policy");
+assert.ok(!releaseAction.includes(".catch(() => [])"), "Android release preparation must fail closed when the operation-state read fails");
+assert.ok(releaseAction.includes("تعذر التحقق من حالة الإصدار الحالية"), "Android release preparation must stop before GitHub side effects when operation state cannot be verified");
+const androidAdminAction = read("src/app/admin/android/actions.ts");
+assert.ok(androidAdminAction.includes('requireAdminStepUp("android.manage", "/admin/android")'), "Android release-setting changes must honor the destructive-action step-up policy");
+assert.ok(androidAdminAction.includes("getStableReleaseByTag"), "Pinned Android releases must be validated against a published stable GitHub release");
+assert.ok(androidAdminAction.includes("لا يمكن تثبيت إصدار غير منشور"), "Pinned Android releases must fail closed when APK/AAB artifacts are missing");
+const androidAdminPage = read("src/app/admin/android/page.tsx");
+assert.ok(androidAdminPage.includes('endsWith(".apk")') && androidAdminPage.includes('endsWith(".aab")'), "Admin Android release choices must contain both APK and AAB artifacts");
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
 const androidCircle = read(".circleci/config.yml");
