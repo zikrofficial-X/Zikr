@@ -56,7 +56,6 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient();
   const { data, error } = await supabase.storage.from('site-audio').createSignedUploadUrl(path, { upsert: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  let auditRecorded = true;
   try {
     await recordAdminAuditEvent({
       action: "site_audio.upload_url.create",
@@ -66,14 +65,19 @@ export async function POST(request: NextRequest) {
       metadata: { contentType, contentLength },
     });
   } catch (auditError) {
-    auditRecorded = false;
     console.error("[api/admin/site-audio/upload] audit event failed after signed URL creation:", auditError);
+    // Do not disclose the signed capability when its issuance cannot be audited.
+    // The pending intent remains eligible for the guarded orphan-retention workflow.
+    return NextResponse.json(
+      { error: "تعذر تسجيل عملية الرفع؛ لم يتم إصدار رابط الرفع.", auditRecorded: false },
+      { status: 503 },
+    );
   }
   return NextResponse.json({
     path,
     token: data.token,
     uploadUrl: data.signedUrl,
     expiresAt: uploadExpiresAt.toISOString(),
-    auditRecorded,
+    auditRecorded: true,
   });
 }
