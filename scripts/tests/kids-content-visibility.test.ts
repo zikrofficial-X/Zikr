@@ -55,11 +55,11 @@ assert.equal(hasKidsEnglishContent({ title_en: "Wudu steps", content_en: "Origin
 assert.equal(hasKidsEnglishContent({ title_en: "Wudu steps", content_en: "Original educational content prepared for Zikr families." }), false);
 assert.equal(hasKidsEnglishContent({ title_en: "Kindness story", content_en: "A child invites a classmate to join a game." }), true);
 assert.equal(hasKidsEnglishContent({ title_en: "Kindness story", content_en: "   " }), false);
-assert.match(kidsContentServiceSource, /fallback\\.filter\\(hasKidsEnglishContent\\)/);
-assert.match(kidsContentServiceSource, /merged\\.filter\\(hasKidsEnglishContent\\)/);
-assert.match(kidsContentServiceSource, /!hasKidsEnglishContent\\(database\\.item\\)/);
+assert.ok(kidsContentServiceSource.includes("fallback.filter(hasKidsEnglishContent)"));
+assert.ok(kidsContentServiceSource.includes("merged.filter(hasKidsEnglishContent)"));
+assert.ok(kidsContentServiceSource.includes("!hasKidsEnglishContent(database.item)"));
 const kidsOfflineServiceSource = readFileSync("src/features/kids/services/kids-offline-content.ts", "utf8");
-assert.match(kidsOfflineServiceSource, /items\\.filter\\(hasKidsEnglishContent\\)/);
+assert.ok(kidsOfflineServiceSource.includes("items.filter(hasKidsEnglishContent)"));
 const kidsOfflineSnapshot = JSON.parse(readFileSync("public/offline-content/v1/kids.json", "utf8")) as unknown[];
 const englishOfflineKids = normalizeOfflineKidsRows(kidsOfflineSnapshot, "en");
 assert.equal(englishOfflineKids.some((item) => item.slug === "game-wudu-steps"), false,

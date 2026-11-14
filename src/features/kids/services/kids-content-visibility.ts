@@ -12,12 +12,12 @@ export function normalizeKidsContentSlug(value: unknown): string {
 }
 
 
-const GENERIC_KIDS_ENGLISH_CONTENT = /^original educational content prepared for (?:zikr )?families\\.?$/i;
+const GENERIC_KIDS_ENGLISH_CONTENT = /^original educational content prepared for (?:zikr )?families\.?$/i;
 
 /** Reject known seed placeholders so English pages never present editorial metadata as translated content. */
 export function hasKidsEnglishContent(item: { title_en?: unknown; content_en?: unknown }): boolean {
   const title = typeof item.title_en === "string" ? item.title_en.trim() : "";
-  const content = typeof item.content_en === "string" ? item.content_en.trim().replace(/\\s+/g, " ") : "";
+  const content = typeof item.content_en === "string" ? item.content_en.trim().replace(/\s+/g, " ") : "";
   return Boolean(title && content) && !GENERIC_KIDS_ENGLISH_CONTENT.test(content);
 }
 
