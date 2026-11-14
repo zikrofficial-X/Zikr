@@ -12,13 +12,18 @@ export function isCrisisMessage(text: string): boolean {
 export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' | 'general' {
   const t = text;
 
-  const fatwaKeywords = [
+  const fatwaIntentKeywords = [
     'حلال', 'حرام', 'جائز', 'يجوز', 'لا يجوز', 'مباح', 'مكروه', 'فرض', 'واجب',
     'فتوى', 'حكم', 'شرعي', 'إسلام يقول', 'ما حكم', 'هل يجوز', 'هل يحل',
-    'هل حرام', 'هل حلال', 'الصلاة', 'الزكاة', 'الصيام', 'الحج', 'الربا',
-    'الطلاق', 'الميراث', 'النكاح', 'الزواج الشرعي', 'المهر', 'العدة',
-    'العقيدة', 'التوحيد', 'الإيمان', 'الكفر', 'الشرك', 'التفسير', 'الحديث',
-    'السنة', 'السيرة', 'المذاهب', 'الوضوء', 'الغسل', 'الحجاب', 'العمل',
+    'هل حرام', 'هل حلال',
+  ];
+
+  const fatwaTopicKeywords = [
+    'الصلاة', 'الزكاة', 'الصيام', 'الحج', 'الربا', 'الطلاق', 'الميراث',
+    'النكاح', 'الزواج الشرعي', 'المهر', 'العدة', 'العقيدة', 'التوحيد',
+    'الإيمان', 'الكفر', 'الشرك', 'التفسير', 'حديث نبوي', 'الحديث النبوي',
+    'حديث صحيح', 'حديث شريف', 'السنة النبوية', 'سنة النبي',
+    'السيرة النبوية', 'سيرة النبي', 'المذاهب', 'الوضوء', 'الغسل', 'الحجاب',
   ];
 
   const dhikrKeywords = [
@@ -32,9 +37,10 @@ export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' 
     'واسيني', 'ادعيلي', 'أنا خايف', 'أنا زعلان',
   ];
 
-  if (fatwaKeywords.some((k) => t.includes(k))) return 'fatwa';
+  if (fatwaIntentKeywords.some((k) => t.includes(k))) return 'fatwa';
   if (dhikrKeywords.some((k) => t.includes(k))) return 'dhikr';
   if (spiritualKeywords.some((k) => t.includes(k))) return 'spiritual';
+  if (fatwaTopicKeywords.some((k) => t.includes(k))) return 'fatwa';
   return 'general';
 }
 
