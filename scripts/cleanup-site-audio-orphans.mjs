@@ -84,6 +84,11 @@ export function selectExpiredSiteAudioUploadIntents(intents, now = Date.now()) {
     return Number.isFinite(cleanupAfter) && cleanupAfter <= now;
   });
   for (const intent of expired) {
+    // A non-null asset pointer is a deliberate deletion guard. Reconcile it
+    // against the canonical asset table before selecting Storage deletions;
+    // it must not turn one failed metadata-delete attempt into a batch-wide
+    // cleanup outage.
+    if (intent?.asset_id !== null) continue;
     if (!isSafeSiteAudioUploadIntent(intent)) {
       throw new Error("An expired site-audio upload intent has an unsafe path or invalid metadata; refusing cleanup.");
     }
@@ -91,7 +96,7 @@ export function selectExpiredSiteAudioUploadIntents(intents, now = Date.now()) {
       throw new Error("An expired site-audio cleanup intent still has a live upload window; refusing cleanup.");
     }
   }
-  return expired;
+  return expired.filter((intent) => intent?.asset_id === null);
 }
 
 function splitStoragePath(storagePath) {
@@ -166,9 +171,30 @@ async function main() {
     return data ?? [];
   });
 
+  const protectedIntents = expiredIntents.filter((intent) =>
+    intent?.status === "pending" &&
+    Number.isFinite(Date.parse(intent?.cleanup_after ?? "")) &&
+    Date.parse(intent.cleanup_after) <= now.getTime() &&
+    intent?.asset_id !== null
+  );
+  for (const intent of protectedIntents) {
+    const referencedAsset = await findAssetReference(client, intent.storage_path);
+    if (!referencedAsset || referencedAsset.id !== intent.asset_id) {
+      throw new Error("An expired site-audio intent retains an asset pointer that cannot be matched to the canonical asset; refusing cleanup.");
+    }
+    if (apply) {
+      await updateIntent(client, intent.storage_path, {
+        status: "registered",
+        asset_id: referencedAsset.id,
+      });
+    }
+    console.log("KEEP referenced site-audio object and reconcile protected intent: " + intent.storage_path);
+  }
+
   const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
   console.log("ZIKR site-audio orphan reconciliation: " + (apply ? "APPLY" : "DRY RUN"));
   console.log("Expired pending intents: " + candidates.length);
+  console.log("Protected referenced intents: " + protectedIntents.length);
 
   for (const intent of candidates) {
     const { directory, fileName } = splitStoragePath(intent.storage_path);

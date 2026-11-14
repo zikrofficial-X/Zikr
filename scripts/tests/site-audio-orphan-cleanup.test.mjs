@@ -35,7 +35,13 @@ assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, mime_type: "applicati
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, size_bytes: 0 }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-11-13T21:59:59.000Z" }), false, "the cleanup worker must preserve the full 24-hour grace period");
-assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, asset_id: "123e4567-e89b-12d3-a456-426614174001" }), false, "a pending intent with an asset pointer must be reconciled, never deleted");
+const protectedAssetIntent = { ...validIntent, asset_id: "123e4567-e89b-12d3-a456-426614174001" };
+assert.equal(isSafeSiteAudioUploadIntent(protectedAssetIntent), false, "a pending intent with an asset pointer must never be a Storage deletion candidate");
+assert.deepEqual(
+  selectExpiredSiteAudioUploadIntents([validIntent, protectedAssetIntent], now),
+  [validIntent],
+  "a failed metadata deletion may leave a protected intent; it must be preserved without blocking unrelated safe candidates",
+);
 const pagedRows = Array.from({ length: 1001 }, (_, index) => ({ index }));
 const pageOffsets = [];
 const pagedInventory = await collectExpiredSiteAudioUploadIntents(async (offset, pageSize) => {
@@ -76,6 +82,8 @@ assert.ok(adminPost.indexOf('.from("site_audio_assets")') < adminPost.indexOf('s
 assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
+assert.ok(cleanupScript.includes("const protectedIntents = expiredIntents.filter"), "expired intents with an asset pointer must be reconciled separately from Storage deletion candidates");
+assert.ok(cleanupScript.includes("referencedAsset.id !== intent.asset_id"), "protected intents must match the exact canonical asset ID before being marked registered");
 assert.match(cleanupScript, /listExactObject\(client, directory, fileName\)/);
 assert.ok(cleanupScript.includes(".range(offset, offset + pageSize - 1)"), "intent inventory must use bounded pages instead of the PostgREST max_rows-limited single query");
 assert.ok(cleanupScript.includes('.order("storage_path", { ascending: true })'), "intent pages must use a stable tie-breaker");
