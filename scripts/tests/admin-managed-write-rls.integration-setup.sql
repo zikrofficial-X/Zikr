@@ -248,10 +248,11 @@ CREATE POLICY videos_public_read
   FOR SELECT TO public
   USING (published IS TRUE);
 
+-- Mirror the currently deployed legacy policy; the migration under test must add is_active.
 CREATE POLICY kids_content_public_read
   ON public.kids_content
-  FOR SELECT TO anon, authenticated
-  USING (published IS TRUE AND is_active IS TRUE);
+  FOR SELECT TO public
+  USING (published IS TRUE);
 CREATE POLICY admin_all_kids_content_insert
   ON public.kids_content
   FOR INSERT TO authenticated
