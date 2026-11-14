@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { getCurrentPrayer, getNextPrayer, type PrayerTime } from "../../src/features/prayer/services/prayer-times";
 import { readFileSync } from "node:fs";
+import { parsePrayerCoordinate } from "../../src/features/prayer/services/prayer-location-validation";
 import {
   addCalendarDays,
   formatDateInTimeZone,
@@ -8,6 +9,17 @@ import {
   getPrayerNotificationIdsToCancel,
   getZonedDateTime,
 } from "../../src/features/prayer/services/prayer-notification-schedule";
+
+assert.equal(parsePrayerCoordinate(31.2, -90, 90), 31.2);
+assert.equal(parsePrayerCoordinate("29.9187", -180, 180), 29.9187);
+assert.equal(parsePrayerCoordinate("", -90, 90), null, "empty coordinates must not coerce to zero");
+assert.equal(parsePrayerCoordinate("   ", -90, 90), null, "whitespace coordinates must not coerce to zero");
+assert.equal(parsePrayerCoordinate(null, -90, 90), null, "null coordinates must not coerce to zero");
+assert.equal(parsePrayerCoordinate(false, -90, 90), null, "boolean coordinates must be rejected");
+assert.equal(parsePrayerCoordinate("0x10", -90, 90), null, "non-decimal coordinate strings must be rejected");
+assert.equal(parsePrayerCoordinate("1e2", -90, 90), null, "exponential coordinate strings must be rejected");
+assert.equal(parsePrayerCoordinate(91, -90, 90), null);
+assert.equal(parsePrayerCoordinate(-181, -180, 180), null);
 
 const timings: PrayerTime = {
   Fajr: "05:00",
@@ -173,5 +185,16 @@ assert.ok(
   "a missing prayer location must not create an orphan browser push subscription",
 );
 assert.doesNotMatch(pushSubscription, /PRAYER_LOCATION_KEY/);
+
+const prayerLocationRoute = readFileSync("src/app/api/prayer-location/route.ts", "utf8");
+const prayerLocationMigration = readFileSync("supabase/migrations/20261114040000_save_default_prayer_location_atomically.sql", "utf8");
+assert.match(prayerLocationRoute, /parsePrayerCoordinate\(body\.latitude, -90, 90\)/);
+assert.match(prayerLocationRoute, /parsePrayerCoordinate\(body\.longitude, -180, 180\)/);
+assert.match(prayerLocationRoute, /supabase\.rpc\("save_default_prayer_location"/);
+assert.doesNotMatch(prayerLocationRoute, /clearDefaultError|\.update\(\{ is_default: false/);
+assert.match(prayerLocationMigration, /SECURITY INVOKER/);
+assert.match(prayerLocationMigration, /SET search_path = ''/);
+assert.match(prayerLocationMigration, /pg_advisory_xact_lock/);
+assert.match(prayerLocationMigration, /GRANT EXECUTE ON FUNCTION public\.save_default_prayer_location/);
 
 console.log("Prayer-time next-prayer, selected-location scheduling, and push-location contracts passed.");

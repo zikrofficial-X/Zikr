@@ -110,6 +110,7 @@
     "video:qa:backfill:check": "node scripts/verify-video-qa-backfill.mjs",
     "video:media:audit": "tsx scripts/jobs/audit-video-media.ts",
     "video:media:check": "node scripts/verify-video-media-audit.mjs",
+    "prayer-location:db:check": "bash scripts/tests/prayer-location-save.integration.sh",
     "site-audio:cleanup": "node scripts/cleanup-site-audio-orphans.mjs"
   },
   "dependencies": {
