@@ -175,7 +175,6 @@ export default function KidsDetailPage() {
         if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("[kids] Failed to load content detail:", error);
         if (active) setContent(null);
-      }
       } finally {
         if (active) setLoading(false);
       }
