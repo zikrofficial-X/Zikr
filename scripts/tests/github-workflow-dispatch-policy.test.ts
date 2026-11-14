@@ -129,7 +129,7 @@ for (const workflowFile of workflowFiles) {
 
 const offlineWorkflow = readFileSync(".github/workflows/refresh-offline-content.yml", "utf8");
 const androidReleaseWorkflow = readFileSync(".github/workflows/publish-android-release-assets.yml", "utf8");
-function getWorkflowStep(workflowText, stepName) {
+function getWorkflowStep(workflowText: string, stepName: string) {
   const start = workflowText.indexOf("- name: " + stepName);
   assert.ok(start >= 0, "missing workflow step: " + stepName);
   const next = workflowText.indexOf("\n      - name:", start + 1);
