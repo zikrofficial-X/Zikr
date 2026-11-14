@@ -78,3 +78,22 @@ if (/DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)
 }
 
 console.log("Private-table anonymous-grant hardening contract passed.");
+
+
+const defaultFunctionMigration = readFileSync("supabase/migrations/20261114020000_revoke_client_default_function_execute.sql", "utf8");
+assert.ok(
+  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public"),
+  "future public functions created by postgres must use hardened defaults",
+);
+assert.ok(
+  defaultFunctionMigration.includes("REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
+  "future public functions must not inherit browser-role EXECUTE",
+);
+assert.ok(
+  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public"),
+  "future public functions created by supabase_admin must use hardened defaults",
+);
+assert.ok(
+  defaultFunctionMigration.includes("BEGIN;") && defaultFunctionMigration.includes("COMMIT;"),
+  "default function privilege hardening must be transactional",
+);

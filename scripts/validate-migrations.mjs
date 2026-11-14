@@ -227,6 +227,10 @@ await db.exec(`
   ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
     GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES
     TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO PUBLIC, anon, authenticated;
 
   CREATE TABLE public.__audit_existing_non_dml_privilege_probe (
     id integer PRIMARY KEY
@@ -618,6 +622,45 @@ if (failed === 0) {
   `;
   const clientDefaultPrivileges = await db.query(clientDefaultPrivilegesSql);
 
+  const clientDefaultFunctionPrivilegesSql = `
+    SELECT owner.rolname AS owner,
+           COALESCE(n.nspname, '<global>') AS schema_name,
+           COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+           acl.privilege_type
+    FROM pg_default_acl d
+    JOIN pg_roles owner ON owner.oid = d.defaclrole
+    LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE d.defaclobjtype = 'f'
+      AND (d.defaclnamespace = 0 OR n.nspname = 'public')
+      AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
+      AND acl.privilege_type = 'EXECUTE'
+    ORDER BY owner.rolname, schema_name, grantee
+  `;
+  const clientDefaultFunctionPrivileges = await db.query(clientDefaultFunctionPrivilegesSql);
+
+  await db.exec("BEGIN");
+  let globalDefaultFunctionPrivilegeDetected = false;
+  try {
+    await db.exec("ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT EXECUTE ON FUNCTIONS TO anon");
+    const globalProbe = await db.query(clientDefaultFunctionPrivilegesSql);
+    globalDefaultFunctionPrivilegeDetected = globalProbe.rows.some((row) =>
+      row.owner === "postgres" &&
+      row.schema_name === "<global>" &&
+      row.grantee === "anon" &&
+      row.privilege_type === "EXECUTE"
+    );
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+  if (!globalDefaultFunctionPrivilegeDetected) {
+    failed++;
+    console.error("CLIENT_DEFAULT_FUNCTION_EXECUTE_AUDIT_FAILED: the audit query did not detect a global browser-role EXECUTE grant.");
+  } else {
+    console.log("CLIENT_DEFAULT_FUNCTION_EXECUTE_AUDIT_PASSED");
+  }
+
   // Global default privileges are additive to per-schema defaults. Prove that
   // the audit query detects a global grant as well as the public-schema grants
   // removed by the migration chain; the probe is rolled back in this PGlite DB.
@@ -642,17 +685,22 @@ if (failed === 0) {
     console.log("CLIENT_NON_DML_GLOBAL_DEFAULT_PRIVILEGE_AUDIT_PASSED");
   }
 
-  if (clientTablePrivileges.rows.length > 0 || clientDefaultPrivileges.rows.length > 0) {
+  if (
+    clientTablePrivileges.rows.length > 0 ||
+    clientDefaultPrivileges.rows.length > 0 ||
+    clientDefaultFunctionPrivileges.rows.length > 0
+  ) {
     failed++;
     console.error(
-      "CLIENT_NON_DML_TABLE_PRIVILEGES_REGRESSION: browser roles retain non-RLS table privileges.",
+      "CLIENT_NON_DML_OR_DEFAULT_FUNCTION_PRIVILEGES_REGRESSION: browser roles retain non-RLS table privileges or default function EXECUTE.",
       JSON.stringify({
         existing: clientTablePrivileges.rows,
         defaults: clientDefaultPrivileges.rows,
+        functionDefaults: clientDefaultFunctionPrivileges.rows,
       }),
     );
   } else {
-    console.log("CLIENT_NON_DML_TABLE_PRIVILEGES_REVOKED");
+    console.log("CLIENT_NON_DML_TABLE_AND_DEFAULT_FUNCTION_PRIVILEGES_REVOKED");
   }
 }
 
