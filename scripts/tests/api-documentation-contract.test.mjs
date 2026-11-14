@@ -29,11 +29,14 @@ assert.match(middleware, /request\.cookies\.getAll\(\)/);
 assert.match(middleware, /response\.cookies\.set\(name, value, options\)/);
 assert.match(docs, /cookie names, chunking, and token lifetimes are managed/i);
 assert.match(poetryRoute, /getSupabaseUser\(\)/);
-assert.match(docs, /POST \| \/api\/poetry-insight/);
+assert.ok(docs.includes("| POST | `/api/poetry-insight` | Supabase user | Required |"));
 assert.match(profileRoute, /requireSupabaseAuth\(\)/);
-assert.match(docs, /GET \| \/api\/user\/profile/);
+assert.ok(docs.includes("| GET | `/api/user/profile` | Supabase user | Required |"));
 assert.match(favoritesRoute, /requireSupabaseAuth\(\)/);
-assert.match(docs, /GET \| \/api\/user\/favorites/);
+assert.ok(docs.includes("| GET | `/api/user/favorites` | Supabase user | Required |"));
 assert.match(docs, /docs\/admin\/ADMIN_API_PERMISSION_MATRIX_2026-11-06\.md/);
+assert.ok(docs.includes("Five evaluations per authenticated user per 10 minutes"));
+assert.ok(docs.includes("3 evaluations per 10 minutes"));
+assert.ok(docs.includes("maximum 3 MiB"));
 
 console.log("API documentation contract tests passed.");
