@@ -280,10 +280,11 @@ export async function reviewKidsStoryAgeSuitabilityAction(formData: FormData) {
     throw new Error("تغيرت القصة منذ تحميلها. حدّث الصفحة واقرأ النسخة الأحدث قبل المراجعة.");
   }
 
-  const existingMetadata =
-    current.metadata && typeof current.metadata === "object" && !Array.isArray(current.metadata)
-      ? current.metadata
-      : {};
+  const metadataValue: unknown = current.metadata;
+  if (metadataValue !== null && (typeof metadataValue !== "object" || Array.isArray(metadataValue))) {
+    throw new Error("بيانات القصة الوصفية ليست كائنًا صالحًا؛ لم يتم تعديل أي بيانات.");
+  }
+  const existingMetadata = (metadataValue ?? {}) as Record<string, unknown>;
   const approved = decision === "approved";
   const nextMetadata = { ...existingMetadata, age_appropriate: approved };
   const nextUpdatedAt = buildNextRowVersionUpdatedAt(current.updated_at);

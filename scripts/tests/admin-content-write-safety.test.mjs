@@ -48,6 +48,8 @@ assert.match(ageReviewAction, /&updated_at=eq[.]" \+ encodeURIComponent\(current
 assert.match(ageReviewAction, /body: JSON[.]stringify\(\{ metadata: nextMetadata, updated_at: nextUpdatedAt \}\)/,
   "age review may change only the metadata approval flag and row version");
 assert.match(ageReviewAction, /recordAdminAuditEvent/);
+assert.match(ageReviewAction, /metadataValue !== null && \(typeof metadataValue !== "object" \|\| Array\.isArray\(metadataValue\)\)/,
+  "age review must fail closed instead of replacing non-object metadata");
 const ageReviewWritePayload = ageReviewAction.match(/body: JSON[.]stringify\(\{ metadata: nextMetadata, updated_at: nextUpdatedAt \}\)/)?.[0] ?? "";
 assert.ok(ageReviewWritePayload.length > 0, "age review must persist only its metadata approval decision and row version");
 assert.doesNotMatch(ageReviewWritePayload, /published|is_active|content_ar/,
