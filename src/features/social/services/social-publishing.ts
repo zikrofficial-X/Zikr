@@ -970,8 +970,15 @@ export async function processSocialPublishItem(
         typeof (result as PlatformResult).remoteId === "string" && (result as PlatformResult).remoteId?.trim());
     });
     if (allTargetsSucceeded) {
-      const updated = await markQueueItem(item.id, "published", { error_message: null, scheduled_at: null }, claimLease);
+      const updated = await markQueueItem(item.id, "published", {
+        error_message: null,
+        scheduled_at: null,
+        published_at: item.published_at ?? new Date().toISOString(),
+      }, claimLease);
       if (!updated) return "deferred";
+      // This recovery path reuses already-confirmed provider results. Keep the
+      // catalog fallback in sync just as the normal provider-result path does.
+      await syncYouTubeVideoReferenceToCatalog(item, previous.youtube);
       await syncKidsSocialPublicationToCatalog(item, previousMetadata);
       if (isVideoContentType(item.content_type)) await disposePublishedVideo({ ...item, metadata: previousMetadata });
       return "published";

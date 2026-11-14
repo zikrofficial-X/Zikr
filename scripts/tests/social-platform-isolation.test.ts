@@ -392,6 +392,18 @@ assert.ok(
   runnablePlatformsCheck > clearApprovalHolds,
   "the worker may clear old approval holds only after QA/source revalidation and before selecting runnable targets",
 );
+const noRunnableTargetsStart = revalidatedPublisherSource.indexOf("if (runnablePlatforms.length === 0)", runnablePlatformsCheck);
+const recoveredAllTargetsStart = revalidatedPublisherSource.indexOf("if (allTargetsSucceeded)", noRunnableTargetsStart);
+const providerAttemptStart = revalidatedPublisherSource.indexOf("const inFlightStartedAt", recoveredAllTargetsStart);
+const recoveredAllTargetsBody = revalidatedPublisherSource.slice(recoveredAllTargetsStart, providerAttemptStart);
+assert.ok(
+  recoveredAllTargetsBody.includes("published_at: item.published_at ?? new Date().toISOString()"),
+  "reconciling a queue row whose provider results already succeeded must persist a published_at timestamp",
+);
+assert.ok(
+  recoveredAllTargetsBody.includes("await syncYouTubeVideoReferenceToCatalog(item, previous.youtube)"),
+  "the no-provider-call recovery path must persist an already-confirmed YouTube ID to the public catalog",
+);
 
 const legacyArrayResults = {
   platformResults: [
