@@ -15,6 +15,7 @@ import {
   extractCloudinaryVideoPublicId,
   hasConfirmedPlatformResults,
   collectPaginatedRows,
+  createStorageInventoryBudget,
   verifyStoragePathsAbsent,
   indexManagedBackupReferences,
   matchesSha256Digest,
@@ -258,6 +259,18 @@ assert.equal(
   "NUL bytes are rejected from Storage object paths",
 );
 
+const inventoryBudget = createStorageInventoryBudget(5);
+inventoryBudget.record("videos", "automated", [{ name: "a.mp4", id: "a" }, { name: "b.mp4", id: "b" }]);
+inventoryBudget.record("android-releases", "android/v1.0.0", [{ name: "app-release.apk", id: "apk" }, { name: "app-release.aab", id: "aab" }]);
+assert.equal(inventoryBudget.count, 4, "the shared budget must count objects across different buckets and nested prefixes");
+inventoryBudget.record("videos", "automated", [{ name: "a.mp4", id: "a" }]);
+assert.equal(inventoryBudget.count, 4, "re-reading the same exact Storage path must not inflate the global inventory count");
+assert.throws(
+  () => inventoryBudget.record("android-releases", "android/v1.0.1", [{ name: "app-release.apk", id: "apk-2" }, { name: "app-release.aab", id: "aab-2" }]),
+  /global safety cap of 5 objects; refusing cleanup/,
+  "the shared Storage cap must stop a multi-prefix inventory before any deletion is allowed",
+);
+assert.throws(() => createStorageInventoryBudget(0), /positive integer/, "the inventory budget must reject an invalid cap");
 const pagedRows = await collectPaginatedRows(
   async (offset, end) => [10, 20, 30, 40, 50].slice(offset, end + 1),
   "fixture rows",
@@ -858,6 +871,15 @@ assert.ok(
 );
 const retentionMainBody = storageRetentionSource.slice(storageRetentionSource.indexOf("async function main()"));
 const retentionPreflightIndex = retentionMainBody.indexOf("if (apply) await assertRetentionRpcContractReady(client);");
+const preflightBudgetStart = retentionMainBody.indexOf("const storageInventoryBudget = createStorageInventoryBudget()");
+const initialVideoInventory = retentionMainBody.indexOf('listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX, storageInventoryBudget)');
+const initialAndroidInventory = retentionMainBody.indexOf('listDirectory(client, ANDROID_BUCKET, "android", storageInventoryBudget)');
+const versionInventory = retentionMainBody.indexOf('listDirectory(client, ANDROID_BUCKET, `android/${version}`, storageInventoryBudget)');
+const firstDelete = retentionMainBody.indexOf('.storage.from(VIDEO_BUCKET).remove(pathsToRemove)');
+assert.ok(preflightBudgetStart >= 0 && initialVideoInventory > preflightBudgetStart && initialAndroidInventory > preflightBudgetStart && versionInventory > preflightBudgetStart && firstDelete > versionInventory,
+  "one shared 5,000-object budget must cover video, Android-root, and nested release inventories before the first destructive Storage call");
+assert.ok(storageRetentionSource.includes("const MAX_STORAGE_INVENTORY_OBJECTS = 5000;"), "the retention inventory cap must remain explicit and bounded");
+
 const retentionInventoryIndex = retentionMainBody.indexOf("collectPaginatedRows(");
 assert.ok(
   retentionPreflightIndex >= 0 && retentionInventoryIndex > retentionPreflightIndex,
