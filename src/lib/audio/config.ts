@@ -53,9 +53,11 @@ function getBundledFallback(slot: AudioSlot): AudioChoice {
 }
 
 export function registerAudioChoices(choices: readonly AudioChoice[]): void {
-  const merged = new Map(remoteAudioChoices.map(choice => [choice.key, choice]));
-  for (const choice of choices) merged.set(choice.key, choice);
-  remoteAudioChoices = Array.from(merged.values());
+  // Callers provide the complete current server snapshot. Do not retain choices
+  // that were unpublished or removed; failed fetches must skip this function.
+  const current = new Map<string, AudioChoice>();
+  for (const choice of choices) current.set(choice.key, choice);
+  remoteAudioChoices = Array.from(current.values());
 }
 
 export function isAudioChoiceKey(value: unknown): value is string {
