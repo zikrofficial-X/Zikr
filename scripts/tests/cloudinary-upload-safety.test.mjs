@@ -41,4 +41,14 @@ assert.ok(
   "the shared compensation helper must verify references before issuing a Cloudinary deletion",
 );
 
+
+const adminMediaRoute = read("src/app/api/admin/media/route.ts");
+assert.match(adminMediaRoute, /readBoundedRequestBytes\(request, MAX_MEDIA_UPLOAD_REQUEST_BYTES\)/);
+assert.doesNotMatch(adminMediaRoute, /request\.formData\(\)/);
+assert.match(adminMediaRoute, /readBoundedJsonBody\(request, MAX_MEDIA_PATCH_REQUEST_BYTES\)/);
+assert.doesNotMatch(adminMediaRoute, /request\.json\(\)/);
+assert.match(adminMediaRoute, /MAX_MEDIA_IMAGE_BYTES/);
+assert.match(adminMediaRoute, /title\.length > 180/);
+assert.match(adminMediaRoute, /attributionValue\.length > 500/);
+
 console.log("Cloudinary upload overwrite-safety contract passed.");
