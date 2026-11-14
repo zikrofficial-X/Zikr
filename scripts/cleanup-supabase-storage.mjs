@@ -373,7 +373,7 @@ export function createStorageInventoryBudget(maxObjects = MAX_STORAGE_INVENTORY_
       if (!bucketName) throw new Error("Storage inventory bucket is required.");
       for (const entry of entries) {
         const name = asString(entry?.name);
-        if (!name || name.includes("\\0")) {
+        if (!name || name.includes("\0")) {
           throw new Error("Storage inventory contains an invalid object name; refusing cleanup.");
         }
         const path = [bucketName, directory, name].filter(Boolean).join("/");
