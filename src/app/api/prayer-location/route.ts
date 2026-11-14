@@ -13,6 +13,18 @@ type LocationPayload = {
   timezone?: unknown;
 };
 
+type SavedPrayerLocation = {
+  id: string;
+  city: string;
+  country: string | null;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  is_default: boolean;
+  updated_at: string;
+  created: boolean;
+};
+
 function boundedText(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= max
     ? value.trim()
@@ -118,7 +130,8 @@ export async function POST(request: NextRequest) {
     p_longitude: longitude,
     p_timezone: timezone,
   }).single();
-  if (error || !data) {
+  const savedLocation = data as unknown as SavedPrayerLocation | null;
+  if (error || !savedLocation) {
     console.error("[prayer-location] save failed:", error ?? "RPC returned no location row");
     return NextResponse.json({ error: "Unable to save prayer location." }, { status: 500, headers: { "Cache-Control": "private, no-store" } });
   }
@@ -127,16 +140,16 @@ export async function POST(request: NextRequest) {
     {
       ok: true,
       location: {
-        id: data.id,
-        city: data.city,
-        country: data.country,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timezone: data.timezone,
-        isDefault: data.is_default,
-        updatedAt: data.updated_at,
+        id: savedLocation.id,
+        city: savedLocation.city,
+        country: savedLocation.country,
+        latitude: savedLocation.latitude,
+        longitude: savedLocation.longitude,
+        timezone: savedLocation.timezone,
+        isDefault: savedLocation.is_default,
+        updatedAt: savedLocation.updated_at,
       },
     },
-    { status: data.created ? 201 : 200, headers: { "Cache-Control": "private, no-store" } },
+    { status: savedLocation.created ? 201 : 200, headers: { "Cache-Control": "private, no-store" } },
   );
 }
