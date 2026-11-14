@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import {
   deleteManagedContent,
@@ -12,6 +13,21 @@ import {
 } from "@/features/admin/services/content";
 import { parseExplicitScheduledAt } from "@/features/admin/services/content-schedule";
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
+
+
+type ContentAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+
+async function recordContentAuditEvent(event: ContentAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/content] committed mutation but audit event failed:", {
+      action: event.action,
+      resourceType: event.resourceType,
+      resourceId: event.resourceId,
+      error,
+    }),
+  );
+}
 
 const TABLES = new Set<ManagedContentTable>([
   "stories",
@@ -36,7 +52,7 @@ export async function safeTogglePublishAction(formData: FormData) {
   const next = String(formData.get("next") ?? "false") === "true";
   await toggleManagedContent(table, id, next, updatedAt);
 
-  await recordAdminAuditEvent({
+  await recordContentAuditEvent({
     action: next ? "content.publish" : "content.unpublish",
     permission: "content.publish",
     resourceType: table,
@@ -54,7 +70,7 @@ export async function safeDeleteContentAction(formData: FormData) {
   const { table, id, updatedAt } = getTarget(formData);
   await deleteManagedContent(table, id, updatedAt);
 
-  await recordAdminAuditEvent({
+  await recordContentAuditEvent({
     action: "content.delete",
     permission: "content.delete",
     resourceType: table,
@@ -117,7 +133,7 @@ export async function scheduleContentPublishAction(formData: FormData) {
     headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify({ content_table: table, content_id: id, scheduled_at: date.toISOString(), created_by: admin.id, status: "queued" }),
   });
-  await recordAdminAuditEvent({
+  await recordContentAuditEvent({
     action: "content.publish.schedule",
     permission: "content.publish",
     resourceType: table,
@@ -160,7 +176,7 @@ export async function cancelContentPublishAction(formData: FormData) {
     throw new Error("تغيرت حالة موعد النشر أثناء الإلغاء؛ حدّث الصفحة ثم أعد المحاولة.");
   }
 
-  await recordAdminAuditEvent({
+  await recordContentAuditEvent({
     action: "content.publish.schedule_cancel",
     permission: "content.publish",
     resourceType: "content_publish_queue",

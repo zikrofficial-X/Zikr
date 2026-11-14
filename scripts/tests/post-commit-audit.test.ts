@@ -1,0 +1,58 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { runPostCommitAudit } from "../../src/features/admin/services/post-commit-audit";
+
+let successfulWrites = 0;
+let failureLogs = 0;
+assert.equal(
+  await runPostCommitAudit(async () => { successfulWrites += 1; }, () => { failureLogs += 1; }),
+  true,
+);
+assert.equal(successfulWrites, 1);
+assert.equal(failureLogs, 0);
+
+const auditFailure = new Error("admin audit table unavailable");
+let loggedFailure: unknown;
+assert.equal(
+  await runPostCommitAudit(async () => { throw auditFailure; }, (error) => {
+    failureLogs += 1;
+    loggedFailure = error;
+  }),
+  false,
+  "a failed post-commit audit write must be reported as incomplete without rejecting the committed action",
+);
+assert.equal(failureLogs, 1);
+assert.equal(loggedFailure, auditFailure);
+
+assert.equal(
+  await runPostCommitAudit(async () => { throw auditFailure; }, () => { throw new Error("logger unavailable"); }),
+  false,
+  "a logging failure must not rethrow after the business mutation has committed",
+);
+
+const actions = readFileSync("src/app/admin/content-actions.ts", "utf8");
+assert.match(actions, /runPostCommitAudit/);
+assert.equal(
+  (actions.match(/await recordContentAuditEvent\(/g) ?? []).length,
+  4,
+  "publish, delete, schedule, and cancellation actions must all protect their committed result from audit-log failures",
+);
+const operationChecks = [
+  ["safeTogglePublishAction", "await toggleManagedContent("],
+  ["safeDeleteContentAction", "await deleteManagedContent("],
+  ["scheduleContentPublishAction", 'await supabaseServerAdminRequest("/rest/v1/content_publish_queue"'],
+  ["cancelContentPublishAction", 'method: "PATCH"'],
+] as const;
+for (const [name, operation] of operationChecks) {
+  const start = actions.indexOf(`export async function ${name}`);
+  const next = actions.indexOf("export async function ", start + 1);
+  const body = actions.slice(start, next < 0 ? actions.length : next);
+  assert.ok(start >= 0, `${name} must remain present`);
+  assert.ok(body.indexOf(operation) >= 0, `${name} must perform its business mutation`);
+  assert.ok(
+    body.indexOf(operation) < body.indexOf("await recordContentAuditEvent("),
+    `${name} must record the audit event only after its business mutation commits`,
+  );
+}
+
+console.log("Post-commit admin audit failure contract passed.");
