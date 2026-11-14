@@ -344,7 +344,7 @@ export async function DELETE(request: NextRequest) {
         .update({ status: "registered", asset_id: survivingAsset.id, updated_at: new Date().toISOString() })
         .eq("storage_path", asset.storage_path)
         .eq("status", "deleting")
-        .is("asset_id", null)
+        .eq("asset_id", asset.id)
         .select("storage_path")
         .maybeSingle();
       if (restoreIntentError || !restoredIntent) {
@@ -355,6 +355,25 @@ export async function DELETE(request: NextRequest) {
         );
       }
     } else {
+      // Detach the deleted row from the durable cleanup intent before Storage
+      // removal. If removal fails, the retention worker can safely process the
+      // deleting/null intent; a stale asset_id would make it look protected.
+      const { data: detachedIntent, error: detachIntentError } = await db
+        .from("site_audio_upload_intents")
+        .update({ asset_id: null, updated_at: new Date().toISOString() })
+        .eq("storage_path", asset.storage_path)
+        .eq("status", "deleting")
+        .eq("asset_id", asset.id)
+        .select("storage_path")
+        .maybeSingle();
+      if (detachIntentError || !detachedIntent) {
+        storageCleanupPending = true;
+        intentFinalizationPending = true;
+        console.error(
+          "[api/admin/site-audio] deleted asset could not be detached from its cleanup intent; Storage removal skipped:",
+          detachIntentError?.message ?? "deletion intent did not match the deleted asset",
+        );
+      } else {
       const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
       if (storageError) {
         storageCleanupPending = true;
@@ -382,6 +401,7 @@ export async function DELETE(request: NextRequest) {
             console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError?.message ?? "deleting intent was not updated");
           }
         }
+      }
       }
     }
   }
