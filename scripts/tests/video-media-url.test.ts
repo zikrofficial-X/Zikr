@@ -259,3 +259,15 @@ test("purged internal Kids videos never fall back to stale Cloudinary source URL
     "Kids detail playback must use the canonical media-state resolver instead of stale metadata candidates",
   );
 });
+
+test("video upload requests are bounded and signed capabilities require a persisted audit event", () => {
+  const videoUploadRouteSource = readFileSync("src/app/api/admin/videos/upload/route.ts", "utf8");
+  assert.match(videoUploadRouteSource, /readBoundedJsonBody\(request\)/);
+  assert.doesNotMatch(videoUploadRouteSource, /request\.json\(\)/);
+  assert.match(videoUploadRouteSource, /if \(!auditRecorded\)[\s\S]*return jsonError\([\s\S]*?, 503\)/);
+  assert.ok(
+    videoUploadRouteSource.indexOf("if (!auditRecorded)") < videoUploadRouteSource.indexOf("return NextResponse.json(upload"),
+    "the signed upload response must occur only after audit persistence succeeds",
+  );
+  assert.doesNotMatch(videoUploadRouteSource, /\.{3}upload, auditRecorded/);
+});

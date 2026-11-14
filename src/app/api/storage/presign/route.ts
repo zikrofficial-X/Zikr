@@ -7,12 +7,15 @@ import {
   type StorageObjectPurpose,
 } from '@/lib/services/storage';
 import { createClient } from '@/lib/supabase/server';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 
 const PURPOSES = new Set<StorageObjectPurpose>(['avatar', 'media', 'audio', 'document']);
 
 function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
+  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 function dependencyError(error: unknown): boolean {
@@ -30,7 +33,12 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireUser();
     if (!user) return jsonError('Unauthorized', 401);
-    const body = await request.json().catch(() => null);
+    const parsedBody = await readBoundedJsonBody(request);
+    if (!parsedBody.ok) return jsonError(parsedBody.error, parsedBody.status);
+    const body =
+      parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+        ? (parsedBody.value as Record<string, unknown>)
+        : null;
     const purpose = body?.purpose as StorageObjectPurpose;
     if (!PURPOSES.has(purpose)) return jsonError('Invalid upload purpose.', 400);
 
@@ -46,7 +54,7 @@ export async function POST(request: NextRequest) {
       contentLength,
     });
 
-    return NextResponse.json(upload);
+    return NextResponse.json(upload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error('[api/storage/presign] POST error:', error);
     return jsonError(dependencyError(error) ? 'Storage service is not configured.' : 'Failed to create upload URL.', dependencyError(error) ? 503 : 500);
@@ -71,7 +79,7 @@ export async function GET(request: NextRequest) {
     if (!ownsKey) return jsonError('Forbidden object key.', 403);
 
     const url = await createPresignedDownloadUrl(key);
-    return NextResponse.json({ url, expiresIn: 300 });
+    return NextResponse.json({ url, expiresIn: 300 }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error('[api/storage/presign] GET error:', error);
     return jsonError(dependencyError(error) ? 'Storage service is not configured.' : 'Failed to create download URL.', dependencyError(error) ? 503 : 500);
