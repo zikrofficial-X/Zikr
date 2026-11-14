@@ -647,7 +647,7 @@ if (failed === 0) {
     const functionName = `default_function_execute_probe_${suffix}`;
     await db.exec(`SET ROLE ${ownerRole}`);
     try {
-      await db.exec(`CREATE FUNCTION public.${functionName}() RETURNS integer LANGUAGE sql SECURITY DEFINER AS $ SELECT 1 $`);
+      await db.exec(`CREATE FUNCTION public.${functionName}() RETURNS integer LANGUAGE sql SECURITY DEFINER AS 'SELECT 1'`);
     } finally {
       await db.exec("RESET ROLE");
     }
