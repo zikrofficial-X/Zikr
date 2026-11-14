@@ -137,11 +137,17 @@ export function useQuranWird(): WirdReturn {
 
     // Each account gets a separate local cache. The old unscoped key is left
     // untouched and is not silently imported into whichever account signs in.
-    void getWirdProgress().then(({ loggedIn, userId: serverUserId, state: remoteState }) => {
+    void getWirdProgress().then(({ loggedIn, userId: serverUserId, state: remoteState, readError, invalidState }) => {
       if (cancelled) return;
       if (serverUserId && serverUserId !== userId) {
         userIdRef.current = serverUserId;
         setUserId(serverUserId);
+        return;
+      }
+      if (readError || invalidState) {
+        // Preserve the local cache when the account read failed or returned
+        // malformed JSON; never overwrite an unreadable remote row.
+        setLoaded(true);
         return;
       }
       if (revisionRef.current !== initialRevision) {

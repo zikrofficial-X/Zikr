@@ -79,6 +79,8 @@ const wirdService = readFileSync('src/features/wird/services/progress.ts', 'utf8
 assert.match(wirdService, /normalizeWirdProgressState\(data\.progress_json\)/, 'remote JSONB state must be validated before returning to the client');
 assert.match(wirdService, /normalizeWirdProgressState\(state\)/, 'server writes must reject malformed progress JSON');
 assert.match(wirdService, /userId: session\.user\.id/, 'the account id must be returned for local cache isolation');
+assert.match(wirdService, /readError: true/, 'read failures must be distinguishable from a missing account row');
+assert.match(wirdService, /invalidState: state === null/, 'malformed remote JSON must not be treated as an empty row');
 assert.match(wirdService, /session\.user\.id !== expectedUserId/, 'server writes must be bound to the account that initiated the sync');
 
 const wirdHook = readFileSync('src/features/quran/hooks/use-quran-wird.ts', 'utf8');
@@ -91,6 +93,7 @@ assert.ok(wirdHook.includes('onAuthStateChange((_event: AuthChangeEvent, session
 assert.ok(wirdHook.includes('getSession().then(({ data: sessionData }: { data: { session: Session | null } })'), 'session bootstrap must remain strictly typed');
 assert.match(wirdHook, /getStorageKey\(userId\)/, 'local progress must be stored per account');
 assert.match(wirdHook, /mergeWirdProgressStates\(localState, remoteToday, today\)/, 'offline progress must be merged instead of discarded');
+assert.match(wirdHook, /if \(readError \|\| invalidState\)/, 'failed or malformed account reads must not overwrite the local cache');
 assert.match(wirdHook, /saveWirdProgress\(next, expectedUserId\)\.catch/, 'remote writes must be bound to the expected user and never create unhandled rejections');
 
 console.log('Quran and Wird reading-progress integrity contracts passed.');

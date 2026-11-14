@@ -19,9 +19,11 @@ export async function getCurrentWirdProgress(): Promise<{
   loggedIn: boolean;
   userId: string | null;
   state: WirdProgressState | null;
+  readError: boolean;
+  invalidState: boolean;
 }> {
   const session = await getCurrentUser();
-  if (!session) return { loggedIn: false, userId: null, state: null };
+  if (!session) return { loggedIn: false, userId: null, state: null, readError: false, invalidState: false };
 
   const { data, error } = await session.supabase
     .from("reading_progress")
@@ -31,14 +33,20 @@ export async function getCurrentWirdProgress(): Promise<{
     .eq("ref", "wird")
     .maybeSingle();
 
-  if (error || !data?.progress_json) {
-    return { loggedIn: true, userId: session.user.id, state: null };
+  if (error) {
+    console.error('[wird] read progress failed:', error);
+    return { loggedIn: true, userId: session.user.id, state: null, readError: true, invalidState: false };
   }
-
+  if (!data?.progress_json) {
+    return { loggedIn: true, userId: session.user.id, state: null, readError: false, invalidState: false };
+  }
+  const state = normalizeWirdProgressState(data.progress_json);
   return {
     loggedIn: true,
     userId: session.user.id,
-    state: normalizeWirdProgressState(data.progress_json),
+    state,
+    readError: false,
+    invalidState: state === null,
   };
 }
 
