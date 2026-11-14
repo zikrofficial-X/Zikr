@@ -2,6 +2,8 @@
 
 import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
+import { getStableReleaseByTag } from "@/features/releases/services/github-android-release";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -17,6 +19,7 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 
 export async function saveAndroidReleaseAction(formData: FormData) {
   await requireAdminPermission("android.manage");
+  await requireAdminStepUp("android.manage", "/admin/android");
 
   const mode = String(formData.get("mode") ?? "auto").trim();
   const releaseTag = String(formData.get("releaseTag") ?? "").trim();
@@ -30,6 +33,18 @@ export async function saveAndroidReleaseAction(formData: FormData) {
   }
   if (mode === "pinned" && !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(releaseTag)) {
     throw new Error("صيغة وسم إصدار Android غير صالحة.");
+  }
+
+  if (mode === "pinned") {
+    let stableRelease = null;
+    try {
+      stableRelease = await getStableReleaseByTag(releaseTag);
+    } catch {
+      stableRelease = null;
+    }
+    if (!stableRelease || stableRelease.tag_name !== releaseTag) {
+      throw new Error("لا يمكن تثبيت إصدار غير منشور أو لا يحتوي على ملفي APK وAAB صالحين.");
+    }
   }
 
   await supabaseServerAdminRequest("/rest/v1/site_settings?on_conflict=key", {
