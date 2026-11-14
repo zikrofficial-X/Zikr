@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
@@ -57,7 +58,16 @@ export async function POST(request: Request) {
   const auth = await requireAdminApi('sections.manage');
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
   try {
-    const body = await request.json() as { visibility?: unknown };
+    const bodyResult = await readBoundedJsonBody(request, 8 * 1024);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    const body = bodyResult.value && typeof bodyResult.value === 'object' && !Array.isArray(bodyResult.value)
+      ? bodyResult.value as { visibility?: unknown }
+      : {};
     const visibility = normalizeVisibility(body.visibility);
     await supabaseServerAdminRequest('/rest/v1/site_settings?on_conflict=key', {
       method: 'POST',

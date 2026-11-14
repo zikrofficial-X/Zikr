@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -57,13 +58,14 @@ export async function POST(request: NextRequest) {
   if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error, nextPath: "nextPath" in publishAuth ? publishAuth.nextPath : undefined }, { status: publishAuth.status, headers: { "Cache-Control": "no-store" } });
 
   try {
-    let requestBody: unknown;
-    try {
-      requestBody = await request.json();
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON request body." }, { status: 400 });
+    const bodyResult = await readBoundedJsonBody(request);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { "Cache-Control": "no-store" } },
+      );
     }
-    const parsedRequest = parseWrittenGenerationRequest(requestBody);
+    const parsedRequest = parseWrittenGenerationRequest(bodyResult.value);
     if (!parsedRequest.ok) {
       const message = parsedRequest.reason === "invalid_category"
         ? "تصنيف المحتوى غير صالح."

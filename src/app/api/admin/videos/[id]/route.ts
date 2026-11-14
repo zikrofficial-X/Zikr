@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
@@ -29,7 +30,16 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     const auth = await requireAdminStepUpApi('video.manage', '/admin/video/requests');
     if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
     const { id } = await context.params;
-    const body = await request.json() as Record<string, unknown>;
+    const bodyResult = await readBoundedJsonBody(request);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { 'Cache-Control': 'no-store' } },
+      );
+    }
+    const body = bodyResult.value && typeof bodyResult.value === 'object' && !Array.isArray(bodyResult.value)
+      ? bodyResult.value as Record<string, unknown>
+      : {};
     if (body.status !== 'pending') {
       return NextResponse.json(
         { error: 'تغيير حالة العملية يتم بواسطة عامل الطابور؛ إعادة المحاولة متاحة للعمليات الفاشلة فقط.' },
