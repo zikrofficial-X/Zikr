@@ -74,7 +74,8 @@ for (const token of [
 }
 for (const token of [
   'requireAdminPermission("settings.manage")',
-  'recordAdminAuditEvent({',
+  'recordAdminAuditEventSafely({',
+  'runPostCommitAudit(',
   'optionalHttpsUrl(',
   'key: section',
   'value: mergedSetting',

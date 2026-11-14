@@ -94,3 +94,10 @@ for (const [path, expectedCalls] of postCommitActions) {
   assert.ok(source.includes("runPostCommitAudit("), `${path} must preserve the business result when audit persistence fails`);
   assert.equal(source.includes("await recordAdminAuditEvent({"), false, `${path} must not leave an unguarded post-commit audit write`);
 }
+
+
+const adminPagesVerifier = readFileSync("scripts/verify-admin-pages.mjs", "utf8");
+assert.ok(adminPagesVerifier.includes("'recordAdminAuditEventSafely({'"), "admin page verifier must accept best-effort post-commit audit wrappers");
+assert.ok(adminPagesVerifier.includes("'runPostCommitAudit('"), "admin page verifier must require the shared post-commit audit guard");
+const adminGovernanceVerifier = readFileSync("scripts/verify-admin-governance.mjs", "utf8");
+assert.ok(adminGovernanceVerifier.includes("await recordAdminAuditEventSafely"), "admin governance verifier must count safe audit call sites rather than helper internals");
