@@ -37,7 +37,7 @@ assert.deepEqual(selectExpiredSiteAudioUploadIntents([validIntent], now), [valid
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered" }], now), []);
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-15T00:00:00.000Z" }], now), []);
 assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, storage_path: ownerId + "/../../other" }], now), /unsafe path or invalid metadata/);
-assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, upload_expires_at: "2026-11-14T01:00:00.000Z" }], now), /still have a live upload window/);
+assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }], now), /unsafe path or invalid metadata/);
 
 const uploadRoute = readFileSync("src/app/api/admin/site-audio/upload/route.ts", "utf8");
 const adminRoute = readFileSync("src/app/api/admin/site-audio/route.ts", "utf8");
