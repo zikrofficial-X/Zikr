@@ -1,4 +1,4 @@
-import { hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
+import { getManualReconciliationPlatforms, hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
 import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 const SOCIAL_PLATFORMS = new Set(["youtube", "facebook", "facebook_reels"]);
@@ -24,6 +24,9 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   // would otherwise keep the last entry for a platform. Public feeds must fail closed.
   if (hasMalformedSocialPlatformResults(rawPlatformResults)) return [];
   const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
+  const manualReconciliationPlatforms = new Set(
+    getManualReconciliationPlatforms({ ...metadata, sourceMediaMissing: false }),
+  );
   // Only an absent/null field is a legacy row. An explicit empty ledger is
   // authoritative and must not fall back to target_platforms.
   const hasPlatformResultLedger = rawPlatformResults !== undefined && rawPlatformResults !== null;
@@ -40,7 +43,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
       if (!SOCIAL_PLATFORMS.has(platform)) return false;
       const result = asRecord(value);
       const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
-      return result.ok === true && remoteId.length > 0 && !isDeleted(platform, remoteId);
+      return result.ok === true && remoteId.length > 0 && !manualReconciliationPlatforms.has(platform) && !isDeleted(platform, remoteId);
     })
     .map(([platform]) => platform);
   if (delivered.length > 0) return delivered;
@@ -52,7 +55,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   const targets = Array.isArray(row.target_platforms) ? row.target_platforms : [];
   return [...new Set(targets.filter(
     (platform): platform is string =>
-      typeof platform === "string" && SOCIAL_PLATFORMS.has(platform) && !isDeleted(platform),
+      typeof platform === "string" && SOCIAL_PLATFORMS.has(platform) && !manualReconciliationPlatforms.has(platform) && !isDeleted(platform),
   ))];
 }
 
