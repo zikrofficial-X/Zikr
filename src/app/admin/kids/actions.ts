@@ -194,6 +194,7 @@ export async function saveKidsContentAction(formData: FormData) {
     await compensateOrphanedKidsImage(uploadedImage, requestedPublicId);
     throw new Error("لم يتم تأكيد حفظ محتوى الأطفال من قاعدة البيانات.");
   }
+  let auditError: unknown = null;
   try {
     await recordAdminAuditEvent({
       action: "kids.content.save",
@@ -202,12 +203,17 @@ export async function saveKidsContentAction(formData: FormData) {
       resourceId: saved[0].id,
       metadata: { slug, type, published, ageGroup, ageAppropriate: type === "story" ? ageAppropriate : null, gameId },
     });
-  } catch (auditError) {
-    console.warn("[admin/kids] audit event unavailable after content save:", auditError);
+  } catch (error) {
+    auditError = error;
   }
 
   revalidatePath("/api/kids/content");
   revalidatePath("/kids");
   revalidatePath(`/kids/${slug}`);
   revalidatePath("/admin/kids");
+
+  if (auditError) {
+    console.warn("[admin/kids] audit event unavailable after content save:", auditError);
+    throw new Error("Kids content was saved, but its audit event could not be recorded. Do not repeat the action; notify an owner.");
+  }
 }

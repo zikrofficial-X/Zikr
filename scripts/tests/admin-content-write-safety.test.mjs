@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 const actions = readFileSync("src/app/admin/content-actions.ts", "utf8");
 const content = readFileSync("src/features/admin/services/content.ts", "utf8");
 const stories = readFileSync("src/features/stories/services/stories.ts", "utf8");
+const hardening = readFileSync("supabase/migrations/20261113190000_harden_admin_managed_content_write_permissions.sql", "utf8");
+const kidsActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
 
 assert.match(actions, /if \(!updatedAt\).*Refresh before publishing/s, "publish must require the client row version");
 assert.match(actions, /if \(!updatedAt\).*Refresh before deleting/s, "delete must require the client row version");
@@ -21,4 +23,14 @@ assert.match(stories, /const CACHE_TTL = 60_000/, "scheduled story publication m
 assert.match(stories, /revalidate: 60, tags: \["public-stories"\]/, "story fetches must have a short invalidatable data-cache tag");
 assert.match(stories, /export function invalidateStoriesCache\(\)/, "admin actions must be able to clear the process-local story cache");
 
-console.log("Admin content write-safety and story cache invalidation contracts passed.");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_insert ON public\\.kids_content/, "Kids content direct insert policy must be removed");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_update ON public\\.kids_content/, "Kids content direct update policy must be removed");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_delete ON public\\.kids_content/, "Kids content direct delete policy must be removed");
+assert.match(hardening, /REVOKE ALL PRIVILEGES ON TABLE public\\.kids_content FROM PUBLIC, anon, authenticated/, "Kids content writes must be server-role-only");
+assert.match(hardening, /GRANT SELECT ON TABLE public\\.kids_content TO anon, authenticated/, "public Kids content reads must remain available through RLS");
+assert.match(hardening, /GRANT ALL PRIVILEGES ON TABLE public\\.kids_content TO service_role/, "server-side Kids content actions must retain their write capability");
+assert.match(kidsActions, /let auditError: unknown = null/);
+assert.match(kidsActions, /Kids content was saved, but its audit event could not be recorded/);
+assert.ok(kidsActions.indexOf('revalidatePath("/kids")') < kidsActions.indexOf("if (auditError)"), "Kids routes must revalidate before reporting a post-commit audit failure");
+
+console.log("Admin content write-safety, Kids write hardening, audit integrity, and story cache invalidation contracts passed.");

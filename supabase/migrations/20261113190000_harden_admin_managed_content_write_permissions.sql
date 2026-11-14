@@ -5,6 +5,7 @@ ALTER TABLE public.video_generation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_audio_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kids_content ENABLE ROW LEVEL SECURITY;
 
 -- All tracked consumers read and write these admin-managed records through
 -- server routes/jobs using the service role. Keep public read-only catalog
@@ -43,20 +44,30 @@ DROP POLICY IF EXISTS admin_all_videos_insert ON public.videos;
 DROP POLICY IF EXISTS admin_all_videos_update ON public.videos;
 DROP POLICY IF EXISTS admin_all_videos_delete ON public.videos;
 
+-- Kids content is written through the step-up, validation, and audit-protected
+-- server action. Keep public reads, but do not let authenticated admins bypass
+-- that path with direct Supabase table mutations.
+DROP POLICY IF EXISTS admin_all_kids_content_insert ON public.kids_content;
+DROP POLICY IF EXISTS admin_all_kids_content_update ON public.kids_content;
+DROP POLICY IF EXISTS admin_all_kids_content_delete ON public.kids_content;
+
 REVOKE ALL PRIVILEGES ON TABLE public.social_publish_queue FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.video_generation_requests FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.media_assets FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.site_audio_assets FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.videos FROM PUBLIC, anon, authenticated;
+REVOKE ALL PRIVILEGES ON TABLE public.kids_content FROM PUBLIC, anon, authenticated;
 
 GRANT ALL PRIVILEGES ON TABLE public.social_publish_queue TO service_role;
 GRANT ALL PRIVILEGES ON TABLE public.video_generation_requests TO service_role;
 GRANT ALL PRIVILEGES ON TABLE public.media_assets TO service_role;
 GRANT ALL PRIVILEGES ON TABLE public.site_audio_assets TO service_role;
 GRANT ALL PRIVILEGES ON TABLE public.videos TO service_role;
+GRANT ALL PRIVILEGES ON TABLE public.kids_content TO service_role;
 
 -- Public catalog reads remain available through the existing RLS policies.
 GRANT SELECT ON TABLE public.media_assets TO anon;
 GRANT SELECT ON TABLE public.videos TO anon, authenticated;
+GRANT SELECT ON TABLE public.kids_content TO anon, authenticated;
 
 COMMIT;

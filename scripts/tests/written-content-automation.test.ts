@@ -564,4 +564,11 @@ assert.match(socialPublishing, /kidsSourceApprovalBlocked/);
 assert.match(socialPublishing, /kidsSourceApprovalPending/);
 assert.match(worker, /published:\s*false/);
 assert.match(worker, /content_table:\s*"articles"/);
-console.log("Written-content source-lock, quality, idempotency, website scheduling, and Facebook queue tests passed.");
+const envExample = readFileSync(".env.example", "utf8");
+assert.match(envExample, /^WRITTEN_CONTENT_ENABLED=false$/m, "local .env.example must not enable Gemini content generation by default");
+assert.match(envExample, /^AUTO_VIDEO_ENABLED=false$/m, "local .env.example must not enable video generation by default");
+assert.match(envExample, /^AUTO_VIDEO_PUBLISH_ENABLED=false$/m, "local .env.example must not enable video publishing by default");
+assert.match(envExample, /^SOCIAL_PUBLISH_ENABLED=false$/m, "local .env.example must not enable social publishing by default");
+assert.match(envExample, /^VIDEO_AUTOMATION_DRY_RUN=true$/m, "local .env.example must keep video automation in dry-run mode");
+
+console.log("Written-content source-lock, quality, idempotency, website scheduling, Facebook queue, and safe local automation defaults passed.");
