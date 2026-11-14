@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { resolveYouTubeVideoDisclosure } from "../../src/features/social/services/youtube-video-disclosure";
 import { readFileSync } from "node:fs";
-import { getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken, selectYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
+import { findYouTubeChannelAcrossPages, getYouTubeRefreshToken, getYouTubeUploadRefreshToken, hasYouTubeReadScopes, hasYouTubeUploadScopes, matchesConfiguredYouTubeChannel, readStoredYouTubeUploadRefreshToken, selectYouTubeChannel } from "../../src/features/social/services/youtube-oauth-credentials";
 import { buildCanonicalOAuthStartRedirect } from "../../src/features/social/services/oauth-canonical-origin";
 
 assert.equal(matchesConfiguredYouTubeChannel("UC123", "UC123"), true, "stored provider ID must match the configured YouTube channel");
@@ -32,6 +32,40 @@ assert.equal(
   null,
   "a configured channel that is not in the granted account channel list must fail closed",
 );
+
+const requestedPageTokens: Array<string | undefined> = [];
+const paginatedConfiguredChannel = await findYouTubeChannelAcrossPages(async (pageToken) => {
+  requestedPageTokens.push(pageToken);
+  if (!pageToken) {
+    return {
+      items: [{ id: "UC-first" }],
+      nextPageToken: "next-channel-page",
+    };
+  }
+  return { items: [{ id: "UC-configured" }] };
+}, "UC-configured");
+assert.equal(paginatedConfiguredChannel.channel?.id, "UC-configured");
+assert.equal(paginatedConfiguredChannel.complete, true);
+assert.equal(paginatedConfiguredChannel.pagesFetched, 2);
+assert.deepEqual(requestedPageTokens, [undefined, "next-channel-page"]);
+
+const channelsAcrossPages = await findYouTubeChannelAcrossPages(async (pageToken) => (
+  pageToken
+    ? { items: [{ id: "UC-second" }] }
+    : { items: [{ id: "UC-first" }], nextPageToken: "next-channel-page" }
+));
+assert.equal(channelsAcrossPages.channel, null);
+assert.equal(channelsAcrossPages.multipleChannels, true);
+assert.equal(channelsAcrossPages.complete, true, "a second channel on a later page must still require explicit selection");
+
+const incompleteChannelLookup = await findYouTubeChannelAcrossPages(
+  async () => ({ items: [{ id: "UC-first" }], nextPageToken: "next-channel-page" }),
+  "UC-not-on-first-page",
+  1,
+);
+assert.equal(incompleteChannelLookup.channel, null);
+assert.equal(incompleteChannelLookup.complete, false, "a bounded scan must not falsely report a configured channel as missing");
+
 
 
 const originalConfiguredChannelId = process.env.YOUTUBE_CHANNEL_ID;
@@ -268,10 +302,14 @@ const youtubeCallbackSource = readFileSync(
   "utf8",
 );
 assert.match(youtubeCallbackSource, /hasYouTubeUploadScopes\(scopes\)/, "OAuth callback must reject a grant that includes delete-capable scopes");
-assert.match(youtubeCallbackSource, /selectYouTubeChannel\(validChannels, configuredChannelId\)/, "OAuth callback must select the configured channel from all channels returned by Google");
+assert.match(youtubeCallbackSource, /findYouTubeChannelAcrossPages/, "OAuth callback must inspect paginated channel results");
+assert.match(youtubeCallbackSource, /maxResults", "50"/, "OAuth callback must request the maximum channel page size");
+assert.match(youtubeCallbackSource, /pageToken/, "OAuth callback must follow Google channel pagination");
+assert.match(youtubeCallbackSource, /channel_lookup_incomplete/, "OAuth callback must not misreport a bounded incomplete lookup as a missing channel");
 assert.match(youtubeCallbackSource, /channel_selection_required/, "OAuth callback must fail closed when multiple channels are returned without a configured channel ID");
 const socialClientSource = readFileSync(new URL("../../src/app/admin/social/social-client.tsx", import.meta.url), "utf8");
 assert.match(socialClientSource, /channel_selection_required/, "the admin UI must explain how to resolve an ambiguous multi-channel OAuth result");
+assert.match(socialClientSource, /channel_lookup_incomplete/, "the admin UI must explain when a bounded channel lookup needs another attempt");
 
 const youtubeConnectSource = readFileSync(
   new URL("../../src/app/api/admin/social/youtube/connect/route.ts", import.meta.url),
