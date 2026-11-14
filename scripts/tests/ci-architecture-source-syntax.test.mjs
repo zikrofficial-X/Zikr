@@ -31,11 +31,11 @@ const legacyNode20Actions = [
   "actions/download-artifact@v4",
   "pnpm/action-setup@v4",
 ];
-for (const filename of readdirSync(workflowDirectory).filter((name) => /\\.ya?ml$/i.test(name))) {
+for (const filename of readdirSync(workflowDirectory).filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"))) {
   const source = readFileSync(resolve(workflowDirectory, filename), "utf8");
   for (const action of legacyNode20Actions) {
     assert.ok(!source.includes(action), filename + " must not use deprecated " + action);
   }
 }
 
-console.log("CI architecture verifier syntax regression test passed.");
+console.log("CI architecture and workflow runtime contract tests passed.");
