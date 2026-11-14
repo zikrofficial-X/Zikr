@@ -73,6 +73,7 @@ export function SiteAudioManager() {
       });
       const signed = await presign.json();
       if (!presign.ok) throw new Error(signed.error ?? "تعذر تجهيز الرفع.");
+      const presignAuditRecorded = signed.auditRecorded !== false;
 
       const uploadResponse = await fetch(signed.uploadUrl, {
         method: "PUT",
@@ -97,8 +98,8 @@ export function SiteAudioManager() {
 
       setAssets(current => [payload.asset, ...current]);
       setTitle("");
-      setStatus(payload.auditRecorded === false
-        ? "تم رفع المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
+      setStatus(payload.auditRecorded === false || !presignAuditRecorded
+        ? "تم رفع المقطع، لكن تعذر تسجيل أحد أحداث التدقيق الإداري. راجع مسؤول النظام."
         : "تم رفع المقطع. اختر «جعله الأساسي» لتفعيله.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "فشل رفع المقطع.");
