@@ -199,8 +199,8 @@ async function fetchGa4AnalyticsSnapshot(): Promise<Ga4AnalyticsSnapshot> {
 }
 
 const getCachedGa4AnalyticsSnapshot = unstable_cache(
-  fetchGa4AnalyticsSnapshot,
-  ["zikr-ga4-analytics-readonly-v1"],
+  (_credentialFingerprint: string) => fetchGa4AnalyticsSnapshot(),
+  ["zikr-ga4-analytics-readonly-v2"],
   { revalidate: 3600 },
 );
 
@@ -395,12 +395,24 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
   const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const start7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // A newly authorized read-only refresh token gets a separate cache entry.
-  // Hash it so the cache key never contains the raw credential.
+  // Credential changes must invalidate cached integration status and metrics.
+  // Hash the complete credential tuple so no raw secret/token enters the cache key.
   const youtubeRefreshToken = await getYouTubeRefreshToken();
-  const youtubeCredentialFingerprint = youtubeRefreshToken
-    ? createHash("sha256").update(youtubeRefreshToken).digest("hex")
-    : "not-configured";
+  const youtubeCredentialFingerprint = createHash("sha256")
+    .update([
+      process.env.YOUTUBE_CLIENT_ID,
+      process.env.YOUTUBE_CLIENT_SECRET,
+      youtubeRefreshToken,
+    ].map((value) => value?.trim() ?? "").join("\0"))
+    .digest("hex");
+  const ga4CredentialFingerprint = createHash("sha256")
+    .update([
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GA4_REFRESH_TOKEN,
+      process.env.GA4_PROPERTY_ID,
+    ].map((value) => value?.trim() ?? "").join("\0"))
+    .digest("hex");
 
   const [
     videoCompleted,
@@ -427,7 +439,7 @@ export async function getTrafficRevenueSnapshot(): Promise<TrafficRevenueSnapsho
     supabase.from("articles").select("id", { count: "exact", head: true }).eq("published", true),
     supabase.from("videos").select("id", { count: "exact", head: true }).eq("published", true),
     getCachedYoutubeAnalyticsSnapshot(youtubeCredentialFingerprint),
-    getCachedGa4AnalyticsSnapshot(),
+    getCachedGa4AnalyticsSnapshot(ga4CredentialFingerprint),
   ]);
 
   const metrics = {
