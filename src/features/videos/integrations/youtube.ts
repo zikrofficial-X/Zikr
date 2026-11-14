@@ -104,6 +104,7 @@ export function buildYoutubeSyncAttemptState(input: {
   channelId: string;
   attemptedAt: string;
   nextAllowedSyncAt: string;
+  lastSuccessAt: string | null;
   cachedPlaylists: YoutubePlaylist[];
 }) {
   return {
@@ -111,6 +112,7 @@ export function buildYoutubeSyncAttemptState(input: {
     channel_id: input.channelId,
     status: 'never_synced' as const,
     last_attempted_at: input.attemptedAt,
+    last_success_at: input.lastSuccessAt,
     next_allowed_sync_at: input.nextAllowedSyncAt,
     last_error: null,
     // Persist the channel-scoped snapshot when claiming the sync. On a channel
@@ -335,6 +337,7 @@ export async function syncYoutubeFeed(maxResults = 24): Promise<YoutubeChannelFe
     channelId,
     attemptedAt: attemptAt,
     nextAllowedSyncAt: new Date(now + SYNC_LOCK_MS).toISOString(),
+    lastSuccessAt: health.lastSuccessAt,
     cachedPlaylists: health.cachedPlaylists,
   });
   const { error: stateError } = await supabase
