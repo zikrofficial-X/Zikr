@@ -63,6 +63,77 @@ export function requireSocialQueueRows<T>(value: unknown, label: string): T[] {
   return value as T[];
 }
 
+export const SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS = 5_000;
+
+export type SocialQueuePageScanResult<T> = {
+  rows: T[];
+  scanned: number;
+  truncated: boolean;
+};
+
+/**
+ * Scan deterministic PostgREST pages until enough publishable candidates are
+ * found or the explicit safety cap is reached. Held/terminal rows must not
+ * permanently occupy the first bounded query window.
+ */
+export async function scanSocialQueueCandidatePages<T extends { id: string }>(options: {
+  pageSize: number;
+  maxRows: number;
+  fetchPage: (offset: number, limit: number) => Promise<readonly T[]>;
+  hasEnoughCandidates: (rows: readonly T[]) => boolean | Promise<boolean>;
+}): Promise<SocialQueuePageScanResult<T>> {
+  const { pageSize, maxRows } = options;
+  if (
+    !Number.isSafeInteger(pageSize) ||
+    pageSize < 1 ||
+    !Number.isSafeInteger(maxRows) ||
+    maxRows < pageSize
+  ) {
+    throw new Error("Social queue page scans require positive safe page and row limits.");
+  }
+
+  const rowsById = new Map<string, T>();
+  let offset = 0;
+  let exhausted = false;
+  let enough = false;
+
+  while (offset < maxRows) {
+    const limit = Math.min(pageSize, maxRows - offset);
+    const page = await options.fetchPage(offset, limit);
+    if (!Array.isArray(page)) {
+      throw new Error("Social queue page query returned an invalid row set.");
+    }
+    if (page.length > limit) {
+      throw new Error("Social queue page query returned more rows than requested.");
+    }
+    if (page.length === 0) {
+      exhausted = true;
+      break;
+    }
+
+    for (const item of page) {
+      if (!item || typeof item.id !== "string" || !item.id.trim()) {
+        throw new Error("Social queue page query returned a row without a stable non-empty ID.");
+      }
+      rowsById.set(item.id, item);
+    }
+
+    offset += page.length;
+    enough = await options.hasEnoughCandidates([...rowsById.values()]);
+    if (enough) break;
+    if (page.length < limit) {
+      exhausted = true;
+      break;
+    }
+  }
+
+  return {
+    rows: [...rowsById.values()],
+    scanned: offset,
+    truncated: !exhausted && !enough && offset >= maxRows,
+  };
+}
+
 export type SocialQueueSelectionCandidate = {
   id: string;
   content_type: string;

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems, validateStoredSocialTargetPlatforms } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, scanSocialQueueCandidatePages, SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS, selectEligibleSocialPublishItems, validateStoredSocialTargetPlatforms } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
   canAttemptSocialPlatform,
@@ -26,6 +26,86 @@ const writtenPosts = [
 ];
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
+
+assert.equal(SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS, 5_000, "social queue pagination must have an explicit bounded scan ceiling");
+const pageScanCalls: Array<{ offset: number; limit: number }> = [];
+const pageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 6,
+  fetchPage: async (offset, limit) => {
+    pageScanCalls.push({ offset, limit });
+    if (offset === 0) {
+      return [
+        { id: "held-page-1", publishable: false },
+        { id: "held-page-2", publishable: false },
+      ];
+    }
+    if (offset === 2) {
+      return [
+        { id: "held-page-3", publishable: false },
+        { id: "eligible-after-first-window", publishable: true },
+      ];
+    }
+    return [];
+  },
+  hasEnoughCandidates: (rows) => rows.some((item) => item.publishable),
+});
+assert.deepEqual(pageScanCalls, [{ offset: 0, limit: 2 }, { offset: 2, limit: 2 }]);
+assert.deepEqual(
+  pageScan.rows.map((item) => item.id),
+  ["held-page-1", "held-page-2", "held-page-3", "eligible-after-first-window"],
+  "the social queue scan must continue past a full page of held rows to find a later eligible item",
+);
+assert.equal(pageScan.scanned, 4);
+assert.equal(pageScan.truncated, false);
+
+const cappedPageScanCalls: number[] = [];
+const cappedPageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 4,
+  fetchPage: async (offset, limit) => {
+    cappedPageScanCalls.push(offset);
+    return Array.from({ length: limit }, (_, index) => ({
+      id: `held-${offset + index}`,
+      publishable: false,
+    }));
+  },
+  hasEnoughCandidates: () => false,
+});
+assert.deepEqual(cappedPageScanCalls, [0, 2]);
+assert.equal(cappedPageScan.scanned, 4);
+assert.equal(cappedPageScan.truncated, true, "the scanner must report when its explicit safety cap is reached");
+
+const emptyPageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 4,
+  fetchPage: async () => [],
+  hasEnoughCandidates: () => false,
+});
+assert.equal(emptyPageScan.scanned, 0);
+assert.equal(emptyPageScan.truncated, false, "an exhausted queue is not a truncated scan");
+
+await assert.rejects(
+  scanSocialQueueCandidatePages({
+    pageSize: 2,
+    maxRows: 4,
+    fetchPage: async () => [{ id: "" }],
+    hasEnoughCandidates: () => false,
+  }),
+  /stable non-empty ID/,
+  "malformed page rows must fail closed rather than disappear from the queue scan",
+);
+await assert.rejects(
+  scanSocialQueueCandidatePages({
+    pageSize: 0,
+    maxRows: 4,
+    fetchPage: async () => [],
+    hasEnoughCandidates: () => false,
+  }),
+  /positive safe page and row limits/,
+  "invalid scan bounds must be rejected",
+);
+
 
 assert.deepEqual(
   validateStoredSocialTargetPlatforms(["facebook", "youtube"]),
@@ -300,6 +380,9 @@ assert.match(
   "stale recovery updates must include the same stale cutoff that selected the candidate",
 );
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
+assert.match(socialPublisher, /scanSocialQueueCandidatePages/, "the worker must page beyond held queue rows before declaring a batch empty");
+assert.match(socialPublisher, /&offset=\\$\\{offset\\}/, "the worker must advance through deterministic PostgREST candidate pages");
+assert.match(socialPublisher, /SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS/, "candidate pagination must remain bounded");
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
 assert.equal(

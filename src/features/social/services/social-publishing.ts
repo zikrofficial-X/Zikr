@@ -14,6 +14,8 @@ import {
   buildSocialPublishLeaseFilter,
   mergeUniqueSocialPublishCandidates,
   requireSocialQueueRows,
+  scanSocialQueueCandidatePages,
+  SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS,
   selectEligibleSocialPublishItems,
   validateStoredSocialTargetPlatforms,
 } from "@/features/social/services/social-queue-selection";
@@ -250,38 +252,15 @@ export async function getPendingSocialPublishItems(
   const now = encodeURIComponent(new Date().toISOString());
   const createdSince = encodeURIComponent(resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER));
   const effectiveLimit = Math.max(1, Math.min(100, Math.floor(limit) || 1));
-  // Read a wider candidate window before applying automated-QA eligibility. Held
-  // videos must not occupy the small delivery batch and starve written posts.
-  const candidateLimit = Math.max(100, Math.min(500, effectiveLimit * 25));
+  // Page beyond held/terminal rows instead of allowing the first bounded
+  // PostgREST window to starve later eligible video or written-post items.
+  const candidateLimit = 500;
   const maxAttemptsFor = (metadata: Record<string, unknown> | null) => socialMaxAttempts(metadata);
   const statusPriority: SocialQueueStatus[] = ["partial", "queued", "failed"];
   try {
     const select = "id,content_type,content_id,title,body,image_url,video_url,target_platforms,status,scheduled_at,published_at,error_message,metadata,created_at,updated_at";
-    const dueAndRecent = `or=(scheduled_at.is.null,scheduled_at.lte.${now})&created_at=gte.${createdSince}&select=${select}&order=scheduled_at.asc.nullsfirst,created_at.asc&limit=${candidateLimit}`;
-    const [batches, writtenCandidates] = await Promise.all([
-      Promise.all(statusPriority.map((status) =>
-        supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-          `/rest/v1/social_publish_queue?status=eq.${status}&${dueAndRecent}`,
-        ),
-      )),
-      // A dedicated written-post window prevents a large held-video backlog
-      // from hiding every written post beyond the general candidate limit.
-      supabaseServerAdminRequest<SocialPublishQueueItem[]>(
-        `/rest/v1/social_publish_queue?status=in.(${statusPriority.join(",")})&content_type=eq.written_post&${dueAndRecent}`,
-      ),
-    ]);
-    const validatedBatches = batches.map((batch, index) =>
-      requireSocialQueueRows<SocialPublishQueueItem>(batch, `social publish ${statusPriority[index] ?? "status"} query`),
-    );
-    const validatedWrittenCandidates = requireSocialQueueRows<SocialPublishQueueItem>(
-      writtenCandidates,
-      "written-post social publish query",
-    );
-    const candidates = mergeUniqueSocialPublishCandidates(
-      ...validatedBatches,
-      validatedWrittenCandidates,
-    );
-    const runnableCandidates = candidates.filter((item) => {
+    const dueAndRecent = `or=(scheduled_at.is.null,scheduled_at.lte.${now})&created_at=gte.${createdSince}&select=${select}&order=scheduled_at.asc.nullsfirst,created_at.asc,id.asc`;
+    const isRunnableCandidate = (item: SocialPublishQueueItem) => {
       const targetValidation = validateStoredSocialTargetPlatforms(item.target_platforms);
       return !targetValidation.ok || targetValidation.platforms.some((platform) =>
         canAttemptSocialPlatform({
@@ -291,7 +270,63 @@ export async function getPendingSocialPublishItems(
           maxAttempts: maxAttemptsFor(item.metadata),
         }),
       );
-    });
+    };
+    const scanCandidates = async (query: string, label: string, targetCount: number) => {
+      const approvedVideoQueueItemIds = new Set<string>();
+      const checkedVideoQueueVersions = new Map<string, string>();
+      const scan = await scanSocialQueueCandidatePages({
+        pageSize: candidateLimit,
+        maxRows: SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS,
+        fetchPage: async (offset, pageSize) => {
+          const rows = await supabaseServerAdminRequest<SocialPublishQueueItem[]>(
+            `/rest/v1/social_publish_queue?${query}&limit=${pageSize}&offset=${offset}`,
+          );
+          return requireSocialQueueRows<SocialPublishQueueItem>(rows, label);
+        },
+        hasEnoughCandidates: async (rows) => {
+          const runnable = rows.filter(isRunnableCandidate);
+          const newVideoItems = runnable.filter((item) => {
+            if (!isVideoContentType(item.content_type)) return false;
+            const version = typeof item.updated_at === "string" ? item.updated_at : "";
+            if (checkedVideoQueueVersions.get(item.id) === version) return false;
+            checkedVideoQueueVersions.set(item.id, version);
+            approvedVideoQueueItemIds.delete(item.id);
+            return true;
+          });
+          const newlyApproved = await getApprovedVideoQueueItemIds(newVideoItems);
+          for (const id of newlyApproved) approvedVideoQueueItemIds.add(id);
+          return selectEligibleSocialPublishItems(runnable, {
+            enabledPlatforms,
+            approvedVideoQueueItemIds,
+            maxAttemptsFor,
+            limit: targetCount,
+          }).length >= targetCount;
+        },
+      });
+      if (scan.truncated) {
+        console.warn(
+          "[social-publishing] Candidate scan reached its bounded row cap; remaining rows will be considered on a later run:",
+          label,
+          scan.scanned,
+        );
+      }
+      return scan.rows;
+    };
+
+    const [batches, writtenCandidates] = await Promise.all([
+      Promise.all(statusPriority.map((status) =>
+        scanCandidates(`status=eq.${status}&${dueAndRecent}`, `social publish ${status} query`, effectiveLimit),
+      )),
+      // Keep one independent written-post scan so a held-video backlog cannot
+      // consume every batch slot before an eligible text post is considered.
+      scanCandidates(
+        `status=in.(${statusPriority.join(",")})&content_type=eq.written_post&${dueAndRecent}`,
+        "written-post social publish query",
+        1,
+      ),
+    ]);
+    const candidates = mergeUniqueSocialPublishCandidates(...batches, writtenCandidates);
+    const runnableCandidates = candidates.filter(isRunnableCandidate);
     const approvedVideoQueueItemIds = await getApprovedVideoQueueItemIds(runnableCandidates);
     return selectEligibleSocialPublishItems(runnableCandidates, {
       enabledPlatforms,

@@ -205,6 +205,13 @@ if (!socialQueueSelectionService.includes("validateStoredSocialTargetPlatforms")
     !socialTargetContractMigration.includes("social_publish_queue_target_platforms_check")) {
   failures.push("social publishing must quarantine malformed or duplicate queue targets and enforce the same supported-target contract in Postgres");
 }
+
+if (!socialQueueSelectionService.includes("scanSocialQueueCandidatePages") ||
+    !socialQueueSelectionService.includes("SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS") ||
+    !socialPublishingService.includes("scanSocialQueueCandidatePages") ||
+    !socialPublishingService.includes("&offset=${offset}")) {
+  failures.push("social queue candidate scans must page past held rows while enforcing an explicit safety cap");
+}
 const kidsCatalogSyncStart = socialPublishingService.indexOf("async function syncKidsSocialPublicationToCatalog");
 const kidsCatalogSyncEnd = socialPublishingService.indexOf("async function syncYouTubeVideoReferenceToCatalog", kidsCatalogSyncStart);
 const kidsCatalogSync = kidsCatalogSyncStart >= 0 && kidsCatalogSyncEnd > kidsCatalogSyncStart
