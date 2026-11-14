@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS public.site_audio_upload_intents (
   upload_expires_at timestamptz NOT NULL,
   cleanup_after timestamptz NOT NULL,
   status text NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'registered', 'cleaned')),
+    CHECK (status IN ('pending', 'registered', 'deleting', 'cleaned')),
   asset_id uuid REFERENCES public.site_audio_assets(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS public.site_audio_upload_intents (
 
 CREATE INDEX IF NOT EXISTS site_audio_upload_intents_pending_cleanup_idx
   ON public.site_audio_upload_intents (cleanup_after, storage_path)
-  WHERE status = 'pending';
+  WHERE status IN ('pending', 'deleting')
+     OR (status = 'registered' AND asset_id IS NULL);
 
 ALTER TABLE public.site_audio_upload_intents ENABLE ROW LEVEL SECURITY;
 
@@ -29,6 +30,6 @@ REVOKE ALL ON TABLE public.site_audio_upload_intents FROM PUBLIC, anon, authenti
 GRANT ALL ON TABLE public.site_audio_upload_intents TO service_role;
 
 COMMENT ON TABLE public.site_audio_upload_intents IS
-  'Server-only signed-upload intents. Expired pending rows may be reconciled only by the explicit reference-checked site-audio retention workflow.';
+  'Server-only signed-upload intents. Expired pending/deleting rows and detached registered rows may be reconciled only by the explicit reference-checked site-audio retention workflow.';
 
 COMMIT;

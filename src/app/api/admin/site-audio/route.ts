@@ -16,7 +16,7 @@ type SiteAudioUploadIntent = {
   size_bytes: number;
   upload_expires_at: string;
   cleanup_after: string;
-  status: "pending" | "registered" | "cleaned";
+  status: "pending" | "registered" | "deleting" | "cleaned";
   asset_id: string | null;
 };
 
@@ -93,7 +93,8 @@ export async function POST(request: NextRequest) {
   if (
     !uploadIntent ||
     uploadIntent.owner_user_id !== guard.profile.id ||
-    uploadIntent.status !== "pending"
+    uploadIntent.status !== "pending" ||
+    uploadIntent.asset_id !== null
   ) {
     return NextResponse.json({ error: "جلسة الرفع غير موجودة أو لم تعد صالحة." }, { status: 409 });
   }
@@ -147,20 +148,15 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const auditRecorded = await recordAuditSafely({
-    action: "site_audio.asset.create",
-    permission: "audio.manage",
-    resourceType: "site_audio_assets",
-    resourceId: data.id,
-    metadata: { kind, mimeType, sizeBytes },
-  }, "asset creation");
-  let uploadIntentFinalized = true;
+  let finalizedIntent: Array<Pick<SiteAudioUploadIntent, "status" | "asset_id">> = [];
   try {
-    await supabaseServerAdminRequest(
-      `/rest/v1/site_audio_upload_intents?storage_path=eq.${encodeURIComponent(storagePath)}&owner_user_id=eq.${encodeURIComponent(guard.profile.id)}&status=eq.pending`,
+    finalizedIntent = await supabaseServerAdminRequest<
+      Array<Pick<SiteAudioUploadIntent, "status" | "asset_id">>
+    >(
+      `/rest/v1/site_audio_upload_intents?storage_path=eq.${encodeURIComponent(storagePath)}&owner_user_id=eq.${encodeURIComponent(guard.profile.id)}&status=eq.pending&asset_id=is.null&select=status,asset_id`,
       {
         method: "PATCH",
-        headers: { Prefer: "return=minimal" },
+        headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           status: "registered",
           asset_id: data.id,
@@ -169,11 +165,41 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (intentUpdateError) {
-    // The asset row is already the authoritative reference. The guarded
-    // retention command will reconcile this intent instead of deleting it.
-    uploadIntentFinalized = false;
-    console.error("[api/admin/site-audio] upload intent finalization deferred:", intentUpdateError);
+    console.error("[api/admin/site-audio] upload intent finalization failed:", intentUpdateError);
   }
+
+  const uploadIntentFinalized = Array.isArray(finalizedIntent) &&
+    finalizedIntent.length === 1 &&
+    finalizedIntent[0].status === "registered" &&
+    finalizedIntent[0].asset_id === data.id;
+  if (!uploadIntentFinalized) {
+    // This exact row was created by this request. If the intent moved to
+    // deleting/cleaned (or its compare-and-set did not match), roll the row
+    // back so a concurrent delete can never leave a dangling active asset.
+    const { error: rollbackError } = await db
+      .from("site_audio_assets")
+      .delete()
+      .eq("id", data.id);
+    if (rollbackError) {
+      console.error("[api/admin/site-audio] failed to roll back unfinalized asset row:", rollbackError);
+      return NextResponse.json(
+        { error: "تعذر إتمام تسجيل المقطع بأمان. راجع مسؤول النظام قبل إعادة المحاولة." },
+        { status: 503 },
+      );
+    }
+    return NextResponse.json(
+      { error: "تغيرت جلسة الرفع أثناء التسجيل. ابدأ رفعًا جديدًا." },
+      { status: 409 },
+    );
+  }
+
+  const auditRecorded = await recordAuditSafely({
+    action: "site_audio.asset.create",
+    permission: "audio.manage",
+    resourceType: "site_audio_assets",
+    resourceId: data.id,
+    metadata: { kind, mimeType, sizeBytes },
+  }, "asset creation");
 
   return NextResponse.json({ asset: data, auditRecorded, uploadIntentFinalized }, { status: 201 });
 }
@@ -274,7 +300,7 @@ export async function DELETE(request: NextRequest) {
       size_bytes: asset.size_bytes,
       upload_expires_at: new Date(now.getTime() - 1_000).toISOString(),
       cleanup_after: new Date(now.getTime() + 24 * 60 * 60 * 1_000).toISOString(),
-      status: "pending",
+      status: "deleting",
       asset_id: asset.id,
       updated_at: now.toISOString(),
     }, { onConflict: "storage_path" });
@@ -299,29 +325,57 @@ export async function DELETE(request: NextRequest) {
 
   let storageCleanupPending = false;
   let intentFinalizationPending = false;
+  let storageCleanupSkipped = false;
   if (!isRemoteUrl) {
-    const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
-    if (storageError) {
+    const { data: remainingAssetReferences, error: referenceCheckError } = await db
+      .from("site_audio_assets")
+      .select("id")
+      .eq("storage_path", asset.storage_path)
+      .limit(2);
+
+    if (referenceCheckError) {
       storageCleanupPending = true;
-      console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
+      console.error("[api/admin/site-audio] reference recheck failed; Storage removal skipped:", referenceCheckError.message);
+    } else if ((remainingAssetReferences ?? []).length > 0) {
+      storageCleanupSkipped = true;
+      const survivingAsset = remainingAssetReferences[0];
+      const { error: restoreIntentError } = await db
+        .from("site_audio_upload_intents")
+        .update({ status: "registered", asset_id: survivingAsset.id, updated_at: new Date().toISOString() })
+        .eq("storage_path", asset.storage_path)
+        .eq("status", "deleting")
+        .is("asset_id", null);
+      if (restoreIntentError) {
+        intentFinalizationPending = true;
+        console.error("[api/admin/site-audio] surviving asset intent reconciliation deferred:", restoreIntentError.message);
+      }
     } else {
-      const { data: remainingObjects, error: verificationError } = await db.storage
-        .from("site-audio")
-        .list(storageDirectory, { search: storageFileName, limit: 10 });
-      const objectStillPresent = Array.isArray(remainingObjects) &&
-        remainingObjects.some((object) => object.name === storageFileName);
-      if (verificationError || !Array.isArray(remainingObjects) || objectStillPresent) {
+      const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
+      if (storageError) {
         storageCleanupPending = true;
-        console.error("[api/admin/site-audio] Storage removal could not be verified; retention worker will retry:", verificationError?.message ?? "object remains or inventory is incomplete");
+        console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
       } else {
-        const { error: intentUpdateError } = await db
-          .from("site_audio_upload_intents")
-          .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
-          .eq("storage_path", asset.storage_path)
-          .eq("status", "pending");
-        if (intentUpdateError) {
-          intentFinalizationPending = true;
-          console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError.message);
+        const { data: remainingObjects, error: verificationError } = await db.storage
+          .from("site-audio")
+          .list(storageDirectory, { search: storageFileName, limit: 10 });
+        const objectStillPresent = Array.isArray(remainingObjects) &&
+          remainingObjects.some((object) => object.name === storageFileName);
+        if (verificationError || !Array.isArray(remainingObjects) || objectStillPresent) {
+          storageCleanupPending = true;
+          console.error("[api/admin/site-audio] Storage removal could not be verified; retention worker will retry:", verificationError?.message ?? "object remains or inventory is incomplete");
+        } else {
+          const { data: finalizedIntent, error: intentUpdateError } = await db
+            .from("site_audio_upload_intents")
+            .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
+            .eq("storage_path", asset.storage_path)
+            .eq("status", "deleting")
+            .is("asset_id", null)
+            .select("storage_path")
+            .maybeSingle();
+          if (intentUpdateError || !finalizedIntent) {
+            intentFinalizationPending = true;
+            console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError?.message ?? "deleting intent was not updated");
+          }
         }
       }
     }
@@ -332,7 +386,7 @@ export async function DELETE(request: NextRequest) {
     permission: "audio.manage",
     resourceType: "site_audio_assets",
     resourceId: id,
-    metadata: { kind: asset.kind, storageCleanupPending, intentFinalizationPending },
+    metadata: { kind: asset.kind, storageCleanupPending, storageCleanupSkipped, intentFinalizationPending },
   }, "asset deletion");
-  return NextResponse.json({ ok: true, storageCleanupPending, intentFinalizationPending, auditRecorded });
+  return NextResponse.json({ ok: true, storageCleanupPending, storageCleanupSkipped, intentFinalizationPending, auditRecorded });
 }

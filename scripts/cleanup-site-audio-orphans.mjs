@@ -57,7 +57,7 @@ export function isSafeSiteAudioUploadIntent(intent) {
   const cleanupAfter = Date.parse(intent?.cleanup_after ?? "");
   const mimeType = asString(intent?.mime_type).toLowerCase();
   return (
-    intent?.status === "pending" &&
+    ["pending", "deleting", "registered"].includes(intent?.status) &&
     intent?.asset_id === null &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(ownerId) &&
     parts.length === 2 &&
@@ -90,7 +90,7 @@ export async function collectExpiredSiteAudioUploadIntents(fetchPage) {
 
 export function selectExpiredSiteAudioUploadIntents(intents, now = Date.now()) {
   const expired = (intents ?? []).filter((intent) => {
-    if (intent?.status !== "pending") return false;
+    if (!["pending", "deleting", "registered"].includes(intent?.status)) return false;
     const cleanupAfter = Date.parse(intent?.cleanup_after ?? "");
     return Number.isFinite(cleanupAfter) && cleanupAfter <= now;
   });
@@ -115,12 +115,12 @@ function splitStoragePath(storagePath) {
   return { directory: parts[0], fileName: parts[1] };
 }
 
-async function updateIntent(client, storagePath, patch) {
+async function updateIntent(client, storagePath, expectedStatus, patch) {
   const { data, error } = await client
     .from("site_audio_upload_intents")
     .update({ ...patch, updated_at: new Date().toISOString() })
     .eq("storage_path", storagePath)
-    .eq("status", "pending")
+    .eq("status", expectedStatus)
     .select("storage_path")
     .maybeSingle();
   if (error) throw new Error("Could not reconcile site-audio upload intent: " + error.message);
@@ -173,7 +173,7 @@ async function main() {
     const { data, error } = await client
       .from("site_audio_upload_intents")
       .select("storage_path,owner_user_id,mime_type,size_bytes,upload_expires_at,cleanup_after,status,asset_id")
-      .eq("status", "pending")
+      .or("status.in.(pending,deleting),and(status.eq.registered,asset_id.is.null)")
       .lte("cleanup_after", now.toISOString())
       .order("cleanup_after", { ascending: true })
       .order("storage_path", { ascending: true })
@@ -183,7 +183,7 @@ async function main() {
   });
 
   const protectedIntents = expiredIntents.filter((intent) =>
-    intent?.status === "pending" &&
+    (intent?.status === "pending" || intent?.status === "deleting") &&
     Number.isFinite(Date.parse(intent?.cleanup_after ?? "")) &&
     Date.parse(intent.cleanup_after) <= now.getTime() &&
     intent?.asset_id !== null
@@ -194,7 +194,7 @@ async function main() {
       throw new Error("An expired site-audio intent retains an asset pointer that cannot be matched to the canonical asset; refusing cleanup.");
     }
     if (apply) {
-      await updateIntent(client, intent.storage_path, {
+      await updateIntent(client, intent.storage_path, intent.status, {
         status: "registered",
         asset_id: referencedAsset.id,
       });
@@ -204,7 +204,7 @@ async function main() {
 
   const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
   console.log("ZIKR site-audio orphan reconciliation: " + (apply ? "APPLY" : "DRY RUN"));
-  console.log("Expired pending intents: " + candidates.length);
+  console.log("Expired pending/deleting/detached registered intents: " + candidates.length);
   console.log("Protected referenced intents: " + protectedIntents.length);
 
   for (const intent of candidates) {
@@ -212,7 +212,7 @@ async function main() {
     const referencedAsset = await findAssetReference(client, intent.storage_path);
     if (referencedAsset) {
       if (apply) {
-        await updateIntent(client, intent.storage_path, {
+        await updateIntent(client, intent.storage_path, intent.status, {
           status: "registered",
           asset_id: referencedAsset.id,
         });
@@ -223,7 +223,7 @@ async function main() {
 
     const object = await listExactObject(client, directory, fileName);
     if (!object) {
-      if (apply) await updateIntent(client, intent.storage_path, { status: "cleaned", asset_id: null });
+      if (apply) await updateIntent(client, intent.storage_path, intent.status, { status: "cleaned", asset_id: null });
       console.log("RECONCILE missing site-audio object (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
@@ -247,9 +247,10 @@ async function main() {
     // deletion. The owner must keep all site-audio upload/registration writers paused.
     const { data: currentIntent, error: currentIntentError } = await client
       .from("site_audio_upload_intents")
-      .select("storage_path,upload_expires_at,cleanup_after,status")
+      .select("storage_path,upload_expires_at,cleanup_after,status,asset_id")
       .eq("storage_path", intent.storage_path)
-      .eq("status", "pending")
+      .eq("status", intent.status)
+      .is("asset_id", null)
       .lte("cleanup_after", now.toISOString())
       .maybeSingle();
     if (currentIntentError) throw new Error("Could not recheck site-audio intent: " + currentIntentError.message);
@@ -260,7 +261,7 @@ async function main() {
 
     const latestReference = await findAssetReference(client, intent.storage_path);
     if (latestReference) {
-      await updateIntent(client, intent.storage_path, {
+      await updateIntent(client, intent.storage_path, intent.status, {
         status: "registered",
         asset_id: latestReference.id,
       });
@@ -276,7 +277,7 @@ async function main() {
       throw new Error("Site-audio Storage object is still present after removal; intent remains pending.");
     }
 
-    await updateIntent(client, intent.storage_path, { status: "cleaned", asset_id: null });
+    await updateIntent(client, intent.storage_path, intent.status, { status: "cleaned", asset_id: null });
     console.log("REMOVED verified unreferenced site-audio object (" + safePathLogReference(intent.storage_path) + ").");
   }
 

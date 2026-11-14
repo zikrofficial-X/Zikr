@@ -22,6 +22,8 @@ const validIntent = {
   status: "pending",
   asset_id: null,
 };
+const deletingIntent = { ...validIntent, status: "deleting" };
+const detachedRegisteredIntent = { ...validIntent, status: "registered" };
 
 assert.equal(assertExpectedSupabaseProject("https://zqtssvlvmkzeeyqghqfk.supabase.co", "zqtssvlvmkzeeyqghqfk"), "zqtssvlvmkzeeyqghqfk");
 assert.throws(() => assertExpectedSupabaseProject("https://other.supabase.co", "zqtssvlvmkzeeyqghqfk"), /unexpected Supabase project/);
@@ -30,6 +32,8 @@ assert.throws(() => assertSiteAudioCleanupApplyConfirmation(true, "DELETE_UNREFE
 assert.throws(() => assertSiteAudioCleanupApplyConfirmation(true, "wrong", true), /DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS/);
 assert.doesNotThrow(() => assertSiteAudioCleanupApplyConfirmation(true, "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS", true));
 assert.equal(isSafeSiteAudioUploadIntent(validIntent), true);
+assert.equal(isSafeSiteAudioUploadIntent(deletingIntent), true, "a delete-locked intent with no asset pointer is eligible after its grace period");
+assert.equal(isSafeSiteAudioUploadIntent(detachedRegisteredIntent), true, "a detached registered intent is eligible only when asset_id is null");
 const pathFingerprint = fingerprintSiteAudioStoragePath(validIntent.storage_path);
 assert.match(pathFingerprint, /^[a-f0-9]{16}$/);
 assert.equal(pathFingerprint.includes(ownerId), false);
@@ -43,9 +47,9 @@ assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-
 const protectedAssetIntent = { ...validIntent, asset_id: "123e4567-e89b-12d3-a456-426614174001" };
 assert.equal(isSafeSiteAudioUploadIntent(protectedAssetIntent), false, "a pending intent with an asset pointer must never be a Storage deletion candidate");
 assert.deepEqual(
-  selectExpiredSiteAudioUploadIntents([validIntent, protectedAssetIntent], now),
-  [validIntent],
-  "a failed metadata deletion may leave a protected intent; it must be preserved without blocking unrelated safe candidates",
+  selectExpiredSiteAudioUploadIntents([validIntent, deletingIntent, detachedRegisteredIntent, protectedAssetIntent], now),
+  [validIntent, deletingIntent, detachedRegisteredIntent],
+  "pending uploads, delete-locked rows, and detached registered rows are eligible only after expiry and only without an asset pointer",
 );
 const pagedRows = Array.from({ length: 1001 }, (_, index) => ({ index }));
 const pageOffsets = [];
@@ -65,7 +69,7 @@ await assert.rejects(
 );
 
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([validIntent], now), [validIntent]);
-assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered" }], now), []);
+assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered", asset_id: "123e4567-e89b-12d3-a456-426614174001" }], now), [], "a registered intent with a live asset pointer must never be deleted");
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-15T00:00:00.000Z" }], now), []);
 assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, storage_path: ownerId + "/../../other" }], now), /unsafe path or invalid metadata/);
 assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }], now), /unsafe path or invalid metadata/);
@@ -84,12 +88,24 @@ const adminPostEnd = adminRoute.indexOf("export async function PATCH", adminPost
 const adminPost = adminRoute.slice(adminPostStart, adminPostEnd);
 assert.ok(adminPost.indexOf("upload_expires_at") < adminPost.indexOf("validateSiteAudioStorageObject"), "the registration route must reject expired intents before checking Storage");
 assert.ok(adminPost.indexOf('.from("site_audio_assets")') < adminPost.indexOf('status: "registered"'), "the asset row must be authoritative before an intent is marked registered");
+assert.match(adminPost, /asset_id=is\\.null/);
+assert.match(adminPost, /Prefer: "return=representation"/);
+assert.ok(adminPost.includes("finalizedIntent.length === 1"), "registration must confirm exactly one pending intent was finalized");
+assert.ok(adminPost.includes('.delete()') && adminPost.includes('.eq("id", data.id)'), "a failed intent compare-and-set must roll back the row created by this request");
+assert.ok(adminPost.indexOf("const auditRecorded") > adminPost.indexOf("uploadIntentFinalized"), "the success audit event must follow successful intent finalization");
+const adminDeleteStart = adminRoute.indexOf("export async function DELETE");
+const adminDelete = adminRoute.slice(adminDeleteStart);
+assert.match(adminDelete, /status: "deleting"/, "delete must lock the intent before removing the asset row");
+assert.match(adminDelete, /\\.eq\\("status", "deleting"\\)/);
+assert.ok(adminDelete.indexOf('.from("site_audio_assets")') < adminDelete.indexOf('.remove([asset.storage_path])'), "the delete route must recheck references before removing Storage bytes");
 const cleanupLogLines = cleanupScript.split(/\r?\n/).filter((line) => line.includes("console.log("));
 assert.ok(cleanupLogLines.every((line) => !line.includes("intent.storage_path") || line.includes("safePathLogReference(intent.storage_path)")), "public workflow logs must use a path fingerprint instead of owner UUIDs or uploaded filenames");
 assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
 assert.ok(cleanupScript.includes("const protectedIntents = expiredIntents.filter"), "expired intents with an asset pointer must be reconciled separately from Storage deletion candidates");
+assert.ok(cleanupScript.includes("status.in.(pending,deleting),and(status.eq.registered,asset_id.is.null)"), "the worker must include delete-locked and detached registered intents without scanning live registered assets");
+assert.ok(cleanupScript.includes('.eq("status", expectedStatus)'), "intent state changes must use compare-and-set updates");
 assert.ok(cleanupScript.includes("referencedAsset.id !== intent.asset_id"), "protected intents must match the exact canonical asset ID before being marked registered");
 assert.match(cleanupScript, /listExactObject\(client, directory, fileName\)/);
 assert.ok(cleanupScript.includes(".range(offset, offset + pageSize - 1)"), "intent inventory must use bounded pages instead of the PostgREST max_rows-limited single query");
@@ -103,6 +119,8 @@ assert.match(migrationText, /ENABLE ROW LEVEL SECURITY/);
 assert.match(migrationText, /REVOKE ALL ON TABLE public\.site_audio_upload_intents FROM PUBLIC, anon, authenticated/);
 assert.match(migrationText, /cleanup_after >= upload_expires_at \+ interval '24 hours'/, "the database must enforce the same 24-hour cleanup grace period");
 assert.match(migrationText, /GRANT ALL ON TABLE public\.site_audio_upload_intents TO service_role/);
+assert.ok(migrationText.includes("CHECK (status IN ('pending', 'registered', 'deleting', 'cleaned'))"), "the database state machine must include an explicit deleting lock");
+assert.ok(migrationText.includes("status = 'registered' AND asset_id IS NULL"), "detached registered rows must be indexed for safe orphan reconciliation");
 assert.match(workflow, /workflow_dispatch:/);
 const siteAudioJobEnvStart = workflow.indexOf("    env:");
 const siteAudioStepsStart = workflow.indexOf("    steps:", siteAudioJobEnvStart);
