@@ -86,10 +86,27 @@ export function matchesSha256Digest(bytes, expectedDigest) {
 }
 
 export function hasConfirmedPlatformResults(targetPlatforms, metadata) {
-  if (!Array.isArray(targetPlatforms) || targetPlatforms.length === 0) return false;
+  if (
+    !Array.isArray(targetPlatforms) ||
+    targetPlatforms.length === 0 ||
+    targetPlatforms.length > SUPPORTED_RETENTION_PLATFORMS.size
+  ) {
+    return false;
+  }
+  const seen = new Set();
+  for (const platform of targetPlatforms) {
+    if (
+      typeof platform !== "string" ||
+      !SUPPORTED_RETENTION_PLATFORMS.has(platform) ||
+      seen.has(platform)
+    ) {
+      return false;
+    }
+    seen.add(platform);
+  }
+
   const results = asObject(asObject(metadata).platformResults);
-  return targetPlatforms.every((platform) => {
-    if (typeof platform !== "string" || !SUPPORTED_RETENTION_PLATFORMS.has(platform)) return false;
+  return [...seen].every((platform) => {
     const result = asObject(results[platform]);
     return result.ok === true && Boolean(asString(result.remoteId));
   });
