@@ -1,7 +1,11 @@
 
 'use server';
 
+import { headers } from 'next/headers';
 import { generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
+import { sanitizeChatHistory } from '@/features/spiritual-ai/services/chat-input';
+import { consumeSpiritualAiRateLimit } from '@/features/spiritual-ai/services/rate-limit';
+import { getTrustedClientAddress } from '@/lib/request/client-address';
 import {
   formatSourcesForPrompt,
   retrieveSpiritualSources,
@@ -46,6 +50,8 @@ export interface ChatResult {
 
 const SCHOLAR_NOTICE =
   'تنبيه: هذا إرشاد معرفي وروحاني وليس فتوى مُلزِمة. في النوازل والأحكام الشخصية راجع دار إفتاء أو عالمًا مؤهلًا.';
+const RATE_LIMITED_MESSAGE = 'وصلت إلى الحد المؤقت لاستخدام المساعد. حاول مرة أخرى بعد عشر دقائق.';
+const RATE_LIMIT_UNAVAILABLE_MESSAGE = 'خدمة المساعد غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا.';
 
 const CRISIS_MESSAGE =
   'أنا آسف لأنك تمر بهذا الألم. حياتك مهمة، ولا يجب أن تواجه هذا وحدك. إذا كنت تفكر الآن في إيذاء نفسك أو الانتحار، فاتصل فورًا برقم الطوارئ المحلي أو 112/911، واذهب إلى أقرب قسم طوارئ، واطلب من شخص موثوق أن يبقى معك. إذا كنت في الولايات المتحدة أو كندا فاتصل أو أرسل رسالة إلى 988. لا أستطيع تقديم أي وسيلة لإيذاء النفس، لكن يمكنني البقاء معك للبحث عن خطوة آمنة الآن.';
@@ -198,7 +204,7 @@ export async function sendChatMessage(
   userMessage: string,
   history: { role: 'user' | 'assistant'; content: string }[],
 ): Promise<ChatResult> {
-  const normalizedMessage = userMessage.trim().slice(0, 1200);
+  const normalizedMessage = typeof userMessage === 'string' ? userMessage.trim().slice(0, 1200) : '';
   if (!normalizedMessage) {
     return {
       message: 'يرجى كتابة رسالتك.',
@@ -219,6 +225,37 @@ export async function sendChatMessage(
     };
   }
 
+  try {
+    const requestHeaders = await headers();
+    const clientAddress = getTrustedClientAddress(
+      requestHeaders.get('x-real-ip'),
+      requestHeaders.get('x-forwarded-for'),
+    );
+    const allowed = await consumeSpiritualAiRateLimit(clientAddress);
+    if (!allowed) {
+      return {
+        message: RATE_LIMITED_MESSAGE,
+        type: 'general',
+        confidence: 'low',
+        scholarNotice: SCHOLAR_NOTICE,
+        error: 'rate_limited',
+      };
+    }
+  } catch (error) {
+    console.error(
+      '[spiritual-ai rate limit] unavailable',
+      error instanceof Error ? error.message : 'unknown',
+    );
+    return {
+      message: RATE_LIMIT_UNAVAILABLE_MESSAGE,
+      type: 'general',
+      confidence: 'low',
+      scholarNotice: SCHOLAR_NOTICE,
+      error: 'rate_limit_unavailable',
+    };
+  }
+
+  const safeHistory = sanitizeChatHistory(history);
   const type = classifyQuestion(normalizedMessage);
   const emotion = detectEmotion(normalizedMessage);
   const sources = await retrieveSpiritualSources(normalizedMessage);
@@ -228,7 +265,7 @@ export async function sendChatMessage(
     .map(source => ({ text: source.excerpt, reference: source.reference }));
   const dhikr = DHIKR_MAP[emotion] ?? DHIKR_MAP['عام'];
   const citations = buildCitations(sources, type);
-  const prompt = buildPrompt(normalizedMessage, history, type, sources);
+  const prompt = buildPrompt(normalizedMessage, safeHistory, type, sources);
   const confidence: ChatResult['confidence'] = sources.some(source => source.authority === 'primary')
     ? 'high'
     : sources.length > 0
