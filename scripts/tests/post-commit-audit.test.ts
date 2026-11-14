@@ -68,8 +68,8 @@ const postCommitRoutes = [
 ] as const;
 for (const [path, expectedCalls] of postCommitRoutes) {
   const source = readFileSync(path, "utf8");
-  const auditCalls = (source.match(/recordAdminAuditEvent\\(/g) ?? []).length;
-  const wrappedCalls = (source.match(/runPostCommitAudit\\(\\s*\\(\\) => recordAdminAuditEvent\\(/g) ?? []).length;
+  const auditCalls = source.split("recordAdminAuditEvent(").length - 1;
+  const wrappedCalls = source.split("runPostCommitAudit(").length - 1;
   assert.equal(auditCalls, expectedCalls, `${path} must keep every post-mutation audit call accounted for`);
   assert.equal(wrappedCalls, expectedCalls, `${path} must not turn a committed mutation into a generic failure when audit persistence fails`);
   assert.match(source, /auditRecorded/, `${path} must surface whether its audit event was persisted`);
