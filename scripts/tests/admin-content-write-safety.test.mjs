@@ -23,12 +23,12 @@ assert.match(stories, /const CACHE_TTL = 60_000/, "scheduled story publication m
 assert.match(stories, /revalidate: 60, tags: \["public-stories"\]/, "story fetches must have a short invalidatable data-cache tag");
 assert.match(stories, /export function invalidateStoriesCache\(\)/, "admin actions must be able to clear the process-local story cache");
 
-assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_insert ON public\\.kids_content/, "Kids content direct insert policy must be removed");
-assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_update ON public\\.kids_content/, "Kids content direct update policy must be removed");
-assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_delete ON public\\.kids_content/, "Kids content direct delete policy must be removed");
-assert.match(hardening, /REVOKE ALL PRIVILEGES ON TABLE public\\.kids_content FROM PUBLIC, anon, authenticated/, "Kids content writes must be server-role-only");
-assert.match(hardening, /GRANT SELECT ON TABLE public\\.kids_content TO anon, authenticated/, "public Kids content reads must remain available through RLS");
-assert.match(hardening, /GRANT ALL PRIVILEGES ON TABLE public\\.kids_content TO service_role/, "server-side Kids content actions must retain their write capability");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_insert ON public[.]kids_content/, "Kids content direct insert policy must be removed");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_update ON public[.]kids_content/, "Kids content direct update policy must be removed");
+assert.match(hardening, /DROP POLICY IF EXISTS admin_all_kids_content_delete ON public[.]kids_content/, "Kids content direct delete policy must be removed");
+assert.match(hardening, /REVOKE ALL PRIVILEGES ON TABLE public[.]kids_content FROM PUBLIC, anon, authenticated/, "Kids content writes must be server-role-only");
+assert.match(hardening, /GRANT SELECT ON TABLE public[.]kids_content TO anon, authenticated/, "public Kids content reads must remain available through RLS");
+assert.match(hardening, /GRANT ALL PRIVILEGES ON TABLE public[.]kids_content TO service_role/, "server-side Kids content actions must retain their write capability");
 assert.match(kidsActions, /let auditError: unknown = null/);
 assert.match(kidsActions, /Kids content was saved, but its audit event could not be recorded/);
 assert.ok(kidsActions.indexOf('revalidatePath("/kids")') < kidsActions.indexOf("if (auditError)"), "Kids routes must revalidate before reporting a post-commit audit failure");
