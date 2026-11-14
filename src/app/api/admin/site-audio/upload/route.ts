@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { createAdminClient, supabaseServerAdminRequest } from '@/lib/supabase/server';
@@ -12,7 +13,13 @@ export async function POST(request: NextRequest) {
   const guard = await requireAdminApi('audio.manage');
   if (!guard.ok) return NextResponse.json({ error: guard.error }, { status: guard.status });
 
-  const body = await request.json().catch(() => null);
+  const parsedBody = await readBoundedJsonBody(request);
+  if (!parsedBody.ok) {
+    return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status });
+  }
+  const body = parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+    ? parsedBody.value as Record<string, unknown>
+    : null;
   const filename = typeof body?.filename === 'string' ? body.filename.trim() : '';
   const contentType = typeof body?.contentType === 'string' ? body.contentType.toLowerCase().trim() : '';
   const contentLength = Number(body?.contentLength);

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { readBoundedJsonBody } from "../../src/lib/request/bounded-json-body";
 import {
   SITE_AUDIO_MAX_BYTES,
   validateSiteAudioStorageObject,
@@ -112,6 +113,20 @@ assert.deepEqual(
 const adminRoute = readFileSync("src/app/api/admin/site-audio/route.ts", "utf8");
 const uploadRoute = readFileSync("src/app/api/admin/site-audio/upload/route.ts", "utf8");
 const manager = readFileSync("src/features/admin/components/site-audio-manager.tsx", "utf8");
+assert.match(adminRoute, /readBoundedJsonBody\\(request\\)/);
+assert.match(uploadRoute, /readBoundedJsonBody\\(request\\)/);
+assert.equal(adminRoute.includes("request.json()"), false, "admin site-audio JSON bodies must remain bounded");
+assert.equal(uploadRoute.includes("request.json()"), false, "site-audio upload JSON bodies must remain bounded");
+const oversizedRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/site-audio", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ title: "x".repeat(20_000) }),
+});
+assert.deepEqual(
+  await readBoundedJsonBody(oversizedRequest),
+  { ok: false, status: 413, error: "Request body is too large" },
+  "metadata-only site-audio endpoints must reject oversized JSON before buffering it",
+);
 assert.match(adminRoute, /validateSiteAudioUploadPath/);
 assert.ok(adminRoute.includes('.from("site-audio")\n    .list('));
 assert.match(adminRoute, /validateSiteAudioStorageObject/);
