@@ -51,6 +51,15 @@ DROP POLICY IF EXISTS admin_all_kids_content_insert ON public.kids_content;
 DROP POLICY IF EXISTS admin_all_kids_content_update ON public.kids_content;
 DROP POLICY IF EXISTS admin_all_kids_content_delete ON public.kids_content;
 
+-- Public Kids reads must honor both publication and active state at the database boundary.
+-- Application filters are defense in depth; direct anon REST reads must not expose deactivated rows.
+DROP POLICY IF EXISTS kids_content_public_read ON public.kids_content;
+CREATE POLICY kids_content_public_read
+  ON public.kids_content
+  FOR SELECT
+  TO anon, authenticated
+  USING (published IS TRUE AND is_active IS TRUE);
+
 REVOKE ALL PRIVILEGES ON TABLE public.social_publish_queue FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.video_generation_requests FROM PUBLIC, anon, authenticated;
 REVOKE ALL PRIVILEGES ON TABLE public.media_assets FROM PUBLIC, anon, authenticated;
