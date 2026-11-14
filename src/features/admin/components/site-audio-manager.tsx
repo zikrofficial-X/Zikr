@@ -144,13 +144,12 @@ export function SiteAudioManager() {
       if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error ?? "تعذر حذف المقطع.");
       setAssets(current => current.filter(item => item.id !== asset.id));
-      setStatus(payload.storageCleanupPending
-        ? "تم حذف سجل المقطع؛ ملف التخزين سيُعاد تنظيفه تلقائيًا بعد فترة الاحتفاظ."
-        : payload.intentFinalizationPending
-          ? "تم حذف المقطع وتنظيف الملف؛ سجل التخزين سيُسوّى تلقائيًا."
-          : payload.auditRecorded === false
-            ? "تم حذف المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
-            : "تم حذف المقطع.");
+      const warnings = [
+        payload.storageCleanupPending ? "ملف التخزين سيُعاد تنظيفه تلقائيًا بعد فترة الاحتفاظ." : "",
+        payload.intentFinalizationPending ? "سجل التخزين سيُسوّى تلقائيًا." : "",
+        payload.auditRecorded === false ? "تعذر تسجيل حدث التدقيق الإداري؛ راجع مسؤول النظام." : "",
+      ].filter(Boolean);
+      setStatus(warnings.length ? "تم حذف المقطع. " + warnings.join(" ") : "تم حذف المقطع.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "تعذر حذف المقطع.");
     } finally {
