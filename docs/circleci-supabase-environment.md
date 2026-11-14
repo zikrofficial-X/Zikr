@@ -100,3 +100,20 @@ The signed Android build is followed by a separate `android-release-dispatch` Ci
 - If `GH_TOKEN` is absent, the dispatch job intentionally fails instead of silently claiming the Android release recovery was started.
 
 After adding or rotating the token, verify the CircleCI `android-signing` context is available to the release pipeline before creating the next Android release.
+
+
+## Secret-scoping checkpoint — 2026-11-14
+
+The Supabase production verification job no longer inherits the `android-signing`
+CircleCI context; its job definition requires `SUPABASE_SERVICE_ROLE_KEY` and
+does not read Android keystore variables. Android signing remains attached to the
+signed Android release jobs only.
+
+**Owner action still required:** `SUPABASE_SERVICE_ROLE_KEY` (and the production
+content-sync credentials) are currently documented as CircleCI project-level
+environment variables. Project-level variables are available to every job in
+the project, including jobs that do not need production database access. Move
+these values into narrowly scoped CircleCI contexts, update the corresponding
+job mappings, verify the affected jobs, and only then remove the old project-level
+copies. This audit does not move or delete any secret because CircleCI context
+administration is not available here.

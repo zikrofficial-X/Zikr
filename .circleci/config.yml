@@ -778,9 +778,9 @@ workflows:
               only: main
             tags:
               ignore: /.*/
+      # This read-only Supabase gate uses the project-scoped service key;
+      # keep Android signing material limited to signed Android release jobs.
       - supabase-production-gate:
-          context:
-            - android-signing
           requires:
             - source-verify
           filters:

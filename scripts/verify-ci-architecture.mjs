@@ -103,6 +103,22 @@ assert.ok(androidDraftJob.includes("matchingReleases.length > 1"), "CircleCI And
 assert.ok(androidDraftJob.includes("if (isReleasePreparationCommit)") && androidDraftJob.includes("process.exit(0)"), "CircleCI must fail closed for a new release but avoid breaking ordinary main CI for legacy duplicate drafts.");
 assert.ok(!androidDraftJob.includes('api("/releases", "POST"') && !androidDraftJob.includes('api("/git/tags", "POST"'), "CircleCI must verify, not create, Admin Release manager artifacts");
 const sourceVerifyJob = circle.slice(circle.indexOf("  source-verify:"), circle.indexOf("  application-build-docs:"));
+const supabaseGateJob = circle.split("  supabase-production-gate:")[1]?.split("\n  security-audit:")[0] ?? "";
+const supabaseGateWorkflow = circle.split("      - supabase-production-gate:")[1]?.split("\n      - android-rebuild:")[0] ?? "";
+assert.ok(
+  supabaseGateJob.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+    !supabaseGateJob.includes("ANDROID_KEYSTORE"),
+  "Supabase production verification must require only its database credential, not Android signing material",
+);
+assert.ok(
+  !supabaseGateWorkflow.includes("android-signing"),
+  "the Supabase production gate must not inherit the Android signing context",
+);
+const androidRebuildWorkflow = circle.split("      - android-rebuild:")[1]?.split("\n      - android-release-dispatch:")[0] ?? "";
+assert.ok(
+  androidRebuildWorkflow.includes("android-signing"),
+  "the signed Android rebuild must retain its dedicated signing context",
+);
 for (const contract of [
   "NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app",
   "NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co",
