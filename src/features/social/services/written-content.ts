@@ -1,4 +1,4 @@
-import { normalizeSocialPlatformResults } from "./platform-availability";
+import { hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
 import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 export type WrittenGenerationRequest = {
@@ -386,6 +386,7 @@ function getConfirmedPublicWrittenPlatforms(
  const allowed = new Set(["facebook", "facebook_reels", "youtube"]);
  const metadata = asWrittenRecord(row.metadata);
  const rawResults = metadata.platformResults;
+ if (hasMalformedSocialPlatformResults(rawResults)) return [];
  const results = normalizeSocialPlatformResults(rawResults);
  const deletions = asWrittenRecord(metadata.platformDeletions);
  const targets = [...new Set((row.target_platforms ?? []).filter(
