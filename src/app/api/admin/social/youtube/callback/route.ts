@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { getServerEnv } from "@/lib/env";
-import { hasYouTubeUploadScopes, saveYouTubeOAuthCredential, selectYouTubeChannel } from "@/features/social/services/youtube-oauth-credentials";
+import { findYouTubeChannelAcrossPages, hasYouTubeUploadScopes, saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,6 +32,7 @@ type YouTubeChannelResponse = {
     snippet?: { title?: string };
     statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string };
   }>;
+  nextPageToken?: string;
   error?: {
     code?: number;
     message?: string;
@@ -153,31 +154,50 @@ export async function GET(request: NextRequest) {
       return redirectResult("refresh_token_missing");
     }
 
-    const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-    channelUrl.searchParams.set("part", "id,snippet,statistics");
-    channelUrl.searchParams.set("mine", "true");
-    const channelResponse = await fetch(channelUrl, {
-      headers: { Authorization: "Bearer " + token.access_token },
-      cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
-    });
-    const channelPayload = await channelResponse.json().catch(() => ({})) as YouTubeChannelResponse;
-    const channels = Array.isArray(channelPayload.items) ? channelPayload.items : [];
-    const validChannels = channels.filter(
-      (item) => typeof item.id === "string" && item.id.trim().length > 0,
-    );
-    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim();
-    const channel = selectYouTubeChannel(validChannels, configuredChannelId);
-    if (!channel?.id) {
-      if (channelResponse.ok && !configuredChannelId && validChannels.length > 1) {
+    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
+    const channelLookup = await findYouTubeChannelAcrossPages(async (pageToken) => {
+      const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+      channelUrl.searchParams.set("part", "id,snippet,statistics");
+      channelUrl.searchParams.set("mine", "true");
+      channelUrl.searchParams.set("maxResults", "50");
+      if (pageToken) channelUrl.searchParams.set("pageToken", pageToken);
+      const channelResponse = await fetch(channelUrl, {
+        headers: { Authorization: "Bearer " + token.access_token },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      const channelPayload = await channelResponse.json().catch(() => ({})) as YouTubeChannelResponse;
+      if (!channelResponse.ok || channelPayload.error) {
+        return {
+          items: [],
+          error: {
+            status: channelResponse.status,
+            reason: channelPayload.error?.errors?.[0]?.reason ?? null,
+          },
+        };
+      }
+      return {
+        items: Array.isArray(channelPayload.items) ? channelPayload.items : [],
+        nextPageToken: channelPayload.nextPageToken,
+      };
+    }, configuredChannelId, 3);
+
+    if (channelLookup.error) {
+      return redirectResult(
+        channelLookup.error.reason === "insufficientPermissions"
+          ? "permission_missing"
+          : "channel_read_failed",
+      );
+    }
+    if (!channelLookup.channel?.id) {
+      if (!channelLookup.complete) return redirectResult("channel_lookup_incomplete");
+      if (!configuredChannelId && channelLookup.multipleChannels) {
         return redirectResult("channel_selection_required");
       }
-      if (channelResponse.ok && configuredChannelId) {
-        return redirectResult("channel_mismatch");
-      }
-      const reason = channelPayload.error?.errors?.[0]?.reason;
-      return redirectResult(reason === "insufficientPermissions" ? "permission_missing" : "channel_read_failed");
+      if (configuredChannelId) return redirectResult("channel_mismatch");
+      return redirectResult("channel_read_failed");
     }
+    const channel = channelLookup.channel;
 
     await saveYouTubeOAuthCredential({
       refreshToken: token.refresh_token,
