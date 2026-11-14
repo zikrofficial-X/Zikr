@@ -271,6 +271,7 @@ assert.throws(
   "the shared Storage cap must stop a multi-prefix inventory before any deletion is allowed",
 );
 assert.throws(() => createStorageInventoryBudget(0), /positive integer/, "the inventory budget must reject an invalid cap");
+assert.throws(() => inventoryBudget.record("videos", "automated", [{ name: "bad" + String.fromCharCode(0) }]), /invalid object name/, "the inventory budget must reject NUL-bearing Storage names");
 const pagedRows = await collectPaginatedRows(
   async (offset, end) => [10, 20, 30, 40, 50].slice(offset, end + 1),
   "fixture rows",
