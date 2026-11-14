@@ -115,4 +115,18 @@ assert.match(action, /استشهد فقط بآية أو حديث ظاهر في �
 assert.match(action, /اذكر الفضل والثواب فقط إذا كان موثقًا في المصادر المسترجعة/, 'dhikr virtues and rewards must be source-verified');
 assert.match(action, /لا تنسب نصًا غير موجود/, 'general answers must not invent religious quotations');
 
+
+const spiritualAiEdgeSource = readFileSync("supabase/functions/spiritual-ai/index.ts", "utf8");
+assert.match(spiritualAiEdgeSource, /readBoundedJsonBody\(request, 16 \* 1024\)/);
+assert.doesNotMatch(spiritualAiEdgeSource, /request\.json\(\)/);
+const sharedCorsSource = readFileSync("supabase/functions/_shared/cors.ts", "utf8");
+assert.match(sharedCorsSource, /'Cache-Control': 'no-store'/);
+const poetryInsightRouteSource = readFileSync("src/app/api/poetry-insight/route.ts", "utf8");
+assert.match(poetryInsightRouteSource, /headers\.set\("Cache-Control", "no-store"\)/);
+assert.equal(
+  (poetryInsightRouteSource.match(/Response\.json\(/g) || []).length,
+  1,
+  "only the no-store helper may construct a raw Response.json response",
+);
+
 console.log('Spiritual AI request guard passed: bounded input, rate limiting, source-safe prompts, and question classification.');

@@ -1,4 +1,5 @@
 import { AuthVerificationError, requireAuthenticatedUser } from '../_shared/auth.ts';
+import { readBoundedJsonBody } from '../../../src/lib/request/bounded-json-body.ts';
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { buildSafeFallback, normalizeQuestion } from '../_shared/islamic-ai.ts';
 
@@ -24,8 +25,20 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const payload = await request.json().catch(() => ({}));
-    const question = normalizeQuestion(payload.question);
+    const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+    if (!parsedBody.ok) {
+      return jsonResponse(request, { error: parsedBody.error }, { status: parsedBody.status });
+    }
+    if (
+      !parsedBody.value ||
+      typeof parsedBody.value !== "object" ||
+      Array.isArray(parsedBody.value)
+    ) {
+      return jsonResponse(request, { error: "Invalid request body" }, { status: 400 });
+    }
+    const question = normalizeQuestion(
+      (parsedBody.value as Record<string, unknown>).question,
+    );
 
     if (question.length < 3) {
       return jsonResponse(request, { error: 'Question is required.' }, { status: 400 });
