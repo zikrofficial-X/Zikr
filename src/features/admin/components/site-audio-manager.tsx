@@ -98,8 +98,8 @@ export function SiteAudioManager() {
 
       setAssets(current => [payload.asset, ...current]);
       setTitle("");
-      setStatus(payload.auditRecorded === false || !presignAuditRecorded
-        ? "تم رفع المقطع، لكن تعذر تسجيل أحد أحداث التدقيق الإداري. راجع مسؤول النظام."
+      setStatus(payload.auditRecorded === false || payload.uploadIntentFinalized === false || !presignAuditRecorded
+        ? "تم رفع المقطع، لكن تعذر تأكيد أحد سجلات التدقيق أو التخزين. راجع مسؤول النظام."
         : "تم رفع المقطع. اختر «جعله الأساسي» لتفعيله.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "فشل رفع المقطع.");
@@ -144,9 +144,13 @@ export function SiteAudioManager() {
       if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error ?? "تعذر حذف المقطع.");
       setAssets(current => current.filter(item => item.id !== asset.id));
-      setStatus(payload.auditRecorded === false
-        ? "تم حذف المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
-        : "تم حذف المقطع.");
+      setStatus(payload.storageCleanupPending
+        ? "تم حذف سجل المقطع؛ ملف التخزين سيُعاد تنظيفه تلقائيًا بعد فترة الاحتفاظ."
+        : payload.intentFinalizationPending
+          ? "تم حذف المقطع وتنظيف الملف؛ سجل التخزين سيُسوّى تلقائيًا."
+          : payload.auditRecorded === false
+            ? "تم حذف المقطع، لكن تعذر تسجيل حدث التدقيق الإداري. راجع مسؤول النظام."
+            : "تم حذف المقطع.");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "تعذر حذف المقطع.");
     } finally {
@@ -213,7 +217,7 @@ export function SiteAudioManager() {
                     </div>
                     <div className="flex gap-2">
                       <button disabled={busy || asset.is_primary} onClick={() => void makePrimary(asset)} className="rounded-lg border border-brand-gold/35 px-3 py-1.5 text-xs text-brand-gold disabled:opacity-40">جعله الأساسي</button>
-                      {!curated && <button disabled={busy} onClick={() => void remove(asset)} className="rounded-lg border border-red-300/25 px-3 py-1.5 text-xs text-red-200 disabled:opacity-40">حذف</button>}
+                      {!curated && <button disabled={busy || asset.is_primary} onClick={() => void remove(asset)} className="rounded-lg border border-red-300/25 px-3 py-1.5 text-xs text-red-200 disabled:opacity-40">حذف</button>}
                     </div>
                   </div>
                 </article>
