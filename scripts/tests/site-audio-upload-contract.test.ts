@@ -148,6 +148,9 @@ assert.ok(primaryDeleteGuard >= 0 && primaryDeleteGuard < rowDelete, "the API mu
 assert.ok(deletionIntent >= 0 && deletionIntent < rowDelete, "a durable cleanup intent must exist before the asset row is deleted");
 assert.ok(deleteHandler.includes('.eq("is_primary", false)'), "the delete must recheck primary state atomically");
 assert.ok(rowDelete >= 0 && storageRemove > rowDelete, "the Storage object must not be removed before the non-primary DB row is deleted");
+const storageVerify = deleteHandler.indexOf('.list(storageDirectory');
+const intentCleaned = deleteHandler.indexOf('status: "cleaned"');
+assert.ok(storageVerify >= 0 && intentCleaned > storageVerify, "the intent must not be marked cleaned until Storage absence is verified");
 assert.ok(deleteHandler.includes("storageCleanupPending"), "failed Storage removal must remain queued for safe retry");
 assert.ok(manager.includes("payload.uploadIntentFinalized === false"), "the Admin UI must surface upload-intent finalization failures");
 assert.ok(manager.includes("payload.storageCleanupPending"), "the Admin UI must surface deferred Storage cleanup");
