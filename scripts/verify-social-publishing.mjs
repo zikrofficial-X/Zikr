@@ -23,6 +23,8 @@ const facebookOAuthPolicy = read("src/features/social/services/facebook-oauth-po
 const facebookProfileSyncPolicy = read("src/features/social/services/social-insights-sync-status.ts");
 const videoGenerator = read("scripts/jobs/template-video-automation.ts");
 const socialPublishingService = read("src/features/social/services/social-publishing.ts");
+const socialQueueSelectionService = read("src/features/social/services/social-queue-selection.ts");
+const socialTargetContractMigration = read("supabase/migrations/20261114010000_social_publish_queue_target_platform_contract.sql");
 const socialQueueMetadataService = read("src/features/social/services/social-queue-metadata.ts");
 const cleanupPolicy = read("src/features/social/services/published-video-cleanup.ts");
 const youtubeCredentials = read("src/features/social/services/youtube-oauth-credentials.ts");
@@ -197,6 +199,11 @@ if (!socialPublishingService.includes("requireSocialQueueRows") ||
     socialPublishingService.includes("Array.isArray(batch) ? batch : []") ||
     socialPublishingService.includes("Array.isArray(writtenCandidates) ? writtenCandidates : []")) {
   failures.push("social queue reads must reject malformed PostgREST row sets instead of silently returning an empty batch");
+}
+if (!socialQueueSelectionService.includes("validateStoredSocialTargetPlatforms") ||
+    !socialPublishingService.includes("validateStoredSocialTargetPlatforms(item.target_platforms)") ||
+    !socialTargetContractMigration.includes("social_publish_queue_target_platforms_check")) {
+  failures.push("social publishing must quarantine malformed or duplicate queue targets and enforce the same supported-target contract in Postgres");
 }
 const kidsCatalogSyncStart = socialPublishingService.indexOf("async function syncKidsSocialPublicationToCatalog");
 const kidsCatalogSyncEnd = socialPublishingService.indexOf("async function syncYouTubeVideoReferenceToCatalog", kidsCatalogSyncStart);
