@@ -14,6 +14,7 @@ import {
 import { isDefinitiveSupabaseInsertRejection } from "@/features/media/services/cloudinary-orphan-compensation";
 import { isCloudinarySecureImageUrl } from "@/features/media/services/cloudinary-validation";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { isRegisteredGameId } from "@/lib/games/registry";
 import { isKidsContentType, normalizeKidsVideoEmbedUrl, parseKidsQuizData } from "@/features/kids/services/kids-content-validation";
 
@@ -78,7 +79,7 @@ export async function saveKidsContentAction(formData: FormData) {
   const ageGroup = value(formData, "age_group") ?? "6-8";
   const ageAppropriate = type === "story" && formData.get("age_appropriate") === "on";
   const published = formData.get("published") === "on";
-  if (published) await requireAdminStepUp("content.publish", "/admin/kids");
+  if (published || ageAppropriate) await requireAdminStepUp("content.publish", "/admin/kids");
   const rawVideoUrl = value(formData, "video_url");
   if (rawVideoUrl && type !== "video") throw new Error("رابط الفيديو مسموح به لمحتوى الفيديو فقط.");
   const videoUrl = rawVideoUrl ? normalizeKidsVideoEmbedUrl(rawVideoUrl) : null;
@@ -218,5 +219,116 @@ export async function saveKidsContentAction(formData: FormData) {
   if (auditError) {
     console.warn("[admin/kids] audit event unavailable after content save:", auditError);
     throw new Error("Kids content was saved, but its audit event could not be recorded. Do not repeat the action; notify an owner.");
+  }
+}
+
+export async function reviewKidsStoryAgeSuitabilityAction(formData: FormData) {
+  await requireAdminPermission("kids.manage");
+  await requireAdminStepUp("content.publish", "/admin/kids/content");
+
+  const id = value(formData, "id");
+  const expectedUpdatedAt = value(formData, "expected_updated_at");
+  const decision = value(formData, "decision");
+  const confirmReview = formData.get("confirm_review") === "on";
+  const reviewNote = String(formData.get("review_note") ?? "").trim();
+
+  if (!id || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    throw new Error("معرف القصة غير صالح.");
+  }
+  if (!expectedUpdatedAt || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
+    throw new Error("تعذر التحقق من إصدار القصة. حدّث الصفحة ثم أعد المحاولة.");
+  }
+  if (decision !== "approved" && decision !== "rejected") {
+    throw new Error("قرار مراجعة ملاءمة العمر غير صالح.");
+  }
+  if (!confirmReview) {
+    throw new Error("يجب تأكيد قراءة القصة كاملة قبل تسجيل قرار المراجعة.");
+  }
+  if (reviewNote.length > 500 || (decision === "rejected" && reviewNote.length < 10)) {
+    throw new Error("اكتب سببًا واضحًا لا يقل عن 10 أحرف عند رفض ملاءمة القصة، وبحد أقصى 500 حرف.");
+  }
+
+  const rows = await supabaseServerAdminRequest<Array<{
+    id: string;
+    slug: string;
+    type: string;
+    age_group: string | null;
+    content_ar: string;
+    metadata: Record<string, unknown> | null;
+    updated_at: string;
+  }>>(
+    "/rest/v1/kids_content?id=eq." + encodeURIComponent(id) +
+      "&select=id,slug,type,age_group,content_ar,metadata,updated_at&limit=2",
+    { method: "GET" },
+  );
+
+  if (!Array.isArray(rows) || rows.length !== 1) {
+    throw new Error("لم يتم العثور على القصة المطلوبة للمراجعة.");
+  }
+
+  const current = rows[0];
+  const allowedAgeGroups = new Set(["3-5", "6-8", "9-12", "13-15"]);
+  if (
+    current.type !== "story" ||
+    typeof current.content_ar !== "string" ||
+    !current.content_ar.trim() ||
+    !allowedAgeGroups.has(current.age_group ?? "")
+  ) {
+    throw new Error("لا يمكن اعتماد هذا السجل كقصة صالحة للمراجعة العمرية.");
+  }
+  if (current.updated_at !== expectedUpdatedAt) {
+    throw new Error("تغيرت القصة منذ تحميلها. حدّث الصفحة واقرأ النسخة الأحدث قبل المراجعة.");
+  }
+
+  const existingMetadata =
+    current.metadata && typeof current.metadata === "object" && !Array.isArray(current.metadata)
+      ? current.metadata
+      : {};
+  const approved = decision === "approved";
+  const nextMetadata = { ...existingMetadata, age_appropriate: approved };
+  const nextUpdatedAt = buildNextRowVersionUpdatedAt(current.updated_at);
+  const updated = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string }>>(
+    "/rest/v1/kids_content?id=eq." + encodeURIComponent(id) +
+      "&updated_at=eq." + encodeURIComponent(current.updated_at) +
+      "&select=id,updated_at",
+    {
+      method: "PATCH",
+      headers: { Prefer: "return=representation" },
+      body: JSON.stringify({ metadata: nextMetadata, updated_at: nextUpdatedAt }),
+    },
+  );
+
+  if (!Array.isArray(updated) || updated.length !== 1 || updated[0]?.id !== id) {
+    throw new Error("تغيرت القصة أثناء الحفظ. لم يتم تسجيل القرار؛ حدّث الصفحة ثم أعد المراجعة.");
+  }
+
+  let auditError: unknown = null;
+  try {
+    await recordAdminAuditEvent({
+      action: approved ? "kids.story.age_approval.approved" : "kids.story.age_approval.rejected",
+      permission: "content.publish",
+      resourceType: "kids_content",
+      resourceId: id,
+      metadata: {
+        slug: current.slug,
+        ageGroup: current.age_group,
+        decision,
+        previousAgeAppropriate: current.metadata?.age_appropriate === true,
+        reviewNote: reviewNote || null,
+      },
+    });
+  } catch (error) {
+    auditError = error;
+  }
+
+  revalidatePath("/admin/kids/content");
+  revalidatePath("/admin/kids");
+  revalidatePath("/api/kids/content");
+  revalidatePath("/kids");
+  revalidatePath(`/kids/${current.slug}`);
+
+  if (auditError) {
+    console.warn("[admin/kids] age-review audit event unavailable after metadata update:", auditError);
+    throw new Error("تم حفظ قرار المراجعة، لكن تعذر تسجيل سجل التدقيق. لا تكرر الإرسال؛ أبلغ مالك النظام.");
   }
 }

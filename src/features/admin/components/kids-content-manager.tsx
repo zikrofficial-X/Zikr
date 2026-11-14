@@ -3,7 +3,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabaseServerAdminCount, supabaseServerAdminRequest } from "@/lib/supabase/server";
-import { saveKidsContentAction } from "@/app/admin/kids/actions";
+import { reviewKidsStoryAgeSuitabilityAction, saveKidsContentAction } from "@/app/admin/kids/actions";
 import { CloudinaryImageUploadField } from "@/features/admin/components/cloudinary-image-upload-field";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 import { isKidsContentType, type KidsContentType } from "@/features/kids/services/kids-content-validation";
@@ -44,6 +44,20 @@ type KidsRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type KidsReviewRow = {
+  id: string;
+  title_ar: string;
+  title_en: string | null;
+  slug: string;
+  age_group: string | null;
+  published: boolean;
+  is_active: boolean;
+  content_ar: string;
+  content_en: string | null;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+};
+
 function Field({
   name,
   label,
@@ -75,34 +89,56 @@ function Field({
   );
 }
 
-async function getKidsContent(): Promise<{ rows: KidsRow[]; ok: boolean; totalCount: number | null }> {
-  const [rowsResult, countResult] = await Promise.allSettled([
+async function getKidsContent(): Promise<{
+  rows: KidsRow[];
+  reviewRows: KidsReviewRow[];
+  reviewOk: boolean;
+  ok: boolean;
+  totalCount: number | null;
+}> {
+  const [rowsResult, countResult, reviewRowsResult] = await Promise.allSettled([
     supabaseServerAdminRequest<KidsRow[]>(
       "/rest/v1/kids_content?select=id,title_ar,title_en,slug,type,age_group,published,is_active,created_at,updated_at,metadata&order=updated_at.desc&limit=300",
       { method: "GET" },
     ),
     supabaseServerAdminCount("kids_content"),
+    supabaseServerAdminRequest<KidsReviewRow[]>(
+      "/rest/v1/kids_content?select=id,title_ar,title_en,slug,age_group,published,is_active,content_ar,content_en,updated_at,metadata&type=eq.story&order=updated_at.desc&limit=300",
+      { method: "GET" },
+    ),
   ]);
   if (rowsResult.status === "rejected") {
     console.error("[admin/kids] failed to load database content:", rowsResult.reason);
-    return { rows: [], ok: false, totalCount: null };
+    return { rows: [], reviewRows: [], reviewOk: false, ok: false, totalCount: null };
   }
   if (!Array.isArray(rowsResult.value)) {
     console.error("[admin/kids] database content query returned an invalid row set.");
-    return { rows: [], ok: false, totalCount: null };
+    return { rows: [], reviewRows: [], reviewOk: false, ok: false, totalCount: null };
+  }
+  const reviewRows =
+    reviewRowsResult.status === "fulfilled" && Array.isArray(reviewRowsResult.value)
+      ? reviewRowsResult.value
+      : [];
+  const reviewOk = reviewRowsResult.status === "fulfilled" && Array.isArray(reviewRowsResult.value);
+  if (!reviewOk) {
+    console.error(
+      "[admin/kids] failed to load story text for age review:",
+      reviewRowsResult.status === "rejected" ? reviewRowsResult.reason : "invalid review row set",
+    );
   }
   const totalCount = countResult.status === "fulfilled" ? countResult.value : null;
   if (countResult.status === "rejected") {
     console.error("[admin/kids] failed to count database content:", countResult.reason);
   }
-  return { rows: rowsResult.value, ok: true, totalCount };
+  return { rows: rowsResult.value, reviewRows, reviewOk, ok: true, totalCount };
 }
 
 export async function AdminKidsContentManager({ canPublish, canManageMedia }: Props) {
-  const { rows, ok, totalCount } = await getKidsContent();
+  const { rows, reviewRows, reviewOk, ok, totalCount } = await getKidsContent();
   const publishedCount = rows.filter((item) => item.published && item.is_active).length;
   const draftCount = rows.length - publishedCount;
-  const automationApprovalRequiredCount = rows.filter((item) => item.type === "story" && item.metadata?.age_appropriate !== true).length;
+  const storiesNeedingReview = reviewRows.filter((item) => item.metadata?.age_appropriate !== true);
+  const automationApprovalRequiredCount = storiesNeedingReview.length;
   const typeCounts = rows.reduce<Record<string, number>>((acc, item) => {
     acc[item.type] = (acc[item.type] ?? 0) + 1;
     return acc;
@@ -168,10 +204,10 @@ export async function AdminKidsContentManager({ canPublish, canManageMedia }: Pr
           <Field name="reward" label="رسالة تشجيع الطفل" placeholder="أحسنت! اقتربت من الوسام الذهبي" />
           <div className="md:col-span-2"><Field name="content_ar" label="المحتوى بالعربية" textarea required placeholder="اكتب محتوى القصة أو الدعاء هنا..." /></div>
           <div className="md:col-span-2"><Field name="quiz_data" label="بيانات الاختبار (مطلوبة عند اختيار نوع اختبار)" textarea placeholder='{"questions":[{"text":"من ربك؟","options":["الله","غير ذلك"],"correctAnswer":0}]}' /></div>
-          <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
+          {canPublish ? <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="age_appropriate" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
             اعتماد ملاءمة القصة للعمر قبل النشر والتوليد الآلي (مطلوب لنشر القصة)
-          </label>
+          </label> : <p role="note" className="text-xs text-brand-cream/45 md:col-span-2">لا تتوفر صلاحية اعتماد ملاءمة العمر لهذا الحساب؛ سيتم حفظ القصة دون اعتماد للتوليد الآلي.</p>}
           {canPublish ? <label className="flex items-center gap-2 text-sm text-brand-cream/70 md:col-span-2">
             <input name="published" type="checkbox" defaultChecked={false} className="accent-brand-gold" />
             نشر المحتوى بعد المراجعة
@@ -208,6 +244,74 @@ export async function AdminKidsContentManager({ canPublish, canManageMedia }: Pr
           </table>
         </div>
         {ok && rows.length === 0 && <p className="py-6 text-center text-sm text-brand-cream/40">لا توجد سجلات في قاعدة البيانات حتى الآن.</p>}
+      </Card>
+
+      <Card className="space-y-4">
+        <div>
+          <h2 className="text-xl text-brand-gold">مراجعة ملاءمة القصص للتوليد الآلي</h2>
+          <p className="text-sm arabic-muted mt-1">اقرأ النص العربي كاملًا وحدد القرار لكل قصة. القرار يغيّر أهلية التوليد والنشر الآلي فقط، ولا يغيّر حالة الظهور العام.</p>
+        </div>
+        {!reviewOk ? (
+          <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 p-3 text-sm text-red-100">
+            تعذر تحميل نصوص القصص للمراجعة؛ لا تعتبر القائمة فارغة ولا تعتمد أي قصة قبل إعادة التحميل.
+          </div>
+        ) : !canPublish ? (
+          <p role="note" className="text-sm text-amber-200/80">تحتاج صلاحية content.publish مع تحقق إضافي لاعتماد ملاءمة العمر أو رفضها.</p>
+        ) : storiesNeedingReview.length === 0 ? (
+          <p className="text-sm text-emerald-200">لا توجد قصص تنتظر اعتماد ملاءمة العمر ضمن آخر 300 قصة.</p>
+        ) : (
+          <div className="space-y-3">
+            {storiesNeedingReview.map((item) => (
+              <details key={item.id} className="rounded-xl border border-brand-gold/20 bg-black/15">
+                <summary className="cursor-pointer list-inside p-3 text-sm text-brand-cream">
+                  <span className="font-semibold">{item.title_ar}</span>
+                  <span className="mx-2 text-brand-cream/35">·</span>
+                  <span className="text-brand-cream/60">{ageGroupLabels[item.age_group ?? ""] ?? item.age_group ?? "فئة غير محددة"}</span>
+                  <span className="block pt-1 text-xs text-brand-cream/35" dir="ltr">/{item.slug}</span>
+                </summary>
+                <div className="space-y-4 border-t border-brand-gold/10 p-4">
+                  <div dir="rtl" className="rounded-lg bg-black/20 p-3">
+                    <h3 className="mb-2 text-sm font-semibold text-brand-gold">النص العربي</h3>
+                    <p className="whitespace-pre-wrap text-sm leading-7 text-brand-cream/85">{item.content_ar}</p>
+                  </div>
+                  {item.content_en ? (
+                    <div dir="ltr" className="rounded-lg bg-black/20 p-3 text-left">
+                      <h3 className="mb-2 text-sm font-semibold text-brand-gold">English text</h3>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-brand-cream/75">{item.content_en}</p>
+                    </div>
+                  ) : null}
+                  <div className="text-xs text-brand-cream/45">
+                    الحالة الحالية: {item.published && item.is_active ? "منشور ومفعّل" : "مسودة أو مخفي"} · غير معتمد للتوليد الآلي
+                  </div>
+                  <form action={reviewKidsStoryAgeSuitabilityAction} className="space-y-3">
+                    <input type="hidden" name="id" value={item.id} />
+                    <input type="hidden" name="expected_updated_at" value={item.updated_at} />
+                    <fieldset className="flex flex-wrap gap-4 text-sm text-brand-cream/80">
+                      <legend className="mb-2 text-brand-gold">قرار المراجعة</legend>
+                      <label className="flex items-center gap-2">
+                        <input type="radio" name="decision" value="approved" required className="accent-brand-gold" />
+                        مناسبة للفئة العمرية
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="radio" name="decision" value="rejected" required className="accent-brand-gold" />
+                        غير مناسبة حاليًا
+                      </label>
+                    </fieldset>
+                    <label className="block space-y-1 text-sm text-brand-cream/75">
+                      <span>سبب القرار (مطلوب عند الرفض)</span>
+                      <textarea name="review_note" maxLength={500} rows={3} placeholder="اكتب سبب الرفض أو ملاحظة المراجعة..." className="w-full rounded-lg border border-brand-gold/20 bg-black/20 p-2 text-brand-cream" />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs text-brand-cream/65">
+                      <input type="checkbox" name="confirm_review" required className="accent-brand-gold" />
+                      أؤكد أنني قرأت القصة كاملة وراجعت ملاءمتها للفئة العمرية المحددة.
+                    </label>
+                    <Button type="submit">حفظ قرار المراجعة</Button>
+                  </form>
+                </div>
+              </details>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card className="flex items-center justify-between gap-4">
