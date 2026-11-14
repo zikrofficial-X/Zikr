@@ -99,6 +99,8 @@ const adminDeleteStart = adminRoute.indexOf("export async function DELETE");
 const adminDelete = adminRoute.slice(adminDeleteStart);
 assert.match(adminDelete, /status: "deleting"/, "delete must lock the intent before removing the asset row");
 assert.ok(adminDelete.includes('.eq("status", "deleting")'), "delete finalization must remain scoped to the deleting lock");
+assert.ok(adminDelete.includes('.select("storage_path")') && adminDelete.includes(".maybeSingle()"), "restoring a shared-path intent must confirm that the compare-and-set updated one row");
+assert.ok(adminDelete.includes("restoreIntentError || !restoredIntent"), "a zero-row restore compare-and-set must be surfaced as pending reconciliation");
 assert.ok(adminDelete.indexOf('.from("site_audio_assets")') < adminDelete.indexOf('.remove([asset.storage_path])'), "the delete route must recheck references before removing Storage bytes");
 const cleanupLogLines = cleanupScript.split(/\r?\n/).filter((line) => line.includes("console.log("));
 assert.ok(cleanupLogLines.every((line) => !line.includes("intent.storage_path") || line.includes("safePathLogReference(intent.storage_path)")), "public workflow logs must use a path fingerprint instead of owner UUIDs or uploaded filenames");

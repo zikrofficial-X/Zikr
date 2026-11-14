@@ -339,15 +339,20 @@ export async function DELETE(request: NextRequest) {
     } else if ((remainingAssetReferences ?? []).length > 0) {
       storageCleanupSkipped = true;
       const survivingAsset = remainingAssetReferences[0];
-      const { error: restoreIntentError } = await db
+      const { data: restoredIntent, error: restoreIntentError } = await db
         .from("site_audio_upload_intents")
         .update({ status: "registered", asset_id: survivingAsset.id, updated_at: new Date().toISOString() })
         .eq("storage_path", asset.storage_path)
         .eq("status", "deleting")
-        .is("asset_id", null);
-      if (restoreIntentError) {
+        .is("asset_id", null)
+        .select("storage_path")
+        .maybeSingle();
+      if (restoreIntentError || !restoredIntent) {
         intentFinalizationPending = true;
-        console.error("[api/admin/site-audio] surviving asset intent reconciliation deferred:", restoreIntentError.message);
+        console.error(
+          "[api/admin/site-audio] surviving asset intent reconciliation deferred:",
+          restoreIntentError?.message ?? "deleting intent was not restored",
+        );
       }
     } else {
       const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);

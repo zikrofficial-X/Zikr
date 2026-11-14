@@ -17,6 +17,12 @@ The manual-only `ZIKR Site-Audio Orphan Retention` workflow is restricted to `ma
 
 The delete API changes the intent to `deleting` before deleting its metadata row, so a concurrent upload registration cannot reuse the same session. The asset foreign key clears `asset_id` only after the row is deleted. For every candidate, the command rechecks the intent state and metadata reference immediately before removing only that exact object path. It then lists the exact directory entry to verify absence before marking the intent `cleaned`. Missing objects are reconciled without a Storage delete. Metadata-mismatched objects are retained for manual review. More than 5,000 expired intents, malformed paths, lookup errors, and failed absence verification all stop the run.
 
+## Pause control is an operator attestation, not an application lock
+
+`SITE_AUDIO_UPLOAD_WRITES_PAUSED=true` is passed to the cleanup process from a manual workflow input. It does not set a Vercel runtime variable, and the upload-URL, registration, asset-delete, and other asset-reference API handlers do not read this workflow variable. The checkbox therefore does **not** pause application writes by itself.
+
+Before destructive apply, the owner must independently disable or maintenance-gate every site-audio upload, registration, deletion, and asset-reference writer, then verify that the pause remains active for the entire apply window. If that cannot be independently verified, keep the run dry-run only. Do not infer that selecting the workflow input pauses the application.
+
 ## Audit restrictions
 
 - The audit and CI tests never execute the cleanup command with `--apply`.
