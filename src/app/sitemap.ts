@@ -69,15 +69,15 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
       getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
-      getStories().catch((error): Story[] => { console.error("[sitemap] Stories fetch failed:", error); return []; }),
+      getStories(1000).catch((error): Story[] => { console.error("[sitemap] Stories fetch failed:", error); return []; }),
       getArticles(undefined, 1000).catch((): Article[] => []),
       getProphets().catch((): Prophet[] => []),
       getPublishedSlugs("battles"),
-      getDuas().catch((): Dua[] => []),
+      getDuas(undefined, 1000).catch((): Dua[] => []),
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
-      getPublicContentLibrary(100).catch(() => []),
+      getPublicContentLibrary(1000).catch(() => []),
       getKidsContent("ar").catch(() => []),
     ]);
 

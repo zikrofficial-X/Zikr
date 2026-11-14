@@ -95,7 +95,7 @@ export async function getPublicContentLibrary(
   limit = 60,
   locale: "ar" | "en" = "ar",
 ): Promise<PublicContentLibraryItem[]> {
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
 
   try {
     const rows = await supabaseServerAnonRequest<RawItem[]>(

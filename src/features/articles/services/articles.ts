@@ -179,7 +179,7 @@ export async function getArticleCategories(): Promise<ArticleCategory[]> {
 }
 
 export async function getArticles(categoryId?: string, limit = 100, locale?: Locale): Promise<Article[]> {
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
   const activeLocale = locale ?? await getRequestLocale();
 
   if (hasSupabaseConfig()) {

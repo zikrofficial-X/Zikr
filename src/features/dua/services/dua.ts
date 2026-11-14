@@ -120,7 +120,7 @@ export async function getDuas(
   locale?: Locale,
 ): Promise<Dua[]> {
   const activeLocale = locale ?? await getRequestLocale();
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
   const localDuas = await getOfflineOrFallbackDuas();
   const localeReady = (dua: Dua) =>
     activeLocale === "en"
