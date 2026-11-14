@@ -40,7 +40,7 @@ assert.equal(
 const operationChecks = [
   ["safeTogglePublishAction", "await toggleManagedContent("],
   ["safeDeleteContentAction", "await deleteManagedContent("],
-  ["scheduleContentPublishAction", 'await supabaseServerAdminRequest("/rest/v1/content_publish_queue"'],
+  ["scheduleContentPublishAction", "await supabaseServerAdminRequest("],
   ["cancelContentPublishAction", 'method: "PATCH"'],
 ] as const;
 for (const [name, operation] of operationChecks) {
@@ -49,14 +49,12 @@ for (const [name, operation] of operationChecks) {
   const body = actions.slice(start, next < 0 ? actions.length : next);
   assert.ok(start >= 0, `${name} must remain present`);
   assert.ok(body.indexOf(operation) >= 0, `${name} must perform its business mutation`);
+  if (name === "scheduleContentPublishAction") assert.ok(body.includes("/rest/v1/content_publish_queue"), "schedule action must write the content publish queue");
   assert.ok(
     body.indexOf(operation) < body.indexOf("await recordContentAuditEvent("),
     `${name} must record the audit event only after its business mutation commits`,
   );
 }
-
-console.log("Post-commit admin audit failure contract passed.");
-
 
 const postCommitRoutes = [
   ["src/app/api/admin/video-generation/route.ts", 2],
@@ -76,3 +74,5 @@ for (const [path, expectedCalls] of postCommitRoutes) {
   assert.equal(wrappedCalls, expectedCalls, `${path} must not turn a committed mutation into a generic failure when audit persistence fails`);
   assert.match(source, /auditRecorded/, `${path} must surface whether its audit event was persisted`);
 }
+
+console.log("Post-commit admin audit failure contract passed.");
