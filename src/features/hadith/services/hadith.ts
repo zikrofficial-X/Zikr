@@ -8,7 +8,7 @@ import path from "node:path";
 import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import { hasHadithPageRows, resolveHadithBookName, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
+import { hasHadithPageRows, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
 import { createOfflineHadithBooksLoader, type OfflineHadithBookRow } from "@/features/hadith/services/offline-books-loader";
 import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
