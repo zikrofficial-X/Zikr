@@ -94,9 +94,19 @@ for (const [label, source] of [["Kids dashboard", kidsEntryPage], ["Kids content
     failures.push(`${label} must enforce kids.manage before rendering the shared content manager.`);
   }
 }
+if (
+  !kidsContentManager.includes('from "@/app/admin/kids/actions"') ||
+  !kidsContentManager.includes("saveKidsContentAction") ||
+  !kidsContentManager.includes("reviewKidsStoryAgeSuitabilityAction")
+) {
+  failures.push("Shared Kids content manager must import the dedicated create and age-review server actions.");
+}
+
 for (const token of [
-  'import { saveKidsContentAction } from "@/app/admin/kids/actions"',
   "CloudinaryImageUploadField",
+  "reviewKidsStoryAgeSuitabilityAction",
+  "content_ar,content_en,updated_at",
+  'name="confirm_review"',
   'name="title_ar"',
   'name="content_ar"',
   'name="quiz_data"',

@@ -163,7 +163,7 @@ export async function AdminKidsContentManager({ canPublish, canManageMedia }: Pr
         <Card><p className="text-sm arabic-muted">منشور ومفعّل ضمن آخر 300</p><strong className="text-3xl text-emerald-300">{ok ? publishedCount : "غير متاح"}</strong></Card>
         <Card><p className="text-sm arabic-muted">مسودة / مخفي ضمن آخر 300</p><strong className="text-3xl text-amber-300">{ok ? draftCount : "غير متاح"}</strong></Card>
         <Card><p className="text-sm arabic-muted">أنواع المحتوى ضمن آخر 300</p><strong className="text-3xl text-brand-gold">{ok ? Object.keys(typeCounts).length : "غير متاح"}</strong></Card>
-        <Card><p className="text-sm arabic-muted">قصص غير معتمدة للتوليد ضمن آخر 300</p><strong className="text-3xl text-amber-300">{ok ? automationApprovalRequiredCount : "غير متاح"}</strong></Card>
+        <Card><p className="text-sm arabic-muted">قصص غير معتمدة للتوليد ضمن آخر 300</p><strong className="text-3xl text-amber-300">{ok && reviewOk ? automationApprovalRequiredCount : "غير متاح"}</strong></Card>
       </section>
 
       <section className="flex flex-wrap gap-2">

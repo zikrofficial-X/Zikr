@@ -54,7 +54,7 @@ assert.match(kidsContentPage, /hasAdminPermission\(admin\.role, "media\.manage"\
 assert.match(kidsContentPage, /canPublish=\{canPublish\} canManageMedia=\{canManageMedia\}/);
 assert.match(kidsContentManager, /canManageMedia \? <CloudinaryImageUploadField/);
 assert.match(kidsContentManager, /canPublish \? <label/);
-assert.match(kidsContentActions, /if \(published\) await requireAdminStepUp\("content\.publish"/);
+assert.match(kidsContentActions, /if \(published \|\| ageAppropriate\) await requireAdminStepUp\("content\.publish"/);
 assert.match(kidsContentActions, /requireAdminPermission\("media\.manage"\)/);
 
 
