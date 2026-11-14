@@ -104,12 +104,19 @@ jobs:
           facebook_ready=false
           facebook_insights_ready=false
           if [[ "${FACEBOOK_PUBLISHING_REQUESTED,,}" == "true" ]]; then
-            facebook_json="$(curl -fsS \
+            if ! facebook_json="$(curl -fsS \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&is_enabled=eq.true&connection_status=eq.connected&page_id=not.is.null&page_id=neq.&page_access_token=not.is.null&page_access_token=neq.&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"
-            facebook_readiness="$(node -e '
-              const rows = JSON.parse(process.argv[1]);
+              "$SUPABASE_URL/rest/v1/social_platform_credentials?platform=eq.facebook&is_enabled=eq.true&connection_status=eq.connected&page_id=not.is.null&page_id=neq.&page_access_token=not.is.null&page_access_token=neq.&select=is_enabled,connection_status,page_id,expires_at,granted_permissions&limit=1")"; then
+              echo "::warning::Facebook credential lookup failed; disabling only Facebook publishing for this run." >&2
+              facebook_json='[]'
+            fi
+            if ! facebook_readiness="$(node -e '
+              let rows;
+              try { rows = JSON.parse(process.argv[1]); } catch {
+                process.stdout.write("false|false");
+                process.exit(0);
+              }
               const row = Array.isArray(rows) ? rows[0] : null;
               const expires = row?.expires_at ? Date.parse(row.expires_at) : null;
               const fresh = expires === null || (Number.isFinite(expires) && expires > Date.now());
@@ -119,7 +126,10 @@ jobs:
               const publishReady = Boolean(row?.is_enabled === true && row?.connection_status === "connected" && row?.page_id && fresh && scopesOkay);
               const insightsReady = scopes.includes("read_insights");
               process.stdout.write(String(publishReady) + "|" + String(insightsReady));
-            ' "$facebook_json")"
+            ' "$facebook_json")"; then
+              echo "::warning::Facebook credential response could not be evaluated; disabling only Facebook publishing for this run." >&2
+              facebook_readiness='false|false'
+            fi
             IFS='|' read -r facebook_ready facebook_insights_ready <<< "$facebook_readiness"
           fi
           echo "SOCIAL_PUBLISH_FACEBOOK_ENABLED=$facebook_ready" >> "$GITHUB_ENV"
@@ -131,12 +141,19 @@ jobs:
           youtube_scopes_ready=false
           youtube_ready=false
           if [[ "${YOUTUBE_PUBLISHING_REQUESTED,,}" == "true" && "$youtube_client_id_present" == "true" && "$youtube_client_secret_present" == "true" ]]; then
-            youtube_json="$(curl -fsS \
+            if ! youtube_json="$(curl -fsS \
               -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
               -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
-              "$SUPABASE_URL/rest/v1/youtube_oauth_credentials?provider=eq.youtube&refresh_token=not.is.null&refresh_token=neq.&channel_id=not.is.null&channel_id=neq.&select=granted_scopes&limit=1")"
-            youtube_scopes_ready="$(node -e '
-              const rows = JSON.parse(process.argv[1]);
+              "$SUPABASE_URL/rest/v1/youtube_oauth_credentials?provider=eq.youtube&refresh_token=not.is.null&refresh_token=neq.&channel_id=not.is.null&channel_id=neq.&select=granted_scopes&limit=1")"; then
+              echo "::warning::YouTube credential lookup failed; disabling only YouTube publishing for this run." >&2
+              youtube_json='[]'
+            fi
+            if ! youtube_scopes_ready="$(node -e '
+              let rows;
+              try { rows = JSON.parse(process.argv[1]); } catch {
+                process.stdout.write("false");
+                process.exit(0);
+              }
               const scopes = Array.isArray(rows?.[0]?.granted_scopes) ? rows[0].granted_scopes : [];
               const required = [
                 "https://www.googleapis.com/auth/youtube.upload",
@@ -152,7 +169,10 @@ jobs:
                 required.every(scope => scopes.includes(scope)) &&
                 !scopes.some(scope => deleteCapable.includes(scope))
               ));
-            ' "$youtube_json")"
+            ' "$youtube_json")"; then
+              echo "::warning::YouTube credential response could not be evaluated; disabling only YouTube publishing for this run." >&2
+              youtube_scopes_ready=false
+            fi
             youtube_ready="$youtube_scopes_ready"
           fi
           echo "SOCIAL_PUBLISH_YOUTUBE_ENABLED=$youtube_ready" >> "$GITHUB_ENV"
