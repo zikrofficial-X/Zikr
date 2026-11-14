@@ -82,4 +82,18 @@ assert.ok(
   "the environment guard must run before reading a write-capable token",
 );
 
+
+const releaseWorkflow = readFileSync(resolve(process.cwd(), ".github/workflows/release-finalization.yml"), "utf8");
+const sourceAgentDeploy = releaseWorkflow.indexOf("supabase functions deploy source-verified-content-agent");
+const sourceAgentGuard = releaseWorkflow.lastIndexOf("Recheck approved main SHA immediately before source-agent deployment", sourceAgentDeploy);
+const prayerDeploy = releaseWorkflow.indexOf("supabase functions deploy prayer-notification-worker");
+const migrationApply = releaseWorkflow.indexOf("Apply pending production migrations");
+const productionDeploy = releaseWorkflow.indexOf("vercel deploy --prebuilt --prod");
+assert.ok(prayerDeploy >= 0, "release finalization must deploy the prayer notification Edge Function");
+assert.ok(sourceAgentDeploy > prayerDeploy, "release finalization must deploy the changed source-verified content agent after the prayer worker");
+assert.ok(sourceAgentGuard > prayerDeploy && sourceAgentGuard < sourceAgentDeploy, "source-agent deployment must recheck the exact approved main SHA immediately before deploy");
+assert.ok(migrationApply >= 0 && migrationApply < sourceAgentDeploy && sourceAgentDeploy < productionDeploy, "database migrations and source-agent deployment must precede Vercel production deployment");
+const supabaseConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
+assert.match(supabaseConfig, /\[functions\.source-verified-content-agent\][\s\S]*?verify_jwt\s*=\s*false/, "the source-agent cron endpoint must remain deployed without Supabase JWT verification because it validates its private scheduler secret itself");
+
 console.log("GitHub workflow dispatch environment policy checks passed.");
