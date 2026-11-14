@@ -3,7 +3,8 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const BUCKET = "site-audio";
-const MAX_PENDING_INTENTS = 5000;\nconst INTENT_PAGE_SIZE = 500;
+const MAX_PENDING_INTENTS = 5000;
+const INTENT_PAGE_SIZE = 500;
 const CLEANUP_CONFIRMATION = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS";
 const ALLOWED_MIME_TYPES = new Set([
   "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg",
