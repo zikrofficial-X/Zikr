@@ -131,17 +131,23 @@ async function runAdminSchemaContractCheck() {
   // Read-only schema probe. The mutating consume_admin_rate_limit RPC is
   // covered by local PostgreSQL integration tests and must never be called
   // by a production health check.
-  const tableResponse = await fetch(
-    baseUrl + "/rest/v1/admin_rate_limits?select=actor_id&limit=0",
-    { headers: adminHeaders }
-  );
-  if (!tableResponse.ok) {
-    throw new Error(
-      "admin_rate_limits schema contract returned HTTP " +
-        tableResponse.status +
-        ": " +
-        (await tableResponse.text()).replace(/\s+/g, " ").slice(0, 300)
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const tableResponse = await fetch(
+      baseUrl + "/rest/v1/admin_rate_limits?select=actor_id&limit=0",
+      { headers: adminHeaders, signal: controller.signal, redirect: "error" }
     );
+    if (!tableResponse.ok) {
+      throw new Error(
+        "admin_rate_limits schema contract returned HTTP " +
+          tableResponse.status +
+          ": " +
+          (await tableResponse.text()).replace(/\s+/g, " ").slice(0, 300)
+      );
+    }
+    console.log("PASS: admin_rate_limits schema contract (read-only HTTP " + tableResponse.status + ")");
+  } finally {
+    clearTimeout(timeout);
   }
-  console.log("PASS: admin_rate_limits schema contract (read-only HTTP " + tableResponse.status + ")");
 }
