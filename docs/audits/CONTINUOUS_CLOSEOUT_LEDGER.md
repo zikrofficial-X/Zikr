@@ -1,5 +1,13 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T1157Z — corrected 498-path inventory and exact-head closeout
+
+- Exact source head `e386e2dc41221bf5f385efcc490c5944659ccf8a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; PR #320 has 498 paths before the new overlay/manifest. Tree 2361 entries (1862 blobs, 499 directories), 144,173,046 bytes.
+- Exact-head checks: Quality Gate 43591992392 SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK 43591992389 SUCCESS; CircleCI Config Validation 43591992398 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS; Supabase Preview SKIPPED.
+- Corrected file-status scope: 217 pass, 51 pending trace, 209 review required, 21 pending live apply. The current overlay includes the remote migration ledger plus the prior overlay/manifest artifacts; the previous 11:50Z overlay omitted that newly modified ledger path and is superseded.
+- No merge/deploy/migration apply/content generation/Gemini/social publishing/storage cleanup/index deletion/secret change/Android release was initiated by audit. Scheduled production video/social workflows ran independently; see PROJECT_STATUS.md.
+- Production migration drift remains 439 local / 418 remote / 21 pending. Main english-content-sync failure remains unbypassed. Owner review and device/OAuth acceptance remain open. Audit OPEN.
+
 ## 2026-11-14T1150Z — audit continuation, production schema and scheduled automation evidence
 
 - Exact code/test head `1b571a3c3379536bcf674a7bf3fa48fe96e28c1a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`. PR #320 has 495 paths before two snapshot artifacts. Tree 2359 entries (1860 blobs, 499 trees), 143,688,693 bytes.

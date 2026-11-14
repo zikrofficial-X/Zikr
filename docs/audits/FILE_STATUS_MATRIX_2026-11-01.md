@@ -1,6 +1,16 @@
-# ZIKR file status matrix — refreshed 2026-11-14T1150Z
+# ZIKR file status matrix — refreshed 2026-11-14T1157Z
 
-## Latest PR #320 overlay — 2026-11-14T1150Z
+## Latest PR #320 overlay — 2026-11-14T1157Z
+
+- Source head `e386e2dc41221bf5f385efcc490c5944659ccf8a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 498 PR paths before the new overlay/manifest; final count 500 after them.
+- Inventory 2361 entries (1862 files, 499 directories), 144,173,046 bytes; complete recursive tree.
+- Status counts: 217 pass; 51 pending trace; 209 review required; 21 pending live apply.
+- Exact-head checks: Quality Gate 43591992392 SUCCESS; Android Debug APK 43591992389 SUCCESS; CircleCI Config Validation 43591992398 SUCCESS; CircleCI config-guard/source-verify/application-build-docs SUCCESS; Supabase Preview SKIPPED.
+- Production blockers: 21 pending migrations, live RLS/default-ACL/storage policy gaps, missing site-audio intent table/reminder timezone/YouTube playlist cache/social target CHECK/publish queue unique index, leaked-password protection disabled, 79 unused-index INFO findings.
+- Main scheduled video/social runs were observed but not triggered by audit. Main English content sync remains failed and unbypassed. PR has no owner review; owner/migration/device acceptance remains open. 1,525 main-baseline files remain review required.
+- Snapshot files: `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-14T1157Z.md`, `docs/audits/PR320_REPO_MANIFEST_2026-11-14T1157Z.jsonl`.
+
+## Historical PR #320 overlay — 2026-11-14T1150Z
 
 - Source head `1b571a3c3379536bcf674a7bf3fa48fe96e28c1a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 495 PR paths before the new overlay/manifest; no PR file deletions at this source head.
 - Inventory 2359 entries (1860 files, 499 directories), 143,688,693 bytes; complete recursive tree.

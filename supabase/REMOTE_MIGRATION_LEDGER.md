@@ -163,3 +163,13 @@ Do not rewrite old migration SQL or historical snapshots to make their former pr
 - Kids data: 65 rows, all published and active; 35 games, 3 quizzes, 26 stories, 1 wudu item. Every row has an age_group; 20 of 26 stories lack explicit `metadata.age_appropriate=true` and require editorial review. No data was edited.
 - Supabase Advisors: Health clean; Security leaked-password protection disabled; Performance 79 unused-index INFO findings. No indexes were removed.
 - SQL-only RLS, default-ACL, CHECK-constraint, and partial-index review remains owner-only. No production database, policy, index, function, or storage object was mutated.
+
+
+## 2026-11-14T1157Z production migration/schema comparison — read-only
+
+- Project `zqtssvlvmkzeeyqghqfk`: 439 local migrations, 418 remote, 21 local-only, 0 remote-only, 0 duplicate local versions. No migration was pushed or applied.
+- The 21 local-only migrations are recorded in the immediately preceding migration ledger entry; all remain pending owner review and apply.
+- Missing live contracts: `site_audio_upload_intents`; `background_reminder_preferences.timezone`; `youtube_sync_state.playlists`; `social_publish_queue_target_platforms_check`; `content_publish_queue_one_active_item` partial unique index. Existing social target arrays have zero invalid rows; active publish queue has zero duplicate pairs; background reminder preferences currently has zero rows.
+- Direct admin RLS writes remain on Kids/video/social/site-audio tables; `admin_role_assignments` still permits super-admin direct writes; Kids public-read policy lacks `is_active=true`; direct site-audio/video/public-assets storage policies remain. Default function ACLs still grant EXECUTE to client roles for defaults owned by postgres/supabase_admin. Kids share-count function itself is service-role-only.
+- Baseline tables/columns and anon denial for `content_translation_queue` were verified read-only. Kids live data: 65 rows all active/published; 35 games, 3 quizzes, 26 stories, 1 wudu item; all have age_group, but 20 stories lack explicit `metadata.age_appropriate=true`. No data edited.
+- Supabase Advisors: Health clean; Security leaked-password protection disabled; Performance 79 unused-index INFO findings. No indexes or production resources were deleted.
