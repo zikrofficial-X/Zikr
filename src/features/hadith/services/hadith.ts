@@ -8,7 +8,7 @@ import path from "node:path";
 import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
-import { hasHadithPageRows, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
+import { hasHadithPageRows, resolveHadithBookName, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
 import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
 
@@ -25,7 +25,7 @@ type OfflineHadithBookRow = {
 
 let offlineBooksPromise: Promise<HadithBook[]> | null = null;
 
-async function loadOfflineHadithBooks(): Promise<HadithBook[]> {
+async function loadOfflineHadithBooks(locale: Locale = "ar"): Promise<HadithBook[]> {
   if (!offlineBooksPromise) {
     offlineBooksPromise = readFile(
       path.join(
@@ -43,7 +43,9 @@ async function loadOfflineHadithBooks(): Promise<HadithBook[]> {
         .map((row) => ({
           id: String(row.slug),
           slug: String(row.slug),
-          name: String(row.name_ar),
+          name: resolveHadithBookName(String(row.name_ar), row.name_en ?? null, locale === "en" ? "en" : "ar"),
+          nameAr: String(row.name_ar).trim(),
+          nameEn: row.name_en?.trim() || undefined,
           available: Number(row.hadith_count) || 0,
         }));
     });
@@ -239,7 +241,7 @@ export async function getHadithBooks(locale: Locale = "ar"): Promise<HadithBook[
   if (remote.length > 0) return remote;
 
   try {
-    const local = await loadOfflineHadithBooks();
+    const local = await loadOfflineHadithBooks(locale);
     if (local.length > 0) return local;
   } catch (error) {
     console.error("[hadith-service] Offline book catalogue unavailable:", error);
@@ -343,10 +345,10 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   const dbHadiths = await readSupabase<DbHadith[]>(
     `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
   );
-  if (dbHadiths) {
-    return dbHadiths
-      .map(mapDbHadith)
-      .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
+  if (hasHadithPageRows(dbHadiths)) {
+    // Preserve Arabic originals when an English translation is missing; the
+    // display layer labels that fallback instead of silently dropping results.
+    return dbHadiths.map(mapDbHadith);
   }
 
   const books = await getHadithBooks(locale);

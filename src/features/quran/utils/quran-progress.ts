@@ -21,6 +21,14 @@ export const cumulativeOffset: Record<number, number> = (() => {
 /**
  * Convert a (surah, ayah) pair to an absolute ayah index in range 1..6236.
  */
+/** Validate a one-based Quran position against the canonical ayah count for its surah. */
+export function isValidQuranPosition(surah: number, ayah: number): boolean {
+  if (!Number.isSafeInteger(surah) || !Number.isSafeInteger(ayah)) return false;
+  const count = surahAyahCounts[surah] ?? 0;
+  return count > 0 && ayah >= 1 && ayah <= count;
+}
+
+/** Convert a (surah, ayah) pair to an absolute ayah index in range 1..6236. */
 export function toAbsoluteAyah(surah: number, ayah: number): number {
   if (surah < 1 || surah > 114) return 0;
   const count = surahAyahCounts[surah] ?? 0;

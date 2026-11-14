@@ -17,6 +17,16 @@ export interface Hadith {
   contentLocale?: "ar" | "en";
 }
 
+export function resolveHadithBookName(
+  nameAr: string,
+  nameEn: string | null | undefined,
+  locale: "ar" | "en",
+): string {
+  const arabicName = nameAr.trim();
+  const englishName = nameEn?.trim();
+  return locale === "en" && englishName ? englishName : arabicName;
+}
+
 export type HadithDisplay = {
   text: string;
   contentLocale: "ar" | "en";

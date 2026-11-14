@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { isValidQuranPosition } from "@/features/quran/utils/quran-progress";
 
 export interface ReadingProgress {
   surah_id: number;
@@ -17,10 +18,6 @@ type ProgressJson = {
 
 function validSurahId(value: number) {
   return Number.isInteger(value) && value >= 1 && value <= 114;
-}
-
-function validAyahNumber(value: number) {
-  return Number.isInteger(value) && value >= 1 && value <= 286;
 }
 
 async function getCurrentUser() {
@@ -45,12 +42,17 @@ function mapProgress(
     : Number(ref.replace("surah:", ""));
   const ayahNumber = Number(progress.ayah_number ?? 1);
 
-  if (!validSurahId(parsedSurahId) || !validAyahNumber(ayahNumber)) {
+  if (
+    !validSurahId(parsedSurahId) ||
+    parsedSurahId !== surahId ||
+    ref !== `surah:${surahId}` ||
+    !isValidQuranPosition(parsedSurahId, ayahNumber)
+  ) {
     return null;
   }
 
   return {
-    surah_id: surahId,
+    surah_id: parsedSurahId,
     ayah_number: ayahNumber,
     surah_name:
       typeof progress.surah_name === "string"
@@ -65,7 +67,7 @@ export async function saveCurrentReadingProgress(
   ayahNumber: number,
   surahName?: string,
 ): Promise<{ success: boolean; error?: string }> {
-  if (!validSurahId(surahId) || !validAyahNumber(ayahNumber)) {
+  if (!isValidQuranPosition(surahId, ayahNumber)) {
     return { success: false, error: "موضع قراءة غير صالح" };
   }
 
