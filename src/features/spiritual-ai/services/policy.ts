@@ -1,12 +1,31 @@
 const CRISIS_PATTERNS = [
-  'انتحار', 'أنتحر', 'أقتل نفسي', 'اقتُل نفسي', 'أؤذي نفسي', 'ايذاء نفسي', 'إيذاء نفسي',
-  'أموت', 'مش عايز أعيش', 'لا أريد أن أعيش', 'لن أعيش', 'مش عايز أصحى', 'لا أريد أن أستيقظ',
+  'انتحار', 'أنتحر', 'عايز أنتحر', 'نفسي أنتحر', 'أفكر في الانتحار',
+  'أقتل نفسي', 'اقتُل نفسي', 'أؤذي نفسي', 'ايذاء نفسي', 'إيذاء نفسي',
+  'عايز أموت', 'نفسي أموت', 'أتمنى أموت', 'أريد أن أموت', 'أريد الموت', 'أتمنى الموت',
+  'مش عايز أعيش', 'لا أريد أن أعيش', 'لن أعيش', 'مش عايز أصحى', 'لا أريد أن أستيقظ',
   'أختفي للأبد', 'اختفي للأبد', 'أنهي حياتي', 'أنهي كل شيء', 'وداعا للأبد',
 ];
 
+function normalizeCrisisText(text: string): string {
+  return text
+    .normalize('NFKC')
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/[أإآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+const NORMALIZED_CRISIS_PATTERNS = CRISIS_PATTERNS.map(normalizeCrisisText);
+
 export function isCrisisMessage(text: string): boolean {
-  const normalized = text.normalize('NFKC').replace(/[ًٌٍَُِّْـ]/g, '').trim().toLowerCase();
-  return CRISIS_PATTERNS.some(pattern => normalized.includes(pattern));
+  const normalized = normalizeCrisisText(text);
+
+  // Keep an isolated "I am dying" statement safety-sensitive, but do not
+  // classify ordinary colloquial expressions such as "أموت من الضحك" as crisis.
+  const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(normalized);
+  return isolatedDeathStatement || NORMALIZED_CRISIS_PATTERNS.some(pattern => normalized.includes(pattern));
 }
 
 export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' | 'general' {
