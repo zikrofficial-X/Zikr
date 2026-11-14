@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { buildRunNowRequestValueFilter } from "@/features/videos/services/background-job-outcome";
@@ -12,6 +13,15 @@ import { isVideoAutomationEnabled, isVideoPurgeLockResponseActive } from "@/feat
 
 function formValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
+}
+
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/system] audit event failed after committed mutation:", error),
+  );
 }
 
 export async function saveAdminSettingAction(formData: FormData) {
@@ -48,7 +58,7 @@ export async function saveAdminSettingAction(formData: FormData) {
     body: JSON.stringify({ key, value, updated_by: profile.id, updated_at: new Date().toISOString() }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.settings.update",
     permission: "settings.manage",
     resourceType: "admin_settings",
@@ -126,7 +136,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.video_automation.setting_update",
     permission: "system.manage",
     resourceType: "admin_settings",
@@ -178,7 +188,7 @@ export async function requestVideoAutomationRunAction() {
       body: JSON.stringify({ value: { ...request, dispatchedAt }, updated_at: dispatchedAt }),
     });
 
-    await recordAdminAuditEvent({
+    await recordAdminAuditEventSafely({
       action: "admin.video_automation.run_requested",
       permission: "system.manage",
       resourceType: "admin_settings",
@@ -202,7 +212,7 @@ export async function requestVideoAutomationRunAction() {
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ value: queuedRequest, updated_at: queuedAt }),
       });
-      await recordAdminAuditEvent({
+      await recordAdminAuditEventSafely({
         action: "admin.video_automation.run_requested_queued",
         permission: "system.manage",
         resourceType: "admin_settings",
@@ -219,7 +229,7 @@ export async function requestVideoAutomationRunAction() {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ value: { ...request, failedAt, error: message.slice(0, 500) }, updated_at: failedAt }),
     }).catch(() => {});
-    await recordAdminAuditEvent({
+    await recordAdminAuditEventSafely({
       action: "admin.video_automation.run_requested_failed",
       permission: "system.manage",
       resourceType: "admin_settings",
@@ -254,7 +264,7 @@ export async function createAdminNotificationAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.notification.create",
     permission: "notifications.manage",
     resourceType: "notifications",
@@ -271,7 +281,7 @@ export async function markAdminNotificationsReadAction() {
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ read: true }),
   });
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.notification.mark_all_read",
     permission: "notifications.manage",
     resourceType: "notifications",
@@ -314,7 +324,7 @@ export async function saveCustomVideoSpacesAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.video_custom_spaces.update",
     permission: "system.manage",
     resourceType: "admin_settings",

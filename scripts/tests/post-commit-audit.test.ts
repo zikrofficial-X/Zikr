@@ -76,3 +76,21 @@ for (const [path, expectedCalls] of postCommitRoutes) {
 }
 
 console.log("Post-commit admin audit failure contract passed.");
+
+
+const postCommitActions = [
+  ["src/app/admin/android/actions.ts", 1],
+  ["src/app/admin/categories/actions.ts", 2],
+  ["src/app/admin/editorial-actions.ts", 2],
+  ["src/app/admin/knowledge/actions.ts", 4],
+  ["src/app/admin/release/actions.ts", 1],
+  ["src/app/admin/seo/actions.ts", 1],
+  ["src/app/admin/system-actions.ts", 8],
+] as const;
+for (const [path, expectedCalls] of postCommitActions) {
+  const source = readFileSync(path, "utf8");
+  const safeCalls = source.split("recordAdminAuditEventSafely(").length - 1;
+  assert.equal(safeCalls - 1, expectedCalls, `${path} must route every post-commit audit write through the best-effort wrapper`);
+  assert.ok(source.includes("runPostCommitAudit("), `${path} must preserve the business result when audit persistence fails`);
+  assert.equal(source.includes("await recordAdminAuditEvent({"), false, `${path} must not leave an unguarded post-commit audit write`);
+}

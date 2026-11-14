@@ -5,8 +5,18 @@ import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { prepareAndroidRelease } from "@/features/releases/services/github-release-manager";
+
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/release] audit event failed after committed mutation:", error),
+  );
+}
 
 export async function createAndroidReleaseAction() {
   const profile = await requireAdminPermission("release.manage");
@@ -82,7 +92,7 @@ export async function createAndroidReleaseAction() {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.android_release.create",
     permission: "release.manage",
     resourceType: "github_release",

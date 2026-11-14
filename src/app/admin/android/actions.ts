@@ -3,7 +3,17 @@
 import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/android] audit event failed after committed mutation:", error),
+  );
+}
 
 export async function saveAndroidReleaseAction(formData: FormData) {
   await requireAdminPermission("android.manage");
@@ -36,7 +46,7 @@ export async function saveAndroidReleaseAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "android.release_setting.update",
     permission: "android.manage",
     resourceType: "site_settings",

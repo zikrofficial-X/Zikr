@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { siteConfig } from "@/lib/site";
 
@@ -57,6 +58,15 @@ function safeImagePath(raw: string): string {
     return defaultImage;
   }
   return url;
+}
+
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/seo] audit event failed after committed mutation:", error),
+  );
 }
 
 export async function savePublicSiteSettingAction(formData: FormData) {
@@ -135,7 +145,7 @@ export async function savePublicSiteSettingAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.site_settings.update",
     permission: "settings.manage",
     resourceType: "site_settings",
