@@ -49,7 +49,7 @@ function result(
   readSource: YouTubeChannelReadSource = null,
 ): YouTubePublishingConnectionHealth {
   const count = (value: string | undefined) =>
-    typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null;
+    typeof value === "string" && /^\\d+$/.test(value) ? Number(value) : null;
 
   return {
     status,
@@ -78,6 +78,88 @@ async function readPublicChannel(
   if (!apiKey || !channelId) return null;
 
   try {
+    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url.searchParams.set("part", "id,snippet,statistics");
+    url.searchParams.set("id", channelId);
+    url.searchParams.set("key", apiKey);
+    const response = await fetcher(url, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!response.ok) return null;
+
+    const channels = await response.json() as ChannelResponse;
+    const channel = channels.items?.find((item) => item.id === channelId);
+    if (!channel?.id) {
+      return result("channel_not_found", "مفتاح YouTube API يعمل، لكن رقم القناة المحدد لم يُرجع قناة عامة.", channelId);
+    }
+
+    const reasonMessage = reason === "oauth_missing"
+      ? "OAuth الخاص بالنشر غير مكتمل؛ تم عرض بيانات القناة العامة فقط."
+      : reason === "reauthorization_required"
+        ? "تمت قراءة بيانات القناة العامة، لكن OAuth الخاص بالنشر يحتاج إعادة تفويض."
+        : "تمت القراءة العامة للقناة باستخدام مفتاح API؛ صلاحية OAuth لقراءة القناة وتقارير Analytics غير ممنوحة.";
+
+    return result(
+      "public_data_only",
+      reasonMessage,
+      channel.id,
+      channel.snippet?.title ?? null,
+      channel.statistics,
+      "api_key",
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read-only health check. It prefers OAuth; if channel-read scope is absent,
+ * it falls back to the configured public API key + channel ID. It never
+ * uploads, edits, publishes, returns or logs OAuth credentials or API keys.
+ */
+export async function getYouTubePublishingConnectionHealth(
+  env: SocialPlatformEnvironment = process.env,
+  fetcher: typeof fetch = fetch,
+  resolveReadOnlyRefreshToken: () => Promise<string | null> = () => getYouTubeRefreshToken(env),
+): Promise<YouTubePublishingConnectionHealth> {
+  const clientId = env.YOUTUBE_CLIENT_ID?.trim();
+  const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
+  const refreshToken = await resolveReadOnlyRefreshToken();
+  if (!clientId || !clientSecret || !refreshToken) {
+    const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
+    return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");
+  }
+
+  try {
+    const tokenResponse = await fetcher("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: "refresh_token",
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (!tokenResponse.ok) {
+      const status = classifyYouTubeHealthHttpStatus(tokenResponse.status, "token");
+      if (status === "reauthorization_required") {
+        const publicRead = await readPublicChannel(env, fetcher, "reauthorization_required");
+        if (publicRead) return publicRead;
+      }
+      return result(status, status === "reauthorization_required"
+        ? "Google رفض تحديث رمز YouTube؛ أعد تفويض القناة."
+        : "تعذر الوصول إلى خدمة OAuth الخاصة بـGoogle حاليًا.");
+    }
+    const token = await tokenResponse.json() as TokenResponse;
+    if (typeof token.access_token !== "string" || !token.access_token) {
+      const publicRead = await readPublicChannel(env, fetcher, "reauthorization_required");
+      return publicRead ?? result("reauthorization_required", "لم يُرجع Google رمز وصول صالحًا؛ أعد تفويض القناة.");
+    }
+
     const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
     const channelLookup = await findYouTubeChannelAcrossPages(async (pageToken) => {
       const url = new URL("https://www.googleapis.com/youtube/v3/channels");
@@ -90,7 +172,7 @@ async function readPublicChannel(
         cache: "no-store",
         signal: AbortSignal.timeout(8_000),
       });
-      const channels = await channelResponse.json() as ChannelResponse;
+      const channels = await channelResponse.json().catch(() => ({})) as ChannelResponse;
       if (!channelResponse.ok || channels.error) {
         return {
           items: [],
