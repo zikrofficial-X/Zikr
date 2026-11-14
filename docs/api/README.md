@@ -410,12 +410,16 @@ boolean // true if favorited, false otherwise
 
 **Authentication:** None
 
+**Rate limit:** 3 evaluations per 10 minutes per client address, enforced by a shared server-side database counter. The action fails closed if the limiter is unavailable.
+
 #### Request (FormData)
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | target | string | No | Target passage reference |
 | expectedText | string | No | Expected Quran text |
-| audio | File | No | Audio recording (webm/wav) |
+| audio | File | No | Audio recording (webm/wav), maximum 3 MiB |
+
+The recorder stops automatically at the 3 MiB audio limit. The limit stays below the Next.js Server Action request cap (4 MiB).
 
 #### Response
 ```typescript

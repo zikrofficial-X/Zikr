@@ -7,7 +7,7 @@
  * Summary: Evaluate Quran recitation via AI
  * Description: Uses Google Gemini to evaluate a Quran recitation recording. Returns feedback on memorization quality, tajweed rules, overall score (0-100), and review advice in Arabic.
  * Tags: AI, Memorization
- * Auth: None
+ * Auth: None; shared IP-based limit of 3 evaluations per 10 minutes
  *
  * Request (FormData):
  *   - target: string (optional) - Target passage reference
@@ -17,7 +17,11 @@
  * Response:
  *   - string: AI-generated evaluation in Arabic
  */
+import { headers } from 'next/headers';
 import { generateGeminiFromAudio, generateGeminiText } from '@/features/spiritual-ai/services/gemini-client';
+import { consumeMemorizationAiRateLimit } from '@/features/spiritual-ai/services/rate-limit';
+import { MAX_MEMORIZATION_AUDIO_BYTES, MEMORIZATION_AUDIO_LIMIT_MESSAGE, MEMORIZATION_RATE_LIMIT_MESSAGE } from '@/features/memorization/constants';
+import { getTrustedClientAddress } from '@/lib/request/client-address';
 import {
   deleteMemorizationProgress as deleteMemorizationProgressService,
   getCurrentMemorizationProgress,
@@ -49,8 +53,8 @@ export async function evaluateMemorizationAction(formData: FormData) {
   const hasExpected = expectedText.length > 0;
   const hasAudio = audio instanceof File && audio.size > 0;
 
-  if (audio instanceof File && audio.size > 10 * 1024 * 1024) {
-    return 'حجم التسجيل كبير جدًا. الحد الأقصى المسموح به هو 10 ميجابايت.';
+  if (audio instanceof File && audio.size > MAX_MEMORIZATION_AUDIO_BYTES) {
+    return MEMORIZATION_AUDIO_LIMIT_MESSAGE;
   }
   if (audio instanceof File && audio.type && !audio.type.startsWith('audio/')) {
     return 'صيغة التسجيل غير مدعومة. ارفع ملفًا صوتيًا فقط.';
@@ -58,6 +62,20 @@ export async function evaluateMemorizationAction(formData: FormData) {
   if (!hasAudio && !hasTarget && !hasExpected) {
     return 'حدد الورد أو ارفع تسجيلًا صوتيًا للحصول على التقييم.';
   }
+
+  let rateLimitAllowed = false;
+  try {
+    const requestHeaders = await headers();
+    const clientAddress = getTrustedClientAddress(
+      requestHeaders.get('x-real-ip'),
+      requestHeaders.get('x-forwarded-for'),
+    );
+    rateLimitAllowed = await consumeMemorizationAiRateLimit(clientAddress);
+  } catch (error) {
+    console.error('[memorization] shared AI rate limit unavailable', error instanceof Error ? error.message : error);
+    return 'خدمة تقييم التسميع غير متاحة مؤقتًا. حاول لاحقًا.';
+  }
+  if (!rateLimitAllowed) return MEMORIZATION_RATE_LIMIT_MESSAGE;
 
   const sharedContext = `
 المقرر / الورد: ${hasTarget ? target : 'غير محدد — قيّم ما سمعت'}

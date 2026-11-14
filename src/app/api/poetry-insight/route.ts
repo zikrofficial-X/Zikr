@@ -1,5 +1,6 @@
 import { generatePoetryInsight } from '@/features/poetry/services/poetry-insight';
 import { getSupabaseUser } from '@/lib/supabase/server';
+import { consumePoetryInsightRateLimit } from '@/features/spiritual-ai/services/rate-limit';
 
 /**
  * @openapi
@@ -60,6 +61,22 @@ export async function POST(request: Request) {
       return Response.json(
         { error: 'The poem or title is too long.' },
         { status: 400 },
+      );
+    }
+
+    let rateLimitAllowed = false;
+    try {
+      rateLimitAllowed = await consumePoetryInsightRateLimit(user.id);
+    } catch {
+      return Response.json(
+        { error: 'AI rate limit is temporarily unavailable.' },
+        { status: 503 },
+      );
+    }
+    if (!rateLimitAllowed) {
+      return Response.json(
+        { error: 'Rate limit exceeded. Try again later.' },
+        { status: 429 },
       );
     }
 
