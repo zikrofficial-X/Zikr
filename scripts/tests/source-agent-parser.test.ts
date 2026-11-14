@@ -31,7 +31,7 @@ const agentSource = readFileSync("supabase/functions/source-verified-content-age
 const parserPreflightIndex = agentSource.indexOf("getSourceParserSkipReason(source)");
 const externalFetchIndex = agentSource.indexOf("await fetch(source.fetch_url");
 assert.ok(parserPreflightIndex >= 0 && parserPreflightIndex < externalFetchIndex, "unsupported/catalog-only providers must be skipped before any network request");
-assert.match(agentSource, /redirect:\\s*"error"/, "provider fetches must not follow unreviewed redirects");
-assert.match(agentSource, /signal:\\s*AbortSignal\\.timeout\\(10_000\\)/, "provider fetches must have a bounded timeout");
+assert.match(agentSource, /redirect:\s*"error"/, "provider fetches must not follow unreviewed redirects");
+assert.match(agentSource, /signal:\s*AbortSignal\.timeout\(10_000\)/, "provider fetches must have a bounded timeout");
 
 console.log("Source-agent parser outcome and fetch-safety contract passed.");

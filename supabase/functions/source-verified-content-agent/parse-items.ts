@@ -12,7 +12,7 @@ export type SourceParseOutcome =
   | { kind: "items"; items: SourceItem[] }
   | { kind: "skipped"; reason: SourceParseSkipReason };
 
-export function getSourceParserSkipReason(source: { parser_key: string }): SourceParseSkipReason | null {
+export function getSourceParserSkipReason(source: { parser_key: string }): SourceParseSkipReason {
   if (source.parser_key === "alquran_cloud") return "catalog_only_source";
   return "parser_not_implemented";
 }
