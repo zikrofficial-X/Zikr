@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dispatchSocialWorkerSafely } from "../../src/features/social/services/social-worker-dispatch";
 import { resolve } from "node:path";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getRetryableSocialPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialAttemptCount, normalizeSocialPlatformResults, parseRequestedSocialPlatforms } from "../../src/features/social/services/platform-availability";
 import { DEFAULT_SOCIAL_PUBLISH_AFTER, buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "../../src/features/social/services/facebook-queue-recovery-policy";
 import { buildYouTubeQueueRecoveryFilter, buildYouTubeQueueRecoveryPatch } from "../../src/features/social/services/youtube-queue-recovery-policy";
 import { hasFacebookPagePublishingTask } from "../../src/features/social/services/facebook-oauth-policy";
@@ -78,6 +78,12 @@ assert.equal(
   null,
   "Facebook reauthorization must never rewrite a row already claimed by a publisher",
 );
+
+assert.equal(normalizeSocialAttemptCount(3), 3);
+assert.equal(normalizeSocialAttemptCount("4"), 4, "persisted integer strings remain readable");
+assert.equal(normalizeSocialAttemptCount("not-a-number"), null, "malformed counters must fail closed");
+assert.equal(normalizeSocialAttemptCount(-1), null, "negative retry counters must fail closed");
+assert.equal(normalizeSocialAttemptCount(1.5), null, "fractional retry counters must fail closed");
 
 const both = getEnabledSocialPlatforms({ SOCIAL_PUBLISH_FACEBOOK_ENABLED: "true", SOCIAL_PUBLISH_YOUTUBE_ENABLED: "true" });
 assert.deepEqual(both, ["facebook", "facebook_reels", "youtube"]);
@@ -222,6 +228,29 @@ assert.deepEqual(
   "a partial marker without a target list must conservatively hold every known target",
 );
 
+const legacyNoMarkerRecovery = buildStaleSocialPublishRecoveryMetadata(
+  { attempts: 1 },
+  ["facebook", "youtube"],
+  "2026-11-11T10:25:00.000Z",
+);
+assert.deepEqual(
+  legacyNoMarkerRecovery.manualReconciliationPlatforms,
+  ["facebook", "youtube"],
+  "a stale processing row from a legacy worker without an in-flight marker must hold every target instead of retrying blindly",
+);
+const legacyPartialSuccessRecovery = buildStaleSocialPublishRecoveryMetadata(
+  { platformResults: { facebook: { ok: true, remoteId: "fb-confirmed-legacy" } } },
+  ["facebook", "youtube"],
+  "2026-11-11T10:25:00.000Z",
+);
+assert.deepEqual(legacyPartialSuccessRecovery.manualReconciliationPlatforms, ["youtube"]);
+assert.equal(legacyPartialSuccessRecovery.hasPriorSuccess, true);
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms: both, metadata: { attempts: "corrupt" }, maxAttempts: 5 }),
+  false,
+  "malformed retry counters must never release a provider for automatic retry",
+);
+
 const completedMetadata = clearSocialPublishInFlightMetadata(
   inFlightMetadata,
   ["youtube"],
@@ -241,6 +270,8 @@ const inFlightMarkerPosition = revalidatedPublisherSource.indexOf("const inFligh
 const providerCallPosition = revalidatedPublisherSource.indexOf("const results = await Promise.all(runnablePlatforms.map");
 assert.ok(inFlightMarkerPosition >= 0 && providerCallPosition > inFlightMarkerPosition, "the durable in-flight marker must be written before any provider call");
 assert.match(revalidatedPublisherSource, /buildStaleSocialPublishRecoveryMetadata/, "stale recovery must convert interrupted calls into manual reconciliation");
+assert.match(revalidatedPublisherSource, /normalizeSocialAttemptCount\(metadata\.attempts/, "stale recovery must sanitize persisted retry counters before scheduling a retry");
+assert.match(revalidatedPublisherSource, /normalizeSocialAttemptCount\(previousMetadata\.attempts/, "normal publishing must sanitize persisted retry counters before calculating backoff");
 assert.match(revalidatedPublisherSource, /Failed to recover stale social publish items; refusing to continue with an incomplete queue state/, "stale recovery failures must fail the job instead of silently skipping ambiguous rows");
 assert.match(
   revalidatedPublisherSource,

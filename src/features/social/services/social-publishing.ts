@@ -22,7 +22,7 @@ import { patchSocialQueueMetadataWithCas } from "@/features/social/services/soci
 import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
 import { buildSocialPublishInFlightMetadata, buildStaleSocialPublishRecoveryFilter, buildStaleSocialPublishRecoveryMetadata, clearRevalidatedSocialApprovalDeferrals, clearSocialPublishInFlightMetadata } from "@/features/social/services/social-publish-recovery-policy";
 import { isEligibleKidsWrittenPostForPublishing, isKidsWrittenPostCandidate, type CurrentKidsStory } from "@/features/social/services/written-content";
-import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
+import { canAttemptSocialPlatform, getEnabledSocialPlatforms, getManualReconciliationPlatforms, getUnavailableSocialPlatforms, isAmbiguousProviderOutcome, isAuthBlocked, isPermanentSocialFailure, mergeAuthBlockedPlatforms, normalizeSocialAttemptCount, normalizeSocialPlatformResults } from "@/features/social/services/platform-availability";
 
 export type SocialPlatform = "facebook" | "facebook_reels" | "youtube";
 export type SocialQueueStatus =
@@ -85,7 +85,8 @@ function socialMaxAttempts(metadata: Record<string, unknown> | null) {
 
 function socialRetryDelayMinutes(attempt: number, itemId: string) {
   const seed = [...itemId].reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  return Math.min(240, 2 ** Math.min(Math.max(0, attempt - 1), 7) + (seed % 6));
+  const safeAttempt = normalizeSocialAttemptCount(attempt) ?? 0;
+  return Math.min(240, 2 ** Math.min(Math.max(0, safeAttempt - 1), 7) + (seed % 6));
 }
 
 async function markQueueItem(
@@ -318,7 +319,7 @@ async function recoverStaleSocialPublishItems() {
       const recoveredAt = new Date().toISOString();
       const recovery = buildStaleSocialPublishRecoveryMetadata(metadata, item.target_platforms ?? [], recoveredAt);
       const manualReconciliationPlatforms = getManualReconciliationPlatforms(recovery.metadata);
-      const attempts = Number(metadata.attempts ?? 0) + 1;
+      const attempts = (normalizeSocialAttemptCount(metadata.attempts ?? 0) ?? 0) + 1;
       const maxAttempts = socialMaxAttempts(metadata);
       const manualReconciliationRequired = manualReconciliationPlatforms.length > 0;
       const terminal = manualReconciliationRequired || attempts >= maxAttempts;
@@ -1092,15 +1093,13 @@ export async function processSocialPublishItem(
   };
   for (const result of results) {
     if (result.approvalBlocked) continue;
-    maxAttemptsByPlatform[result.platform] = Number(maxAttemptsByPlatform[result.platform] ?? 0) + 1;
+    maxAttemptsByPlatform[result.platform] = (normalizeSocialAttemptCount(maxAttemptsByPlatform[result.platform] ?? 0) ?? 0) + 1;
   }
   const attemptedProviderCalls = results.filter(result => !result.approvalBlocked).length;
-  const attempts = facebookReelsNextAllowedAt
-    ? Number(previousMetadata.attempts ?? 0)
-    : Number(previousMetadata.attempts ?? 0) + (attemptedProviderCalls > 0 ? 1 : 0);
+  const attempts = (normalizeSocialAttemptCount(previousMetadata.attempts ?? 0) ?? 0) + (facebookReelsNextAllowedAt ? 0 : attemptedProviderCalls > 0 ? 1 : 0);
   const retryableOperationalFailures = operationalFailures.some(failure => {
-    const currentPlatformAttempts = Number(maxAttemptsByPlatform[failure.platform] ?? 0);
-    return currentPlatformAttempts < maxAttempts &&
+    const currentPlatformAttempts = normalizeSocialAttemptCount(maxAttemptsByPlatform[failure.platform] ?? 0);
+    return currentPlatformAttempts !== null && currentPlatformAttempts < maxAttempts &&
       !failure.requiresReconciliation &&
       !isAuthBlocked(failure.platform, failure.error) &&
       !isPermanentSocialFailure(failure.error);

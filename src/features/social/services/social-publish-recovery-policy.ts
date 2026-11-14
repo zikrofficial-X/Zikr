@@ -132,15 +132,11 @@ export function buildStaleSocialPublishRecoveryMetadata(
   }
   const metadata = metadataInput ?? {};
   const declaredInFlight = normalizePlatforms(metadata.inFlightPlatforms);
-  const hasStartMarker = typeof metadata.inFlightStartedAt === "string" && metadata.inFlightStartedAt.trim().length > 0;
   const targetPlatforms = normalizePlatforms(targetPlatformsInput);
-  // If a partially written marker is found, conservatively treat every target
-  // as uncertain. A false manual hold is safer than an accidental duplicate.
-  const inFlight = declaredInFlight.length > 0
-    ? declaredInFlight
-    : hasStartMarker
-      ? targetPlatforms
-      : [];
+  // A processing row without a usable marker may come from a legacy worker or
+  // a partial write. Assume every target may have reached a provider; a false
+  // manual hold is safer than accidentally publishing a duplicate.
+  const inFlight = declaredInFlight.length > 0 ? declaredInFlight : targetPlatforms;
   const results = normalizeSocialPlatformResults(metadata.platformResults);
   const uncertainPlatforms = inFlight.filter(platform => !isSuccessfulResult(results[platform]));
 

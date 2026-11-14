@@ -194,6 +194,20 @@ export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadat
   });
 }
 
+/**
+ * Parse persisted retry counters without allowing malformed JSON metadata to
+ * become NaN and poison retry scheduling. Null means the counter is corrupt;
+ * callers must fail closed rather than silently resetting the retry budget.
+ */
+export function normalizeSocialAttemptCount(value: unknown): number | null {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim().length > 0
+      ? Number(value)
+      : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
+}
+
 export function canAttemptSocialPlatform(input: {
   platform: SocialPlatform;
   enabledPlatforms: readonly SocialPlatform[];
@@ -228,10 +242,10 @@ export function canAttemptSocialPlatform(input: {
   if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
   const attempts = asRecord(metadata?.platformAttempts);
-  const legacyAttempts = Number(metadata?.attempts ?? 0);
+  const legacyAttempts = normalizeSocialAttemptCount(metadata?.attempts ?? 0);
   const fallbackAttempts = !hasPlatformResults && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
-  const currentAttempts = Number(attempts?.[platform] ?? fallbackAttempts);
-  return Number.isFinite(currentAttempts) && currentAttempts < Math.max(1, maxAttempts);
+  const currentAttempts = normalizeSocialAttemptCount(attempts?.[platform] ?? fallbackAttempts);
+  return currentAttempts !== null && currentAttempts < Math.max(1, maxAttempts);
 }
 
 export function getUnavailableSocialPlatforms(
