@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DEFAULT_AUDIO_SETTINGS, getAudioChoice, getNativeAudio, normalizeAudioSettings } from "../../src/lib/audio/config";
+import { DEFAULT_AUDIO_SETTINGS, getAudioChoice, getNativeAudio, normalizeAudioSettings, registerAudioChoices } from "../../src/lib/audio/config";
 import { ensureNativeNotificationChannels } from "../../src/features/notifications/services/native-notification-channels";
 
 const iosPrayer = getNativeAudio("prayer", "ios");
@@ -77,6 +77,35 @@ assert.equal(
   "slot-aware lookup must fall back to the correct bundled audio instead of playing another slot's sound",
 );
 
+const staleRemoteChoice = {
+  key: "site:id:stale-audio-choice",
+  label: "Stale recording",
+  webUrl: "https://media.example.invalid/stale.mp3",
+  nativeFile: null,
+  slot: "dhikr" as const,
+};
+const currentRemoteChoice = {
+  key: "site:id:current-audio-choice",
+  label: "Current recording",
+  webUrl: "https://media.example.invalid/current.mp3",
+  nativeFile: null,
+  slot: "dhikr" as const,
+};
+registerAudioChoices([staleRemoteChoice, currentRemoteChoice]);
+assert.equal(getAudioChoice(staleRemoteChoice.key, "dhikr").webUrl, staleRemoteChoice.webUrl);
+registerAudioChoices([currentRemoteChoice]);
+assert.equal(
+  getAudioChoice(staleRemoteChoice.key, "dhikr").webUrl,
+  getAudioChoice("unknown-remote-choice", "dhikr").webUrl,
+  "a successful catalog refresh must remove unpublished remote choices so stale URLs fall back safely",
+);
+assert.equal(
+  getAudioChoice(currentRemoteChoice.key, "dhikr").webUrl,
+  currentRemoteChoice.webUrl,
+  "the current remote catalog snapshot must remain available after stale entries are removed",
+);
+registerAudioChoices([]);
+
 assert.deepEqual(
   new Set(androidChannels.map(channel => channel.id)),
   new Set([
@@ -95,6 +124,14 @@ await ensureNativeNotificationChannels(
   "ios",
 );
 assert.equal(iosChannelCount, 0);
+
+const audioConfigSource = readFileSync(resolve(process.cwd(), "src/lib/audio/config.ts"), "utf8");
+const audioLibrarySource = readFileSync(resolve(process.cwd(), "src/components/audio/audio-library.tsx"), "utf8");
+assert.ok(audioConfigSource.includes("if (audioResponse.ok) registerAudioChoices(remote)"),
+  "a failed site-audio response must not clear the last known-good remote audio snapshot");
+assert.ok(audioLibrarySource.includes("if (!response.ok) throw new Error") &&
+  audioLibrarySource.indexOf("if (!response.ok) throw new Error") < audioLibrarySource.indexOf("registerAudioChoices(choices)"),
+  "the audio library must replace its snapshot only after a successful catalog response");
 
 const bridgeSource = readFileSync(
   resolve(process.cwd(), "src/components/layout/native-capacitor-bridge.tsx"),
