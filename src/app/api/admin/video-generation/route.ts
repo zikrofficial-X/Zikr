@@ -4,15 +4,24 @@ import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
 export const dynamic = 'force-dynamic';
 
-function idsFromBody(body: unknown): string[] {
-  if (!body || typeof body !== 'object') return [];
-  const ids = (body as { ids?: unknown }).ids;
-  if (!Array.isArray(ids)) return [];
-  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+const VIDEO_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function idsFromBody(body: unknown): { ids: string[]; invalid: boolean } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ids: [], invalid: true };
+  const rawIds = (body as { ids?: unknown }).ids;
+  if (rawIds === undefined) return { ids: [], invalid: false };
+  if (!Array.isArray(rawIds) || rawIds.length > 500) return { ids: [], invalid: true };
+  const ids = new Set<string>();
+  for (const value of rawIds) {
+    if (typeof value !== 'string' || !VIDEO_REQUEST_ID_PATTERN.test(value)) return { ids: [], invalid: true };
+    ids.add(value.toLowerCase());
+  }
+  return { ids: [...ids], invalid: false };
 }
 
 export async function GET() {
@@ -54,12 +63,15 @@ export async function DELETE(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
 
   try {
-    const body = await request.json().catch(() => ({}));
-    const ids = idsFromBody(body);
-    const deleteFailed =
-      body !== null &&
-      typeof body === "object" &&
-      (body as { deleteFailed?: unknown }).deleteFailed === true;
+    const parsedBody = await readBoundedJsonBody(request, 32 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: { "Cache-Control": "no-store" } });
+    }
+    const body = parsedBody.value;
+    const parsedIds = idsFromBody(body);
+    if (parsedIds.invalid) return NextResponse.json({ error: "Invalid video request IDs." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    const ids = parsedIds.ids;
+    const deleteFailed = (body as { deleteFailed?: unknown }).deleteFailed === true;
 
     if (!ids.length && !deleteFailed) {
       return NextResponse.json({ error: 'حدد عمليات للحذف أو استخدم deleteFailed.' }, { status: 400 });
@@ -96,15 +108,22 @@ export async function PATCH(request: NextRequest) {
   if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
 
   try {
-    const body = await request.json() as {
+    const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== 'object' || Array.isArray(parsedBody.value)) {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const body = parsedBody.value as {
       id?: unknown;
       errorMessage?: unknown;
       action?: unknown;
       qaChecklist?: unknown;
     };
-    const id = typeof body.id === 'string' ? body.id : '';
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
     const action = typeof body.action === 'string' ? body.action : '';
-    if (!id) return NextResponse.json({ error: 'معرّف العملية مطلوب.' }, { status: 400 });
+    if (!VIDEO_REQUEST_ID_PATTERN.test(id)) return NextResponse.json({ error: 'معرّف العملية غير صالح.' }, { status: 400 });
 
     // Publish retry preserves the generated provider job and any successful
     // platform IDs so only missing publication work is attempted again.
