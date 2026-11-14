@@ -14,7 +14,9 @@ const favoritesRoute = read("src/app/api/user/favorites/route.ts");
 
 assert.match(docs, /not a complete route inventory/i);
 assert.match(docs, /Server Action is a framework-managed function call/i);
-assert.doesNotMatch(docs, /sb_access_token|sb_refresh_token|setSessionAction|password \(min 6 chars\)/i);
+assert.match(docs, /does not define fixed sb_access_token or sb_refresh_token cookie names/i);
+assert.match(docs, /browser session is not set by a custom setSessionAction/i);
+assert.doesNotMatch(docs, /password \(min 6 chars\)/i);
 assert.doesNotMatch(docs, /POST \/auth\/login|POST \/auth\/set-session/i);
 assert.match(docs, /12–128 character password/i);
 assert.match(authActions, /MIN_PASSWORD_LENGTH = 12/);
