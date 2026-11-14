@@ -100,7 +100,7 @@ export async function getPublicContentLibrary(
   try {
     const rows = await supabaseServerAnonRequest<RawItem[]>(
       `/rest/v1/content_library?select=${SELECT_LIST}&published=eq.true&review_status=eq.approved&order=published_at.desc&limit=${safeLimit}`,
-      { cache: "force-cache", next: { revalidate: 1800 } },
+      { cache: "force-cache", next: { revalidate: 1800, tags: ["public-content-library"] } },
     );
 
     return rows
@@ -128,7 +128,7 @@ export async function getPublicContentBySlug(
   try {
     const rows = await supabaseServerAnonRequest<RawItem[]>(
       `/rest/v1/content_library?select=${SELECT_LIST}&slug=eq.${encodeURIComponent(cleanSlug)}&published=eq.true&review_status=eq.approved&limit=1`,
-      { cache: "force-cache", next: { revalidate: 1800 } },
+      { cache: "force-cache", next: { revalidate: 1800, tags: ["public-content-library"] } },
     );
 
     if (!rows[0]) return null;

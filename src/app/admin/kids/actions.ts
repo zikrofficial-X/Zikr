@@ -211,6 +211,9 @@ export async function saveKidsContentAction(formData: FormData) {
   revalidatePath("/kids");
   revalidatePath(`/kids/${slug}`);
   revalidatePath("/admin/kids");
+  revalidatePath("/sitemap.xml");
+  revalidatePath("/sitemap-index.xml");
+  revalidatePath("/sitemap-content/[id]", "page");
 
   if (auditError) {
     console.warn("[admin/kids] audit event unavailable after content save:", auditError);

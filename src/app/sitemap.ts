@@ -53,10 +53,7 @@ function uniqueRoutes(routes: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return Array.from(new Map(routes.map(entry => [entry.url, entry])).values());
 }
 
-let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null = null;
-
 export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
-  if (sitemapCache && sitemapCache.expiresAt > Date.now()) return sitemapCache.entries;
   const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = siteConfigRoutes().map(appRoute => route(appRoute.path === "/" ? "" : appRoute.path, {
     lastModified: now,
@@ -68,12 +65,12 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent, kidsContentItems] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
-      getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
+      getHadithBooks("ar").catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
       getStories(1000).catch((error): Story[] => { console.error("[sitemap] Stories fetch failed:", error); return []; }),
-      getArticles(undefined, 1000).catch((): Article[] => []),
+      getArticles(undefined, 1000, "ar").catch((): Article[] => []),
       getProphets().catch((): Prophet[] => []),
       getPublishedSlugs("battles"),
-      getDuas(undefined, 1000).catch((): Dua[] => []),
+      getDuas(undefined, 1000, "ar").catch((): Dua[] => []),
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
@@ -106,12 +103,10 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     ];
 
     const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]);
-    sitemapCache = { entries: safeEntries, expiresAt: Date.now() + 60 * 60 * 1000 };
     return safeEntries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
     const fallbackEntries = uniqueRoutes(staticRoutes);
-    sitemapCache = { entries: fallbackEntries, expiresAt: Date.now() + 10 * 60 * 1000 };
     return fallbackEntries;
   }
 }

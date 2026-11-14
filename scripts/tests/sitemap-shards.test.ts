@@ -51,7 +51,7 @@ const storyDetailLookup = storiesServiceSource.slice(storiesServiceSource.indexO
 assert.match(storyDetailLookup, /getStories\(1000\)/, "story detail lookup must cover every story admitted to the sitemap catalogue");
 assert.match(sitemapSource, /getDuas\(undefined, 1000\)/);
 assert.match(sitemapSource, /getPublicContentLibrary\(1000\)/);
-assert.match(sitemapSource, /getArticles\(undefined, 1000\)/);
+assert.match(sitemapSource, /getArticles\(undefined, 1000, ["\']ar["\']\)/);
 
 const llmsSource = readFileSync("src/app/llms.txt/route.ts", "utf8");
 assert.match(llmsSource, /siteConfig\.url\.replace/);
@@ -80,4 +80,17 @@ assert.doesNotMatch(
 );
 
 
-console.log("Sitemap shard sizing, indexing, and route alignment contracts passed.");
+const libraryAdminSource = readFileSync("src/app/admin/library/page.tsx", "utf8");
+const kidsAdminActionsSource = readFileSync("src/app/admin/kids/actions.ts", "utf8");
+const managedContentActionsSource = readFileSync("src/app/admin/content-actions.ts", "utf8");
+assert.doesNotMatch(sitemapSource, /let sitemapCache/, "sitemap entries must not be held in a per-instance cache that ignores content mutations");
+assert.match(sitemapSource, /getHadithBooks\(["\']ar["\']\)/, "sitemap generation must not depend on the requesting user locale");
+assert.match(sitemapSource, /getDuas\(undefined, 1000, ["\']ar["\']\)/, "sitemap generation must use a deterministic locale");
+assert.equal((libraryServiceSource.match(/tags: \["public-content-library"\]/g) || []).length, 2, "both public library reads must be invalidatable after moderation");
+assert.match(libraryAdminSource, /updateTag\(["\']public-content-library["\']\)/, "library mutations must invalidate cached public library reads");
+for (const [name, source] of [["library", libraryAdminSource], ["Kids", kidsAdminActionsSource], ["managed content", managedContentActionsSource]]) {
+  assert.match(source, /revalidatePath\(["\']\/sitemap\.xml["\']\)/, name + " mutations must revalidate the sitemap route");
+  assert.match(source, /revalidatePath\(["\']\/sitemap-index\.xml["\']\)/, name + " mutations must revalidate the sitemap index");
+  assert.match(source, /revalidatePath\(["\']\/sitemap-content\/\[id\]["\'],\s*["\']page["\']\)/, name + " mutations must revalidate sitemap shards");
+}
+console.log("Sitemap shard sizing, indexing, locale determinism, and content invalidation contracts passed.");
