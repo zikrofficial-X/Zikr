@@ -16,7 +16,14 @@ RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 SET ROLE supabase_admin;
 CREATE OR REPLACE FUNCTION public.client_default_execute_supabase_admin_after()
 RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
+CREATE OR REPLACE FUNCTION graphql_public.client_default_execute_supabase_admin_after()
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
+CREATE OR REPLACE FUNCTION graphql.client_default_execute_supabase_admin_after()
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 RESET ROLE;
+
+CREATE OR REPLACE FUNCTION storage.client_default_execute_postgres_after()
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 
 DO $admin_predicate_acl_after$
 BEGIN
@@ -28,6 +35,29 @@ BEGIN
   END IF;
 END
 $admin_predicate_acl_after$;
+
+DO $default_function_execute_after$
+DECLARE
+  function_signature text;
+  function_signatures text[] := ARRAY[
+    'public.client_default_execute_postgres_after()',
+    'public.client_default_execute_supabase_admin_after()',
+    'storage.client_default_execute_postgres_after()',
+    'graphql_public.client_default_execute_supabase_admin_after()',
+    'graphql.client_default_execute_supabase_admin_after()'
+  ];
+BEGIN
+  FOREACH function_signature IN ARRAY function_signatures LOOP
+    IF has_function_privilege('anon', function_signature, 'EXECUTE')
+       OR has_function_privilege('authenticated', function_signature, 'EXECUTE') THEN
+      RAISE EXCEPTION 'browser roles retained default EXECUTE on %', function_signature;
+    END IF;
+    IF NOT has_function_privilege('service_role', function_signature, 'EXECUTE') THEN
+      RAISE EXCEPTION 'service_role lost its explicit default EXECUTE grant on %', function_signature;
+    END IF;
+  END LOOP;
+END
+$default_function_execute_after$;
 
 DO $verify$
 DECLARE

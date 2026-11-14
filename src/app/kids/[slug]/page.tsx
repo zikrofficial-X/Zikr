@@ -16,7 +16,11 @@ import {
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
 import { getKidsQuizQuestions, normalizeKidsVideoEmbedUrl } from "@/features/kids/services/kids-content-validation";
-import { getOfflineKidsContentBySlug, shouldUseOfflineKidsContentForStatus } from "@/features/kids/services/kids-offline-content";
+import {
+  getOfflineKidsContentBySlug,
+  shouldUseOfflineKidsContentForNetworkError,
+  shouldUseOfflineKidsContentForStatus,
+} from "@/features/kids/services/kids-offline-content";
 
 interface KidsContent {
   id: string;
@@ -116,22 +120,46 @@ export default function KidsDetailPage() {
         setQuizAnswers({});
         setQuizSubmitted(false);
 
-        const response = await fetch(
-          `/api/kids/content/${encodeURIComponent(contentSlug)}`,
-          {
-            signal: controller.signal,
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-          },
-        );
+        let response: Response;
+        try {
+          response = await fetch(
+            `/api/kids/content/${encodeURIComponent(contentSlug)}`,
+            {
+              signal: controller.signal,
+              headers: { Accept: "application/json" },
+              cache: "no-store",
+            },
+          );
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          if (shouldUseOfflineKidsContentForNetworkError(error)) {
+            const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+            if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+            return;
+          }
+          throw error;
+        }
 
         if (response.ok) {
-          const payload = await response.json();
+          let payload: unknown;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            if (shouldUseOfflineKidsContentForNetworkError(error)) {
+              const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+              if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+              return;
+            }
+            throw error;
+          }
+
           const normalized = toDetailContent(payload);
           if (normalized && active) {
             setContent(normalized);
             return;
           }
+          if (active) setContent(null);
+          return;
         }
 
         if (shouldUseOfflineKidsContentForStatus(response.status)) {
@@ -145,8 +173,9 @@ export default function KidsDetailPage() {
         if (active) setContent(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
-        if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+        console.error("[kids] Failed to load content detail:", error);
+        if (active) setContent(null);
+      }
       } finally {
         if (active) setLoading(false);
       }

@@ -5,7 +5,11 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import type { KidsItem } from "@/features/kids/data/content";
-import { getOfflineKidsContent, shouldUseOfflineKidsContentForStatus } from "@/features/kids/services/kids-offline-content";
+import {
+  getOfflineKidsContent,
+  shouldUseOfflineKidsContentForNetworkError,
+  shouldUseOfflineKidsContentForStatus,
+} from "@/features/kids/services/kids-offline-content";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
@@ -103,28 +107,64 @@ export default function KidsPage() {
         setContentStatus("error");
       }
     };
-    fetch("/api/kids/content", { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          if (shouldUseOfflineKidsContentForStatus(response.status)) {
-            await loadOfflineContent();
-            return;
-          }
-          if (active) {
-            setContentItems([]);
-            setContentStatus("error");
-          }
+    void (async () => {
+      let response: Response;
+      try {
+        response = await fetch("/api/kids/content", { cache: "no-store" });
+      } catch (error) {
+        if (shouldUseOfflineKidsContentForNetworkError(error)) {
+          await loadOfflineContent();
+        } else if (active) {
+          console.error("[kids] Failed to load the public content list:", error);
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        if (shouldUseOfflineKidsContentForStatus(response.status)) {
+          await loadOfflineContent();
           return;
         }
-        const data: unknown = await response.json();
-        if (!Array.isArray(data)) throw new Error("Kids content response was not a list.");
         if (active) {
-          setContentItems(data as KidsItem[]);
-          setVisibleContentCount(12);
-          setContentStatus("ready");
+          setContentItems([]);
+          setContentStatus("error");
         }
-      })
-      .catch(loadOfflineContent);
+        return;
+      }
+
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch (error) {
+        if (shouldUseOfflineKidsContentForNetworkError(error)) {
+          await loadOfflineContent();
+          return;
+        }
+        console.error("[kids] Public content response could not be parsed:", error);
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (!Array.isArray(data)) {
+        console.error("[kids] Public content response was not a list.");
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (active) {
+        setContentItems(data as KidsItem[]);
+        setVisibleContentCount(12);
+        setContentStatus("ready");
+      }
+    })();
     void (async () => {
       try {
         const response = await fetch("/api/kids/videos", { credentials: "include", cache: "no-store" });

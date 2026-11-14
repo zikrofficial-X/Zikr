@@ -3,7 +3,11 @@ import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeK
 import { readFileSync } from "node:fs";
 import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { loadKidsSocialQueueRows } from "../../src/features/social/services/kids-video-social-query";
-import { normalizeOfflineKidsRows, shouldUseOfflineKidsContentForStatus } from "../../src/features/kids/services/kids-offline-content";
+import {
+  normalizeOfflineKidsRows,
+  shouldUseOfflineKidsContentForNetworkError,
+  shouldUseOfflineKidsContentForStatus,
+} from "../../src/features/kids/services/kids-offline-content";
 import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 import {
   getFallbackKidsContentBySlug,
@@ -26,6 +30,13 @@ for (const status of [400, 401, 403, 404, 422]) {
     `authoritative HTTP ${status} responses must not resurrect hidden Kids content`,
   );
 }
+
+assert.equal(shouldUseOfflineKidsContentForNetworkError(new TypeError("Failed to fetch")), true,
+  "a fetch transport failure may use the last validated offline Kids snapshot");
+assert.equal(shouldUseOfflineKidsContentForNetworkError(new SyntaxError("Unexpected token")), false,
+  "malformed JSON must not fall back to stale Kids content");
+assert.equal(shouldUseOfflineKidsContentForNetworkError(new Error("invalid response contract")), false,
+  "invalid successful responses must fail closed instead of restoring stale Kids content");
 for (const [publicStatus, visibilityStatus, expected] of [
   ["rejected", "rejected", true],
   ["fulfilled", "rejected", false],
@@ -859,11 +870,24 @@ assert.deepEqual(
 const kidsHomeOfflineSource = readFileSync("src/app/kids/page.tsx", "utf8");
 const kidsDetailOfflineSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 assert.match(kidsHomeOfflineSource, /if \(!response\.ok\) \{[\s\S]*?setContentStatus\("error"\)[\s\S]*?return;/,
-  "an explicit HTTP error must not fall back to a potentially stale offline Kids snapshot");
+  "authoritative HTTP errors must remain unavailable rather than restoring stale Kids content");
 assert.match(kidsHomeOfflineSource, /getOfflineKidsContent\(isEnglish \? "en" : "ar"\)/,
   "the Kids home page must use the validated offline snapshot after a network failure");
+assert.match(kidsHomeOfflineSource, /shouldUseOfflineKidsContentForNetworkError\(error\)/,
+  "the Kids home page must gate offline fallback on a fetch/body transport error");
+assert.doesNotMatch(kidsHomeOfflineSource, /\.catch\(loadOfflineContent\)/,
+  "malformed or invalid successful responses must not trigger offline fallback");
 assert.match(kidsDetailOfflineSource, /getOfflineKidsContentBySlug\(contentSlug, isEnglish \? "en" : "ar"\)/,
   "the Kids detail page must resolve its slug from the validated offline snapshot after a network failure");
+assert.match(kidsDetailOfflineSource, /shouldUseOfflineKidsContentForNetworkError\(error\)/,
+  "the Kids detail page must gate offline fallback on a fetch/body transport error");
+const detailFetchStart = kidsDetailOfflineSource.indexOf("const fetchContent");
+const detailFetchEnd = kidsDetailOfflineSource.indexOf("      } finally {", detailFetchStart);
+const detailFetchBlock = kidsDetailOfflineSource.slice(detailFetchStart, detailFetchEnd);
+const detailOuterCatchStart = detailFetchBlock.lastIndexOf("} catch (error) {");
+const detailOuterCatch = detailFetchBlock.slice(detailOuterCatchStart);
+assert.doesNotMatch(detailOuterCatch, /getOfflineKidsContentBySlug/,
+  "unexpected detail-processing errors must fail closed rather than restoring an offline copy");
 
 
 const kidsSocialQueueRows = (page: number, count: number) => Array.from({ length: count }, (_, index) => {

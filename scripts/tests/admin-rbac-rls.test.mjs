@@ -33,6 +33,11 @@ const revokePublicAdminPredicateMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql"),
   "utf8",
 );
+const defaultFunctionExecuteMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261114020000_revoke_client_default_function_execute.sql"),
+  "utf8",
+);
+const supabaseApiConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
 const publicAdminPolicyMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260929062722_security_seo_hardening_20260929.sql"),
   "utf8",
@@ -249,6 +254,17 @@ assert.doesNotMatch(
   /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM PUBLIC, anon, authenticated/i,
   "the authenticated compatibility grant must remain intact",
 );
+
+assert.ok(
+  supabaseApiConfig.includes('schemas = ["public", "storage", "graphql_public"]'),
+  "the API schema inventory must stay aligned with the default-function hardening scope",
+);
+for (const schema of ["storage", "graphql_public", "graphql"]) {
+  assert.ok(
+    defaultFunctionExecuteMigration.includes("IN SCHEMA " + schema + " REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
+    "default EXECUTE must be revoked from browser roles in schema " + schema,
+  );
+}
 
 assert.doesNotMatch(
   publicAdminPolicyMigration,

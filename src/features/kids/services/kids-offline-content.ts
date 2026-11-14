@@ -13,6 +13,11 @@ export function shouldUseOfflineKidsContentForStatus(status: number): boolean {
     (status === 408 || status === 429 || (status >= 500 && status <= 599));
 }
 
+/** Only a fetch/body transport failure may use the last validated offline snapshot. */
+export function shouldUseOfflineKidsContentForNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
 export function normalizeOfflineKidsRows(rows: unknown[], locale: KidsOfflineLocale = "ar"): KidsItem[] {
   const items = rows
     .map((row) => normalizeKidsContentRow(row as Parameters<typeof normalizeKidsContentRow>[0]))

@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 const read = (path) => readFileSync(resolve(process.cwd(), path), "utf8");
 const cloudinaryUpload = read("src/features/media/services/cloudinary.ts");
 const adminUploadRoute = read("src/app/api/admin/cloudinary/image/route.ts");
+const kidsAdminActions = read("src/app/admin/kids/actions.ts");
+const orphanCompensation = read("src/features/media/services/cloudinary-orphan-compensation.ts");
 
 assert.match(
   cloudinaryUpload,
@@ -21,5 +23,18 @@ assert.match(
   /requestedPublicId/,
   "the regression contract must cover the admin endpoint that accepts a caller-supplied public ID",
 );
+
+assert.match(kidsAdminActions, /async function compensateOrphanedKidsImage/);
+assert.match(kidsAdminActions, /featured_image_url=eq\./,
+  "Kids upload compensation must check the exact image URL against the Kids content table");
+assert.match(kidsAdminActions, /if \(!Array\.isArray\(rows\)\)[\s\S]*?Unable to verify whether the uploaded Kids image is still referenced/,
+  "a failed reference lookup must fail closed and retain the uploaded image");
+assert.match(kidsAdminActions, /isDefinitiveSupabaseInsertRejection\(saveError\)[\s\S]*?compensateOrphanedKidsImage/,
+  "only a definitive rejected insert may trigger immediate Kids image compensation");
+assert.match(kidsAdminActions, /database insert outcome is ambiguous; retaining the Cloudinary image/,
+  "ambiguous database outcomes must retain the upload for reconciliation");
+assert.match(orphanCompensation, /if \(await params\.isReferenced/);
+assert.match(orphanCompensation, /Unable to verify whether the uploaded Kids image is still referenced/,
+  "the shared compensation helper must not delete when reference verification fails");
 
 console.log("Cloudinary upload overwrite-safety contract passed.");
