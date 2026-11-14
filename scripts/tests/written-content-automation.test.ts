@@ -355,6 +355,21 @@ assert.equal(
  null,
  "an explicitly empty object result ledger must remain fail-closed",
 );
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook"],
+  metadata: {
+   ...queueRow.metadata,
+   platformResults: [
+    { platform: "facebook", ok: false, remoteId: null, error: "first result" },
+    { platform: "facebook", ok: true, remoteId: "fb-duplicate-success" },
+   ],
+  },
+ }, liveKidsStory),
+ null,
+ "duplicate platform result entries must not be normalized into a false public Kids publication",
+);
 assert.deepEqual(
  buildPublicKidsWrittenPost({
   ...queueRow,
