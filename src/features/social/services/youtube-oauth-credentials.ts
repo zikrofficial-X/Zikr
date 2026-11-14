@@ -29,6 +29,99 @@ export function selectYouTubeChannel<T extends { id?: string }>(
   return validChannels.length === 1 ? validChannels[0] : null;
 }
 
+export type YouTubeChannelPageError = {
+  status: number;
+  reason?: string | null;
+};
+
+export type YouTubeChannelPage<T> = {
+  items?: readonly T[] | null;
+  nextPageToken?: string | null;
+  error?: YouTubeChannelPageError | null;
+};
+
+export type YouTubeChannelLookup<T> = {
+  channel: T | null;
+  multipleChannels: boolean;
+  complete: boolean;
+  pagesFetched: number;
+  error?: YouTubeChannelPageError;
+};
+
+/**
+ * Search the authenticated account's paginated channel list without guessing
+ * the first channel. The bounded page count prevents OAuth callbacks and
+ * read-only health checks from spending unbounded time or API quota.
+ */
+export async function findYouTubeChannelAcrossPages<T extends { id?: string }>(
+  fetchPage: (pageToken?: string) => Promise<YouTubeChannelPage<T>>,
+  configuredChannelId?: string,
+  maxPages = 3,
+): Promise<YouTubeChannelLookup<T>> {
+  const configured = configuredChannelId?.trim() ?? "";
+  const pageLimit = Number.isFinite(maxPages)
+    ? Math.max(1, Math.min(5, Math.floor(maxPages)))
+    : 3;
+  const channels = new Map<string, T>();
+  let pageToken: string | undefined;
+
+  for (let pageIndex = 0; pageIndex < pageLimit; pageIndex += 1) {
+    const page = await fetchPage(pageToken);
+    if (page.error) {
+      return {
+        channel: null,
+        multipleChannels: false,
+        complete: false,
+        pagesFetched: pageIndex + 1,
+        error: page.error,
+      };
+    }
+
+    for (const channel of Array.isArray(page.items) ? page.items : []) {
+      const id = typeof channel.id === "string" ? channel.id.trim() : "";
+      if (!id) continue;
+      channels.set(id, channel);
+      if (configured && id === configured) {
+        return {
+          channel,
+          multipleChannels: false,
+          complete: true,
+          pagesFetched: pageIndex + 1,
+        };
+      }
+    }
+
+    if (!configured && channels.size > 1) {
+      return {
+        channel: null,
+        multipleChannels: true,
+        complete: true,
+        pagesFetched: pageIndex + 1,
+      };
+    }
+
+    const nextPageToken = typeof page.nextPageToken === "string"
+      ? page.nextPageToken.trim()
+      : "";
+    if (!nextPageToken) {
+      return {
+        channel: !configured && channels.size === 1 ? [...channels.values()][0] : null,
+        multipleChannels: channels.size > 1,
+        complete: true,
+        pagesFetched: pageIndex + 1,
+      };
+    }
+    pageToken = nextPageToken;
+  }
+
+  return {
+    channel: null,
+    multipleChannels: !configured && channels.size > 1,
+    complete: false,
+    pagesFetched: pageLimit,
+  };
+}
+
 export type YouTubeOAuthCredentialInput = {
   refreshToken: string;
   grantedScopes: string[];
