@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { redirectToAdminStepUp } from '@/features/admin/utils/step-up-client';
 
 const MAX_VIDEO_BYTES = 512 * 1024 * 1024;
 const ACCEPTED_TYPES = 'video/mp4,video/webm,video/quicktime,video/x-m4v';
@@ -43,6 +44,10 @@ export function VideoUploadField() {
         }),
       });
       const presignData = await presignResponse.json().catch(() => ({}));
+      if (presignData.error === 'step_up_required' && redirectToAdminStepUp(presignData.nextPath)) {
+        setStatus('idle');
+        return;
+      }
       if (!presignResponse.ok) {
         throw new Error(presignData.error || 'تعذر تجهيز رفع الفيديو.');
       }

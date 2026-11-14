@@ -6,6 +6,7 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 type Category = "quran" | "hadith" | "story" | "dua" | "adhkar" | "other";
 type Format = "horizontal" | "vertical";
@@ -222,7 +223,7 @@ export default function AdminVideoStudioClient() {
     setAudioFile(file);
   }
 
-  async function uploadHumanAudio() {
+  async function uploadHumanAudio(): Promise<string | null> {
     if (!audioFile) return "";
     if (uploadedAudioUrl) return uploadedAudioUrl;
     const response = await fetch(
@@ -234,6 +235,7 @@ export default function AdminVideoStudioClient() {
       }
     );
     const payload = await response.json().catch(() => ({}));
+    if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return null;
     if (!response.ok || typeof payload.audioUrl !== "string") {
       throw new Error(payload.error || "تعذر رفع التسجيل الصوتي.");
     }
@@ -261,7 +263,9 @@ export default function AdminVideoStudioClient() {
 
     setLoading(true);
     try {
-      const humanAudioUrl = audioFile ? await uploadHumanAudio() : "";
+      const uploadedAudioUrl = audioFile ? await uploadHumanAudio() : "";
+      if (uploadedAudioUrl === null) return;
+      const humanAudioUrl = uploadedAudioUrl;
       const response = await fetch("/api/admin/videos/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,6 +289,7 @@ export default function AdminVideoStudioClient() {
         }),
       });
       const payload = await response.json().catch(() => ({}));
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok)
         throw new Error(payload.error || "تعذر إنشاء طلب الفيديو.");
       setMessage(
@@ -334,6 +339,8 @@ export default function AdminVideoStudioClient() {
           title: plan.title, description: plan.description, category: plan.category, sourceId: plan.sourceId, narration: plan.narration,
           content: { renderer: "template", workflow: "verified-batch", videoFormat: "vertical", language: "ar", resolution: "1080x1920", qualityPreset: "retention-first", hookSeconds: 3, captions: true, sourceCard: true, endCard: true }, 
         }) });
+        const payload = await response.json().catch(() => ({}));
+        if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
         if (response.ok) created += 1;
       }
       setMessage(`تم إنشاء ${created} طلبًا موثقًا من الأقسام المتاحة. افتح طابور الفيديوهات لمتابعة الرندر.`);

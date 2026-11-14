@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 type Audience = "general" | "kids";
 type Template = {
@@ -124,7 +125,8 @@ export default function TemplateStudioClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...values }),
       });
-      const payload = await response.json();
+      const payload = await response.json().catch(() => ({}));
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ العملية.");
       setMessage(
         action === "create-version" ? "تم إنشاء مسودة إصدار جديدة. اختبرها ثم اطلب مراجعتها من مسؤول آخر." :
