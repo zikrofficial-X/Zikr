@@ -30,6 +30,16 @@ assert.match(
   /key === ["']require_mfa_for_destructive["'][\s\S]*?requireAdminStepUp\(["']settings\.manage["'], ["']\/admin\/settings["'], true\)/,
   "changing the destructive-MFA policy must force step-up even when the current policy is disabled",
 );
+assert.match(
+  actions,
+  /key === "maintenance_mode" \|\| key === "admin_alerts_enabled"[\s\S]*?requireAdminStepUp\("settings\.manage", "\/admin\/settings"\)/,
+  "site-wide maintenance and alert switches must follow the configured step-up policy",
+);
+assert.match(
+  actions,
+  /createAdminNotificationAction[\s\S]*?requireAdminStepUp\("notifications\.manage", "\/admin\/notifications"\)/,
+  "global admin notification broadcasts must follow the configured step-up policy",
+);
 assert.ok(
   actions.indexOf('requireAdminStepUp("settings.manage", "/admin/settings", true)') <
     actions.indexOf('await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key"'),

@@ -27,9 +27,12 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 export async function saveAdminSettingAction(formData: FormData) {
   const key = formValue(formData, "key");
   // The policy can be disabled; changing it must still require a fresh AAL2 session.
+  const requiresConditionalStepUp = key === "maintenance_mode" || key === "admin_alerts_enabled";
   const profile = key === "require_mfa_for_destructive"
     ? await requireAdminStepUp("settings.manage", "/admin/settings", true)
-    : await requireAdminPermission("settings.manage");
+    : requiresConditionalStepUp
+      ? await requireAdminStepUp("settings.manage", "/admin/settings")
+      : await requireAdminPermission("settings.manage");
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
@@ -245,7 +248,7 @@ export async function requestVideoAutomationRunAction() {
 }
 
 export async function createAdminNotificationAction(formData: FormData) {
-  const profile = await requireAdminPermission("notifications.manage");
+  const profile = await requireAdminStepUp("notifications.manage", "/admin/notifications");
   const title = formValue(formData, "title");
   const body = formValue(formData, "body");
   const link = formValue(formData, "link") || null;
