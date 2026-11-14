@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { isGitHubWorkflowDispatchAllowed } from "../../src/lib/github/workflow-dispatch-policy";
 
@@ -96,5 +96,35 @@ assert.ok(sourceAgentDeploy > sourceAgentGuard, "release finalization must deplo
 assert.ok(migrationApply >= 0 && migrationApply < edgeFunctionGuard && sourceAgentDeploy < productionDeploy, "database migrations and both Edge Functions must precede Vercel production deployment");
 const supabaseConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
 assert.match(supabaseConfig, /\[functions\.source-verified-content-agent\][\s\S]*?verify_jwt\s*=\s*false/, "the source-agent cron endpoint must remain deployed without Supabase JWT verification because it validates its private scheduler secret itself");
+
+const workflowDirectory = ".github/workflows";
+const workflowFiles = readdirSync(workflowDirectory).filter((file) => /\.(yml|yaml)$/.test(file));
+const broadSecretReference = /\$\{\{\s*(?:secrets(?:\.|\[)|github\.token)/i;
+for (const workflowFile of workflowFiles) {
+  const workflowText = readFileSync(workflowDirectory + "/" + workflowFile, "utf8");
+  const lines = workflowText.split(/\r?\n/);
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^( {0}| {4})env:\s*$/);
+    if (!match) continue;
+    const indent = match[1].length;
+    let end = index + 1;
+    while (end < lines.length) {
+      if (lines[end].trim() === "") {
+        end += 1;
+        continue;
+      }
+      const childIndent = lines[end].match(/^\s*/)[0].length;
+      if (childIndent <= indent) break;
+      end += 1;
+    }
+    const broadEnvBlock = lines.slice(index, end).join("\n");
+    assert.doesNotMatch(
+      broadEnvBlock,
+      broadSecretReference,
+      workflowFile + " must not expose secrets or github.token through workflow/job-level env; scope them to the steps that require them"
+    );
+    index = end - 1;
+  }
+}
 
 console.log("GitHub workflow dispatch environment policy checks passed.");

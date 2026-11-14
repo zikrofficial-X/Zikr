@@ -29,9 +29,6 @@ jobs:
     timeout-minutes: 40
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.1-flash-lite' }}
       TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.article_batch_size || '5' }}
       HADITH_API_BASE_URL: https://ummahapi.com/api/hadith
       HADITH_TRANSLATION_BATCH_SIZE: ${{ github.event.inputs.hadith_batch_size || '25' }}
@@ -39,6 +36,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Validate Supabase credentials before installing dependencies
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "Missing canonical Supabase URL configuration." >&2; exit 1; }
@@ -55,6 +54,10 @@ jobs:
       - run: pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
       - name: Run one bounded article batch and one bounded Hadith batch
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-3.1-flash-lite' }}
         run: |
           set -u
           article_status=0

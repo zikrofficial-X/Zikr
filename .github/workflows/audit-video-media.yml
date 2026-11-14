@@ -27,7 +27,6 @@ jobs:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v7
@@ -49,6 +48,8 @@ jobs:
 
       - name: Validate production database credentials
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
@@ -61,5 +62,7 @@ jobs:
         timeout-minutes: 15
 
       - name: Audit Cloudinary playback masters and reconcile published YouTube IDs
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: pnpm video:media:audit
         timeout-minutes: 10

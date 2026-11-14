@@ -41,7 +41,6 @@ jobs:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
       # Production row updates require an explicit manual dispatch and typed owner confirmation.
       BACKFILL_APPLY: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.confirmation == 'APPLY_QA_BACKFILL' }}
     steps:
@@ -77,6 +76,8 @@ jobs:
 
       - name: Validate production database credential
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
@@ -90,6 +91,8 @@ jobs:
 
       - name: Revalidate legacy automated QA
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           if [ "${BACKFILL_APPLY:-false}" = "true" ]; then
