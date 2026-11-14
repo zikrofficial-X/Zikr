@@ -113,7 +113,7 @@ for (const workflowFile of workflowFiles) {
         end += 1;
         continue;
       }
-      const childIndent = lines[end].match(/^\s*/)[0].length;
+      const childIndent = /^\s*/.exec(lines[end])?.[0].length ?? 0;
       if (childIndent <= indent) break;
       end += 1;
     }
