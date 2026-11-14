@@ -49,16 +49,19 @@ export function assertSiteAudioCleanupApplyConfirmation(apply, confirmation, wri
   }
 }
 
-export function isSafeSiteAudioUploadIntent(intent) {
+function isWellFormedSiteAudioUploadIntent(intent) {
   const ownerId = asString(intent?.owner_user_id).toLowerCase();
   const storagePath = asString(intent?.storage_path);
   const parts = storagePath.split("/");
   const uploadExpiresAt = Date.parse(intent?.upload_expires_at ?? "");
   const cleanupAfter = Date.parse(intent?.cleanup_after ?? "");
   const mimeType = asString(intent?.mime_type).toLowerCase();
+  const assetId = intent?.asset_id;
+  const validAssetPointer = assetId === null ||
+    /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(asString(assetId));
   return (
     ["pending", "deleting", "registered"].includes(intent?.status) &&
-    intent?.asset_id === null &&
+    validAssetPointer &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(ownerId) &&
     parts.length === 2 &&
     parts[0] === ownerId &&
@@ -71,6 +74,10 @@ export function isSafeSiteAudioUploadIntent(intent) {
     Number.isFinite(cleanupAfter) &&
     cleanupAfter - uploadExpiresAt >= MIN_CLEANUP_GRACE_MS
   );
+}
+
+export function isSafeSiteAudioUploadIntent(intent) {
+  return intent?.asset_id === null && isWellFormedSiteAudioUploadIntent(intent);
 }
 
 export async function collectExpiredSiteAudioUploadIntents(fetchPage) {
@@ -95,19 +102,14 @@ export function selectExpiredSiteAudioUploadIntents(intents, now = Date.now()) {
     return Number.isFinite(cleanupAfter) && cleanupAfter <= now;
   });
   for (const intent of expired) {
-    // A non-null asset pointer is a deliberate deletion guard. Reconcile it
-    // against the canonical asset table before selecting Storage deletions;
-    // it must not turn one failed metadata-delete attempt into a batch-wide
-    // cleanup outage.
-    if (intent?.asset_id !== null) continue;
-    if (!isSafeSiteAudioUploadIntent(intent)) {
+    if (!isWellFormedSiteAudioUploadIntent(intent)) {
       throw new Error("An expired site-audio upload intent has an unsafe path or invalid metadata; refusing cleanup.");
     }
     if (Date.parse(intent.upload_expires_at) > now) {
       throw new Error("An expired site-audio cleanup intent still has a live upload window; refusing cleanup.");
     }
   }
-  return expired.filter((intent) => intent?.asset_id === null);
+  return expired;
 }
 
 function splitStoragePath(storagePath) {
@@ -202,7 +204,8 @@ async function main() {
     console.log("KEEP referenced site-audio object and reconcile protected intent (" + safePathLogReference(intent.storage_path) + ").");
   }
 
-  const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
+  const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime())
+    .filter((intent) => intent?.asset_id === null);
   console.log("ZIKR site-audio orphan reconciliation: " + (apply ? "APPLY" : "DRY RUN"));
   console.log("Expired pending/deleting/detached registered intents: " + candidates.length);
   console.log("Protected referenced intents: " + protectedIntents.length);

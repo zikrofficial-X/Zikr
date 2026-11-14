@@ -94,6 +94,8 @@ DELETE FROM public.site_audio_assets
 WHERE id = '123e4567-e89b-12d3-a456-426614174001';
 
 DO $verify_site_audio_delete_lock$
+DECLARE
+  finalized_rows integer;
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -104,6 +106,25 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'deleting state must survive asset deletion while the FK clears asset_id';
   END IF;
+
+  INSERT INTO public.site_audio_assets (id, storage_path)
+  VALUES (
+    '123e4567-e89b-12d3-a456-426614174004',
+    '2b3c4d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d/123e4567-e89b-12d3-a456-426614174002-recording.mp3'
+  );
+
+  UPDATE public.site_audio_upload_intents
+  SET status = 'registered', asset_id = '123e4567-e89b-12d3-a456-426614174004'
+  WHERE storage_path = '2b3c4d5e-6f70-4a1b-8c2d-3e4f5a6b7c8d/123e4567-e89b-12d3-a456-426614174002-recording.mp3'
+    AND status = 'pending'
+    AND asset_id IS NULL;
+  GET DIAGNOSTICS finalized_rows = ROW_COUNT;
+  IF finalized_rows <> 0 THEN
+    RAISE EXCEPTION 'a registration that started before deletion must not finalize after the deleting lock';
+  END IF;
+
+  DELETE FROM public.site_audio_assets
+  WHERE id = '123e4567-e89b-12d3-a456-426614174004';
 END
 $verify_site_audio_delete_lock$;
 

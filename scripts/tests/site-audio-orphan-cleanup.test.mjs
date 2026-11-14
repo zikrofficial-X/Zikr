@@ -48,9 +48,11 @@ const protectedAssetIntent = { ...validIntent, asset_id: "123e4567-e89b-12d3-a45
 assert.equal(isSafeSiteAudioUploadIntent(protectedAssetIntent), false, "a pending intent with an asset pointer must never be a Storage deletion candidate");
 assert.deepEqual(
   selectExpiredSiteAudioUploadIntents([validIntent, deletingIntent, detachedRegisteredIntent, protectedAssetIntent], now),
-  [validIntent, deletingIntent, detachedRegisteredIntent],
-  "pending uploads, delete-locked rows, and detached registered rows are eligible only after expiry and only without an asset pointer",
+  [validIntent, deletingIntent, detachedRegisteredIntent, protectedAssetIntent],
+  "the expired inventory must retain protected asset-pointer rows so the worker can reconcile them separately",
 );
+assert.equal(isSafeSiteAudioUploadIntent(protectedAssetIntent), false, "protected rows are never Storage deletion candidates");
+assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, asset_id: "not-a-uuid" }), false, "asset pointers must be canonical UUIDs");
 const pagedRows = Array.from({ length: 1001 }, (_, index) => ({ index }));
 const pageOffsets = [];
 const pagedInventory = await collectExpiredSiteAudioUploadIntents(async (offset, pageSize) => {
@@ -69,7 +71,7 @@ await assert.rejects(
 );
 
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([validIntent], now), [validIntent]);
-assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered", asset_id: "123e4567-e89b-12d3-a456-426614174001" }], now), [], "a registered intent with a live asset pointer must never be deleted");
+assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered", asset_id: "123e4567-e89b-12d3-a456-426614174001" }], now), [{ ...validIntent, status: "registered", asset_id: "123e4567-e89b-12d3-a456-426614174001" }], "a registered intent with a live asset pointer remains in the protected inventory, not the deletion candidates");
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-15T00:00:00.000Z" }], now), []);
 assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, storage_path: ownerId + "/../../other" }], now), /unsafe path or invalid metadata/);
 assert.throws(() => selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }], now), /unsafe path or invalid metadata/);
@@ -104,6 +106,7 @@ assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
 assert.ok(cleanupScript.includes("const protectedIntents = expiredIntents.filter"), "expired intents with an asset pointer must be reconciled separately from Storage deletion candidates");
+assert.ok(cleanupScript.includes(".filter((intent) => intent?.asset_id === null)"), "only detached intents may enter the Storage deletion loop");
 assert.ok(cleanupScript.includes("status.in.(pending,deleting),and(status.eq.registered,asset_id.is.null)"), "the worker must include delete-locked and detached registered intents without scanning live registered assets");
 assert.ok(cleanupScript.includes('.eq("status", expectedStatus)'), "intent state changes must use compare-and-set updates");
 assert.ok(cleanupScript.includes("referencedAsset.id !== intent.asset_id"), "protected intents must match the exact canonical asset ID before being marked registered");
