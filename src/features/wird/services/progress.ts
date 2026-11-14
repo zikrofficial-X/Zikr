@@ -1,16 +1,9 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeWirdProgressState, type WirdProgressState } from "@/features/wird/utils/progress-validation";
 
-export type WirdProgressState = {
-  dailyTarget: number;
-  position: number;
-  khatmaCount: number;
-  todayCount: number;
-  todayDate: string;
-  streak: number;
-  lastStreakDate: string;
-};
+export type { WirdProgressState } from "@/features/wird/utils/progress-validation";
 
 async function getCurrentUser() {
   const supabase = await createClient();
@@ -43,13 +36,18 @@ export async function getCurrentWirdProgress(): Promise<{
 
   return {
     loggedIn: true,
-    state: data.progress_json as WirdProgressState,
+    state: normalizeWirdProgressState(data.progress_json),
   };
 }
 
 export async function saveCurrentWirdProgress(
-  state: WirdProgressState,
+  state: unknown,
 ): Promise<{ success: boolean; error?: string }> {
+  const normalizedState = normalizeWirdProgressState(state);
+  if (!normalizedState) {
+    return { success: false, error: "بيانات تقدم الورد غير صالحة" };
+  }
+
   const session = await getCurrentUser();
   if (!session) {
     return {
@@ -65,7 +63,7 @@ export async function saveCurrentWirdProgress(
         user_id: session.user.id,
         scope: "quran",
         ref: "wird",
-        progress_json: state,
+        progress_json: normalizedState,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,scope,ref" },
