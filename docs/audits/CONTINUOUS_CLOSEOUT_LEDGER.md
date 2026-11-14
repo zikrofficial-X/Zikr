@@ -1,5 +1,34 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T1421Z — Android release gate, social queue pagination, and full verification at `499d034a6488a065aeb92ce5d1d84a250422ab2b`
+
+### Defects found and repaired
+- The Android GitHub Release publisher `.github/workflows/publish-android-release-assets.yml` could publish on a version-tag push after artifact/provenance checks but had no explicit CODEOWNERS preflight. It now exports the resolved tag target SHA, passes it as `RELEASE_COMMIT_SHA`, requests `pull-requests: read`, and runs `verify-release-gates.mjs` before release asset upload or publishing. The preflight is skipped only when the workflow's existing gate says no publish is required. The script validates the SHA and still defaults to `GITHUB_SHA` for other workflows.
+- The production Vercel/Supabase deployment workflow `.github/workflows/release-finalization.yml` received a separate pre-mutation CODEOWNERS preflight at code/test head `4e518b7`; its smoke workflow still requires Vercel status by default.
+- Social publishing previously stopped at the first candidate page, which could starve valid work behind held candidates. It now uses bounded deterministic PostgREST offset pagination and `scanSocialQueueCandidatePages`. The first CI run on `21fd03e` exposed an over-escaped source-contract regex; corrected at `9d8dbec`. The full gate passed at `9d8dbec` and again at the current `499d034` head.
+- Added regression coverage for Android tag-target handoff, CODEOWNERS preflight ordering before release uploads/publication, release-finalization ordering before production mutations, and social queue pagination.
+- Exact code/test head: `499d034a6488a065aeb92ce5d1d84a250422ab2b`. Quality Gate run `43604042881`, job `132474720863`, completed successfully with `QUALITY_GATE=PASSED_FULL`; CircleCI config-guard, source-verify, application-build-docs all succeeded; Android Debug run `43604042864` succeeded. No Android release, GitHub Release publication, Supabase release, or Vercel deployment was invoked.
+
+### Snapshot reconciliation
+- PR scope before this snapshot: 509 paths. This overlay and manifest add two artifacts, making 511 PR paths.
+- New overlay covers all 509 pre-snapshot PR paths. Counts: 240 tested pass, 202 review required, 45 pending trace, 22 fixed/tested pending live apply.
+- New manifest: `docs/audits/PR320_REPO_MANIFEST_20261114T1421Z.jsonl`; 2,373 JSONL rows excluding itself. Final snapshot tree: 2,374 entries (1,875 blobs, 499 directories). The previous 1357Z manifest was validated against its exact pre-manifest tree with zero mismatches; it is retained as a valid historical snapshot.
+- The 1157Z and 1336Z manifests remain review-required due their historical hash mismatches; retained without deletion. The 1336Z and 1357Z overlays/manifests remain available as historical evidence.
+- The baseline file-status matrix still has 1,525 review-required rows; repository-wide review is not complete.
+
+### Production boundaries and open gates
+- Supabase read-only reconciliation: 418 remote migrations, latest `20261110170000`; 440 local, 22 pending local-only, no remote-only or duplicate versions. Production lacks `public.site_audio_upload_intents` and `public.save_default_prayer_location(text,text,numeric,numeric,text)`; no DDL was applied.
+- Four production Edge Functions remain active; all four local entrypoints passed Deno type-check. No deployment occurred.
+- Supabase advisors: health clean; one leaked-password-protection warning; 78 unused-index notices. No index changed.
+- Site-audio orphan cleanup is implemented and integration-tested at code level; production cleanup still requires approved migration and externally verified writer pause. No storage object was deleted.
+- Vercel production remains READY on main `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; no audit deployment occurred. Production lacks `IOS_ASSOCIATED_DOMAIN_APP_ID`.
+- CODEOWNERS remains unresolved: `@Zikrmediaofficial` has no collaborator permission returned by the GitHub permission lookup, and the review request was not assigned. No alternate reviewer or bypass was used.
+- Twenty Kids stories still need editorial decisions; the scheduled English-content-sync failure remains undiagnosed because rerunning it could invoke Gemini.
+- No content generation, Gemini, social publishing, production mutation, storage/media deletion, secret rotation, Android release, GitHub Release publication, merge, or Vercel deployment was performed.
+
+### Next checkpoint
+Resolve the configured CODEOWNERS principal's repository access, then obtain approval on the current PR head. Finish the 202 review-required and 45 pending-trace PR paths, then the 1,525-row baseline backlog. Owner migration approval, iOS environment/device acceptance, Kids editorial review, English-sync diagnosis, post-merge release, Vercel READY verification, and production smoke checks remain open. Do not mark the audit closed until evidenced.
+
 ## 2026-11-14T1157Z — corrected 498-path inventory and exact-head closeout
 
 - Exact source head `e386e2dc41221bf5f385efcc490c5944659ccf8a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; PR #320 has 498 paths before the new overlay/manifest. Tree 2361 entries (1862 blobs, 499 directories), 144,173,046 bytes.
