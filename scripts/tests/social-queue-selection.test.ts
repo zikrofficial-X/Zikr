@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems, validateStoredSocialTargetPlatforms } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
   canAttemptSocialPlatform,
@@ -25,6 +25,68 @@ const writtenPosts = [
 ];
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
+
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "youtube"]),
+  { ok: true, platforms: ["facebook", "youtube"] },
+  "a unique supported target list must remain publishable",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "instagram"]),
+  { ok: false, reason: "unsupported_or_duplicate", invalidValues: ["instagram"] },
+  "unsupported stored targets must be rejected rather than silently dropped",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "facebook"]),
+  { ok: false, reason: "unsupported_or_duplicate", invalidValues: ["facebook"] },
+  "duplicate stored targets must not trigger duplicate provider calls",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms([]),
+  { ok: false, reason: "empty", invalidValues: [] },
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(null),
+  { ok: false, reason: "not_array", invalidValues: [] },
+);
+
+const malformedTargetCandidates = [
+  { id: "unsupported-target", content_type: "written_post", target_platforms: ["facebook", "instagram"], metadata: null },
+  { id: "duplicate-target", content_type: "written_post", target_platforms: ["facebook", "facebook"], metadata: null },
+  { id: "empty-target", content_type: "written_post", target_platforms: [], metadata: null },
+  { id: "non-array-target", content_type: "written_post", target_platforms: null, metadata: null },
+];
+const quarantinedTargets = selectEligibleSocialPublishItems(malformedTargetCandidates, {
+  enabledPlatforms: [],
+  approvedVideoQueueItemIds: new Set(),
+  maxAttemptsFor: () => 5,
+  limit: 10,
+});
+assert.deepEqual(
+  quarantinedTargets.map((item) => item.id),
+  ["unsupported-target", "duplicate-target", "empty-target", "non-array-target"],
+  "malformed queue targets must reach the worker quarantine path even when no target is runnable",
+);
+assert.deepEqual(
+  selectEligibleSocialPublishItems(
+    [{ ...malformedTargetCandidates[0], metadata: { targetPlatformsValidation: { status: "blocked" } } }],
+    { enabledPlatforms: [], approvedVideoQueueItemIds: new Set(), maxAttemptsFor: () => 5, limit: 10 },
+  ),
+  [],
+  "already-quarantined invalid rows must not be reclaimed on every worker cycle",
+);
+
+const publisherSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+const targetValidationPosition = publisherSource.indexOf("validateStoredSocialTargetPlatforms(item.target_platforms)");
+const providerCallPosition = publisherSource.indexOf("publishPlatform(item, platform)");
+assert.ok(
+  targetValidationPosition >= 0 && providerCallPosition > targetValidationPosition,
+  "stored target validation must occur before any external provider call",
+);
+assert.match(publisherSource, /targetPlatformsValidation:\s*\{\s*status:\s*"blocked"/);
 
 const malformedResultLedgers: unknown[] = [
   "corrupt",
