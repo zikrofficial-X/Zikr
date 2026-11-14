@@ -16,7 +16,7 @@ import {
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
 import { getKidsQuizQuestions, normalizeKidsVideoEmbedUrl } from "@/features/kids/services/kids-content-validation";
-import { getOfflineKidsContentBySlug } from "@/features/kids/services/kids-offline-content";
+import { getOfflineKidsContentBySlug, shouldUseOfflineKidsContentForStatus } from "@/features/kids/services/kids-offline-content";
 
 interface KidsContent {
   id: string;
@@ -134,6 +134,14 @@ export default function KidsDetailPage() {
           }
         }
 
+        if (shouldUseOfflineKidsContentForStatus(response.status)) {
+          const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+          if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+          return;
+        }
+
+        // A 404/authorization response is authoritative: do not resurrect
+        // unpublished or removed content from an older offline snapshot.
         if (active) setContent(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;

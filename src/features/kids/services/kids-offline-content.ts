@@ -4,6 +4,15 @@ import { isKidsContentType } from "@/features/kids/services/kids-content-validat
 
 export type KidsOfflineLocale = "ar" | "en";
 
+/**
+ * Use the last validated offline snapshot only when the server response is
+ * transient. A 404 or authorization failure must not resurrect hidden content.
+ */
+export function shouldUseOfflineKidsContentForStatus(status: number): boolean {
+  return Number.isInteger(status) &&
+    (status === 408 || status === 429 || (status >= 500 && status <= 599));
+}
+
 export function normalizeOfflineKidsRows(rows: unknown[], locale: KidsOfflineLocale = "ar"): KidsItem[] {
   const items = rows
     .map((row) => normalizeKidsContentRow(row as Parameters<typeof normalizeKidsContentRow>[0]))

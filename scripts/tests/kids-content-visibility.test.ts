@@ -3,13 +3,34 @@ import { getKidsQuizQuestions, isKidsContentType, KIDS_CONTENT_TYPES, normalizeK
 import { readFileSync } from "node:fs";
 import { getConfirmedPublicKidsVideoSocialPlatforms, isPublicKidsVideoSocialQueueRow, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import { loadKidsSocialQueueRows } from "../../src/features/social/services/kids-video-social-query";
-import { normalizeOfflineKidsRows } from "../../src/features/kids/services/kids-offline-content";
+import { normalizeOfflineKidsRows, shouldUseOfflineKidsContentForStatus } from "../../src/features/kids/services/kids-offline-content";
 import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 import {
   getFallbackKidsContentBySlug,
   isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
 } from "../../src/features/kids/services/kids-content-visibility";
+
+for (const status of [408, 429, 500, 502, 503, 504]) {
+  assert.equal(
+    shouldUseOfflineKidsContentForStatus(status),
+    true,
+    `transient HTTP ${status} failures should use the validated offline Kids snapshot`,
+  );
+}
+for (const status of [400, 401, 403, 404, 422]) {
+  assert.equal(
+    shouldUseOfflineKidsContentForStatus(status),
+    false,
+    `authoritative HTTP ${status} responses must not resurrect hidden Kids content`,
+  );
+}
+const kidsDetailOfflineFallbackSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
+assert.match(
+  kidsDetailOfflineFallbackSource,
+  /shouldUseOfflineKidsContentForStatus\(response\.status\)[\s\S]*?getOfflineKidsContentBySlug/,
+  "Kids detail pages must use the offline snapshot after transient HTTP failures",
+);
 
 const typesMigration = readFileSync(
   "supabase/migrations/20261111003000_expand_kids_content_supported_types.sql",
