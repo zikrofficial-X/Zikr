@@ -9,49 +9,26 @@ import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { hasHadithPageRows, resolveHadithBookName, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
+import { createOfflineHadithBooksLoader, type OfflineHadithBookRow } from "@/features/hadith/services/offline-books-loader";
 import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
 
 const HADITH_API_BASE =
   getServerEnv().HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith";
 
-type OfflineHadithBookRow = {
-  id?: string;
-  slug?: string;
-  name_ar?: string;
-  name_en?: string;
-  hadith_count?: number | null;
-};
-
-let offlineBooksPromise: Promise<HadithBook[]> | null = null;
-
-async function loadOfflineHadithBooks(locale: Locale = "ar"): Promise<HadithBook[]> {
-  if (!offlineBooksPromise) {
-    offlineBooksPromise = readFile(
-      path.join(
-        process.cwd(),
-        "public",
-        "offline-content",
-        "v1",
-        "hadith_books.json",
-      ),
-      "utf8",
-    ).then((raw) => {
-      const rows = JSON.parse(raw) as OfflineHadithBookRow[];
-      return rows
-        .filter((row) => row.slug && row.name_ar)
-        .map((row) => ({
-          id: String(row.slug),
-          slug: String(row.slug),
-          name: resolveHadithBookName(String(row.name_ar), row.name_en ?? null, locale === "en" ? "en" : "ar"),
-          nameAr: String(row.name_ar).trim(),
-          nameEn: row.name_en?.trim() || undefined,
-          available: Number(row.hadith_count) || 0,
-        }));
-    });
-  }
-  return offlineBooksPromise;
-}
+const loadOfflineHadithBooks = createOfflineHadithBooksLoader(async () => {
+  const raw = await readFile(
+    path.join(
+      process.cwd(),
+      "public",
+      "offline-content",
+      "v1",
+      "hadith_books.json",
+    ),
+    "utf8",
+  );
+  return JSON.parse(raw) as OfflineHadithBookRow[];
+});
 
 type DbHadithBook = {
   id: string;
