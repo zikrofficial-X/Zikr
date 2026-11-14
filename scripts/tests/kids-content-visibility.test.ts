@@ -51,6 +51,12 @@ assert.match(
   "Kids list pages must use the validated offline snapshot after transient HTTP failures",
 );
 
+const kidsAdminActionsSource = readFileSync("src/app/admin/kids/actions.ts", "utf8");
+assert.match(
+  kidsAdminActionsSource,
+  /revalidatePath\("\/api\/kids\/content"\)/,
+  "publishing Kids content must invalidate the cached public list API as well as the page route",
+);
 const kidsDetailOfflineFallbackSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 assert.match(
   kidsDetailOfflineFallbackSource,
