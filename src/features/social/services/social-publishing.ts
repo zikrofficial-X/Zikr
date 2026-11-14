@@ -15,6 +15,7 @@ import {
   mergeUniqueSocialPublishCandidates,
   requireSocialQueueRows,
   selectEligibleSocialPublishItems,
+  validateStoredSocialTargetPlatforms,
 } from "@/features/social/services/social-queue-selection";
 import { getPublishedVideoStagingCleanupEligibleAt, PUBLISHED_VIDEO_CLEANUP_POSTGREST_FILTER, shouldRetryPublishedVideoCleanup } from "@/features/social/services/published-video-cleanup";
 import { patchSocialQueueMetadataWithCas } from "@/features/social/services/social-queue-metadata";
@@ -279,16 +280,17 @@ export async function getPendingSocialPublishItems(
       ...validatedBatches,
       validatedWrittenCandidates,
     );
-    const runnableCandidates = candidates.filter((item) =>
-      item.target_platforms.some((platform) =>
+    const runnableCandidates = candidates.filter((item) => {
+      const targetValidation = validateStoredSocialTargetPlatforms(item.target_platforms);
+      return !targetValidation.ok || targetValidation.platforms.some((platform) =>
         canAttemptSocialPlatform({
           platform,
           enabledPlatforms,
           metadata: item.metadata ?? {},
           maxAttempts: maxAttemptsFor(item.metadata),
         }),
-      ),
-    );
+      );
+    });
     const approvedVideoQueueItemIds = await getApprovedVideoQueueItemIds(runnableCandidates);
     return selectEligibleSocialPublishItems(runnableCandidates, {
       enabledPlatforms,
@@ -876,6 +878,22 @@ export async function processSocialPublishItem(
     claimUpdatedAt = claimed[0].updated_at;
   }
   const claimLease = { status: "processing" as const, updatedAt: claimUpdatedAt };
+  const targetValidation = validateStoredSocialTargetPlatforms(item.target_platforms);
+  if (!targetValidation.ok) {
+    const updated = await markQueueItem(item.id, "failed", {
+      scheduled_at: null,
+      error_message: "Invalid social target_platforms; the queue item was held before any provider request.",
+      metadata: {
+        ...(item.metadata ?? {}),
+        targetPlatformsValidation: {
+          status: "blocked",
+          reason: targetValidation.reason,
+          invalidValues: targetValidation.invalidValues,
+        },
+      },
+    }, claimLease);
+    return updated ? "failed" : "deferred";
+  }
   if (!(await hasVideoApprovalForQueueItem(item))) {
     const updated = await markQueueItem(item.id, "queued", {
       error_message: "Video held for automated qa check before public publishing.",
@@ -919,9 +937,7 @@ export async function processSocialPublishItem(
     return updated ? "approval_blocked" : "deferred";
   }
 
-  const platforms = item.target_platforms.filter(
-    (platform): platform is SocialPlatform => platform === "facebook" || platform === "facebook_reels" || platform === "youtube",
-  );
+  const platforms = targetValidation.platforms;
   if (platforms.length === 0) {
     const updated = await markQueueItem(item.id, "failed", { error_message: "No supported target platforms selected" }, claimLease);
     return updated ? "failed" : "deferred";
