@@ -32,16 +32,16 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.15.0
           run_install: false
 
       - name: Setup Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -61,7 +61,7 @@ jobs:
         uses: android-actions/setup-android@v4
 
       - name: Cache Android debug signing key
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.android/debug.keystore
           key: zikr-android-debug-keystore-v1-${{ github.ref_name }}
@@ -199,7 +199,7 @@ jobs:
           } | tee android-debug-verification.txt
 
       - name: Upload Debug APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zikr-android-debug-${{ github.sha }}
           path: |

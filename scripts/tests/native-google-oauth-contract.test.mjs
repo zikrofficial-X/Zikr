@@ -171,4 +171,20 @@ assert.ok(
   "the PR workflow must never create a release APK/AAB",
 );
 
+
+for (const action of [
+  "actions/checkout@v7",
+  "pnpm/action-setup@v6",
+  "actions/setup-node@v7",
+  "actions/cache@v6",
+  "actions/upload-artifact@v7",
+]) {
+  assert.ok(androidWorkflow.includes(action), "Android debug workflow must use Node 24-compatible action " + action);
+}
+assert.doesNotMatch(
+  androidWorkflow,
+  /(?:actions\\/(?:checkout|setup-node|cache|upload-artifact)|pnpm\\/action-setup)@v4/,
+  "Android debug workflow must not retain the Node 20 action majors reported by GitHub runners",
+);
+
 console.log("Native Google OAuth and canonical-host contracts passed.");
