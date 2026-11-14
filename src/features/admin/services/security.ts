@@ -5,7 +5,7 @@ import { createClient, supabaseServerAdminRequest } from "@/lib/supabase/server"
 import { requireAdminPermission, requireAdminPermissionApi } from "@/features/admin/services/admin";
 import { sanitizeInternalPath } from "@/lib/safe-redirect";
 import type { AdminPermission } from "@/features/admin/services/permissions";
-import { resolveDestructiveMfaRequirement } from "@/features/admin/services/security-policy";
+import { resolveDestructiveMfaRequirement, shouldRequireAdminStepUp } from "@/features/admin/services/security-policy";
 
 async function destructiveMfaRequired() {
   try {
@@ -21,9 +21,9 @@ async function destructiveMfaRequired() {
   }
 }
 
-export async function requireAdminStepUp(permission: AdminPermission, nextPath = "/admin") {
+export async function requireAdminStepUp(permission: AdminPermission, nextPath = "/admin", forceMfa = false) {
   const profile = await requireAdminPermission(permission);
-  if (!(await destructiveMfaRequired())) return profile;
+  if (!shouldRequireAdminStepUp(await destructiveMfaRequired(), forceMfa)) return profile;
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -39,10 +39,11 @@ export async function requireAdminStepUp(permission: AdminPermission, nextPath =
 export async function requireAdminStepUpApi(
   permission: AdminPermission,
   nextPath = "/admin",
+  forceMfa = false,
 ) {
   const auth = await requireAdminPermissionApi(permission);
   if (!auth.ok) return auth;
-  if (!(await destructiveMfaRequired())) return auth;
+  if (!shouldRequireAdminStepUp(await destructiveMfaRequired(), forceMfa)) return auth;
 
   const candidate = sanitizeInternalPath(nextPath);
   const safeNext = candidate === "/admin" || candidate.startsWith("/admin/") ? candidate : "/admin";

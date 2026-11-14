@@ -26,8 +26,9 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 
 export async function saveAdminSettingAction(formData: FormData) {
   const key = formValue(formData, "key");
+  // The policy can be disabled; changing it must still require a fresh AAL2 session.
   const profile = key === "require_mfa_for_destructive"
-    ? await requireAdminStepUp("settings.manage", "/admin/settings")
+    ? await requireAdminStepUp("settings.manage", "/admin/settings", true)
     : await requireAdminPermission("settings.manage");
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
