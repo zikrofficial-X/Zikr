@@ -117,3 +117,10 @@ these values into narrowly scoped CircleCI contexts, update the corresponding
 job mappings, verify the affected jobs, and only then remove the old project-level
 copies. This audit does not move or delete any secret because CircleCI context
 administration is not available here.
+
+
+## Production gate safety — 2026-11-14
+
+The production Supabase health gate now performs read-only GET checks only.
+The `consume_admin_rate_limit` RPC is state-mutating and is covered by local
+PostgreSQL integration tests; it must not be invoked as a production smoke probe.

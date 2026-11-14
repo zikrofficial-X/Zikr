@@ -104,11 +104,11 @@ for (const check of checks) {
 
 if (!failed) {
   try {
-    await runAdminContractChecks();
+    await runAdminSchemaContractCheck();
   } catch (error) {
     failed = true;
     console.error(
-      "FAIL: Admin rate-limit contract: " +
+      "FAIL: Admin rate-limit schema contract: " +
         (error instanceof Error ? error.message : String(error))
     );
   }
@@ -122,46 +122,26 @@ if (failed) {
 console.log("Production Supabase health gate passed.");
 
 
-async function runAdminContractChecks() {
+async function runAdminSchemaContractCheck() {
   if (!adminHeaders) {
-    console.log("SKIP: Admin rate-limit contract checks (SUPABASE_SERVICE_ROLE_KEY not provided).");
+    console.log("SKIP: Admin rate-limit schema contract (SUPABASE_SERVICE_ROLE_KEY not provided).");
     return;
   }
 
+  // Read-only schema probe. The mutating consume_admin_rate_limit RPC is
+  // covered by local PostgreSQL integration tests and must never be called
+  // by a production health check.
   const tableResponse = await fetch(
     baseUrl + "/rest/v1/admin_rate_limits?select=actor_id&limit=0",
     { headers: adminHeaders }
   );
   if (!tableResponse.ok) {
     throw new Error(
-      "admin_rate_limits contract returned HTTP " +
+      "admin_rate_limits schema contract returned HTTP " +
         tableResponse.status +
         ": " +
         (await tableResponse.text()).replace(/\s+/g, " ").slice(0, 300)
     );
   }
-  console.log("PASS: admin_rate_limits contract (HTTP " + tableResponse.status + ")");
-
-  const rpcResponse = await fetch(
-    baseUrl + "/rest/v1/rpc/consume_admin_rate_limit",
-    {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({
-        p_actor: null,
-        p_bucket: "production-health-check",
-        p_limit: 1,
-        p_window_seconds: 60,
-      }),
-    }
-  );
-  if (!rpcResponse.ok) {
-    throw new Error(
-      "consume_admin_rate_limit RPC returned HTTP " +
-        rpcResponse.status +
-        ": " +
-        (await rpcResponse.text()).replace(/\s+/g, " ").slice(0, 300)
-    );
-  }
-  console.log("PASS: consume_admin_rate_limit RPC (HTTP " + rpcResponse.status + ")");
+  console.log("PASS: admin_rate_limits schema contract (read-only HTTP " + tableResponse.status + ")");
 }
