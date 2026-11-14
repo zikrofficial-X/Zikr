@@ -82,8 +82,11 @@ if (!mobileNavigation.includes('mobile-platform-menu-search') || !mobileNavigati
 if (!kidsLayout.includes('path: "/kids"')) {
   failures.push('Kids hub must expose a route-level canonical metadata contract.');
 }
-if (!sitemap.includes('getPublicContentLibrary(100)')) {
-  failures.push('Sitemap must evaluate substantive public library content routes.');
+if (!sitemap.includes('getPublicContentLibrary(1000)') ||
+    !sitemap.includes('getArticles(undefined, 1000)') ||
+    !sitemap.includes('getDuas(undefined, 1000)') ||
+    !sitemap.includes('getStories(1000)')) {
+  failures.push('Sitemap must evaluate the full bounded published catalogue for articles, duas, stories, and public library content.');
 }
 const duplicateCatalogHrefs = catalogHrefs.filter((href, index) => catalogHrefs.indexOf(href) !== index);
 if (duplicateCatalogHrefs.length) failures.push(`تكرار روابط في كتالوج الأقسام: ${unique(duplicateCatalogHrefs).join(', ')}`);
