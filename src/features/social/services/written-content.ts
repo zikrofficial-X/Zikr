@@ -1,4 +1,4 @@
-import { hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
+import { getManualReconciliationPlatforms, hasMalformedSocialPlatformResults, normalizeSocialPlatformResults } from "./platform-availability";
 import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 export type WrittenGenerationRequest = {
@@ -388,6 +388,9 @@ function getConfirmedPublicWrittenPlatforms(
  const rawResults = metadata.platformResults;
  if (hasMalformedSocialPlatformResults(rawResults)) return [];
  const results = normalizeSocialPlatformResults(rawResults);
+ const manualReconciliationPlatforms = new Set(
+  getManualReconciliationPlatforms({ ...metadata, sourceMediaMissing: false }),
+ );
  const deletions = asWrittenRecord(metadata.platformDeletions);
  const targets = [...new Set((row.target_platforms ?? []).filter(
   (platform): platform is "facebook" | "facebook_reels" | "youtube" =>
@@ -408,11 +411,12 @@ function getConfirmedPublicWrittenPlatforms(
    const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
    return result.ok === true &&
     remoteId.length > 0 &&
+    !manualReconciliationPlatforms.has(platform) &&
     !isDeleted(platform, remoteId);
   });
  }
  if (row.status !== "published") return [];
- return targets.filter((platform) => !isDeleted(platform));
+ return targets.filter((platform) => !manualReconciliationPlatforms.has(platform) && !isDeleted(platform));
 }
 
 export function buildPublicKidsWrittenPost(
