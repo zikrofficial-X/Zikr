@@ -4,6 +4,58 @@ import {
   type SocialPlatform,
 } from "@/features/social/services/platform-availability";
 
+const SUPPORTED_SOCIAL_TARGET_PLATFORMS = new Set<SocialPlatform>([
+  "facebook",
+  "facebook_reels",
+  "youtube",
+]);
+
+export type StoredSocialTargetPlatformsValidation =
+  | { ok: true; platforms: SocialPlatform[] }
+  | {
+      ok: false;
+      reason: "not_array" | "empty" | "too_many" | "unsupported_or_duplicate";
+      invalidValues: string[];
+    };
+
+/**
+ * Database queue rows are runtime data, not trusted TypeScript values. Reject
+ * empty, unsupported, duplicate, and malformed target lists before any
+ * provider call can be made.
+ */
+export function validateStoredSocialTargetPlatforms(value: unknown): StoredSocialTargetPlatformsValidation {
+  if (!Array.isArray(value)) {
+    return { ok: false, reason: "not_array", invalidValues: [] };
+  }
+  if (value.length === 0) {
+    return { ok: false, reason: "empty", invalidValues: [] };
+  }
+  if (value.length > SUPPORTED_SOCIAL_TARGET_PLATFORMS.size) {
+    return { ok: false, reason: "too_many", invalidValues: [] };
+  }
+
+  const platforms: SocialPlatform[] = [];
+  const invalidValues: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of value) {
+    if (typeof candidate !== "string" || !SUPPORTED_SOCIAL_TARGET_PLATFORMS.has(candidate as SocialPlatform)) {
+      invalidValues.push(typeof candidate === "string" ? candidate.slice(0, 80) : `<${typeof candidate}>`);
+      continue;
+    }
+    if (seen.has(candidate)) {
+      invalidValues.push(candidate);
+      continue;
+    }
+    seen.add(candidate);
+    platforms.push(candidate as SocialPlatform);
+  }
+
+  if (invalidValues.length > 0 || platforms.length !== value.length) {
+    return { ok: false, reason: "unsupported_or_duplicate", invalidValues };
+  }
+  return { ok: true, platforms };
+}
+
 export function requireSocialQueueRows<T>(value: unknown, label: string): T[] {
   if (!Array.isArray(value)) {
     throw new Error(`${label || "Social queue query"} returned an invalid row set; refusing to report an empty successful batch.`);
@@ -14,7 +66,7 @@ export function requireSocialQueueRows<T>(value: unknown, label: string): T[] {
 export type SocialQueueSelectionCandidate = {
   id: string;
   content_type: string;
-  target_platforms: readonly SocialPlatform[];
+  target_platforms: unknown;
   metadata: Record<string, unknown> | null;
 };
 
@@ -90,9 +142,21 @@ export function selectEligibleSocialPublishItems<T extends SocialQueueSelectionC
 
   const eligible: T[] = [];
   for (const item of candidates) {
+    const targetValidation = validateStoredSocialTargetPlatforms(item.target_platforms);
+    if (!targetValidation.ok) {
+      const validationMetadata = item.metadata?.targetPlatformsValidation;
+      const alreadyQuarantined = Boolean(
+        validationMetadata &&
+        typeof validationMetadata === "object" &&
+        !Array.isArray(validationMetadata) &&
+        (validationMetadata as Record<string, unknown>).status === "blocked",
+      );
+      if (!alreadyQuarantined) eligible.push(item);
+      continue;
+    }
     if (item.metadata?.sourceMediaMissing === true) continue;
     const maxAttempts = options.maxAttemptsFor(item.metadata);
-    const hasRunnableTarget = item.target_platforms.some((platform) =>
+    const hasRunnableTarget = targetValidation.platforms.some((platform) =>
       canAttemptSocialPlatform({
         platform,
         enabledPlatforms: options.enabledPlatforms,
