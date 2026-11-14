@@ -68,8 +68,8 @@ const securityService = readFileSync("src/features/admin/services/security.ts", 
 const adminSystemActions = readFileSync("src/app/admin/system-actions.ts", "utf8");
 assert.match(
   adminSystemActions,
-  /key === "require_mfa_for_destructive"[\s\S]*?requireAdminStepUp\("settings\.manage", "\/admin\/settings"\)/,
-  "changing the destructive-action MFA policy must require step-up whenever the current policy is enabled or missing",
+  /key === "require_mfa_for_destructive"[\s\S]*?requireAdminStepUp\("settings\.manage", "\/admin\/settings", true\)/,
+  "changing the destructive-action MFA policy must always force AAL2, even when the current policy is disabled",
 );
 const securityPage = readFileSync("src/app/admin/security/page.tsx", "utf8");
 const settingsPage = readFileSync("src/app/admin/settings/page.tsx", "utf8");
