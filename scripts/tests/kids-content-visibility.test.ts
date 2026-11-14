@@ -9,6 +9,7 @@ import {
   getFallbackKidsContentBySlug,
   isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
+  shouldTreatKidsContentLookupAsUnavailable,
 } from "../../src/features/kids/services/kids-content-visibility";
 
 for (const status of [408, 429, 500, 502, 503, 504]) {
@@ -25,6 +26,31 @@ for (const status of [400, 401, 403, 404, 422]) {
     `authoritative HTTP ${status} responses must not resurrect hidden Kids content`,
   );
 }
+for (const [publicStatus, visibilityStatus, expected] of [
+  ["rejected", "rejected", true],
+  ["fulfilled", "rejected", false],
+  ["rejected", "fulfilled", false],
+  ["fulfilled", "fulfilled", false],
+] as const) {
+  assert.equal(
+    shouldTreatKidsContentLookupAsUnavailable(publicStatus, visibilityStatus),
+    expected,
+    "only a complete failure of both Kids lookups should become a transient server error",
+  );
+}
+const kidsContentServiceSource = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
+assert.equal(
+  (kidsContentServiceSource.match(/shouldTreatKidsContentLookupAsUnavailable\(publicResult\.status, visibilityResult\.status\)/g) ?? []).length,
+  2,
+  "both Kids list and detail services must surface complete backend lookup failure instead of converting it to an empty result or 404",
+);
+const kidsListOfflineFallbackSource = readFileSync("src/app/kids/page.tsx", "utf8");
+assert.match(
+  kidsListOfflineFallbackSource,
+  /shouldUseOfflineKidsContentForStatus\(response\.status\)[\s\S]*?loadOfflineContent/,
+  "Kids list pages must use the validated offline snapshot after transient HTTP failures",
+);
+
 const kidsDetailOfflineFallbackSource = readFileSync("src/app/kids/[slug]/page.tsx", "utf8");
 assert.match(
   kidsDetailOfflineFallbackSource,

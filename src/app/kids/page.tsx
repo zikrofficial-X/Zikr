@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import type { KidsItem } from "@/features/kids/data/content";
-import { getOfflineKidsContent } from "@/features/kids/services/kids-offline-content";
+import { getOfflineKidsContent, shouldUseOfflineKidsContentForStatus } from "@/features/kids/services/kids-offline-content";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
@@ -91,9 +91,25 @@ export default function KidsPage() {
     setGeneratedKidsStatus("loading");
     setKidsWrittenPostsStatus("loading");
     setContentStatus("loading");
+    const loadOfflineContent = async () => {
+      const offlineItems = await getOfflineKidsContent(isEnglish ? "en" : "ar");
+      if (!active) return;
+      if (offlineItems.length > 0) {
+        setContentItems(offlineItems);
+        setVisibleContentCount(12);
+        setContentStatus("ready");
+      } else {
+        setContentItems([]);
+        setContentStatus("error");
+      }
+    };
     fetch("/api/kids/content", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) {
+          if (shouldUseOfflineKidsContentForStatus(response.status)) {
+            await loadOfflineContent();
+            return;
+          }
           if (active) {
             setContentItems([]);
             setContentStatus("error");
@@ -108,18 +124,7 @@ export default function KidsPage() {
           setContentStatus("ready");
         }
       })
-      .catch(async () => {
-        const offlineItems = await getOfflineKidsContent(isEnglish ? "en" : "ar");
-        if (!active) return;
-        if (offlineItems.length > 0) {
-          setContentItems(offlineItems);
-          setVisibleContentCount(12);
-          setContentStatus("ready");
-        } else {
-          setContentItems([]);
-          setContentStatus("error");
-        }
-      });
+      .catch(loadOfflineContent);
     void (async () => {
       try {
         const response = await fetch("/api/kids/videos", { credentials: "include", cache: "no-store" });

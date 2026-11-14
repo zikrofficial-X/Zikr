@@ -14,6 +14,7 @@ import {
   isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
   normalizeKidsContentSlug,
+  shouldTreatKidsContentLookupAsUnavailable,
 } from "@/features/kids/services/kids-content-visibility";
 
 type KidsDbRow = Record<string, unknown>;
@@ -58,6 +59,9 @@ async function getDatabaseKidsContent(): Promise<KidsDatabaseState> {
 
   if (publicResult.status === "rejected") {
     console.error("[kids] Failed to load published content:", publicResult.reason);
+  }
+  if (shouldTreatKidsContentLookupAsUnavailable(publicResult.status, visibilityResult.status)) {
+    throw new Error("Kids content lookup is temporarily unavailable.");
   }
   if (visibilityResult.status === "rejected") {
     console.error("[kids] Failed to verify fallback content visibility:", visibilityResult.reason);
@@ -105,6 +109,9 @@ async function getDatabaseKidsContentBySlug(slug: string): Promise<{
   }
   if (visibilityResult.status === "rejected") {
     console.error("[kids] Failed to verify fallback slug visibility:", visibilityResult.reason);
+  }
+  if (shouldTreatKidsContentLookupAsUnavailable(publicResult.status, visibilityResult.status)) {
+    throw new Error("Kids content lookup is temporarily unavailable.");
   }
 
   const normalizedItem = publicResult.status === "fulfilled" && publicResult.value[0]

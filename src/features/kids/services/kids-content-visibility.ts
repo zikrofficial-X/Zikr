@@ -49,3 +49,11 @@ export function getFallbackKidsContentBySlug<T extends { slug: string; type?: un
     normalizeKidsContentSlug(item.slug) === normalizedSlug,
   ) ?? null;
 }
+
+/** Return a temporary-unavailable response only when both independent Kids lookups failed. */
+export function shouldTreatKidsContentLookupAsUnavailable(
+  publicResultStatus: "fulfilled" | "rejected",
+  visibilityResultStatus: "fulfilled" | "rejected",
+): boolean {
+  return publicResultStatus === "rejected" && visibilityResultStatus === "rejected";
+}
