@@ -147,5 +147,5 @@ for (const name of ["saveCompanionAction", "saveScholarAction", "saveHadithActio
   const next = knowledgeActions.indexOf("export async function ", start + 1);
   const body = knowledgeActions.slice(start, next < 0 ? knowledgeActions.length : next);
   assert.ok(body.includes('await requireAdminPermission("knowledge.manage");'), `${name} must require knowledge.manage`);
-  assert.ok(body.includes('if (formData.has("published")) await requireAdminStepUp("content.publish", "/admin/knowledge");'), `${name} must require step-up MFA before publishing`);
+  assert.ok(body.includes('await requireAdminStepUp("content.publish", "/admin/knowledge");'), `${name} must require step-up MFA before publishing`);
 }
