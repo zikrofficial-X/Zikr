@@ -1,6 +1,7 @@
 import { getOfflineDataset } from "@/lib/offline-pack";
 import { normalizeKidsContentRow, type KidsItem } from "@/features/kids/data/content";
 import { isKidsContentType } from "@/features/kids/services/kids-content-validation";
+import { hasKidsEnglishContent } from "@/features/kids/services/kids-content-visibility";
 
 export type KidsOfflineLocale = "ar" | "en";
 
@@ -27,7 +28,7 @@ export function normalizeOfflineKidsRows(rows: unknown[], locale: KidsOfflineLoc
     .filter((item) => item.type !== "story" || (item.metadata as Record<string, unknown> | undefined)?.age_appropriate === true);
 
   return locale === "en"
-    ? items.filter((item) => Boolean(item.title_en?.trim() && item.content_en?.trim()))
+    ? items.filter(hasKidsEnglishContent)
     : items;
 }
 

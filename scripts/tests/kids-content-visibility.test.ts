@@ -11,6 +11,7 @@ import {
 import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
 import {
   getFallbackKidsContentBySlug,
+  hasKidsEnglishContent,
   isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
   shouldTreatKidsContentLookupAsUnavailable,
@@ -50,6 +51,21 @@ for (const [publicStatus, visibilityStatus, expected] of [
   );
 }
 const kidsContentServiceSource = readFileSync("src/features/kids/services/kids-content.ts", "utf8");
+assert.equal(hasKidsEnglishContent({ title_en: "Wudu steps", content_en: "Original educational content prepared for families." }), false);
+assert.equal(hasKidsEnglishContent({ title_en: "Wudu steps", content_en: "Original educational content prepared for Zikr families." }), false);
+assert.equal(hasKidsEnglishContent({ title_en: "Kindness story", content_en: "A child invites a classmate to join a game." }), true);
+assert.equal(hasKidsEnglishContent({ title_en: "Kindness story", content_en: "   " }), false);
+assert.match(kidsContentServiceSource, /fallback\\.filter\\(hasKidsEnglishContent\\)/);
+assert.match(kidsContentServiceSource, /merged\\.filter\\(hasKidsEnglishContent\\)/);
+assert.match(kidsContentServiceSource, /!hasKidsEnglishContent\\(database\\.item\\)/);
+const kidsOfflineServiceSource = readFileSync("src/features/kids/services/kids-offline-content.ts", "utf8");
+assert.match(kidsOfflineServiceSource, /items\\.filter\\(hasKidsEnglishContent\\)/);
+const kidsOfflineSnapshot = JSON.parse(readFileSync("public/offline-content/v1/kids.json", "utf8")) as unknown[];
+const englishOfflineKids = normalizeOfflineKidsRows(kidsOfflineSnapshot, "en");
+assert.equal(englishOfflineKids.some((item) => item.slug === "game-wudu-steps"), false,
+  "the English offline library must not expose the generic seed sentence as translated content");
+assert.equal(englishOfflineKids.some((item) => item.slug === "story-kind-word"), true,
+  "genuine English Kids content must remain available offline");
 assert.equal(
   (kidsContentServiceSource.match(/shouldTreatKidsContentLookupAsUnavailable\(publicResult\.status, visibilityResult\.status\)/g) ?? []).length,
   2,

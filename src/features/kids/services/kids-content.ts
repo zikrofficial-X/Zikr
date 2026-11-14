@@ -11,6 +11,7 @@ import type { Locale } from "@/lib/i18n";
 import { getRequestLocale } from "@/lib/i18n/server";
 import {
   getFallbackKidsContentBySlug,
+  hasKidsEnglishContent,
   isKidsContentPubliclyVisible,
   mergeKidsContentWithFallback,
   normalizeKidsContentSlug,
@@ -137,7 +138,7 @@ export async function getKidsContent(locale?: Locale): Promise<KidsItem[]> {
   if (!database.configured) {
     const fallback = FALLBACK_KIDS_CONTENT.filter(isKidsContentPubliclyVisible);
     return activeLocale === "en"
-      ? fallback.filter((item) => Boolean(item.content_en?.trim()))
+      ? fallback.filter(hasKidsEnglishContent)
       : fallback;
   }
 
@@ -147,7 +148,7 @@ export async function getKidsContent(locale?: Locale): Promise<KidsItem[]> {
     ? mergeKidsContentWithFallback(database.items, FALLBACK_KIDS_CONTENT, database.knownSlugs)
     : database.items;
   return activeLocale === "en"
-    ? merged.filter((item) => Boolean(item.title_en?.trim() && item.content_en?.trim()))
+    ? merged.filter(hasKidsEnglishContent)
     : merged;
 }
 
@@ -163,17 +164,17 @@ export async function getKidsContentBySlug(
   if (!database.configured) {
     const fallback = getKidsItemBySlug(cleanSlug);
     if (!fallback || !isKidsContentPubliclyVisible(fallback)) return null;
-    if (activeLocale === "en" && !fallback.content_en?.trim()) return null;
+    if (activeLocale === "en" && !hasKidsEnglishContent(fallback)) return null;
     return fallback;
   }
 
   if (database.item) {
-    if (activeLocale === "en" && !database.item.content_en?.trim()) return null;
+    if (activeLocale === "en" && !hasKidsEnglishContent(database.item)) return null;
     return database.item;
   }
 
   if (!database.knownSlugs) return null;
   const fallback = getFallbackKidsContentBySlug(cleanSlug, FALLBACK_KIDS_CONTENT, database.knownSlugs);
-  if (activeLocale === "en" && !fallback?.content_en?.trim()) return null;
+  if (activeLocale === "en" && (!fallback || !hasKidsEnglishContent(fallback))) return null;
   return fallback;
 }
