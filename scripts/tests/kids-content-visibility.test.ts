@@ -314,6 +314,15 @@ assert.deepEqual(
   [],
   "a platform awaiting manual reconciliation must not be advertised as a confirmed Kids publication",
 );
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms({
+    status: "published",
+    target_platforms: ["youtube"],
+    metadata: { audience: "kids", platformResults: { facebook: { ok: true, remoteId: "fb-not-targeted" } } },
+  }),
+  [],
+  "a result ledger entry outside target_platforms must not create a public Kids badge",
+);
 const legacyArraySuccessRow = {
   status: "published",
   target_platforms: ["youtube", "facebook"],
