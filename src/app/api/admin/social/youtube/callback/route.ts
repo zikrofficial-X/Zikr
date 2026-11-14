@@ -189,7 +189,8 @@ export async function GET(request: NextRequest) {
           : "channel_read_failed",
       );
     }
-    if (!channelLookup.channel?.id) {
+    const channel = channelLookup.channel;
+    if (!channel || typeof channel.id !== "string" || !channel.id.trim()) {
       if (!channelLookup.complete) return redirectResult("channel_lookup_incomplete");
       if (!configuredChannelId && channelLookup.multipleChannels) {
         return redirectResult("channel_selection_required");
@@ -197,12 +198,12 @@ export async function GET(request: NextRequest) {
       if (configuredChannelId) return redirectResult("channel_mismatch");
       return redirectResult("channel_read_failed");
     }
-    const channel = channelLookup.channel;
+    const channelId = channel.id.trim();
 
     await saveYouTubeOAuthCredential({
       refreshToken: token.refresh_token,
       grantedScopes,
-      channelId: channel.id,
+      channelId,
       channelName: channel.snippet?.title ?? null,
     }, auth.profile.id);
 
@@ -211,7 +212,7 @@ export async function GET(request: NextRequest) {
         action: "social.youtube.oauth.connect",
         permission: "social.manage",
         resourceType: "youtube_channel",
-        resourceId: channel.id,
+        resourceId: channelId,
         metadata: {
           channelName: channel.snippet?.title ?? null,
           grantedScopes: grantedScopes.map((scope) => scope.split("/").at(-1)),
