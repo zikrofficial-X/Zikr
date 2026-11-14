@@ -1,5 +1,62 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T05:36:34Z — exact-head audit continuation
+
+- Code/test head: `9cad89d88abc871c634771e1bedbdd780bcc1e79`; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,463 ahead / 0 behind. PR #320 has 430 paths before this snapshot; two more audit artifacts are added by the following documentation commit.
+- Branch inventory at code/test head: 2,335 entries (1,837 blobs, 498 trees), 142,656,240 bytes; recursive tree not truncated.
+- Current 430-path status counts: 168 `CONTENT_READ_TESTED_PASS`, 23 `CONTENT_READ_PENDING_TRACE`, 219 `REVIEW_REQUIRED`, 20 `FIXED_TESTED_PENDING_LIVE_APPLY`. The 1,525-file main-baseline review backlog remains open.
+- Additional site-audio repair commits after the 2026-11-14T0508Z snapshot:
+  - `dc26a99979dc4edf8399a7fd3c6afedd2a58d01f` — serialize site-audio upload and deletion intents.
+  - `890d17ca4b1efede08cff93cef50444e89946851` — reconcile protected upload intents safely.
+  - `391fd78906a8ae97c1666acafe090584c3c9af11` — assert compare-and-set filters in site-audio route tests.
+  - `dbe2c5b843f9c7e0f86f741388b3af11a22ea6bf` — validate the complete expired-intent inventory before any protected-intent reconciliation.
+  - `9cad89d88abc871c634771e1bedbdd780bcc1e79` — surface zero-row intent restoration CAS failures and document that the workflow pause input is an operator attestation, not an app lock.
+- Prior documentation snapshot commit: `370a98fc5f1d40cda3b9b2dfa06eed6a4e6d2f49`.
+- Exact-head verification:
+  - [Quality Gate run 43562017203](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017203) SUCCESS, completed 2026-11-14T05:36:34Z; log includes `QUALITY_GATE=PASSED_FULL` and the site-audio upload-intent/orphan-retention contract test.
+  - [Android Debug APK run 43562017171](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017171) SUCCESS, completed 05:34:17Z; no signed release.
+  - [CircleCI Config Validation run 43562017199](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017199) SUCCESS, completed 05:32:43Z.
+  - CircleCI `config-guard`, `source-verify`, and `application-build-docs` all SUCCESS. Supabase Preview SKIPPED (no linked preview project).
+- Site-audio concurrency/retention findings:
+  - Registration finalization is a compare-and-set from `pending` with null `asset_id`; admin deletion first writes `deleting` with the asset pointer, and the FK clears the pointer on metadata-row deletion.
+  - The orphan cleaner validates all expired intent rows before any protected-pointer reconciliation; it refuses malformed or mismatched asset references.
+  - The admin delete route now checks the returned row from shared-path intent restoration; a zero-row CAS is surfaced as `intentFinalizationPending`.
+  - The manual cleanup workflow's `SITE_AUDIO_UPLOAD_WRITES_PAUSED` input is **not** a runtime lock. The API routes do not read it. The owner must independently disable/maintenance-gate all upload/registration/delete/reference writers and verify the freeze before apply; otherwise only dry-run is acceptable.
+  - Production has 30 `site_audio_assets` rows with 30 distinct non-null storage paths. The new `site_audio_upload_intents` table is absent in production because its migration is pending. Do not deploy the new routes before approved migration application.
+- Social queue live preflight: 139 production rows, 0 invalid target arrays; observed values are `facebook`, `facebook_reels`, and `youtube`. The local PostgreSQL 17 migration contract passed; no production apply.
+- Other production checks remained read-only:
+  - 438 local migrations / 418 remote / 20 pending; no `db push`, function deploy, DML, storage deletion, or production mutation.
+  - Live table ACLs: `anon MAINTAIN=46`; `authenticated MAINTAIN=75`; `authenticated REFERENCES=74`, `TRIGGER=74`, `TRUNCATE=74`.
+  - `public.is_admin_user()` still has anon EXECUTE; inspected function is SECURITY INVOKER. Default function EXECUTE ACL rows remain in public/storage/graphql/graphql_public; pending migration covers public only.
+  - Source-agent cron `zikr-source-verified-content-agent` remains daily at 03:00 UTC; 2026-11-14 run had zero work.
+  - Latest Vercel production deployment remains READY at `main@c4560d9`; no branch deployment or smoke test.
+  - Main `english-content-sync` CircleCI status remains FAILURE at 2026-11-14T04:18:17Z; not rerun because it may sync content and call Gemini.
+- Video/storage retention is scheduled dry-run only. The manual apply's `REFERENCE_WRITES_PAUSED` input is also an operator attestation, not an app-enforced pause. Owner must independently freeze all media-reference writers; no storage deletion was run.
+- Owner gate: `.github/CODEOWNERS` assigns `@Zikrmediaofficial`; PR #320 has zero reviews/comments. Branch protection API returned 403. No merge, release, or Vercel deployment attempted.
+- Safety: no content generation, Gemini request, social publishing, production DB mutation, storage-object deletion, Android release, merge, or deployment was used as an audit test.
+- Pending local migrations (all production apply remains owner-gated):
+- `20261110212000_kids_content_public_read_respects_active_state.sql`
+- `20261111000000_revoke_anon_public_admin_predicate.sql`
+- `20261111003000_expand_kids_content_supported_types.sql`
+- `20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `20261111040000_kids_game_levels_require_published_game.sql`
+- `20261111050000_admin_role_assignments_service_role_only.sql`
+- `20261111153000_harden_video_storage_retention_rpc.sql`
+- `20261111170000_kids_game_questions_require_published_parent.sql`
+- `20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `20261113200000_youtube_sync_state_playlist_cache.sql`
+- `20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `20261113230000_content_publish_queue_one_active_item.sql`
+- `20261114000000_site_audio_upload_intents.sql`
+- `20261114010000_social_publish_queue_target_platform_contract.sql`
+- `20261114020000_revoke_client_default_function_execute.sql`
+
+
 ## 2026-11-14T05:08:20Z — exact-head audit continuation
 
 - Source/test head: `5a9392df4a3221139ac7dbef684fa4e369ea1ac1`; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,457 ahead / 0 behind. PR #320 has 428 source/operational paths (173 added, 255 modified, no removals); two audit snapshot artifacts are added by the following documentation commit.

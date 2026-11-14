@@ -1,4 +1,16 @@
-# ZIKR file status matrix — refreshed 2026-11-14T05:08Z
+# ZIKR file status matrix — refreshed 2026-11-14T05:36Z
+
+## Latest PR #320 audit overlay — 2026-11-14T05:36Z
+
+- **Code/test source head:** `9cad89d88abc871c634771e1bedbdd780bcc1e79`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,463 ahead / 0 behind.
+- **PR delta before this snapshot:** 430 paths, including the previous 2026-11-14 overlay and manifest. This snapshot adds two more audit artifacts; the new overlay table covers the 430 existing PR paths and excludes itself and its new manifest.
+- **Branch inventory at code/test head:** 2,335 entries (1,837 files, 498 directories), 142,656,240 bytes; complete recursive tree.
+- **Status counts:** 168 `CONTENT_READ_TESTED_PASS`; 23 `CONTENT_READ_PENDING_TRACE`; 219 `REVIEW_REQUIRED`; 20 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- **Exact-head evidence:** Quality Gate run 43562017203 SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK run 43562017171 SUCCESS; CircleCI Config Validation run 43562017199 SUCCESS; CircleCI `config-guard`, `source-verify`, `application-build-docs` SUCCESS; Supabase Preview SKIPPED.
+- **Main baseline remains open:** 1,525 current-main files remain `REVIEW_REQUIRED`; inventory completeness is not manual content review. This snapshot does not certify the entire repository error-free.
+- **Snapshot files:** `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-14T0536Z.md` and `docs/audits/PR320_REPO_MANIFEST_2026-11-14T0536Z.jsonl`. The manifest is self-excluding and includes the overlay.
+
+
 
 ## Latest PR #320 audit overlay — 2026-11-14T05:08Z
 

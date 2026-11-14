@@ -1,5 +1,51 @@
 # ZIKR Project Status
 
+## Latest verified checkpoint — 2026-11-14T05:36:34Z
+
+**Audit remains OPEN. No merge, production migration apply, content generation, social publishing, Android release, storage cleanup, or Vercel deployment was performed.**
+
+- **Code/test head:** `audit/zikr-kids-daily-priority-20261110@9cad89d88abc871c634771e1bedbdd780bcc1e79`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,463 commits ahead / 0 behind.
+- **PR #320:** 430 paths before this snapshot (source/operational paths plus the prior audit overlay and manifest). This snapshot adds two more audit artifacts, bringing the PR to 432 paths.
+- **Repository inventory at code/test head:** 2,335 tree entries (1,837 files, 498 directories), 142,656,240 bytes; recursive tree complete and not truncated.
+- **Current 430-path status overlay:** 168 `CONTENT_READ_TESTED_PASS`, 23 `CONTENT_READ_PENDING_TRACE`, 219 `REVIEW_REQUIRED`, 20 `FIXED_TESTED_PENDING_LIVE_APPLY`. The 1,525-file main-baseline review backlog remains open.
+- **Exact-head full verification:** [Quality Gate run 43562017203](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017203) SUCCESS at 2026-11-14T05:36:34Z (`QUALITY_GATE=PASSED_FULL`). Its log confirms the site-audio upload-intent and reference-checked orphan-retention contracts passed, alongside the full canonical `pnpm verify` suite.
+- **Exact-head Android verification:** [Android Debug APK run 43562017171](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017171) SUCCESS at 05:34:17Z. Debug-only; no signed release or device acceptance.
+- **Exact-head CI:** [CircleCI configuration validation run 43562017199](https://github.com/zikrofficial-X/Zikr/actions/runs/43562017199) SUCCESS. CircleCI `config-guard`, `source-verify`, and `application-build-docs` are SUCCESS. Supabase Preview is SKIPPED because no preview project is linked.
+- **Site-audio concurrency repairs:** upload intents are created before signed upload URLs; registration uses a pending/null-asset compare-and-set; admin deletion acquires a deleting intent before removing metadata; the FK uses ON DELETE SET NULL; the orphan cleaner validates all expired intents before reconciling protected asset pointers. The delete route now checks that a shared-path intent restore actually updated one row and reports pending reconciliation on a zero-row CAS.
+- **Site-audio operational gate:** `SITE_AUDIO_UPLOAD_WRITES_PAUSED=true` is only an operator attestation passed by the manual cleanup workflow, not an application-enforced lock. The upload, registration, and delete routes do not read that workflow variable. Owner must independently disable/maintenance-gate all writers and verify the pause before any destructive apply; otherwise keep dry-run only.
+- **Supabase live read-only reconciliation:** 438 local migration files / 418 remote / 20 pending; no production migration was applied. Live client table ACLs still show `anon MAINTAIN=46`, `authenticated MAINTAIN=75`, and `authenticated REFERENCES/TRIGGER/TRUNCATE=74` each. The pending `20261112103200` migration passed local PostgreSQL 17 verification.
+- **Live admin RPC:** `public.is_admin_user()` remains executable by `anon` pending `20261111000000`; the inspected function is SECURITY INVOKER, not SECURITY DEFINER.
+- **Default function ACL scope:** live default EXECUTE grants remain for `anon`/`authenticated` in `public`, `storage`, `graphql`, and `graphql_public`. `20261114020000` addresses `public` defaults only; exposed `storage`/`graphql_public` defaults need separate DBA review.
+- **Social queue preflight:** 139 production `social_publish_queue` rows, 0 invalid `target_platforms`; observed values are limited to `facebook`, `facebook_reels`, and `youtube`. The matching migration passed PostgreSQL 17 integration tests but remains unapplied.
+- **Site-audio live state:** 30 `site_audio_assets` rows, 30 distinct non-null storage paths. `public.site_audio_upload_intents` does not yet exist in production; migration `20261114000000` must be approved and applied before deploying the new upload/registration routes.
+- **Media retention:** scheduled video/storage retention remains dry-run only; destructive apply requires production environment approval, reference-writer pause attestation, and exact typed confirmation. The attestation does not itself pause application writers. Cloudinary masters and GitHub Release backups are retained. No cleanup ran.
+- **Background job:** production `zikr-source-verified-content-agent` cron remains active at `0 3 * * *`; only Al Quran Cloud is enabled. The 2026-11-14 03:00 UTC run succeeded with 0 fetched, queued, skipped, or failed items. New preflight code is not deployed.
+- **Production hosting:** latest Vercel production deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu` remains READY on `main@c4560d9`; no audit-branch deployment or production smoke test was run.
+- **Main-branch scheduled failure:** `ci/circleci: english-content-sync` failed at 2026-11-14T04:18:17Z. It was not rerun because it can synchronize content and call Gemini.
+- **Owner/manual blockers:** `.github/CODEOWNERS` requires `@Zikrmediaofficial`; PR #320 has 0 reviews/comments. Branch-protection API access returned 403. CircleCI project/context secrets are owner-only; the English content-sync job has no dedicated context and the Supabase production gate attaches `android-signing`. Physical Android/iOS, Xcode signing, OAuth-provider, push-notification, and production release acceptance remain manual.
+- **Pending production migrations (do not apply without owner approval):**
+- `20261110212000_kids_content_public_read_respects_active_state.sql`
+- `20261111000000_revoke_anon_public_admin_predicate.sql`
+- `20261111003000_expand_kids_content_supported_types.sql`
+- `20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `20261111040000_kids_game_levels_require_published_game.sql`
+- `20261111050000_admin_role_assignments_service_role_only.sql`
+- `20261111153000_harden_video_storage_retention_rpc.sql`
+- `20261111170000_kids_game_questions_require_published_parent.sql`
+- `20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `20261113200000_youtube_sync_state_playlist_cache.sql`
+- `20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `20261113230000_content_publish_queue_one_active_item.sql`
+- `20261114000000_site_audio_upload_intents.sql`
+- `20261114010000_social_publish_queue_target_platform_contract.sql`
+- `20261114020000_revoke_client_default_function_execute.sql`
+
+
 ## Latest verified checkpoint — 2026-11-14T05:08:20Z
 
 **Audit remains OPEN. No merge, production migration apply, content generation, social publishing, Android release, or Vercel deployment was performed.**
