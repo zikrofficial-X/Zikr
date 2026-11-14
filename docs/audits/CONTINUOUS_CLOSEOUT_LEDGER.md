@@ -1,5 +1,35 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T1443Z — Kids English visibility, API docs, social queue, and release gates at `325aadaf01315c395b575485178c279c69717db5`
+
+### Defects found and repaired
+- Kids English library/offline content could expose the generic seed sentence “Original educational content prepared for Zikr families.” A shared normalized-content predicate now filters that placeholder from fallback, merged database lists, detail lookups, and offline snapshots. Age approval for offline stories remains required; the Kids page uses offline fallback only for network errors and transient 408/429/5xx responses. Focused tests prove the placeholder is hidden while real English content remains available.
+- The API reference had stale session and route claims and omitted important cost controls. `docs/api/README.md` now reflects the actual Supabase SSR session/cookie model, selected authenticated routes, poetry route's 5-per-10-minute limit, 64 KiB request cap and 401/429/503 behavior, and memorization's 3-per-10-minute limit and 3 MiB audio cap. New documentation contract coverage and existing public-AI cost-guard tests pass.
+- Social publishing now scans bounded deterministic PostgREST pages past held candidates; the source contract and helper tests cover offset progression, cap, early stop, and deduplication.
+- Android GitHub Release publication now passes the resolved tag-target SHA to the CODEOWNERS preflight before release asset upload/publication. Production Supabase/Vercel release finalization already has its own exact-PR preflight before mutations.
+- Earlier CI attempts exposed over-escaped source regexes and stale documentation assertions. Those assertions/docs were corrected; no failed or pending check was bypassed.
+- Exact code/test head: `325aadaf01315c395b575485178c279c69717db5`. Quality Gate run `43605885233`, job `132480345819`, completed successfully with `QUALITY_GATE=PASSED_FULL`; CircleCI config-guard, source-verify, application-build-docs all succeeded; Android Debug run `43605885259` succeeded. No Android release, GitHub Release publication, Supabase release, or Vercel deployment was invoked.
+
+### Snapshot reconciliation
+- PR scope before this snapshot: 512 paths (214 added, 298 modified, zero removed). This overlay and manifest add two artifacts, making 514 PR paths.
+- New overlay covers all 512 pre-snapshot PR paths. Counts: 247 tested pass, 200 review required, 43 pending trace, 22 fixed/tested pending live apply.
+- New manifest: `docs/audits/PR320_REPO_MANIFEST_20261114T1443Z.jsonl`; 2,376 JSONL rows excluding itself. Final snapshot tree: 2,377 entries (1,878 blobs, 499 directories). The previous 1421Z manifest was validated against its exact pre-manifest tree with zero mismatches and is retained as historical evidence.
+- Historical 1157Z and 1336Z manifests remain review-required due their recorded hash mismatches; retained without deletion. The 1357Z and 1421Z snapshots remain available as historical evidence.
+- The baseline file-status matrix still has 1,525 review-required rows; repository-wide review is not complete.
+
+### Production boundaries and open gates
+- Supabase read-only reconciliation: 418 remote migrations, latest `20261110170000`; 440 local, 22 pending local-only, no remote-only or duplicate versions. Production lacks `public.site_audio_upload_intents` and `public.save_default_prayer_location(text,text,numeric,numeric,text)`; no DDL was applied.
+- Four production Edge Functions remain active; all four local entrypoints passed Deno type-check. No deployment occurred.
+- Supabase advisors: health clean; one leaked-password-protection warning; 78 unused-index notices. No index changed.
+- Site-audio orphan cleanup is implemented and integration-tested at code level; production cleanup still requires approved migration and externally verified writer pause. No storage object was deleted.
+- Vercel production remains READY on main `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; no audit deployment occurred. Production lacks `IOS_ASSOCIATED_DOMAIN_APP_ID`.
+- CODEOWNERS remains unresolved: `@Zikrmediaofficial` has no collaborator permission returned by the GitHub permission lookup, and the review request was not assigned. No alternate reviewer or bypass was used.
+- Twenty Kids stories still need editorial decisions; the scheduled English-content-sync failure remains undiagnosed because rerunning it could invoke Gemini.
+- No content generation, Gemini, social publishing, production mutation, storage/media deletion, secret rotation, Android release, GitHub Release publication, merge, or Vercel deployment was performed.
+
+### Next checkpoint
+Resolve the configured CODEOWNERS principal's repository access, then obtain approval on the current PR head. Finish the 200 review-required and 43 pending-trace PR paths, then the 1,525-row baseline backlog. Owner migration approval, iOS environment/device acceptance, Kids editorial review, English-sync diagnosis, post-merge release, Vercel READY verification, and production smoke checks remain open. Do not mark the audit closed until evidenced.
+
 ## 2026-11-14T1421Z — Android release gate, social queue pagination, and full verification at `499d034a6488a065aeb92ce5d1d84a250422ab2b`
 
 ### Defects found and repaired

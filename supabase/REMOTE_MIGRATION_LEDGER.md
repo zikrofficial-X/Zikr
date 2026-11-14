@@ -229,3 +229,12 @@ The atomic prayer-location migration `20261114040000_save_default_prayer_locatio
 - Advisor snapshot: health clean; one `auth_leaked_password_protection` security warning; 78 unused-index notices. No index was removed or altered.
 - The 22 local-only migrations remain owner-review gated. No DDL or data mutation was performed.
 
+
+## 2026-11-14T1443Z — live contract and advisor refresh (read-only)
+
+- Production migration history: 418 remote versions, latest `20261110170000`; local repository: 440 migrations; 22 local-only pending; zero remote-only and zero duplicate local versions.
+- Catalog checks returned NULL for `to_regclass('public.site_audio_upload_intents')` and `to_regprocedure('public.save_default_prayer_location(text,text,numeric,numeric,text)')`. Both contracts are absent in production; the associated route changes must not be released until their migrations are reviewed and applied.
+- Active production Edge Functions: `source-verified-content-agent` v14, `prayer-notification-worker` v77, `spiritual-ai` v2, `health` v2. Local Deno checks passed all four entrypoints; no deployment occurred.
+- Advisor snapshot: health clean; one `auth_leaked_password_protection` security warning; 78 unused-index notices. No index was removed or altered.
+- The 22 local-only migrations remain owner-review gated. No DDL or data mutation was performed.
+

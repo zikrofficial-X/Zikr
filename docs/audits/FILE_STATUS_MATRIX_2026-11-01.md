@@ -1,4 +1,15 @@
-ZIKR file status matrix — refreshed 2026-11-14T1421Z
+ZIKR file status matrix — refreshed 2026-11-14T1443Z
+
+## Latest PR #320 reconciliation — 2026-11-14T1443Z
+
+- Exact code/test head: `325aadaf01315c395b575485178c279c69717db5`; base main: `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`.
+- PR paths before this snapshot: 512 (214 added, 298 modified, zero removed). New overlay and manifest add two paths; expected PR total: 514.
+- Overlay covers all 512 pre-snapshot paths: 247 `CONTENT_READ_TESTED_PASS`; 200 `REVIEW_REQUIRED`; 43 `CONTENT_READ_PENDING_TRACE`; 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Source tree at code/test head: 2,375 entries (1,876 blobs, 499 directories). New manifest records 2,376 pre-manifest entries; final tree contains 2,377 entries (1,878 blobs, 499 directories).
+- Kids English placeholder filtering, API documentation/cost-control contracts, social queue pagination, and Android release CODEOWNERS preflight are verified at the exact head; full Quality Gate and CircleCI passed.
+- Historical 1157Z and 1336Z manifests remain review-required because their recorded hashes do not match their claimed snapshots. The 1421Z manifest was validated against its exact pre-manifest tree; the 1443Z snapshot supersedes it.
+- Main-baseline review backlog: 1,525 `REVIEW_REQUIRED` rows. Not closed.
+
 
 ## Latest PR #320 reconciliation — 2026-11-14T1421Z
 
