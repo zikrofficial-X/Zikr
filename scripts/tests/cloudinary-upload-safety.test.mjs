@@ -34,7 +34,11 @@ assert.match(kidsAdminActions, /isDefinitiveSupabaseInsertRejection\(saveError\)
 assert.match(kidsAdminActions, /database insert outcome is ambiguous; retaining the Cloudinary image/,
   "ambiguous database outcomes must retain the upload for reconciliation");
 assert.match(orphanCompensation, /if \(await params\.isReferenced/);
-assert.match(orphanCompensation, /Unable to verify whether the uploaded Kids image is still referenced/,
-  "the shared compensation helper must not delete when reference verification fails");
+assert.match(orphanCompensation, /return "referenced"/);
+assert.ok(
+  orphanCompensation.indexOf("if (await params.isReferenced") <
+    orphanCompensation.indexOf("dependencies.fetcher ?? fetch"),
+  "the shared compensation helper must verify references before issuing a Cloudinary deletion",
+);
 
 console.log("Cloudinary upload overwrite-safety contract passed.");
