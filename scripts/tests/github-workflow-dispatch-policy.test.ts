@@ -86,12 +86,13 @@ assert.ok(
 const releaseWorkflow = readFileSync(resolve(process.cwd(), ".github/workflows/release-finalization.yml"), "utf8");
 const edgeFunctionGuard = releaseWorkflow.indexOf("Recheck approved main SHA immediately before Edge Function deployment");
 const prayerDeploy = releaseWorkflow.indexOf("supabase functions deploy prayer-notification-worker");
+const sourceAgentGuard = releaseWorkflow.indexOf("Recheck approved main SHA immediately before source-agent deployment");
 const sourceAgentDeploy = releaseWorkflow.indexOf("supabase functions deploy source-verified-content-agent");
 const migrationApply = releaseWorkflow.indexOf("Apply pending production migrations");
 const productionDeploy = releaseWorkflow.indexOf("vercel deploy --prebuilt --prod");
-assert.ok(edgeFunctionGuard >= 0 && prayerDeploy > edgeFunctionGuard, "the approved-main SHA preflight must guard the Supabase Edge Function deployment batch");
-assert.ok(sourceAgentDeploy > prayerDeploy, "release finalization must deploy the changed source-verified content agent after the prayer worker");
-assert.ok(releaseWorkflow.indexOf("Recheck approved main SHA immediately before source-agent deployment") === -1, "both Edge Functions must share one SHA preflight to avoid a partial release caused by an intervening main update");
+assert.ok(edgeFunctionGuard >= 0 && prayerDeploy > edgeFunctionGuard, "the approved-main SHA preflight must guard the prayer notification Edge Function deployment");
+assert.ok(sourceAgentGuard > prayerDeploy && sourceAgentGuard < sourceAgentDeploy, "the source-agent deployment must revalidate main after the first Edge Function deploy so a mid-release main advance fails closed");
+assert.ok(sourceAgentDeploy > sourceAgentGuard, "release finalization must deploy the source-verified content agent only after its own exact-main SHA guard");
 assert.ok(migrationApply >= 0 && migrationApply < edgeFunctionGuard && sourceAgentDeploy < productionDeploy, "database migrations and both Edge Functions must precede Vercel production deployment");
 const supabaseConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
 assert.match(supabaseConfig, /\[functions\.source-verified-content-agent\][\s\S]*?verify_jwt\s*=\s*false/, "the source-agent cron endpoint must remain deployed without Supabase JWT verification because it validates its private scheduler secret itself");
