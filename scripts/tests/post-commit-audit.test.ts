@@ -56,3 +56,23 @@ for (const [name, operation] of operationChecks) {
 }
 
 console.log("Post-commit admin audit failure contract passed.");
+
+
+const postCommitRoutes = [
+  ["src/app/api/admin/video-generation/route.ts", 2],
+  ["src/app/api/admin/video-purge/route.ts", 1],
+  ["src/app/api/admin/videos/[id]/route.ts", 2],
+  ["src/app/api/admin/videos/[id]/retry/route.ts", 1],
+  ["src/app/api/admin/videos/create/route.ts", 1],
+  ["src/app/api/admin/videos/upload/route.ts", 1],
+  ["src/app/api/admin/video/templates/route.ts", 4],
+  ["src/app/api/admin/sections/route.ts", 1],
+] as const;
+for (const [path, expectedCalls] of postCommitRoutes) {
+  const source = readFileSync(path, "utf8");
+  const auditCalls = (source.match(/recordAdminAuditEvent\\(/g) ?? []).length;
+  const wrappedCalls = (source.match(/runPostCommitAudit\\(\\s*\\(\\) => recordAdminAuditEvent\\(/g) ?? []).length;
+  assert.equal(auditCalls, expectedCalls, `${path} must keep every post-mutation audit call accounted for`);
+  assert.equal(wrappedCalls, expectedCalls, `${path} must not turn a committed mutation into a generic failure when audit persistence fails`);
+  assert.match(source, /auditRecorded/, `${path} must surface whether its audit event was persisted`);
+}

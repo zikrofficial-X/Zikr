@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import type { VideoGenerationRequest } from '@/lib/types/video';
 import { updateVideoRequestStatus } from '@/features/videos/services/video-automation';
@@ -51,14 +52,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
         { status: 409 },
       );
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: 'video_generation.update',
       permission: 'video.manage',
       resourceType: 'video_generation_requests',
       resourceId: id,
       metadata: { status: 'pending', changedFields: ['status', 'approvalStatus', 'error_message', 'error_details', 'heygen_video_id', 'heygen_status', 'heygen_submitted_at', 'heygen_last_polled_at', 'youtube_id', 'facebook_id', 'video_url'] },
-    });
-    return NextResponse.json({ ok: true });
+      }),
+      (auditError) => console.error("[api/admin/videos/[id]] audit event failed after committed mutation:", auditError),
+    );
+    return NextResponse.json({ ok: true, auditRecorded });
   } catch (error) {
     console.error('[api/admin/videos/[id]] PATCH:', error);
     return NextResponse.json({ error: 'تعذر تحديث العملية.' }, { status: 500 });
@@ -89,13 +93,16 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
         { status: 409 },
       );
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: 'video_generation.delete_failed',
       permission: 'video.delete',
       resourceType: 'video_generation_requests',
       resourceId: id,
-    });
-    return NextResponse.json({ ok: true });
+      }),
+      (auditError) => console.error("[api/admin/videos/[id]] audit event failed after committed mutation:", auditError),
+    );
+    return NextResponse.json({ ok: true, auditRecorded });
   } catch (error) {
     console.error('[api/admin/videos/[id]] DELETE:', error);
     return NextResponse.json({ error: 'تعذر حذف العملية الفاشلة.' }, { status: 500 });

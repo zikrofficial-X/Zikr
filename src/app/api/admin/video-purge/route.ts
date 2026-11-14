@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { createAdminClient, supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { getConfirmedYoutubeFallbackId, shouldKeepPublishedVideoAfterMediaPurge, wasPublishedBeforeMediaPurge } from "@/features/videos/services/video-media-contract";
 import { isGeneratedCloudinaryVideoUrl } from "@/features/videos/services/video-media-url";
@@ -631,7 +632,8 @@ export async function POST(request: NextRequest) {
       await releasePurgeLock(purgeLockToken);
       purgeLockToken = null;
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video.library.purge",
       permission: "video.delete",
       resourceType: "generated_video_library",
@@ -653,7 +655,9 @@ export async function POST(request: NextRequest) {
         automationRunsDeleted,
         externalSocialPostsDeleted: false,
       },
-    });
+      }),
+      (auditError) => console.error("[api/admin/video-purge] audit event failed after committed mutation:", auditError),
+    );
 
     for (const path of ["/videos", "/admin/media", "/admin/memory", "/admin/video/requests", "/admin/videos"]) {
       revalidatePath(path);
@@ -662,6 +666,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
+        auditRecorded,
         paused: !automationWasEnabled,
         automationRemainsDisabled: !automationWasEnabled,
         automationResumed: automationWasEnabled,

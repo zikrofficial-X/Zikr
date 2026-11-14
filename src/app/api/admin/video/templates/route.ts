@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
 import {
   isVideoTemplateAssetAllowedForAudience,
@@ -132,14 +133,17 @@ export async function POST(request: NextRequest) {
       );
       const version = created?.[0];
       if (!version) throw new Error("Template version RPC returned no version.");
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_template.version.create",
         permission: "video.manage",
         resourceType: "video_template_versions",
         resourceId: version.id,
         metadata: { templateId: template.id, slug: template.slug, version: version.version, assetKey: config.assetKey },
-      });
-      return NextResponse.json({ ok: true, version }, { status: 201 });
+        }),
+        (auditError) => console.error("[api/admin/video/templates] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, version, auditRecorded }, { status: 201 });
     }
 
     if (body.action === "approve-version") {
@@ -160,14 +164,17 @@ export async function POST(request: NextRequest) {
         },
       );
       if (!updated?.[0]) return NextResponse.json({ error: "تغيرت حالة الإصدار قبل اكتمال المراجعة؛ حدّث الصفحة." }, { status: 409 });
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_template.version.approve",
         permission: "video.manage",
         resourceType: "video_template_versions",
         resourceId: version.id,
         metadata: { templateId: version.template_id, version: version.version },
-      });
-      return NextResponse.json({ ok: true, id: version.id });
+        }),
+        (auditError) => console.error("[api/admin/video/templates] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, id: version.id, auditRecorded });
     }
 
     if (body.action === "activate-version") {
@@ -185,14 +192,17 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({ p_version_id: version.id, p_actor_user_id: auth.profile.id }),
         },
       );
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_template.version.activate",
         permission: "video.manage",
         resourceType: "video_template_versions",
         resourceId: version.id,
         metadata: { templateId: version.template_id, version: version.version, previousStatus: version.status },
-      });
-      return NextResponse.json({ ok: true, id: version.id });
+        }),
+        (auditError) => console.error("[api/admin/video/templates] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, id: version.id, auditRecorded });
     }
 
     if (body.action === "preview-version") {
@@ -232,14 +242,17 @@ export async function POST(request: NextRequest) {
         },
       });
       if (!preview) throw new Error("Could not create preview video request.");
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_template.version.preview",
         permission: "video.manage",
         resourceType: "video_generation_requests",
         resourceId: preview.id,
         metadata: { templateId: template.id, templateVersionId: version.id, version: version.version, publicPublishingDisabled: true },
-      });
-      return NextResponse.json({ ok: true, preview }, { status: 201 });
+        }),
+        (auditError) => console.error("[api/admin/video/templates] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, preview, auditRecorded }, { status: 201 });
     }
 
     return NextResponse.json({ error: "إجراء القالب غير معروف." }, { status: 400 });

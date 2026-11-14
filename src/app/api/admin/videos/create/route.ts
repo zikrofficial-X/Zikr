@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
 import { resolveVideoSource } from "@/features/videos/services/video-sources";
 import { resolveCuratedVideoSource } from "@/features/videos/data/curated-content";
@@ -274,17 +275,21 @@ export async function POST(request: NextRequest) {
         { error: "تعذر حفظ طلب توليد الفيديو." },
         { status: 500 }
       );
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video_generation.create",
       permission: "video.manage",
       resourceType: "video_generation_requests",
       resourceId: result.id,
       metadata: { category, sourceVerified: Boolean(source), hasHumanAudio: Boolean(humanAudioUrl), templateVersionId: typeof content.templateVersionId === "string" ? content.templateVersionId : null, templateVersion: typeof content.templateVersion === "string" ? content.templateVersion : null },
-    });
+      }),
+      (auditError) => console.error("[api/admin/videos/create] audit event failed after committed mutation:", auditError),
+    );
 
     return NextResponse.json(
       {
         ...result,
+        auditRecorded,
         audioChoice: humanAudioUrl
           ? "human_recording"
           : category === "quran"

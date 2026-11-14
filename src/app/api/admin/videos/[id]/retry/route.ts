@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { updateVideoRequestStatus } from '@/features/videos/services/video-automation';
 
@@ -38,14 +39,17 @@ export async function POST(
         { status: 409 }
       );
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video_generation.retry",
       permission: "video.manage",
       resourceType: "video_generation_requests",
       resourceId: id,
-    });
+      }),
+      (auditError) => console.error("[api/admin/videos/[id]/retry] audit event failed after committed mutation:", auditError),
+    );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, auditRecorded });
   } catch (error) {
     console.error('[api] Failed to retry video request:', error);
     return NextResponse.json(

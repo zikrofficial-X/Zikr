@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { createPresignedUploadUrl } from '@/lib/services/storage';
 
 export const runtime = 'nodejs';
@@ -44,15 +45,18 @@ export async function POST(request: NextRequest) {
       contentType,
       contentLength,
     });
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video.upload_url.create",
       permission: "video.manage",
       resourceType: "video_uploads",
       resourceId: upload.path,
       metadata: { filename, contentType, contentLength },
-    });
+      }),
+      (auditError) => console.error("[api/admin/videos/upload] audit event failed after committed mutation:", auditError),
+    );
 
-    return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ ...upload, auditRecorded }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('[api/admin/videos/upload] POST error:', error);
     return jsonError(error instanceof Error ? error.message : 'تعذر تجهيز رفع الفيديو.', 500);

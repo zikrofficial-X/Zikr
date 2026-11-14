@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
@@ -74,13 +75,16 @@ export async function DELETE(request: NextRequest) {
     if (!deleted.length) {
       return NextResponse.json({ ok: true, affected: 0 });
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video_generation.delete_failed",
       permission: "video.delete",
       resourceType: "video_generation_requests",
       metadata: { requestedIds: ids.length, deleteFailed, affected: deleted.length },
-    });
-    return NextResponse.json({ ok: true, affected: deleted.length });
+      }),
+      (auditError) => console.error("[api/admin/video-generation] audit event failed after committed mutation:", auditError),
+    );
+    return NextResponse.json({ ok: true, affected: deleted.length, auditRecorded });
   } catch (error) {
     console.error('[api/admin/video-generation] DELETE:', error);
     return NextResponse.json({ error: 'تعذر حذف عمليات توليد الفيديو الفاشلة.' }, { status: 500 });
@@ -154,14 +158,17 @@ export async function PATCH(request: NextRequest) {
           body: JSON.stringify({ content: updatedContent, updated_at: reviewedAt }) },
       );
       if (!updated?.length) return NextResponse.json({ error: 'تغيرت حالة العملية أثناء المراجعة؛ حدّث التفاصيل ثم أعد الفحص.' }, { status: 409 });
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_generation.publish.approve",
         permission: "video.manage",
         resourceType: "video_generation_requests",
         resourceId: id,
         metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length, approvalSnapshotHash },
-      });
-      return NextResponse.json({ ok: true, approvalStatus: 'approved',
+        }),
+        (auditError) => console.error("[api/admin/video-generation] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, auditRecorded, approvalStatus: 'approved',
         note: 'تم اعتماد جودة الفيديو لمكتبة ZIKR الداخلية فقط؛ لا يتم نشره على منصات خارجية.' });
     }
 
