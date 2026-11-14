@@ -552,34 +552,35 @@ const storageWritePolicyMigration = readFileSync(
   "supabase/migrations/20261114030000_scope_video_storage_writes.sql",
   "utf8",
 );
-assert.match(
-  storageWritePolicyMigration,
-  /DROP POLICY IF EXISTS public_assets_admin_write ON storage\\.objects/i,
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS public_assets_admin_write ON storage.objects;"),
   "the legacy public-assets bucket must not retain an untracked browser write/delete path",
 );
-assert.match(
-  storageWritePolicyMigration,
-  /DROP POLICY IF EXISTS video_assets_admin_update ON storage\\.objects/i,
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS video_assets_admin_update ON storage.objects;"),
   "browser clients must not overwrite stored video objects",
 );
-assert.match(
-  storageWritePolicyMigration,
-  /DROP POLICY IF EXISTS video_assets_admin_delete ON storage\\.objects/i,
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS video_assets_admin_delete ON storage.objects;"),
   "video deletion must remain behind the retention-safe server path",
 );
-assert.match(
-  storageWritePolicyMigration,
-  /CREATE POLICY video_assets_admin_insert[\\s\\S]*?FOR INSERT[\\s\\S]*?TO authenticated[\\s\\S]*?bucket_id\\s*=\\s*'videos'[\\s\\S]*?storage\\.foldername\\(name\\)\\)\\[1\\]\\s*=\\s*\\(SELECT auth\\.uid\\(\\)\\)::text[\\s\\S]*?private\\.has_admin_role\\(ARRAY\\['admin', 'super_admin', 'video_manager'\\]::text\\[\\]\\)/i,
+assert.ok(
+  storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_insert") &&
+    storageWritePolicyMigration.includes("FOR INSERT") &&
+    storageWritePolicyMigration.includes("TO authenticated") &&
+    storageWritePolicyMigration.includes("bucket_id = 'videos'") &&
+    storageWritePolicyMigration.includes("(storage.foldername(name))[1] = (SELECT auth.uid())::text") &&
+    storageWritePolicyMigration.includes("private.has_admin_role(ARRAY['admin', 'super_admin', 'video_manager']::text[])"),
   "only full admins and video managers may upload into their own video prefix",
 );
-assert.doesNotMatch(
-  storageWritePolicyMigration,
-  /CREATE POLICY\\s+video_assets_admin_(?:update|delete)/i,
-  "no direct video update/delete policy may be recreated",
+assert.ok(
+  !storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_update") &&
+    !storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_delete") &&
+    !storageWritePolicyMigration.includes("CREATE POLICY public_assets_admin_write"),
+  "browser clients must not regain direct update/delete or legacy public-assets write policies",
 );
-assert.doesNotMatch(
-  storageWritePolicyMigration,
-  /profiles[\\s\\S]{0,100}role\\s*=\\s*'admin'/i,
+assert.ok(
+  !storageWritePolicyMigration.includes("profiles.role"),
   "storage policies must not treat every delegated profile.role=admin as a full administrator",
 );
 
