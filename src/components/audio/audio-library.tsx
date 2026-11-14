@@ -57,7 +57,10 @@ export function AudioLibrary() {
   useEffect(() => {
     let active = true;
     fetch("/api/site-audio", { cache: "no-store" })
-      .then(response => response.ok ? response.json() as Promise<AudioResponse> : { library: [] })
+      .then(async response => {
+        if (!response.ok) throw new Error("Site audio catalog is temporarily unavailable.");
+        return await response.json() as AudioResponse;
+      })
       .then(payload => {
         if (!active) return;
         const choices = (payload.library ?? []).map(toChoice);
