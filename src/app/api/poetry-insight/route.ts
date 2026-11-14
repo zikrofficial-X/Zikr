@@ -1,15 +1,16 @@
-function jsonNoStore(body: unknown, init: ResponseInit = {}) {
-  const headers = new Headers(init.headers);
-  headers.set("Cache-Control", "no-store");
-  return Response.json(body, { ...init, headers });
-}
-
 import { generatePoetryInsight } from '@/features/poetry/services/poetry-insight';
 import { getSupabaseUser } from '@/lib/supabase/server';
 import { consumePoetryInsightRateLimit } from '@/features/spiritual-ai/services/rate-limit';
 import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 const MAX_POETRY_INSIGHT_REQUEST_BYTES = 64 * 1024;
+
+function jsonNoStore(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  return Response.json(body, { ...init, headers });
+}
+
 
 /**
  * @openapi
