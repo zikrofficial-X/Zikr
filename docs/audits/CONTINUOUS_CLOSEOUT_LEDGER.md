@@ -1,5 +1,61 @@
 # ZIKR Continuous Closeout Ledger
 
+## 2026-11-14T06:05:46Z — exact-head audit continuation
+
+- Code/test head: `48ec0a2ed20b921525f9bc7cfc84f6fa776fdecc`; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,468 ahead / 0 behind. PR #320 has 437 paths before this snapshot; two new audit artifacts follow.
+- Branch inventory at code/test head: 2,337 entries (1,839 blobs, 498 trees), 143,105,625 bytes; recursive tree not truncated.
+- Current 437-path status counts: 179 `CONTENT_READ_TESTED_PASS`, 22 `CONTENT_READ_PENDING_TRACE`, 215 `REVIEW_REQUIRED`, 21 `FIXED_TESTED_PENDING_LIVE_APPLY`. Main-baseline review backlog remains 1,525 files.
+- Additional code commits since the 2026-11-14T0536Z snapshot:
+  - `62e398b131578fdf8487896d9b26fc99f0edb922` — permit Kids detail offline fallback only for transient HTTP statuses, not authoritative 4xx.
+  - `1a29bb78dd0ad0f4048bc9f30b86f39927c580f1` — surface complete Kids backend lookup failure as 500 and enable list/detail offline fallback; add regression tests.
+  - `4b3bde4cc8582b3ed8362786f87b571bf91da259` — invalidate `/api/kids/content` cache after publishing new Kids content.
+  - `48ec0a2ed20b921525f9bc7cfc84f6fa776fdecc` — split SEO site-metadata permission from broad admin settings permission and restrict iOS Universal Links to explicit public routes.
+- Prior code commits remain recorded above: `dc26a99979dc4edf8399a7fd3c6afedd2a58d01f`, `890d17ca4b1efede08cff93cef50444e89946851`, `391fd78906a8ae97c1666acafe090584c3c9af11`, `dbe2c5b843f9c7e0f86f741388b3af11a22ea6bf`, and `9cad89d88abc871c634771e1bedbdd780bcc1e79`.
+- Exact-head verification:
+  - [Quality Gate run 43564323226](https://github.com/zikrofficial-X/Zikr/actions/runs/43564323226) SUCCESS, completed 2026-11-14T06:05:46Z; logs confirm `QUALITY_GATE=PASSED_FULL`, Kids visibility/fallback tests, and app-association route contract.
+  - [Android Debug APK run 43564323237](https://github.com/zikrofficial-X/Zikr/actions/runs/43564323237) SUCCESS, completed 06:03:17Z; no signed release.
+  - [CircleCI Config Validation run 43564323282](https://github.com/zikrofficial-X/Zikr/actions/runs/43564323282) SUCCESS, completed 06:02:13Z.
+  - CircleCI `config-guard`, `application-build-docs`, `source-verify` all SUCCESS. Supabase Preview SKIPPED (no linked preview project).
+- Kids fallback and live content:
+  - Detail and list pages use the offline snapshot for network errors and HTTP 408/429/5xx only; they do not fallback on 400/401/403/404/422.
+  - Both Kids public and visibility queries are awaited independently. The service returns a transient error only when both lookups fail; a successful visibility lookup keeps hidden slugs fail-closed. The API route then returns 500, allowing the client fallback to run.
+  - New Kids publish action revalidates `/api/kids/content` as well as the page routes to invalidate the public list cache.
+  - Live `kids_content`: 65 rows, all 65 active and published; 20 active/published legacy stories have no `metadata.age_appropriate`. New story publishing requires explicit age approval, but the admin manager is create-only and offers no legacy edit/review UI. Owner must review the 20 individually; no data mutation was performed.
+  - Offline snapshot: 45 rows, all active/published, zero unapproved stories; exporter filters published+active and age-approved stories. It excludes the 20 legacy stories. Snapshot generated 2026-11-11, so full-outage fallback can be stale after a later unpublish; this is an offline availability tradeoff, not a live visibility guarantee.
+- SEO/RBAC:
+  - `seo_manager` no longer receives `settings.manage`; it now receives `site.metadata.manage`. SEO page/action/navigation/module registry and architecture/page verifiers use the dedicated permission.
+  - Production `admin_role_assignments` contains one `super_admin` assignment and no `seo_manager`; no DB role migration was required.
+- App links:
+  - iOS AASA removes catch-all and associates only six public route roots (`/quran`, `/hadith`, `/articles`, `/dua`, `/stories`, `/kids`); `/auth/callback` is explicitly excluded. Android prefixes match.
+  - Vercel has `ANDROID_APP_LINKS_SHA256` across Development/Preview/Production; assetlinks also has the current release fingerprint fallback.
+  - Vercel environment inventory has 55 variables and no `IOS_ASSOCIATED_DOMAIN_APP_ID`; AASA route returns 503 until owner supplies the Apple Team ID + `.com.zikr.app`. The Team ID was not guessed.
+  - iOS Xcode project bundle ID is `com.zikr.app`, but `DEVELOPMENT_TEAM` is not configured in the project file. Xcode signing, Universal Links, and APNs require owner/device acceptance.
+- Site-audio and production read-only findings remain as recorded above: 30 audio assets / 30 distinct paths; upload-intent table absent until migration apply; 139 social queue rows / 0 invalid target arrays; 438 local / 418 remote migrations; no production mutation.
+- Vercel production remains READY on `main@c4560d9`; no audit deploy or smoke test. Main `english-content-sync` remains failed and was not rerun because it may call Gemini or sync content.
+- Owner gate: `.github/CODEOWNERS` requires `@Zikrmediaofficial`; PR #320 has zero reviews/comments; branch-protection API returned 403. No merge, production migration, deployment, content generation, Gemini call, social publishing, storage deletion, or Android release was triggered.
+- Pending local migrations (production apply remains owner-gated):
+- `20261110212000_kids_content_public_read_respects_active_state.sql`
+- `20261111000000_revoke_anon_public_admin_predicate.sql`
+- `20261111003000_expand_kids_content_supported_types.sql`
+- `20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `20261111040000_kids_game_levels_require_published_game.sql`
+- `20261111050000_admin_role_assignments_service_role_only.sql`
+- `20261111153000_harden_video_storage_retention_rpc.sql`
+- `20261111170000_kids_game_questions_require_published_parent.sql`
+- `20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `20261113200000_youtube_sync_state_playlist_cache.sql`
+- `20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `20261113230000_content_publish_queue_one_active_item.sql`
+- `20261114000000_site_audio_upload_intents.sql`
+- `20261114010000_social_publish_queue_target_platform_contract.sql`
+- `20261114020000_revoke_client_default_function_execute.sql`
+
+
 ## 2026-11-14T05:36:34Z — exact-head audit continuation
 
 - Code/test head: `9cad89d88abc871c634771e1bedbdd780bcc1e79`; branch `audit/zikr-kids-daily-priority-20261110`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,463 ahead / 0 behind. PR #320 has 430 paths before this snapshot; two more audit artifacts are added by the following documentation commit.

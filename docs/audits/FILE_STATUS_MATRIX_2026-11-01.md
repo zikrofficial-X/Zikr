@@ -1,4 +1,17 @@
-# ZIKR file status matrix — refreshed 2026-11-14T05:36Z
+# ZIKR file status matrix — refreshed 2026-11-14T06:05Z
+
+## Latest PR #320 audit overlay — 2026-11-14T06:05Z
+
+- **Code/test source head:** `48ec0a2ed20b921525f9bc7cfc84f6fa776fdecc`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 1,468 ahead / 0 behind.
+- **PR delta before this snapshot:** 437 paths, including prior audit overlays/manifests. This snapshot adds two more artifacts; the new overlay table covers the 437 existing PR paths and excludes itself and its new manifest.
+- **Branch inventory at code/test head:** 2,337 entries (1,839 files, 498 directories), 143,105,625 bytes; complete recursive tree.
+- **Status counts:** 179 `CONTENT_READ_TESTED_PASS`; 22 `CONTENT_READ_PENDING_TRACE`; 215 `REVIEW_REQUIRED`; 21 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- **Exact-head evidence:** Quality Gate run 43564323226 SUCCESS (`QUALITY_GATE=PASSED_FULL`); Android Debug APK run 43564323237 SUCCESS; CircleCI Config Validation run 43564323282 SUCCESS; CircleCI config-guard/application-build-docs/source-verify SUCCESS; Supabase Preview SKIPPED.
+- **Outstanding acceptance:** iOS AASA requires owner-provided `IOS_ASSOCIATED_DOMAIN_APP_ID`; 20 legacy Kids stories require individual age-suitability review; site-audio and Supabase changes remain owner-approved migration/config gates.
+- **Main baseline remains open:** 1,525 current-main files remain `REVIEW_REQUIRED`; inventory completeness is not manual content review. This snapshot does not certify the entire repository error-free.
+- **Snapshot files:** `docs/audits/PR320_FILE_STATUS_OVERLAY_2026-11-14T0605Z.md` and `docs/audits/PR320_REPO_MANIFEST_2026-11-14T0605Z.jsonl`. Manifest is self-excluding and includes the overlay.
+
+
 
 ## Latest PR #320 audit overlay — 2026-11-14T05:36Z
 
