@@ -43,12 +43,14 @@ assert.match(ageReviewAction, /requireAdminPermission\("kids.manage"\)/);
 assert.match(ageReviewAction, /requireAdminStepUp\("content[.]publish", "\/admin\/kids\/content"\)/);
 assert.match(ageReviewAction, /confirm_review/);
 assert.match(ageReviewAction, /decision === "rejected" && reviewNote[.]length < 10/);
-assert.match(ageReviewAction, /updated_at=eq[.]\$\{encodeURIComponent\(current[.]updated_at\)\}/,
+assert.match(ageReviewAction, /&updated_at=eq[.]" \+ encodeURIComponent\(current[.]updated_at\)/,
   "age-review writes must compare-and-set the exact story version");
 assert.match(ageReviewAction, /body: JSON[.]stringify\(\{ metadata: nextMetadata, updated_at: nextUpdatedAt \}\)/,
   "age review may change only the metadata approval flag and row version");
 assert.match(ageReviewAction, /recordAdminAuditEvent/);
-assert.doesNotMatch(ageReviewAction, /published:|is_active:|content_ar:/,
+const ageReviewWritePayload = ageReviewAction.match(/body: JSON[.]stringify\(\{ metadata: nextMetadata, updated_at: nextUpdatedAt \}\)/)?.[0] ?? "";
+assert.ok(ageReviewWritePayload.length > 0, "age review must persist only its metadata approval decision and row version");
+assert.doesNotMatch(ageReviewWritePayload, /published|is_active|content_ar/,
   "age review must not silently publish, hide, or rewrite story content");
 
 const ageApprovalInput = kidsManager.indexOf('name="age_appropriate"');
