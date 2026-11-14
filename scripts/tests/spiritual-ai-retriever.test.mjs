@@ -19,4 +19,17 @@ assert.match(
   "tafsir must be classified as scholarly commentary rather than primary Quran text",
 );
 
-console.log("Spiritual AI source authority contracts passed.");
+const prophetSectionsQuery = retriever.match(/`\/rest\/v1\/prophet_sections\?[^\`]+`/);
+assert.ok(prophetSectionsQuery, "Spiritual AI must keep a dedicated prophet-sections lookup");
+assert.match(
+  prophetSectionsQuery[0],
+  /prophets!inner\(published\)/,
+  "prophet sections must be joined to their parent prophet",
+);
+assert.match(
+  prophetSectionsQuery[0],
+  /prophets\.published=eq\.true/,
+  "Spiritual AI must never retrieve sections for an unpublished prophet, even before the production RLS migration is applied",
+);
+
+console.log("Spiritual AI source authority and published-parent contracts passed.");
