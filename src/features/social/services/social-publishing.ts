@@ -902,7 +902,7 @@ export async function processSocialPublishItem(
         },
       },
     }, claimLease);
-    return updated ? (hasPriorSuccess ? "failed" : "failed") : "deferred";
+    return updated ? "failed" : "deferred";
   }
   if (!(await hasVideoApprovalForQueueItem(item))) {
     const updated = await markQueueItem(item.id, "queued", {
