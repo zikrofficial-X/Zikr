@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, selectEligibleSocialPublishItems, validateStoredSocialTargetPlatforms } from "../../src/features/social/services/social-queue-selection";
 import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
 import {
@@ -80,11 +81,15 @@ const publisherSource = readFileSync(
   resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
   "utf8",
 );
-const targetValidationPosition = publisherSource.indexOf("validateStoredSocialTargetPlatforms(item.target_platforms)");
-const providerCallPosition = publisherSource.indexOf("publishPlatform(item, platform)");
+const processStart = publisherSource.indexOf("export async function processSocialPublishItem");
+const targetValidationPosition = publisherSource.indexOf(
+  "validateStoredSocialTargetPlatforms(item.target_platforms)",
+  processStart,
+);
+const providerCallPosition = publisherSource.indexOf("publishPlatform(item, platform)", processStart);
 assert.ok(
-  targetValidationPosition >= 0 && providerCallPosition > targetValidationPosition,
-  "stored target validation must occur before any external provider call",
+  processStart >= 0 && targetValidationPosition > processStart && providerCallPosition > targetValidationPosition,
+  "stored target validation must occur inside the item processor before any external provider call",
 );
 assert.match(publisherSource, /targetPlatformsValidation:\s*\{\s*status:\s*"blocked"/);
 
