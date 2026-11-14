@@ -155,7 +155,7 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
       } satisfies AudioChoice;
     });
 
-    registerAudioChoices(remote);
+    if (audioResponse.ok) registerAudioChoices(remote);
 
     const stored = getAudioSettingsFromStorage();
     const configured = settingsPayload.data?.audioSettings;
