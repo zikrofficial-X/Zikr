@@ -21,7 +21,8 @@ export const ADMIN_PERMISSIONS = {
   'analytics.read': 'عرض التحليلات',
   'audio.manage': 'إدارة المقاطع الصوتية',
   'android.manage': 'إدارة إصدارات Android',
-  'settings.manage': 'إدارة إعدادات الموقع',
+  'site.metadata.manage': 'إدارة البيانات العامة للموقع (SEO والصفحة الرئيسية وروابط التواصل)',
+  'settings.manage': 'إدارة إعدادات النظام والإدارة العامة',
   'audit.read': 'عرض سجل الإدارة',
   'notifications.manage': 'إدارة إشعارات الإدارة',
   'security.manage': 'إدارة أمن لوحة الإدارة',
@@ -71,7 +72,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[
     'analytics.read', 'audit.read',
   ],
   seo_manager: [
-    'admin.access', 'dashboard.view', 'content.manage', 'analytics.read', 'settings.manage',
+    'admin.access', 'dashboard.view', 'content.manage', 'analytics.read', 'site.metadata.manage',
     'audit.read',
   ],
   analyst: [

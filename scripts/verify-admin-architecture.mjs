@@ -75,7 +75,7 @@ const CANONICAL_ARCHITECTURE = {
   ],
   "النمو والتحليلات": [
     ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
-    ["/admin/seo", "تحسين الظهور", "settings.manage"],
+    ["/admin/seo", "تحسين الظهور", "site.metadata.manage"],
   ],
   "النظام والأمان": [
     ["/admin/audit", "سجل التدقيق", "audit.read"],

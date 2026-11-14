@@ -39,7 +39,7 @@ export default async function AdminSeoPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdminPermission("settings.manage");
+  await requireAdminPermission("site.metadata.manage");
 
   const [settingsRes, articlesRes, storiesRes, libraryRes] = await Promise.all([
     read<Setting>("/rest/v1/site_settings?select=key,value&key=in.(homepage,seo,branding,social)&limit=20"),

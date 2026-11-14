@@ -126,7 +126,7 @@ export const ADMIN_MODULES: readonly AdminModuleDefinition[] = [
     basePath: "/admin/analytics",
     routes: routesFor("growth"),
     permission: "analytics.read",
-    permissions: ["analytics.read", "settings.manage"],
+    permissions: ["analytics.read", "site.metadata.manage"],
     sourceTables: ["articles", "videos", "video_generation_requests", "content_publish_queue"],
     ownerRole: "seo_manager",
     status: "active",

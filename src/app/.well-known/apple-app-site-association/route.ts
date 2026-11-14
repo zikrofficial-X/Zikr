@@ -15,13 +15,21 @@ export function GET() {
     {
       appIDs: [appId],
       components: [
+        // Keep iOS Universal Links aligned with the public Android App Links.
+        // Do not associate admin, API, or other private/technical routes with the app.
+        { '/': '/quran' },
         { '/': '/quran/*' },
+        { '/': '/hadith' },
         { '/': '/hadith/*' },
+        { '/': '/articles' },
         { '/': '/articles/*' },
+        { '/': '/dua' },
         { '/': '/dua/*' },
+        { '/': '/stories' },
         { '/': '/stories/*' },
+        { '/': '/kids' },
+        { '/': '/kids/*' },
         { '/': '/auth/callback*', exclude: true },
-        { '/': '/*' },
       ],
     },
   ];

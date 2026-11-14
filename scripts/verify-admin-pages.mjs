@@ -73,7 +73,7 @@ for (const token of [
   if (!seoPage.includes(token)) failures.push(`SEO/Admin editor is missing wired control: ${token}`);
 }
 for (const token of [
-  'requireAdminPermission("settings.manage")',
+  'requireAdminPermission("site.metadata.manage")',
   'recordAdminAuditEventSafely({',
   'runPostCommitAudit(',
   'optionalHttpsUrl(',

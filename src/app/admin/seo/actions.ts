@@ -70,7 +70,7 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 }
 
 export async function savePublicSiteSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("settings.manage");
+  const profile = await requireAdminPermission("site.metadata.manage");
   const section = value(formData, "section");
   if (section !== "homepage" && section !== "seo" && section !== "social") {
     throw new Error("قسم الإعدادات العامة غير مدعوم.");
@@ -147,7 +147,7 @@ export async function savePublicSiteSettingAction(formData: FormData) {
 
   await recordAdminAuditEventSafely({
     action: "admin.site_settings.update",
-    permission: "settings.manage",
+    permission: "site.metadata.manage",
     resourceType: "site_settings",
     resourceId: section,
     metadata: { section, fields: Object.keys(setting), actor: profile.id },

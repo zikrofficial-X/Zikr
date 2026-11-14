@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
 const aasa = read("../../src/app/.well-known/apple-app-site-association/route.ts");
 const assetLinks = read("../../src/app/.well-known/assetlinks.json/route.ts");
+const androidManifest = read("../../android/app/src/main/AndroidManifest.xml");
 const isForceStaticRoute = (source) =>
   /export\s+const\s+dynamic\s*=\s*(['"])force-static\1;/.test(source);
 
@@ -12,6 +13,23 @@ assert.ok(assetLinks.includes("process.env.ANDROID_APP_LINKS_SHA256"));
 assert.ok(assetLinks.includes("CURRENT_RELEASE_FINGERPRINT"));
 assert.ok(isForceStaticRoute(aasa), "iOS association route must be force-static");
 assert.ok(isForceStaticRoute(assetLinks), "Android association route must be force-static");
+
+const publicAppLinkPrefixes = ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"];
+for (const prefix of publicAppLinkPrefixes) {
+  assert.ok(aasa.includes(`{ '/': '${prefix}' }`), `iOS Universal Links must include the public route root ${prefix}`);
+  assert.ok(aasa.includes(`{ '/': '${prefix}/*' }`), `iOS Universal Links must include nested public routes under ${prefix}`);
+  assert.ok(androidManifest.includes(`android:pathPrefix="${prefix}"`), `Android App Links must include ${prefix}`);
+}
+assert.doesNotMatch(
+  aasa,
+  /\{\s*['"]\/['"]\s*:\s*['"]\/\*['"]\s*\}/,
+  "iOS Universal Links must not use a catch-all that associates admin/API/technical routes with the consumer app",
+);
+assert.match(
+  aasa,
+  /['"]\/auth\/callback\*['"][^}]*exclude:\s*true/,
+  "the HTTPS OAuth callback must remain excluded from Universal Links",
+);
 
 const iosProject = read("../../ios/App/App.xcodeproj/project.pbxproj");
 const debugEntitlements = read("../../ios/App/App/AppDebug.entitlements");
