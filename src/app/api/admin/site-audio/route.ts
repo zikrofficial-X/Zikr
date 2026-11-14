@@ -231,6 +231,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   const isRemoteUrl = /^https?:\/\//i.test(asset.storage_path);
+  let storageDirectory = "";
+  let storageFileName = "";
   if (!isRemoteUrl) {
     const pathOwnerId = asset.storage_path.split("/")[0] ?? "";
     const ownerId = typeof asset.created_by === "string" && asset.created_by.trim()
@@ -245,6 +247,8 @@ export async function DELETE(request: NextRequest) {
     if (!pathValidation.ok) {
       return NextResponse.json({ error: "مسار التخزين لا يملك سجل تنظيف آمنًا؛ راجع مسؤول النظام قبل الحذف." }, { status: 409 });
     }
+    storageDirectory = pathValidation.directory;
+    storageFileName = pathValidation.fileName;
 
     const now = new Date();
     const { error: intentError } = await db.from("site_audio_upload_intents").upsert({
@@ -285,14 +289,24 @@ export async function DELETE(request: NextRequest) {
       storageCleanupPending = true;
       console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
     } else {
-      const { error: intentUpdateError } = await db
-        .from("site_audio_upload_intents")
-        .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
-        .eq("storage_path", asset.storage_path)
-        .eq("status", "pending");
-      if (intentUpdateError) {
-        intentFinalizationPending = true;
-        console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError.message);
+      const { data: remainingObjects, error: verificationError } = await db.storage
+        .from("site-audio")
+        .list(storageDirectory, { search: storageFileName, limit: 10 });
+      const objectStillPresent = Array.isArray(remainingObjects) &&
+        remainingObjects.some((object) => object.name === storageFileName);
+      if (verificationError || !Array.isArray(remainingObjects) || objectStillPresent) {
+        storageCleanupPending = true;
+        console.error("[api/admin/site-audio] Storage removal could not be verified; retention worker will retry:", verificationError?.message ?? "object remains or inventory is incomplete");
+      } else {
+        const { error: intentUpdateError } = await db
+          .from("site_audio_upload_intents")
+          .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
+          .eq("storage_path", asset.storage_path)
+          .eq("status", "pending");
+        if (intentUpdateError) {
+          intentFinalizationPending = true;
+          console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError.message);
+        }
       }
     }
   }
