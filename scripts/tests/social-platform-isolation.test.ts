@@ -777,6 +777,24 @@ assert.ok(
   socialPublishWorkflowSource.includes(`SOCIAL_PUBLISH_AFTER: "${DEFAULT_SOCIAL_PUBLISH_AFTER}"`),
   "the production publisher workflow and queue recovery must share the same historical-row cutoff",
 );
+assert.ok(
+  socialPublishWorkflowSource.includes('if ! facebook_json="$(curl -fsS'),
+  "a Facebook credential API failure must disable Facebook only, not abort the independent YouTube readiness check",
+);
+assert.ok(
+  socialPublishWorkflowSource.includes("facebook_json='[]'") &&
+    socialPublishWorkflowSource.includes("facebook_readiness='false|false'"),
+  "an unavailable or malformed Facebook credential response must fail closed for Facebook only",
+);
+assert.ok(
+  socialPublishWorkflowSource.includes('if ! youtube_json="$(curl -fsS'),
+  "a YouTube credential API failure must disable YouTube only, not abort the independent Facebook readiness check",
+);
+assert.ok(
+  socialPublishWorkflowSource.includes("youtube_json='[]'") &&
+    socialPublishWorkflowSource.includes("youtube_scopes_ready=false"),
+  "an unavailable or malformed YouTube credential response must fail closed for YouTube only",
+);
 const facebookCredentialsSource = readFileSync(
   resolve(process.cwd(), "src/features/social/services/facebook-credentials.ts"),
   "utf8",
