@@ -170,8 +170,8 @@ assert.match(
   "the admin scheduling action must reject articles that still carry an explicit unpublish hold",
 );
 const kidsActions = readFileSync("src/app/admin/kids/actions.ts", "utf8");
-assert.match(kidsActions, /if \(published\) await requireAdminStepUp\("content\.publish", "\/admin\/kids"\)/,
-  "publishing Kids content must require destructive-action step-up MFA");
+assert.match(kidsActions, /if \(published \|\| ageAppropriate\) await requireAdminStepUp\("content\.publish", "\/admin\/kids"\)/,
+  "publishing Kids content or approving its age suitability must require destructive-action step-up MFA");
 
 assert.match(job, /validateScheduledStoryForPublication/,
   "the worker must revalidate story approval at execution time");
