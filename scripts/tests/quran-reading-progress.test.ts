@@ -86,6 +86,9 @@ assert.match(wirdHook, /isValidQuranPosition\(surah, ayah\)/, 'Wird reads must v
 assert.match(wirdHook, /normalizeWirdProgressState\(JSON\.parse\(raw\)\)/, 'localStorage must be validated before arithmetic');
 assert.match(wirdHook, /revisionRef\.current !== initialRevision/, 'late account reads must not overwrite progress changed while loading');
 assert.match(wirdHook, /auth\.onAuthStateChange/, 'the local cache must switch when the signed-in account changes');
+assert.match(wirdHook, /import type \{ AuthChangeEvent, Session \} from '@supabase\\/supabase-js'/, 'auth callbacks must use Supabase event/session types when the browser client generic is erased');
+assert.match(wirdHook, /onAuthStateChange\(\(_event: AuthChangeEvent, session: Session \| null\)/, 'auth-state callback parameters must remain strictly typed');
+assert.match(wirdHook, /getSession\(\)\.then\(\(\{ data: sessionData \}: \{ data: \{ session: Session \| null \} \}\)/, 'session bootstrap must remain strictly typed');
 assert.match(wirdHook, /getStorageKey\(userId\)/, 'local progress must be stored per account');
 assert.match(wirdHook, /mergeWirdProgressStates\(localState, remoteToday, today\)/, 'offline progress must be merged instead of discarded');
 assert.match(wirdHook, /saveWirdProgress\(next, expectedUserId\)\.catch/, 'remote writes must be bound to the expected user and never create unhandled rejections');

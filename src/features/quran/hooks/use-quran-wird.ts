@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import {
   TOTAL_AYAHS,
   isValidQuranPosition,
@@ -87,14 +88,14 @@ export function useQuranWird(): WirdReturn {
     let unsubscribe: (() => void) | undefined;
     try {
       const supabase = createClient();
-      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
         const nextUserId = session?.user?.id ?? null;
         userIdRef.current = nextUserId;
         setUserId(nextUserId);
         setAuthReady(true);
       });
       unsubscribe = () => data.subscription.unsubscribe();
-      void supabase.auth.getSession().then(({ data: sessionData }) => {
+      void supabase.auth.getSession().then(({ data: sessionData }: { data: { session: Session | null } }) => {
         if (cancelled) return;
         const nextUserId = sessionData.session?.user?.id ?? null;
         userIdRef.current = nextUserId;
