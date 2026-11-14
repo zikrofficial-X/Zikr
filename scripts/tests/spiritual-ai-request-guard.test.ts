@@ -11,7 +11,7 @@ import {
   SPIRITUAL_AI_RATE_LIMIT_MAX_REQUESTS,
   SPIRITUAL_AI_RATE_LIMIT_WINDOW_SECONDS,
 } from '../../src/features/spiritual-ai/services/rate-limit-identity';
-import { classifyQuestion } from '../../src/features/spiritual-ai/services/policy';
+import { classifyQuestion, isCrisisMessage } from '../../src/features/spiritual-ai/services/policy';
 
 assert.deepEqual(sanitizeChatHistory(null), []);
 assert.deepEqual(sanitizeChatHistory('not an array'), []);
@@ -60,6 +60,21 @@ assert.equal(classifyQuestion('ما حكم العمل في بنك ربوي؟'), 
   'an explicit legal question about work must remain classified as fatwa');
 assert.equal(classifyQuestion('هل يجوز نشر حديث نبوي ضعيف؟'), 'fatwa',
   'an explicit permissibility question must remain classified as fatwa');
+
+assert.equal(isCrisisMessage('أنا أموت من الضحك على الموقف'), false,
+  'a common colloquial expression must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('أموت من الجوع'), false,
+  'ordinary hyperbole about hunger must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('نفسي أموت'), true,
+  'an explicit first-person wish to die must trigger the crisis safety response');
+assert.equal(isCrisisMessage('أنا عايز أموت'), true,
+  'an explicit colloquial wish to die must trigger the crisis safety response');
+assert.equal(isCrisisMessage('أريد أن أموت'), true,
+  'a formal wish to die must trigger the crisis safety response');
+assert.equal(isCrisisMessage('أنا أموت'), true,
+  'an isolated first-person death statement must remain safety-sensitive');
+assert.equal(isCrisisMessage('عايز أنتحر'), true,
+  'an explicit colloquial suicide statement must trigger the crisis safety response');
 
 const action = readFileSync('src/app/spiritual-ai/actions.ts', 'utf8');
 const rateLimitIndex = action.indexOf('consumeSpiritualAiRateLimit(clientAddress)');
