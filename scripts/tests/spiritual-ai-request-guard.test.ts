@@ -11,6 +11,7 @@ import {
   SPIRITUAL_AI_RATE_LIMIT_MAX_REQUESTS,
   SPIRITUAL_AI_RATE_LIMIT_WINDOW_SECONDS,
 } from '../../src/features/spiritual-ai/services/rate-limit-identity';
+import { classifyQuestion } from '../../src/features/spiritual-ai/services/policy';
 
 assert.deepEqual(sanitizeChatHistory(null), []);
 assert.deepEqual(sanitizeChatHistory('not an array'), []);
@@ -43,6 +44,23 @@ assert.notEqual(
 );
 assert.throws(() => buildSpiritualAiRateLimitParams('203.0.113.25', ''));
 
+assert.equal(classifyQuestion('أنا تعبان من العمل وأشعر بقلق'), 'spiritual',
+  'ordinary work stress must use the supportive spiritual response, not the fatwa prompt');
+assert.equal(classifyQuestion('أريد نصيحة في العمل'), 'general',
+  'a general career question must not be treated as a religious ruling');
+assert.equal(classifyQuestion('السنة دي كانت صعبة'), 'general',
+  'the colloquial word for a calendar year must not trigger the Sunnah/fatwa category');
+assert.equal(classifyQuestion('الحديث مع صديقي كان طويلًا'), 'general',
+  'ordinary conversation must not trigger the Hadith/fatwa category');
+assert.equal(classifyQuestion('السيرة الذاتية محتاجة مراجعة'), 'general',
+  'a CV must not trigger the Prophetic biography/fatwa category');
+assert.equal(classifyQuestion('أنا حزين بعد الصلاة'), 'spiritual',
+  'an emotional support request must take precedence over a broad religious-topic keyword');
+assert.equal(classifyQuestion('ما حكم العمل في بنك ربوي؟'), 'fatwa',
+  'an explicit legal question about work must remain classified as fatwa');
+assert.equal(classifyQuestion('هل يجوز نشر حديث نبوي ضعيف؟'), 'fatwa',
+  'an explicit permissibility question must remain classified as fatwa');
+
 const action = readFileSync('src/app/spiritual-ai/actions.ts', 'utf8');
 const rateLimitIndex = action.indexOf('consumeSpiritualAiRateLimit(clientAddress)');
 const retrievalIndex = action.indexOf('retrieveSpiritualSources(normalizedMessage)');
@@ -60,4 +78,4 @@ assert.match(action, /استشهد فقط بآية أو حديث ظاهر في �
 assert.match(action, /اذكر الفضل والثواب فقط إذا كان موثقًا في المصادر المسترجعة/, 'dhikr virtues and rewards must be source-verified');
 assert.match(action, /لا تنسب نصًا غير موجود/, 'general answers must not invent religious quotations');
 
-console.log('Spiritual AI request guard passed: bounded input and HMAC-backed rate-limit contract.');
+console.log('Spiritual AI request guard passed: bounded input, rate limiting, source-safe prompts, and question classification.');
