@@ -235,9 +235,12 @@ export async function DELETE(request: NextRequest) {
   let storageFileName = "";
   if (!isRemoteUrl) {
     const pathOwnerId = asset.storage_path.split("/")[0] ?? "";
-    const ownerId = typeof asset.created_by === "string" && asset.created_by.trim()
+    const ownerId = (typeof asset.created_by === "string" && asset.created_by.trim()
       ? asset.created_by.trim()
-      : pathOwnerId;
+      : pathOwnerId).toLowerCase();
+    if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/.test(ownerId)) {
+      return NextResponse.json({ error: "تعذر تحديد مالك مسار التخزين بأمان؛ راجع مسؤول النظام." }, { status: 409 });
+    }
     const pathValidation = validateSiteAudioUploadPath({
       ownerId,
       storagePath: asset.storage_path,
