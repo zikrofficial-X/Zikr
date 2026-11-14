@@ -4,10 +4,12 @@ The production automation runs directly from `.github/workflows/generate-ai-vide
 
 ## Provider order and cost controls
 
-- **Template**: deterministic FFmpeg renderer; works without AI keys and is the default.
-- **ComfyUI**: optional local GPU provider, enabled only with `VIDEO_AI_ENABLED=true` and `COMFYUI_ENABLED=true`.
-- **Free API**: optional quota-based provider, enabled only with `FREE_VIDEO_PROVIDER_ENABLED=true` and its server-side URL/token.
-- The router falls back to the next available provider and ultimately to the template path.
+- **Hugging Face LTX Fast**, then **Wan 2.2 Fast**: the repository environment template and production workflow prefer these public free Spaces when their explicit provider flags are enabled.
+- **Template**: deterministic FFmpeg renderer; it is the final fallback and does not require an AI provider key.
+- **ComfyUI**: optional local GPU provider, enabled only with VIDEO_AI_ENABLED=true and COMFYUI_ENABLED=true.
+- **Free API**: optional quota-based provider, enabled only with FREE_VIDEO_PROVIDER_ENABLED=true and its server-side URL/token.
+- The checked-in environment template and production workflow use VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template. The router's built-in order is hf_ltx_fast,hf_wan,comfyui,free_api; provider flags and VIDEO_FREE_ONLY still gate each candidate, and the template renderer remains the final fallback.
+- VIDEO_FREE_ONLY=true permits the public Hugging Face providers and the local template renderer while excluding paid/custom API paths unless separately and explicitly configured.
 - “Free” never means unlimited GPU, API quota, or storage.
 
 ## Environment
@@ -15,8 +17,11 @@ The production automation runs directly from `.github/workflows/generate-ai-vide
 Copy the video settings from `.env.example`. Important safe defaults:
 
 ```text
-VIDEO_PROVIDER_ORDER=template,comfyui,free_api
-VIDEO_AI_ENABLED=false
+VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template
+VIDEO_FREE_ONLY=true
+VIDEO_AI_ENABLED=true
+HF_LTX_FAST_VIDEO_ENABLED=false
+HF_WAN_VIDEO_ENABLED=false
 COMFYUI_ENABLED=false
 COMFYUI_MODEL=wan2.1
 COMFYUI_WAN_WORKFLOW_JSON=
@@ -42,9 +47,10 @@ Secrets are server-side only. Provider tokens are never returned in errors or lo
 2. Claim a pending or due `retry_wait` request conditionally.
 3. Revalidate the current published source; Quran, hadith, dua, adhkar, and verified stories cannot be edited through a request payload.
 4. Select a provider, render/finalize with Arabic audio and subtitles, apply full-frame visual fitting, motion, voice compression and loudness normalization, and validate with `ffprobe`.
-5. Upload only validated MP4 output to the existing `videos` bucket.
-6. Mark `completed`; only then can a social draft be queued.
-7. Public publishing remains disabled unless the two explicit approval flags allow it and credentials exist.
+5. Upload only validated MP4 output directly to Cloudinary. The worker requires the Cloudinary cloud name, API key, and API secret; it fails closed rather than falling back to Supabase Storage.
+6. Store the Cloudinary playback URL and queue/catalog metadata in Supabase. Supabase remains the database/queue layer; generated public MP4 files are not staged in a Supabase bucket.
+7. Mark completed; only then can an automated-QA-approved social candidate be queued.
+8. External publishing remains separately gated by the Admin auto-publish setting, workflow/provider readiness, and the persisted QA snapshot.
 
 The database migration `20261002100000_multi_provider_free_video_engine.sql` is additive and creates `video_automation_runs` for audit metrics. It does not delete videos or data.
 
@@ -86,4 +92,4 @@ pnpm video:engine:check
 pnpm build
 ```
 
-A video may only be called successful when a real MP4 exists and `ffprobe` confirms a valid duration, resolution, H.264 video stream, required AAC audio stream, Arabic metadata, and non-silent audio. The v4 renderer defaults to CRF 18, 30 fps, full-frame AI crop-to-fill, gentle sharpening, dynamic background motion, AAC 192k audio, compressor, and -16 LUFS loudness normalization; override `VIDEO_OUTPUT_CRF` and `VIDEO_AUDIO_BITRATE` only when a platform-specific delivery profile requires it.
+A video may only be called successful when a real MP4 exists and `ffprobe` confirms a valid duration, resolution, H.264 video stream, required AAC audio stream, Arabic metadata, and non-silent audio. The current renderer contract is 2026-11-07-template-controls-v10. Its FFmpeg assembly defaults to CRF 18, 30 fps, full-frame composition, gentle sharpening, dynamic background motion, AAC 192k audio, compressor, and -16 LUFS loudness normalization; override VIDEO_OUTPUT_CRF and VIDEO_AUDIO_BITRATE only when a platform-specific delivery profile requires it.
