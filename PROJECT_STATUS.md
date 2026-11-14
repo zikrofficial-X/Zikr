@@ -3,8 +3,8 @@
 ## Latest verified checkpoint — 2026-11-14 (code/test head `f9346878b80e0b645eb72a30e92abb5c6134bf10`)
 
 - Audit branch: `audit/zikr-kids-daily-priority-20261110`; pull request: [#320](https://github.com/zikrofficial-X/Zikr/pull/320), base `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, head `f9346878b80e0b645eb72a30e92abb5c6134bf10`.
-- PR scope at this checkpoint: 505 changed files, 59,917 additions, 5,189 deletions. The PR is open and unmerged; no owner approval or review-thread resolution is recorded.
-- Repository tree at the code/test head: 2,368 entries (1,869 files, 499 directories), 144,715,096 bytes.
+- PR scope at this checkpoint: 505 changed paths, 59,999 additions, 5,189 deletions at documentation base 96ec0df9. The PR is open and unmerged; no owner approval or review-thread resolution is recorded.
+- Repository tree at the code/test head: 2,368 entries (1,869 files, 499 directories), 144,715,096 bytes. Documentation snapshot base `96ec0df9b65cfbfd36291614a77f162bf91e78d0` has the same entry counts and 144,723,785 bytes.
 - GitHub Quality Gate run `43599803892`: **success**, with `QUALITY_GATE=PASSED_FULL`. The run validated all 440 local migrations, the PostgreSQL 17 integration checks (including the new atomic prayer-location save test), admin page/security checks, native OAuth contracts, social/content publication contracts, and the canonical verification suite.
 - CircleCI at the same head: `source-verify`, `application-build-docs`, and `config-guard` all report success.
 - Android Debug APK workflow run `43599803874`: **success**. Artifact `zikr-android-debug-f9346878b80e0b645eb72a30e92abb5c6134bf10` exists (26,441,938 bytes). This is a debug artifact only; no release APK/AAB or store release was created.
@@ -15,7 +15,7 @@
 - No production database mutation, content generation, Gemini request, social publishing, storage-object deletion, secret change, Android/iOS release, PR merge, or Vercel deployment was triggered by this audit batch.
 - Remaining acceptance: owner/CODEOWNERS review and protected-branch approval; review and separately approve the 22 local-only migrations before any production apply; supply the iOS associated-domain app ID; perform real Android/iOS device sign-in and deep-link acceptance; and run production smoke checks only after an approved deployment. The repository audit remains open; this checkpoint does not claim the whole project is error-free or closed.
 
-Status snapshot for the 505 PR paths is recorded in `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`; the recursive repository manifest is `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`. These two snapshot artifacts are excluded from their own status scope/manifest as applicable.
+The overlay covers 505 pre-snapshot PR paths; adding the new overlay and self-excluding manifest makes 507 total PR files. Status snapshot for those 505 paths is recorded in `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`; the recursive repository manifest is `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`. These two snapshot artifacts are excluded from their own status scope/manifest as applicable.
 
 
 ## Latest verified checkpoint — 2026-11-14T1157Z

@@ -4,7 +4,7 @@
 
 - Code/test head: `f9346878b80e0b645eb72a30e92abb5c6134bf10`; PR #320 remains open and unmerged.
 - Changed-file scope: 505 paths at this checkpoint.
-- Status counts: 232 `CONTENT_READ_TESTED_PASS`, 206 `REVIEW_REQUIRED`, 45 `CONTENT_READ_PENDING_TRACE`, 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Status counts: 235 `CONTENT_READ_TESTED_PASS`, 203 `REVIEW_REQUIRED`, 45 `CONTENT_READ_PENDING_TRACE`, 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
 - Overlay: `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`.
 - Recursive repository manifest: `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`.
 - These counts are evidence-backed for the changed-file scope only; they do not represent a completed review of every file in the repository. The 22 pending migrations and owner/device acceptance remain open.
