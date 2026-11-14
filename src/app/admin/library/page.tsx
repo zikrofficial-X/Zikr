@@ -174,6 +174,9 @@ async function mutate(formData: FormData) {
 
   revalidatePath('/admin/library');
   revalidatePath('/library');
+  // Public detail pages read through a 30-minute cached query; invalidate the
+  // dynamic route after review, publish, unpublish, and delete mutations.
+  revalidatePath('/content/[slug]', 'page');
   redirectLibrary({ success: 'تم تنفيذ العملية بنجاح.' });
 }
 

@@ -33,4 +33,11 @@ assert.match(kidsActions, /let auditError: unknown = null/);
 assert.match(kidsActions, /Kids content was saved, but its audit event could not be recorded/);
 assert.ok(kidsActions.indexOf('revalidatePath("/kids")') < kidsActions.indexOf("if (auditError)"), "Kids routes must revalidate before reporting a post-commit audit failure");
 
-console.log("Admin content write-safety, Kids write hardening, audit integrity, and story cache invalidation contracts passed.");
+const libraryAdmin = readFileSync("src/app/admin/library/page.tsx", "utf8");
+const publicLibrary = readFileSync("src/features/content-library/services/content-library.ts", "utf8");
+const contentDetailPage = readFileSync("src/app/content/[slug]/page.tsx", "utf8");
+assert.match(publicLibrary, /cache: "force-cache"[\s\S]*revalidate: 1800/, "public library detail reads are cached and require explicit invalidation");
+assert.match(contentDetailPage, /getPublicContentBySlug/, "content detail route must use the cached public content contract");
+assert.match(libraryAdmin, /revalidatePath\(['"]\/content\/\[slug\]['"],\s*['"]page['"]\)/, "library moderation and publication changes must invalidate cached public detail pages");
+
+console.log("Admin content write-safety, Kids write hardening, audit integrity, story cache invalidation, and public content detail invalidation contracts passed.");
