@@ -35,9 +35,9 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-      SUPABASE_SERVICE_ROLE_KEY: \${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      SITE_AUDIO_CLEANUP_CONFIRMATION: \${{ inputs.confirmation }}
-      SITE_AUDIO_UPLOAD_WRITES_PAUSED: \${{ inputs.reference_writes_paused }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+      SITE_AUDIO_CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
+      SITE_AUDIO_UPLOAD_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@v7
@@ -49,11 +49,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "\${SITE_AUDIO_UPLOAD_WRITES_PAUSED}" = "true" || {
+          test "${SITE_AUDIO_UPLOAD_WRITES_PAUSED}" = "true" || {
             echo "::error::Pause all site-audio upload and registration writers before cleanup." >&2
             exit 1
           }
-          test "\${SITE_AUDIO_CLEANUP_CONFIRMATION}" = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS" || {
+          test "${SITE_AUDIO_CLEANUP_CONFIRMATION}" = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS" || {
             echo "::error::Typed site-audio cleanup confirmation is required." >&2
             exit 1
           }
@@ -75,11 +75,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "\${SUPABASE_SERVICE_ROLE_KEY:-}" || {
+          test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
             echo "::error::Missing protected Supabase service-role key." >&2
             exit 1
           }
-          test "\${EXPECTED_PROJECT_REF}" = "zqtssvlvmkzeeyqghqfk"
+          test "${EXPECTED_PROJECT_REF}" = "zqtssvlvmkzeeyqghqfk"
 
       - name: Install runtime dependencies
         run: pnpm install --frozen-lockfile --prod
@@ -91,13 +91,13 @@ jobs:
         run: pnpm site-audio:cleanup
 
       - name: Apply manually approved site-audio orphan cleanup
-        if: \${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS' }}
         run: pnpm site-audio:cleanup -- --apply
 
       - name: Report cleanup scope
         if: success()
         run: |
-          echo "Site-audio cleanup completed for commit \${GITHUB_SHA}."
+          echo "Site-audio cleanup completed for commit ${GITHUB_SHA}."
           echo "Only expired, server-issued site-audio upload intents are inspected."
           echo "Every candidate is rechecked against site_audio_assets before exact-path removal."
           echo "No other Storage bucket or media type is in scope."

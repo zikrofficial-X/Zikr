@@ -3377,6 +3377,53 @@ export type Database = {
           },
         ]
       }
+      site_audio_upload_intents: {
+        Row: {
+          asset_id: string | null
+          cleanup_after: string
+          created_at: string
+          mime_type: string
+          owner_user_id: string
+          size_bytes: number
+          status: string
+          storage_path: string
+          updated_at: string
+          upload_expires_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          cleanup_after: string
+          created_at?: string
+          mime_type: string
+          owner_user_id: string
+          size_bytes: number
+          status?: string
+          storage_path: string
+          updated_at?: string
+          upload_expires_at: string
+        }
+        Update: {
+          asset_id?: string | null
+          cleanup_after?: string
+          created_at?: string
+          mime_type?: string
+          owner_user_id?: string
+          size_bytes?: number
+          status?: string
+          storage_path?: string
+          updated_at?: string
+          upload_expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_audio_upload_intents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "site_audio_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           created_at: string
