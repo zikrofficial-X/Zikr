@@ -27,7 +27,7 @@ type Health = {
   youtubeConfigured: boolean;
   youtubeUploadReady: boolean;
   youtubeAuthBlocked: number;
-  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "channel_selection_required" | "channel_lookup_incomplete" | "unavailable";
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "channel_selection_required" | "unavailable";
   youtubeReadSource?: "oauth" | "api_key" | null;
   youtubeChannelId?: string | null;
   youtubeChannelName?: string | null;
