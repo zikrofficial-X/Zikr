@@ -24,7 +24,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   // would otherwise keep the last entry for a platform. Public feeds must fail closed.
   if (hasMalformedSocialPlatformResults(rawPlatformResults)) return [];
   const platformResults = normalizeSocialPlatformResults(rawPlatformResults);
-  const manualReconciliationPlatforms = new Set(
+  const manualReconciliationPlatforms = new Set<string>(
     getManualReconciliationPlatforms({ ...metadata, sourceMediaMissing: false }),
   );
   // Only an absent/null field is a legacy row. An explicit empty ledger is
