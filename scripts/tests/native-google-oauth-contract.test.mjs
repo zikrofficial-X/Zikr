@@ -18,6 +18,11 @@ assert.ok(!nativeHandler.includes('url.hostname === "zikrmediaofficial.vercel.ap
 assert.ok(nativeHandler.includes('url.searchParams.get("native") === "1"'), "native callback URLs must carry the explicit native-flow marker");
 assert.ok(nativeHandler.includes('url.username === ""') && nativeHandler.includes('url.password === ""') && nativeHandler.includes('url.port === ""'), "custom-scheme callbacks must reject credentials and non-default ports");
 
+const deployEnvValidator = read("scripts/validate-deployment-env.mjs");
+assert.ok(deployEnvValidator.includes('"NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"'), "deployment environment audit must warn when the public native Google client ID is missing");
+assert.ok(deployEnvValidator.includes("must be a Google Web OAuth client ID"), "deployment environment audit must reject malformed Google Web client IDs");
+assert.ok(deployEnvValidator.includes("must be a 10-character Apple Team ID plus .com.zikr.app"), "deployment environment audit must reject malformed iOS associated-domain app IDs");
+
 const authCallback = read("src/app/auth/callback/route.ts");
 const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
 const projectIntegrity = read("scripts/verify-project-integrity.mjs");
