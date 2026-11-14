@@ -33,6 +33,23 @@ assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, owner_user_id: "aaaaa
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, mime_type: "application/pdf" }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, size_bytes: 0 }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, cleanup_after: "2026-11-11T00:00:00.000Z" }), false);
+const pagedRows = Array.from({ length: 1001 }, (_, index) => ({ index }));
+const pageOffsets = [];
+const pagedInventory = await collectExpiredSiteAudioUploadIntents(async (offset, pageSize) => {
+  pageOffsets.push(offset);
+  assert.equal(pageSize, 500);
+  return pagedRows.slice(offset, offset + pageSize);
+});
+assert.equal(pagedInventory.length, 1001, "the inventory reader must cross the Supabase 1,000-row API ceiling");
+assert.deepEqual(pageOffsets, [0, 500, 1000]);
+await assert.rejects(
+  () => collectExpiredSiteAudioUploadIntents(async (offset, pageSize) =>
+    Array.from({ length: 5001 }, (_, index) => ({ index })).slice(offset, offset + pageSize),
+  ),
+  /exceeded the safe scan limit/,
+  "the global 5,000-intent cap must be enforced across pages",
+);
+
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([validIntent], now), [validIntent]);
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, status: "registered" }], now), []);
 assert.deepEqual(selectExpiredSiteAudioUploadIntents([{ ...validIntent, cleanup_after: "2026-11-15T00:00:00.000Z" }], now), []);
