@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const BUCKET = "site-audio";
-const MAX_PENDING_INTENTS = 5000;
+const MAX_PENDING_INTENTS = 5000;\nconst INTENT_PAGE_SIZE = 500;
 const CLEANUP_CONFIRMATION = "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS";
 const ALLOWED_MIME_TYPES = new Set([
   "audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg",
@@ -57,6 +57,21 @@ export function isSafeSiteAudioUploadIntent(intent) {
     Number.isFinite(cleanupAfter) &&
     cleanupAfter > uploadExpiresAt
   );
+}
+
+export async function collectExpiredSiteAudioUploadIntents(fetchPage) {
+  const intents = [];
+  for (let offset = 0; ; offset += INTENT_PAGE_SIZE) {
+    const page = await fetchPage(offset, INTENT_PAGE_SIZE);
+    if (!Array.isArray(page)) {
+      throw new Error("Expired site-audio upload intent page was invalid; refusing cleanup.");
+    }
+    intents.push(...page);
+    if (intents.length > MAX_PENDING_INTENTS) {
+      throw new Error("Expired site-audio upload intents exceeded the safe scan limit; refusing cleanup.");
+    }
+    if (page.length < INTENT_PAGE_SIZE) return intents;
+  }
 }
 
 export function selectExpiredSiteAudioUploadIntents(intents, now = Date.now()) {
@@ -135,19 +150,20 @@ async function main() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const now = new Date();
-  const { data, error } = await client
-    .from("site_audio_upload_intents")
-    .select("storage_path,owner_user_id,mime_type,size_bytes,upload_expires_at,cleanup_after,status,asset_id")
-    .eq("status", "pending")
-    .lte("cleanup_after", now.toISOString())
-    .order("cleanup_after", { ascending: true })
-    .limit(MAX_PENDING_INTENTS + 1);
-  if (error) throw new Error("Could not read expired site-audio upload intents: " + error.message);
-  if ((data ?? []).length > MAX_PENDING_INTENTS) {
-    throw new Error("Expired site-audio upload intents exceeded the safe scan limit; refusing cleanup.");
-  }
+  const expiredIntents = await collectExpiredSiteAudioUploadIntents(async (offset, pageSize) => {
+    const { data, error } = await client
+      .from("site_audio_upload_intents")
+      .select("storage_path,owner_user_id,mime_type,size_bytes,upload_expires_at,cleanup_after,status,asset_id")
+      .eq("status", "pending")
+      .lte("cleanup_after", now.toISOString())
+      .order("cleanup_after", { ascending: true })
+      .order("storage_path", { ascending: true })
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error("Could not read expired site-audio upload intents: " + error.message);
+    return data ?? [];
+  });
 
-  const candidates = selectExpiredSiteAudioUploadIntents(data ?? [], now.getTime());
+  const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
   console.log("ZIKR site-audio orphan reconciliation: " + (apply ? "APPLY" : "DRY RUN"));
   console.log("Expired pending intents: " + candidates.length);
 
