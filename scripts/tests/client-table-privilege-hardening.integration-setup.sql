@@ -24,11 +24,11 @@ GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
 -- Reproduce the permissive default EXECUTE grants before the hardening migration.
 CREATE OR REPLACE FUNCTION public.client_default_execute_postgres_before()
-RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 
 SET ROLE supabase_admin;
 CREATE OR REPLACE FUNCTION public.client_default_execute_supabase_admin_before()
-RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 RESET ROLE;
 
 DO $default_execute_precheck$
