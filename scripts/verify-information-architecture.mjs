@@ -115,9 +115,24 @@ const home = await read('src/app/page.tsx');
 const homeInteractive = await read('src/features/home/components/home-interactive.tsx');
 const prayerPage = await read('src/features/prayer/components/prayer-times-page.tsx');
 const prayerLocationRoute = await read('src/app/api/prayer-location/route.ts');
+const prayerLocationMigration = await read('supabase/migrations/20261114040000_save_default_prayer_location_atomically.sql');
 
-if (!prayerLocationRoute.includes('is_default: true')) failures.push('Prayer location API does not persist a default per-user location.');
+if (
+  !prayerLocationRoute.includes('rpc("save_default_prayer_location"') ||
+  !prayerLocationRoute.includes('p_city: city') ||
+  !prayerLocationRoute.includes('p_latitude: latitude') ||
+  !prayerLocationRoute.includes('p_longitude: longitude')
+) {
+  failures.push('Prayer location API must persist the selected location through the atomic per-user default-location RPC.');
+}
 if (!prayerLocationRoute.includes('eq("is_default", true)')) failures.push('Prayer location API does not read the user default location.');
+if (
+  !prayerLocationMigration.includes('SECURITY INVOKER') ||
+  !prayerLocationMigration.includes('pg_advisory_xact_lock') ||
+  !prayerLocationMigration.includes('GRANT EXECUTE ON FUNCTION public.save_default_prayer_location')
+) {
+  failures.push('Prayer location default updates must be serialized, transactionally atomic, and executable only by authenticated users.');
+}
 if (!homeInteractive.includes('getSavedPrayerLocation')) failures.push('Home prayer panel does not restore the saved user location first.');
 if (!homeInteractive.includes('if (!found && !disposed) chooseCurrentLocation()')) failures.push('Home prayer panel no longer protects the saved-location-first flow.');
 if (!prayerPage.includes('getSavedPrayerLocation')) failures.push('Prayer page does not restore the saved user location first.');
