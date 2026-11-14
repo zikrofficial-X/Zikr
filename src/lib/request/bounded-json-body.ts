@@ -1,7 +1,7 @@
 export const MAX_REQUEST_BODY_BYTES = 16_384;
 
 export type BoundedRequestBytesResult =
-  | { ok: true; bytes: Uint8Array }
+  | { ok: true; bytes: Uint8Array<ArrayBuffer> }
   | { ok: false; status: 400 | 413; error: string };
 
 export type BoundedJsonBodyResult =
@@ -88,7 +88,7 @@ export async function readBoundedRequestBytes(
     }
   }
 
-  const bytes = new Uint8Array(totalBytes);
+  const bytes = new Uint8Array(new ArrayBuffer(totalBytes));
   let offset = 0;
   for (const chunk of chunks) {
     bytes.set(chunk, offset);
