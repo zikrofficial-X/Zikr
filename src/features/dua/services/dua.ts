@@ -226,7 +226,7 @@ export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua |
     return [];
   });
 
-  if (!rows.length && !databaseLookupFailed) {
+  if (!rows.length && !databaseLookupFailed && localMatch) {
     const publicationState = await getDatabasePublicationState("duas", cleanSlug);
     if (shouldSuppressOfflineFallback(publicationState)) return null;
   }

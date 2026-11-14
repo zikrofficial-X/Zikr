@@ -67,6 +67,10 @@ assert.equal(isCrisisMessage('أموت من الجوع'), false,
   'ordinary hyperbole about hunger must not trigger an emergency crisis response');
 assert.equal(isCrisisMessage('أنا عايز أموت من الضحك'), false,
   'a desire phrase followed by a clear laughter idiom must not trigger an emergency crisis response');
+assert.equal(isCrisisMessage('أموت من الجوع ونفسي أموت'), true,
+  'a non-literal idiom must not mask a separate explicit death wish in the same message');
+assert.equal(isCrisisMessage('أنا عايز أموت من الضحك وأريد أن أموت'), true,
+  'a colloquial idiom must not suppress a second explicit death wish');
 assert.equal(isCrisisMessage('نفسي أموت من الجوع'), false,
   'a desire phrase followed by a common hunger idiom must not trigger an emergency crisis response');
 assert.equal(isCrisisMessage('أنا عايز أموت من الوجع'), true,

@@ -317,8 +317,24 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
         if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
       }
     } else if (!databaseLookupFailed) {
-      const publicationState = await getDatabasePublicationState("articles", safeSlug);
-      if (shouldSuppressOfflineFallback(publicationState)) return null;
+      const fallbackLocales = activeLocale === "en" ? ["en", "ar"] as const : ["ar"] as const;
+      let hasOfflineFallback = false;
+      for (const contentLocale of fallbackLocales) {
+        try {
+          const offlineArticles = await loadOfflineArticles(contentLocale);
+          hasOfflineFallback = offlineArticles.some(article => article.slug === safeSlug && isSubstantialPublicArticle(article));
+        } catch (error) {
+          console.error("[articles] Offline article catalogue unavailable:", error);
+        }
+        if (!hasOfflineFallback) {
+          hasOfflineFallback = getFallbackArticles(contentLocale).some(article => article.slug === safeSlug && isSubstantialPublicArticle(article));
+        }
+        if (hasOfflineFallback) break;
+      }
+      if (hasOfflineFallback) {
+        const publicationState = await getDatabasePublicationState("articles", safeSlug);
+        if (shouldSuppressOfflineFallback(publicationState)) return null;
+      }
     }
   }
 

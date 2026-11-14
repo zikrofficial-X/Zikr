@@ -238,7 +238,8 @@ export async function getProphetBySlug(slug: string): Promise<ProphetDetail | nu
       })
     : [];
 
-  if (isSupabaseConfigured() && !dbRows.length && !databaseLookupFailed) {
+  const hasLocalFallback = Boolean(localProphet || FALLBACK_PROPHETS.some((item) => item.slug === cleanSlug));
+  if (isSupabaseConfigured() && !dbRows.length && !databaseLookupFailed && hasLocalFallback) {
     const publicationState = await getDatabasePublicationState("prophets", cleanSlug);
     if (shouldSuppressOfflineFallback(publicationState)) return null;
   }

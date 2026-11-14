@@ -50,13 +50,16 @@ export function isCrisisMessage(text: string): boolean {
   // Explicit self-harm intent always takes precedence over colloquial context.
   if (NORMALIZED_DIRECT_CRISIS_PATTERNS.some(pattern => withoutNegatedStatements.includes(pattern))) return true;
 
-  // Common "I could die from ..." expressions are not, by themselves, a wish
-  // to self-harm. Pain and other distress contexts remain safety-sensitive.
-  if (NORMALIZED_NON_LITERAL_DEATH_CONTEXTS.some(context => withoutNegatedStatements.includes(context))) return false;
+  // Remove idioms rather than returning early: a separate explicit death wish
+  // elsewhere in the same message must still trigger the safety response.
+  const withoutNonLiteralContexts = NORMALIZED_NON_LITERAL_DEATH_CONTEXTS.reduce(
+    (remaining, context) => remaining.replaceAll(context, " "),
+    withoutNegatedStatements,
+  ).trim();
 
   // Keep an isolated "I am dying" statement safety-sensitive.
-  const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(withoutNegatedStatements.trim());
-  return isolatedDeathStatement || NORMALIZED_DEATH_WISH_PATTERNS.some(pattern => withoutNegatedStatements.includes(pattern));
+  const isolatedDeathStatement = /^(?:انا\s+)?اموت[.!؟?]*$/u.test(withoutNonLiteralContexts);
+  return isolatedDeathStatement || NORMALIZED_DEATH_WISH_PATTERNS.some(pattern => withoutNonLiteralContexts.includes(pattern));
 }
 
 export function classifyQuestion(text: string): 'fatwa' | 'spiritual' | 'dhikr' | 'general' {
