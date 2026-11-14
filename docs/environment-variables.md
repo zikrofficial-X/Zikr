@@ -305,7 +305,7 @@ Read-only verification of the connected production Vercel project confirmed thes
 The following variables were found in Vercel and are cleanup candidates after confirming ownership:
 
 - Android signing material: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. These belong in the protected CircleCI `android-signing` context only.
-- Obsolete Google OAuth application variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Google web/native login uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are server-only GA4 OAuth credentials, not obsolete Google sign-in variables. GA4 also requires `GA4_REFRESH_TOKEN` and `GA4_PROPERTY_ID`; keep the credentials server-only when GA4 reporting is enabled. Google web/native sign-in uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
 - Retired/stale application variables: `VIDEO_AUTO_PUBLISH`, `SOCIAL_SYNC_SECRET`.
 - `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD` are integration-managed database connection variables. They are not used by the Next.js runtime; **review their Vercel/Supabase integration ownership before removal** and do not delete them blindly.
 
