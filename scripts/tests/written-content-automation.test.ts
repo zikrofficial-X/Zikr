@@ -382,6 +382,18 @@ assert.equal(
  null,
  "a written Kids platform awaiting manual reconciliation must not be exposed as confirmed",
 );
+assert.equal(
+ buildPublicKidsWrittenPost({
+  ...queueRow,
+  target_platforms: ["facebook"],
+  metadata: {
+   ...queueRow.metadata,
+   platformResults: { youtube: { ok: true, remoteId: "yt-not-targeted" } },
+  },
+ }, liveKidsStory),
+ null,
+ "a written-post result outside target_platforms must not create a public Kids badge",
+);
 assert.deepEqual(
  buildPublicKidsWrittenPost({
   ...queueRow,
