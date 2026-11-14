@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
+import { readBoundedRequestBytes } from "@/lib/request/bounded-json-body";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -16,6 +19,13 @@ const AUDIO_TYPES: Record<string, string> = {
   "audio/ogg": "ogg",
   "audio/webm": "webm",
 };
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json(
+    { error: message },
+    { status, headers: { "Cache-Control": "no-store" } },
+  );
+}
 
 function hasValidAudioSignature(bytes: Uint8Array, contentType: string) {
   if (bytes.byteLength < 12) return false;
@@ -49,7 +59,7 @@ function hasValidAudioSignature(bytes: Uint8Array, contentType: string) {
 export async function POST(request: NextRequest) {
   const auth = await requireAdminApi("video.manage");
   if (!auth.ok)
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return jsonError(auth.error, auth.status);
 
   const contentType = (request.headers.get("content-type") ?? "")
     .split(";")[0]
@@ -57,43 +67,23 @@ export async function POST(request: NextRequest) {
     .toLowerCase();
   const extension = AUDIO_TYPES[contentType];
   if (!extension)
-    return NextResponse.json(
-      { error: "الصيغ المدعومة: MP3 أو M4A أو WAV أو OGG أو WebM." },
-      { status: 415 }
-    );
-
-  const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (declaredLength > MAX_AUDIO_BYTES)
-    return NextResponse.json(
-      { error: "حجم التسجيل يجب ألا يتجاوز 15 ميغابايت." },
-      { status: 413 }
-    );
+    return jsonError("الصيغ المدعومة: MP3 أو M4A أو WAV أو OGG أو WebM.", 415);
 
   try {
-    const bytes = new Uint8Array(await request.arrayBuffer());
-    if (!bytes.byteLength)
-      return NextResponse.json({ error: "ملف الصوت فارغ." }, { status: 400 });
-    if (bytes.byteLength > MAX_AUDIO_BYTES)
-      return NextResponse.json(
-        { error: "حجم التسجيل يجب ألا يتجاوز 15 ميغابايت." },
-        { status: 413 }
-      );
+    const body = await readBoundedRequestBytes(request, MAX_AUDIO_BYTES);
+    if (!body.ok) return jsonError(body.error, body.status);
+    const bytes = body.bytes;
+    if (!bytes.byteLength) return jsonError("ملف الصوت فارغ.", 400);
 
     if (!hasValidAudioSignature(bytes, contentType)) {
-      return NextResponse.json(
-        { error: "محتوى الملف لا يطابق صيغة الصوت المعلنة." },
-        { status: 415 }
-      );
+      return jsonError("محتوى الملف لا يطابق صيغة الصوت المعلنة.", 415);
     }
 
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
     const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
     const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
     if (!cloudName || !apiKey || !apiSecret) {
-      return NextResponse.json(
-        { error: "تخزين التسجيلات غير مهيأ على الخادم." },
-        { status: 503 }
-      );
+      return jsonError("تخزين التسجيلات غير مهيأ على الخادم.", 503);
     }
 
     // Audio is uploaded directly to Cloudinary; it must not use the Supabase
@@ -121,26 +111,31 @@ export async function POST(request: NextRequest) {
     };
     if (!upload.ok || !result.secure_url || result.public_id !== publicId) {
       console.error("[api/admin/video-generation/narration-upload] Cloudinary HTTP", upload.status, result.error?.message ?? "invalid upload response");
-      return NextResponse.json(
-        { error: "تعذر حفظ التسجيل في التخزين الخارجي." },
-        { status: 502 }
-      );
+      return jsonError("تعذر حفظ التسجيل في التخزين الخارجي.", 502);
     }
     const audioUrl = new URL(result.secure_url);
     if (audioUrl.protocol !== "https:" || audioUrl.hostname !== "res.cloudinary.com" ||
         !audioUrl.pathname.includes(`/${cloudName}/video/upload/`)) {
-      return NextResponse.json({ error: "رابط التخزين الناتج غير صالح." }, { status: 502 });
+      return jsonError("رابط التخزين الناتج غير صالح.", 502);
     }
 
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
+        action: "video.narration.upload",
+        permission: "video.manage",
+        resourceType: "video_narration",
+        resourceId: publicId,
+        metadata: { contentType, byteLength: bytes.byteLength, extension },
+      }),
+      (auditError) => console.error("[api/admin/video-generation/narration-upload] audit event failed after Cloudinary upload:", auditError),
+    );
+
     return NextResponse.json(
-      { audioUrl: result.secure_url, audioSource: "human_recording" },
+      { audioUrl: result.secure_url, audioSource: "human_recording", auditRecorded },
       { status: 201, headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
     console.error("[api/admin/video-generation/narration-upload] POST:", error);
-    return NextResponse.json(
-      { error: "تعذر رفع التسجيل الصوتي." },
-      { status: 500 }
-    );
+    return jsonError("تعذر رفع التسجيل الصوتي.", 500);
   }
 }

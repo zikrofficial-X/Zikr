@@ -1,5 +1,9 @@
 export const MAX_REQUEST_BODY_BYTES = 16_384;
 
+export type BoundedRequestBytesResult =
+  | { ok: true; bytes: Uint8Array }
+  | { ok: false; status: 400 | 413; error: string };
+
 export type BoundedJsonBodyResult =
   | { ok: true; value: unknown }
   | { ok: false; status: 400 | 413; error: string };
@@ -10,35 +14,51 @@ const INVALID_BODY: BoundedJsonBodyResult = {
   error: "Invalid JSON payload",
 };
 
+const INVALID_REQUEST_BODY: BoundedRequestBytesResult = {
+  ok: false,
+  status: 400,
+  error: "Unable to read request body",
+};
+
 const OVERSIZED_BODY: BoundedJsonBodyResult = {
   ok: false,
   status: 413,
   error: "Request body is too large",
 };
 
-/**
- * Read and parse a JSON request without buffering an unbounded body in memory.
- * Content-Length is an early-rejection hint only; the streamed byte count is
- * authoritative because chunked or under-reported requests may omit or lie.
- */
-export async function readBoundedJsonBody(
-  request: Pick<Request, "headers" | "body">,
-  maxBytes = MAX_REQUEST_BODY_BYTES,
-): Promise<BoundedJsonBodyResult> {
+const OVERSIZED_REQUEST_BODY: BoundedRequestBytesResult = {
+  ok: false,
+  status: 413,
+  error: "Request body is too large",
+};
+
+function validateMaxBytes(maxBytes: number) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
     throw new RangeError("maxBytes must be a positive safe integer.");
   }
+}
+
+/**
+ * Read a request body as bytes with an authoritative streamed-size limit.
+ * Content-Length is only an early-rejection hint because chunked or
+ * under-reported requests may omit or lie about it.
+ */
+export async function readBoundedRequestBytes(
+  request: Pick<Request, "headers" | "body">,
+  maxBytes: number,
+): Promise<BoundedRequestBytesResult> {
+  validateMaxBytes(maxBytes);
 
   const declaredLengthHeader = request.headers.get("content-length");
   if (declaredLengthHeader !== null) {
     const declaredLength = Number(declaredLengthHeader);
     if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
       await request.body?.cancel().catch(() => undefined);
-      return OVERSIZED_BODY;
+      return OVERSIZED_REQUEST_BODY;
     }
   }
 
-  if (!request.body) return INVALID_BODY;
+  if (!request.body) return { ok: true, bytes: new Uint8Array() };
 
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   const chunks: Uint8Array[] = [];
@@ -54,12 +74,12 @@ export async function readBoundedJsonBody(
       totalBytes += value.byteLength;
       if (totalBytes > maxBytes) {
         await reader.cancel().catch(() => undefined);
-        return OVERSIZED_BODY;
+        return OVERSIZED_REQUEST_BODY;
       }
       chunks.push(value);
     }
   } catch {
-    return INVALID_BODY;
+    return INVALID_REQUEST_BODY;
   } finally {
     try {
       reader?.releaseLock();
@@ -74,9 +94,19 @@ export async function readBoundedJsonBody(
     bytes.set(chunk, offset);
     offset += chunk.byteLength;
   }
+  return { ok: true, bytes };
+}
+
+export async function readBoundedJsonBody(
+  request: Pick<Request, "headers" | "body">,
+  maxBytes = MAX_REQUEST_BODY_BYTES,
+): Promise<BoundedJsonBodyResult> {
+  const body = await readBoundedRequestBytes(request, maxBytes);
+  if (!body.ok) return body.status === 413 ? OVERSIZED_BODY : INVALID_BODY;
+  if (!body.bytes.byteLength) return INVALID_BODY;
 
   try {
-    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    const decoded = new TextDecoder("utf-8", { fatal: true }).decode(body.bytes);
     return { ok: true, value: JSON.parse(decoded) as unknown };
   } catch {
     return INVALID_BODY;

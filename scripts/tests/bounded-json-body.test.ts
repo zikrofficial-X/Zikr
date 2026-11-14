@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   MAX_REQUEST_BODY_BYTES,
   readBoundedJsonBody,
+  readBoundedRequestBytes,
 } from "../../src/lib/request/bounded-json-body";
 
 function createRequest(
@@ -108,6 +109,47 @@ test("missing request bodies and invalid byte limits are handled explicitly", as
   );
   await assert.rejects(
     () => readBoundedJsonBody({ headers: new Headers(), body: null }, 0),
+    /maxBytes must be a positive safe integer/,
+  );
+});
+
+test("bounded raw body reader accepts an exact byte limit", async () => {
+  const bytes = new TextEncoder().encode("audio-bytes");
+  const { request } = createRequest([bytes], { "content-length": String(bytes.byteLength) });
+  const result = await readBoundedRequestBytes(request, bytes.byteLength);
+  assert.equal(result.ok, true);
+  if (result.ok) assert.deepEqual(result.bytes, bytes);
+});
+
+test("bounded raw body reader rejects oversized declared bodies before reading", async () => {
+  const { request, state } = createRequest(
+    [new TextEncoder().encode("audio")],
+    { "content-length": "6" },
+  );
+  const result = await readBoundedRequestBytes(request, 5);
+  assert.deepEqual(result, { ok: false, status: 413, error: "Request body is too large" });
+  assert.equal(state.reads, 0);
+  assert.equal(state.cancelled, true);
+});
+
+test("bounded raw body reader stops chunked or under-reported uploads at the first over-limit chunk", async () => {
+  const { request, state } = createRequest(
+    [new TextEncoder().encode("123456"), new TextEncoder().encode("ignored")],
+    { "content-length": "1" },
+  );
+  const result = await readBoundedRequestBytes(request, 5);
+  assert.deepEqual(result, { ok: false, status: 413, error: "Request body is too large" });
+  assert.equal(state.cancelled, true);
+  assert.equal(state.reads, 1);
+});
+
+test("bounded raw body reader returns an empty byte array for an absent body and validates its limit", async () => {
+  assert.deepEqual(
+    await readBoundedRequestBytes({ headers: new Headers(), body: null }, 5),
+    { ok: true, bytes: new Uint8Array() },
+  );
+  await assert.rejects(
+    () => readBoundedRequestBytes({ headers: new Headers(), body: null }, 0),
     /maxBytes must be a positive safe integer/,
   );
 });

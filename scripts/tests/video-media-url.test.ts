@@ -271,4 +271,10 @@ test("video upload requests are bounded and signed capabilities require a persis
     "the signed upload response must occur only after audit persistence succeeds",
   );
   assert.doesNotMatch(videoUploadRouteSource, /\.{3}upload, auditRecorded/);
+
+  const narrationUploadRouteSource = readFileSync("src/app/api/admin/video-generation/narration-upload/route.ts", "utf8");
+  assert.match(narrationUploadRouteSource, /readBoundedRequestBytes\(request, MAX_AUDIO_BYTES\)/);
+  assert.doesNotMatch(narrationUploadRouteSource, /request\.arrayBuffer\(\)/);
+  assert.match(narrationUploadRouteSource, /runPostCommitAudit/);
+  assert.match(narrationUploadRouteSource, /recordAdminAuditEvent/);
 });
