@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { hasCurrentCodeOwnerApproval } from "./lib/release-gate-approval.mjs";
 
 const repository = process.env.GITHUB_REPOSITORY?.trim();
-const commitSha = process.env.GITHUB_SHA?.trim();
+const commitSha = process.env.RELEASE_COMMIT_SHA?.trim() || process.env.GITHUB_SHA?.trim();
 const token = process.env.GITHUB_TOKEN?.trim();
 const requireVercelStatusSetting = process.env.REQUIRE_VERCEL_STATUS?.trim().toLowerCase();
 if (requireVercelStatusSetting && !["true", "false"].includes(requireVercelStatusSetting)) {
@@ -11,8 +11,8 @@ if (requireVercelStatusSetting && !["true", "false"].includes(requireVercelStatu
 }
 const requireVercelStatus = requireVercelStatusSetting !== "false";
 
-if (!repository || !commitSha || !token) {
-  throw new Error("GITHUB_REPOSITORY, GITHUB_SHA, and GITHUB_TOKEN are required.");
+if (!repository || !commitSha || !token || !/^[0-9a-f]{40}$/i.test(commitSha)) {
+  throw new Error("GITHUB_REPOSITORY, RELEASE_COMMIT_SHA or GITHUB_SHA, and GITHUB_TOKEN are required.");
 }
 
 const apiHeaders = {

@@ -19,6 +19,7 @@ permissions:
   contents: write
   statuses: read
   checks: read
+  pull-requests: read
 
 # Tag pushes and recovery dispatches can target the same GitHub Release from
 # different refs. A single shared lock prevents concurrent asset delete/upload
@@ -59,6 +60,7 @@ jobs:
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve release tag
+        id: resolve_tag
         if: steps.gate.outputs.publish == 'true'
         shell: bash
         env:
@@ -106,6 +108,15 @@ jobs:
 
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "TAG_TARGET_SHA=$TAG_TARGET_SHA" >> "$GITHUB_ENV"
+          echo "tag_target_sha=$TAG_TARGET_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify current PR CODEOWNER approval before publishing Android assets
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT_SHA: ${{ steps.resolve_tag.outputs.tag_target_sha }}
+          REQUIRE_VERCEL_STATUS: "false"
+        run: node scripts/verify-release-gates.mjs
 
       - name: Fail fast if a published immutable release is missing APK/AAB
         if: steps.gate.outputs.publish == 'true'
