@@ -48,6 +48,16 @@ assert.ok(
   !robotsSource.includes('sitemap: `${baseUrl}/sitemap.xml`'),
   "robots.txt must not advertise only the first URL shard as the complete sitemap",
 );
+const adminSeoSource = readFileSync("src/app/admin/seo/page.tsx", "utf8");
+assert.ok(
+  adminSeoSource.includes('href="/sitemap-index.xml"'),
+  "the admin SEO surface must link to the complete sitemap index, not only shard zero",
+);
+assert.doesNotMatch(
+  adminSeoSource,
+  /href="\/sitemap\.xml"/,
+  "the admin SEO surface must not advertise the first sitemap shard as the complete index",
+);
 
 
 console.log("Sitemap shard sizing, indexing, and route alignment contracts passed.");
