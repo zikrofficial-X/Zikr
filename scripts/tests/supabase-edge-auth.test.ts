@@ -99,9 +99,9 @@ await expectAuthError(
 
 const spiritualAiSource = readFileSync("supabase/functions/spiritual-ai/index.ts", "utf8");
 const supabaseConfig = readFileSync("supabase/config.toml", "utf8");
-const spiritualAiConfig = supabaseConfig.match(/\\[functions\\.spiritual-ai\\]([\\s\\S]*?)(?=\\n\\[functions\\.|$)/)?.[1] ?? "";
+const spiritualAiConfig = supabaseConfig.match(/\[functions\.spiritual-ai\]([\s\S]*?)(?=\n\[functions\.|$)/)?.[1] ?? "";
 assert.match(spiritualAiSource, /requireAuthenticatedUser\(/, "spiritual-ai must validate an authenticated Supabase user");
 assert.doesNotMatch(spiritualAiSource, /requireBearerToken\(/, "a non-empty bearer header is not sufficient authentication");
-assert.match(spiritualAiConfig, /^\\s*verify_jwt\\s*=\\s*true\\s*$/m, "the Supabase gateway must continue validating JWT signatures");
+assert.match(spiritualAiConfig, /^\s*verify_jwt\s*=\s*true\s*$/m, "the Supabase gateway must continue validating JWT signatures");
 
 console.log("Supabase Edge authenticated-user contract passed: 9 assertions.");

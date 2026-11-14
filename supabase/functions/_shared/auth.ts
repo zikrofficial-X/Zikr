@@ -31,14 +31,14 @@ export async function requireAuthenticatedUser(
   options: AuthVerificationOptions,
 ): Promise<AuthContext> {
   const header = request.headers.get("authorization") ?? "";
-  const match = header.match(/^Bearer\\s+(.+)$/i);
+  const match = header.match(/^Bearer\s+(.+)$/i);
   const token = match?.[1]?.trim();
 
   if (!token) {
     throw new AuthVerificationError("Missing bearer token.", 401);
   }
 
-  const supabaseUrl = options.supabaseUrl.trim().replace(/\\/+$/, "");
+  const supabaseUrl = options.supabaseUrl.trim().replace(/\/+$/, "");
   const anonKey = options.anonKey.trim();
   if (!supabaseUrl || !anonKey) {
     throw new AuthVerificationError("Authentication service is not configured.", 503);
