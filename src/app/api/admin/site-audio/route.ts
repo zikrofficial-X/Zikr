@@ -374,35 +374,35 @@ export async function DELETE(request: NextRequest) {
           detachIntentError?.message ?? "deletion intent did not match the deleted asset",
         );
       } else {
-      const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
-      if (storageError) {
-        storageCleanupPending = true;
-        console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
-      } else {
-        const { data: remainingObjects, error: verificationError } = await db.storage
-          .from("site-audio")
-          .list(storageDirectory, { search: storageFileName, limit: 10 });
-        const objectStillPresent = Array.isArray(remainingObjects) &&
-          remainingObjects.some((object) => object.name === storageFileName);
-        if (verificationError || !Array.isArray(remainingObjects) || objectStillPresent) {
+        const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
+        if (storageError) {
           storageCleanupPending = true;
-          console.error("[api/admin/site-audio] Storage removal could not be verified; retention worker will retry:", verificationError?.message ?? "object remains or inventory is incomplete");
+          console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
         } else {
-          const { data: finalizedIntent, error: intentUpdateError } = await db
-            .from("site_audio_upload_intents")
-            .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
-            .eq("storage_path", asset.storage_path)
-            .eq("status", "deleting")
-            .is("asset_id", null)
-            .select("storage_path")
-            .maybeSingle();
-          if (intentUpdateError || !finalizedIntent) {
-            intentFinalizationPending = true;
-            console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError?.message ?? "deleting intent was not updated");
+          const { data: remainingObjects, error: verificationError } = await db.storage
+            .from("site-audio")
+            .list(storageDirectory, { search: storageFileName, limit: 10 });
+          const objectStillPresent = Array.isArray(remainingObjects) &&
+            remainingObjects.some((object) => object.name === storageFileName);
+          if (verificationError || !Array.isArray(remainingObjects) || objectStillPresent) {
+            storageCleanupPending = true;
+            console.error("[api/admin/site-audio] Storage removal could not be verified; retention worker will retry:", verificationError?.message ?? "object remains or inventory is incomplete");
+          } else {
+            const { data: finalizedIntent, error: intentUpdateError } = await db
+              .from("site_audio_upload_intents")
+              .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
+              .eq("storage_path", asset.storage_path)
+              .eq("status", "deleting")
+              .is("asset_id", null)
+              .select("storage_path")
+              .maybeSingle();
+            if (intentUpdateError || !finalizedIntent) {
+              intentFinalizationPending = true;
+              console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError?.message ?? "deleting intent was not updated");
+            }
           }
         }
-      }
-      }
+        }
     }
   }
 
