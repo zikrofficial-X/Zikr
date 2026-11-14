@@ -6,9 +6,16 @@ export type SourceItem = {
   metadata: Record<string, unknown>;
 };
 
+export type SourceParseSkipReason = "catalog_only_source" | "parser_not_implemented";
+
 export type SourceParseOutcome =
   | { kind: "items"; items: SourceItem[] }
-  | { kind: "skipped"; reason: "catalog_only_source" | "parser_not_implemented" };
+  | { kind: "skipped"; reason: SourceParseSkipReason };
+
+export function getSourceParserSkipReason(source: { parser_key: string }): SourceParseSkipReason | null {
+  if (source.parser_key === "alquran_cloud") return "catalog_only_source";
+  return "parser_not_implemented";
+}
 
 /**
  * Keep source ingestion explicit: a successful HTTP fetch is not a successful
@@ -19,11 +26,8 @@ export function parseSourceItems(
   _payload: unknown,
   _retrievedAt: string,
 ): SourceParseOutcome {
-  if (source.parser_key === "alquran_cloud") {
-    // Quran chapter catalog is synchronized into quran_surahs and is not a
-    // reviewable editorial-content queue item.
-    return { kind: "skipped", reason: "catalog_only_source" };
-  }
+  const skipReason = getSourceParserSkipReason(source);
+  if (skipReason) return { kind: "skipped", reason: skipReason };
 
   // Credentialed providers remain disabled until a provider-specific parser
   // has been implemented and reviewed.

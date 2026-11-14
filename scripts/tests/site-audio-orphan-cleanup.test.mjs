@@ -111,6 +111,12 @@ assert.doesNotMatch(siteAudioJobEnv, /SUPABASE_SERVICE_ROLE_KEY/, "the service-r
 const siteAudioInstallStart = workflow.indexOf("- name: Install runtime dependencies");
 const siteAudioInstallEnd = workflow.indexOf("- name: Verify site-audio cleanup safety tests", siteAudioInstallStart);
 assert.doesNotMatch(workflow.slice(siteAudioInstallStart, siteAudioInstallEnd), /SUPABASE_SERVICE_ROLE_KEY/);
+const siteAudioSafetyTestStart = workflow.indexOf("- name: Verify site-audio cleanup safety tests");
+const siteAudioDryRunStart = workflow.indexOf("- name: Print redacted site-audio cleanup plan (dry run)");
+const siteAudioApplyStart = workflow.indexOf("- name: Apply manually approved site-audio orphan cleanup", siteAudioDryRunStart);
+assert.doesNotMatch(workflow.slice(siteAudioSafetyTestStart, siteAudioDryRunStart), /SUPABASE_SERVICE_ROLE_KEY/, "safety tests must run without production credentials");
+assert.match(workflow.slice(siteAudioDryRunStart, siteAudioApplyStart), /SUPABASE_SERVICE_ROLE_KEY/, "read-only cleanup preview must receive the key only in its step scope");
+assert.match(workflow.slice(siteAudioApplyStart), /SUPABASE_SERVICE_ROLE_KEY/, "approved cleanup must receive the key only in its step scope");
 assert.ok(workflow.includes("${{ secrets.SUPABASE_SERVICE_ROLE_KEY"), "the service-role key must be scoped to explicit runtime steps");
 assert.ok(workflow.includes("${{ inputs.confirmation }}"), "manual confirmation input must be passed through to the cleanup process");
 assert.ok(workflow.includes("${SITE_AUDIO_UPLOAD_WRITES_PAUSED}"), "the shell must evaluate the write-freeze confirmation");

@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { parseSourceItems } from "./parse-items.ts";
+import { getSourceParserSkipReason, parseSourceItems } from "./parse-items.ts";
 
 const PROJECT_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -48,6 +48,16 @@ async function isAuthorized(request: Request): Promise<boolean> {
 }
 
 async function processSource(source: Source, now: string) {
+  const parserSkipReason = getSourceParserSkipReason(source);
+  if (parserSkipReason) {
+    return {
+      fetched: 0,
+      queued: 0,
+      skipped: 1,
+      failed: 0,
+      reason: parserSkipReason,
+    };
+  }
   if (!source.fetch_url)
     return {
       fetched: 0,
@@ -70,7 +80,11 @@ async function processSource(source: Source, now: string) {
     headers.set("Authorization", `Bearer ${key}`);
   }
 
-  const response = await fetch(source.fetch_url, { headers });
+  const response = await fetch(source.fetch_url, {
+    headers,
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!response.ok)
     throw new Error(`${source.name} returned HTTP ${response.status}`);
   const payload = await response.json();
