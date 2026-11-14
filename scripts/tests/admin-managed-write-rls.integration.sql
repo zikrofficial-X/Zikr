@@ -13,7 +13,8 @@ DECLARE
     'video_generation_requests',
     'media_assets',
     'site_audio_assets',
-    'videos'
+    'videos',
+    'kids_content'
   ];
 BEGIN
   FOREACH table_name IN ARRAY server_only_tables LOOP
@@ -59,6 +60,19 @@ BEGIN
     RAISE EXCEPTION 'public roles must not mutate the video catalog';
   END IF;
 
+  IF NOT has_table_privilege('anon', 'public.kids_content', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.kids_content', 'SELECT') THEN
+    RAISE EXCEPTION 'public and authenticated roles must retain RLS-filtered Kids content reads';
+  END IF;
+  IF has_table_privilege('anon', 'public.kids_content', 'INSERT')
+     OR has_table_privilege('anon', 'public.kids_content', 'UPDATE')
+     OR has_table_privilege('anon', 'public.kids_content', 'DELETE')
+     OR has_table_privilege('authenticated', 'public.kids_content', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.kids_content', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.kids_content', 'DELETE') THEN
+    RAISE EXCEPTION 'public roles must not mutate Kids content outside the audited server action';
+  END IF;
+
   FOREACH table_name IN ARRAY all_tables LOOP
     IF NOT has_table_privilege('service_role', 'public.' || table_name, 'SELECT')
        OR NOT has_table_privilege('service_role', 'public.' || table_name, 'INSERT')
@@ -96,6 +110,14 @@ BEGIN
      ) THEN
     RAISE EXCEPTION 'Only the published public video read policy should remain';
   END IF;
+  IF (SELECT count(*) FROM pg_catalog.pg_policies WHERE schemaname='public' AND tablename='kids_content') <> 1
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_catalog.pg_policies
+       WHERE schemaname='public' AND tablename='kids_content'
+         AND policyname='kids_content_public_read' AND cmd='SELECT'
+     ) THEN
+    RAISE EXCEPTION 'Only the active published Kids content read policy should remain';
+  END IF;
 
   IF NOT (SELECT relrowsecurity FROM pg_catalog.pg_class WHERE oid='storage.objects'::regclass) THEN
     RAISE EXCEPTION 'Storage object RLS must remain enabled';
@@ -131,6 +153,9 @@ BEGIN
   SELECT count(*) INTO video_rows FROM public.videos;
   IF video_rows <> 1 THEN
     RAISE EXCEPTION 'anon must read only published videos; found %', video_rows;
+  END IF;
+  IF (SELECT count(*) FROM public.kids_content) <> 1 THEN
+    RAISE EXCEPTION 'anon must read only active published Kids content';
   END IF;
 END
 $public_read$;
@@ -228,6 +253,13 @@ BEGIN
   WHERE id='66666666-6666-6666-6666-666666666665';
   DELETE FROM public.videos
   WHERE id='66666666-6666-6666-6666-666666666665';
+
+  INSERT INTO public.kids_content (id, slug, title, type, published, is_active)
+  VALUES ('66666666-6666-6666-6666-666666666666', 'service-role-kids-fixture', 'service role fixture', 'story', false, true);
+  UPDATE public.kids_content SET published=true
+  WHERE id='66666666-6666-6666-6666-666666666666';
+  DELETE FROM public.kids_content
+  WHERE id='66666666-6666-6666-6666-666666666666';
 
   INSERT INTO storage.objects (id, bucket_id, name)
   VALUES (3, 'site-audio', 'service-role.mp3');

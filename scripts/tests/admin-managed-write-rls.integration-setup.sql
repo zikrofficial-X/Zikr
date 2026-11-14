@@ -83,6 +83,15 @@ CREATE TABLE public.videos (
   published boolean NOT NULL DEFAULT false
 );
 
+CREATE TABLE public.kids_content (
+  id uuid PRIMARY KEY,
+  slug text NOT NULL UNIQUE,
+  title text NOT NULL,
+  type text NOT NULL,
+  published boolean NOT NULL DEFAULT false,
+  is_active boolean NOT NULL DEFAULT true
+);
+
 CREATE TABLE storage.objects (
   id bigint PRIMARY KEY,
   bucket_id text NOT NULL,
@@ -105,6 +114,7 @@ ALTER TABLE public.video_generation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.site_audio_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kids_content ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY social_publish_queue_admin_read
   ON public.social_publish_queue
@@ -238,11 +248,30 @@ CREATE POLICY videos_public_read
   FOR SELECT TO public
   USING (published IS TRUE);
 
+CREATE POLICY kids_content_public_read
+  ON public.kids_content
+  FOR SELECT TO anon, authenticated
+  USING (published IS TRUE AND is_active IS TRUE);
+CREATE POLICY admin_all_kids_content_insert
+  ON public.kids_content
+  FOR INSERT TO authenticated
+  WITH CHECK (private.is_admin_user());
+CREATE POLICY admin_all_kids_content_update
+  ON public.kids_content
+  FOR UPDATE TO authenticated
+  USING (private.is_admin_user())
+  WITH CHECK (private.is_admin_user());
+CREATE POLICY admin_all_kids_content_delete
+  ON public.kids_content
+  FOR DELETE TO authenticated
+  USING (private.is_admin_user());
+
 GRANT ALL PRIVILEGES ON TABLE public.social_publish_queue TO PUBLIC, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.video_generation_requests TO PUBLIC, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.media_assets TO PUBLIC, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.site_audio_assets TO PUBLIC, anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON TABLE public.videos TO PUBLIC, anon, authenticated, service_role;
+GRANT ALL PRIVILEGES ON TABLE public.kids_content TO PUBLIC, anon, authenticated, service_role;
 
 INSERT INTO public.social_publish_queue (id, status)
 VALUES ('11111111-1111-1111-1111-111111111111', 'queued');
@@ -259,6 +288,11 @@ INSERT INTO public.videos (id, title, published)
 VALUES
   ('55555555-5555-5555-5555-555555555555', 'published fixture', true),
   ('55555555-5555-5555-5555-555555555556', 'unpublished fixture', false);
+INSERT INTO public.kids_content (id, slug, title, type, published, is_active)
+VALUES
+  ('77777777-7777-7777-7777-777777777771', 'published-kids-fixture', 'published kids fixture', 'story', true, true),
+  ('77777777-7777-7777-7777-777777777772', 'inactive-kids-fixture', 'inactive kids fixture', 'story', true, false),
+  ('77777777-7777-7777-7777-777777777773', 'unpublished-kids-fixture', 'unpublished kids fixture', 'story', false, true);
 INSERT INTO storage.objects (id, bucket_id, name)
 VALUES (1, 'site-audio', 'existing.mp3');
 
