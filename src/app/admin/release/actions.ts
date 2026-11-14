@@ -4,6 +4,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath, updateTag } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
@@ -20,24 +21,30 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 
 export async function createAndroidReleaseAction() {
   const profile = await requireAdminPermission("release.manage");
+  await requireAdminStepUp("release.manage", "/admin/release");
 
-  const existing = await supabaseServerAdminRequest<
-    Array<{ value?: unknown }>
-  >(
-    "/rest/v1/admin_settings?key=eq.android_release_operation&select=value&limit=1",
-    { method: "GET" },
-  ).catch(() => []);
+  let existing: Array<{ value?: unknown }> = [];
+  try {
+    existing = await supabaseServerAdminRequest<Array<{ value?: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.android_release_operation&select=value&limit=1",
+      { method: "GET" },
+    );
+  } catch {
+    redirect(
+      "/admin/release?android_release_error=" +
+        encodeURIComponent("تعذر التحقق من حالة الإصدار الحالية. لم يتم بدء إصدار جديد."),
+    );
+  }
 
   const current = existing?.[0]?.value as
     | { status?: string; tag?: string; startedAt?: string }
     | undefined;
 
-  if (
-    current?.status === "building" &&
-    current.startedAt &&
-    Date.now() - Date.parse(current.startedAt) < 6 * 60 * 60 * 1000
-  ) {
-    redirect("/admin/release?android_release_error=" + encodeURIComponent("يوجد إصدار Android قيد البناء بالفعل. انتظر اكتماله قبل إطلاق إصدار جديد."));
+  if (current?.status === "building") {
+    const startedAt = Date.parse(current.startedAt ?? "");
+    if (!Number.isFinite(startedAt) || Date.now() - startedAt < 6 * 60 * 60 * 1000) {
+      redirect("/admin/release?android_release_error=" + encodeURIComponent("يوجد إصدار Android قيد البناء بالفعل أو أن حالة العملية غير مكتملة. راجع العملية الحالية قبل بدء إصدار جديد."));
+    }
   }
 
   let result: Awaited<ReturnType<typeof prepareAndroidRelease>>;
