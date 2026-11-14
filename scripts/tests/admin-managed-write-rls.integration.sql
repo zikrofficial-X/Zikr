@@ -115,6 +115,10 @@ BEGIN
        SELECT 1 FROM pg_catalog.pg_policies
        WHERE schemaname='public' AND tablename='kids_content'
          AND policyname='kids_content_public_read' AND cmd='SELECT'
+         AND roles @> ARRAY['anon', 'authenticated']::name[]
+         AND NOT roles @> ARRAY['public']::name[]
+         AND qual LIKE '%published%'
+         AND qual LIKE '%is_active%'
      ) THEN
     RAISE EXCEPTION 'Only the active published Kids content read policy should remain';
   END IF;
