@@ -139,3 +139,13 @@ assert.match(
 );
 
 console.log("Admin role resolution fail-closed tests passed.");
+
+
+const knowledgeActions = readFileSync("src/app/admin/knowledge/actions.ts", "utf8");
+for (const name of ["saveCompanionAction", "saveScholarAction", "saveHadithAction"]) {
+  const start = knowledgeActions.indexOf(`export async function ${name}`);
+  const next = knowledgeActions.indexOf("export async function ", start + 1);
+  const body = knowledgeActions.slice(start, next < 0 ? knowledgeActions.length : next);
+  assert.match(body, /requireAdminPermission\("knowledge\\.manage"\)/, `${name} must require knowledge.manage`);
+  assert.match(body, /if \(formData\.has\("published"\)\) await requireAdminStepUp\("content\\.publish", "\/admin\/knowledge"\)/, `${name} must require step-up MFA before publishing`);
+}

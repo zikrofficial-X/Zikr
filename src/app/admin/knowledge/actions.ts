@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdminPermission } from '@/features/admin/services/admin';
+import { requireAdminStepUp } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
@@ -32,6 +33,7 @@ async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<bool
 
 export async function saveCompanionAction(formData: FormData) {
   await requireAdminPermission("knowledge.manage");
+  if (formData.has("published")) await requireAdminStepUp("content.publish", "/admin/knowledge");
   const nameAr = text(formData, 'name_ar', true)!;
   const nameEn = text(formData, 'name_en') ?? nameAr;
   const normalizedSlug = slug(text(formData, 'slug') ?? nameAr);
@@ -52,6 +54,7 @@ export async function saveCompanionAction(formData: FormData) {
 
 export async function saveScholarAction(formData: FormData) {
   await requireAdminPermission("knowledge.manage");
+  if (formData.has("published")) await requireAdminStepUp("content.publish", "/admin/knowledge");
   const nameAr = text(formData, 'name_ar', true)!;
   const nameEn = text(formData, 'name_en') ?? nameAr;
   const normalizedSlug = slug(text(formData, 'slug') ?? nameAr);
@@ -92,6 +95,7 @@ export async function saveSurahAction(formData: FormData) {
 
 export async function saveHadithAction(formData: FormData) {
   await requireAdminPermission("knowledge.manage");
+  if (formData.has("published")) await requireAdminStepUp("content.publish", "/admin/knowledge");
   const bookId = text(formData, 'book_id', true)!;
   const hadithNumber = text(formData, 'hadith_number', true)!;
   const textAr = text(formData, 'text_ar', true)!;
