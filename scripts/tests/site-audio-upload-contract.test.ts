@@ -113,8 +113,8 @@ assert.deepEqual(
 const adminRoute = readFileSync("src/app/api/admin/site-audio/route.ts", "utf8");
 const uploadRoute = readFileSync("src/app/api/admin/site-audio/upload/route.ts", "utf8");
 const manager = readFileSync("src/features/admin/components/site-audio-manager.tsx", "utf8");
-assert.match(adminRoute, /readBoundedJsonBody\\(request\\)/);
-assert.match(uploadRoute, /readBoundedJsonBody\\(request\\)/);
+assert.ok(adminRoute.includes("readBoundedJsonBody(request)"));
+assert.ok(uploadRoute.includes("readBoundedJsonBody(request)"));
 assert.equal(adminRoute.includes("request.json()"), false, "admin site-audio JSON bodies must remain bounded");
 assert.equal(uploadRoute.includes("request.json()"), false, "site-audio upload JSON bodies must remain bounded");
 const oversizedRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/site-audio", {
