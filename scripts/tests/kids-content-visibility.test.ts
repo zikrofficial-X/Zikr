@@ -491,7 +491,15 @@ assert.deepEqual(
   "a confirmed deletion must still hide the exact provider delivery it removed",
 );
 
-for (const explicitLedger of [{}, [], "malformed"]) {
+for (const explicitLedger of [
+  {},
+  [],
+  "malformed",
+  [
+    { platform: "youtube", ok: false, remoteId: null, error: "first delivery result" },
+    { platform: "youtube", ok: true, remoteId: "yt-duplicate-success" },
+  ],
+]) {
   const rowWithExplicitEmptyOrMalformedLedger = {
     ...originalYoutubeQueueRow,
     metadata: {
