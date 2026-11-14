@@ -5,6 +5,7 @@ const read = (path) => readFileSync(path, "utf8");
 const route = read("src/app/api/admin/videos/[id]/retry/route.ts");
 const client = read("src/features/admin/video-requests/components/admin-video-requests-client.tsx");
 const verifier = read("scripts/verify-admin-api-guards.mjs");
+const generationRoute = read("src/app/api/admin/video-generation/route.ts");
 
 assert.match(
   route,
@@ -31,5 +32,11 @@ assert.match(
   /videoRetrySource[\s\S]*requireAdminStepUpApi/,
   "the canonical admin API guard verifier must retain the retry-specific step-up contract",
 );
+
+assert.match(generationRoute, /readBoundedJsonBody\(request,/);
+assert.equal((generationRoute.match(/readBoundedJsonBody\(request,/g) || []).length, 2, "video generation DELETE and PATCH bodies must both use bounded JSON parsing");
+assert.doesNotMatch(generationRoute, /request\.json\(\)/, "the admin video-generation route must not parse unbounded JSON bodies");
+assert.match(generationRoute, /rawIds\.length > 500/, "bulk deletion must cap the number of selected request IDs");
+assert.match(generationRoute, /VIDEO_REQUEST_ID_PATTERN/, "video request IDs must be validated as UUIDs before building PostgREST filters");
 
 console.log("Admin video retry step-up regression contract passed.");
