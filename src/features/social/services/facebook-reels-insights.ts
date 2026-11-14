@@ -278,7 +278,7 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
 
   for (let page = 0; page < maxPages && candidates.length < limit; page += 1) {
     const rows = await supabaseServerAdminRequest<QueueRow[]>(
-      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.desc,id.desc&limit=" +
+      "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.asc,id.asc&limit=" +
         pageSize + "&offset=" + page * pageSize,
     );
     const batch = requireSocialQueueRows<QueueRow>(rows, "Facebook Reels queue candidate query");

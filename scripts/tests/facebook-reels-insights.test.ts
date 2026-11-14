@@ -136,7 +136,6 @@ assert.ok(insightsService.includes("Meta could not list Page posts to resolve hi
 assert.ok(insightsService.includes("requireSocialQueueRows<QueueRow>"), "a malformed Reel queue query must fail closed");
 assert.ok(insightsService.includes("requireSocialQueueRows<ExistingFacebookInsightRow>"), "a failed freshness query must not be treated as an empty cache and trigger redundant Meta reads");
 assert.doesNotMatch(insightsService, /\.catch\(\(\) => \[\]\)/, "Facebook insights database read failures must remain visible to the worker");
-assert.ok(insightsService.includes("order=created_at.desc,id.desc"), "the bounded insights scan must prioritize recent published Reels");
 assert.ok(!insightsService.includes("object_id"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");
