@@ -204,14 +204,9 @@ export async function PATCH(request: NextRequest) {
     .eq("id", id)
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const auditRecorded = await recordAuditSafely({
-    action: "site_audio.asset.set_primary",
-    permission: "audio.manage",
-    resourceType: "site_audio_assets",
-    resourceId: data.id,
-    metadata: { kind, isPrimary: data.is_primary === true },
-  }, "primary asset update");
-  return NextResponse.json({ asset: data, auditRecorded });
+  // The database RPC commits the primary switch and its audit event atomically.
+  // Do not append a second API-level event for the same action.
+  return NextResponse.json({ asset: data, auditRecorded: true });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -223,7 +218,7 @@ export async function DELETE(request: NextRequest) {
   const db = createAdminClient();
   const { data: asset, error: findError } = await db
     .from("site_audio_assets")
-    .select("id,kind,storage_path")
+    .select("id,kind,storage_path,is_primary,created_by,mime_type,size_bytes")
     .eq("id", id)
     .single();
   if (findError) return NextResponse.json({ error: findError.message }, { status: 404 });
@@ -231,32 +226,83 @@ export async function DELETE(request: NextRequest) {
   if (asset.storage_path.startsWith("curated:")) {
     return NextResponse.json({ error: "المقاطع المنتمية إلى المكتبة الموثوقة للقراءة فقط ولا يمكن حذفها من هذه الواجهة." }, { status: 409 });
   }
+  if (asset.is_primary === true) {
+    return NextResponse.json({ error: "لا يمكن حذف المقطع الأساسي. عيّن مقطعًا آخر كأساسي أولًا." }, { status: 409 });
+  }
 
-  if (!/^https?:\/\//i.test(asset.storage_path)) {
-    const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
-    if (storageError) {
-      console.error("[site-audio] storage removal failed; database row retained for retry:", storageError.message);
-      return NextResponse.json({ error: "تعذر حذف الملف من التخزين؛ لم يُحذف سجل المقطع حتى يمكن إعادة المحاولة.", storageCleanupPending: true }, { status: 502 });
+  const isRemoteUrl = /^https?:\/\//i.test(asset.storage_path);
+  if (!isRemoteUrl) {
+    const pathOwnerId = asset.storage_path.split("/")[0] ?? "";
+    const ownerId = typeof asset.created_by === "string" && asset.created_by.trim()
+      ? asset.created_by.trim()
+      : pathOwnerId;
+    const pathValidation = validateSiteAudioUploadPath({
+      ownerId,
+      storagePath: asset.storage_path,
+      mimeType: asset.mime_type,
+      sizeBytes: Number(asset.size_bytes),
+    });
+    if (!pathValidation.ok) {
+      return NextResponse.json({ error: "مسار التخزين لا يملك سجل تنظيف آمنًا؛ راجع مسؤول النظام قبل الحذف." }, { status: 409 });
+    }
+
+    const now = new Date();
+    const { error: intentError } = await db.from("site_audio_upload_intents").upsert({
+      storage_path: asset.storage_path,
+      owner_user_id: ownerId,
+      mime_type: asset.mime_type.trim().toLowerCase(),
+      size_bytes: asset.size_bytes,
+      upload_expires_at: new Date(now.getTime() - 1_000).toISOString(),
+      cleanup_after: new Date(now.getTime() + 24 * 60 * 60 * 1_000).toISOString(),
+      status: "pending",
+      asset_id: asset.id,
+      updated_at: now.toISOString(),
+    }, { onConflict: "storage_path" });
+    if (intentError) {
+      console.error("[api/admin/site-audio] could not create a safe deletion intent:", intentError);
+      return NextResponse.json({ error: "تعذر تجهيز سجل تنظيف آمن؛ لم يُحذف المقطع." }, { status: 503 });
     }
   }
 
+  // Delete only if the asset is still non-primary. The intent is already durable,
+  // so a failed Storage removal can be retried after the 24-hour retention window.
   const { data: deleted, error } = await db
     .from("site_audio_assets")
     .delete()
     .eq("id", id)
+    .eq("is_primary", false)
     .select("id");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!deleted?.length) {
-    return NextResponse.json({ error: "تم حذف المقطع أو تغييره بواسطة مستخدم آخر. تحقّق من التخزين قبل إعادة المحاولة." }, { status: 409 });
+    return NextResponse.json({ error: "تم تغيير المقطع أو تفعيله كأساسي بواسطة مستخدم آخر. حدّث القائمة قبل إعادة المحاولة." }, { status: 409 });
   }
-  const storageCleanupPending = false;
+
+  let storageCleanupPending = false;
+  let intentFinalizationPending = false;
+  if (!isRemoteUrl) {
+    const { error: storageError } = await db.storage.from("site-audio").remove([asset.storage_path]);
+    if (storageError) {
+      storageCleanupPending = true;
+      console.error("[api/admin/site-audio] Storage cleanup deferred to the guarded retention worker:", storageError.message);
+    } else {
+      const { error: intentUpdateError } = await db
+        .from("site_audio_upload_intents")
+        .update({ status: "cleaned", asset_id: null, updated_at: new Date().toISOString() })
+        .eq("storage_path", asset.storage_path)
+        .eq("status", "pending");
+      if (intentUpdateError) {
+        intentFinalizationPending = true;
+        console.error("[api/admin/site-audio] Storage intent finalization deferred:", intentUpdateError.message);
+      }
+    }
+  }
 
   const auditRecorded = await recordAuditSafely({
     action: "site_audio.asset.delete",
     permission: "audio.manage",
     resourceType: "site_audio_assets",
     resourceId: id,
-    metadata: { kind: asset.kind, storageCleanupPending },
+    metadata: { kind: asset.kind, storageCleanupPending, intentFinalizationPending },
   }, "asset deletion");
-  return NextResponse.json({ ok: true, storageCleanupPending, auditRecorded });
+  return NextResponse.json({ ok: true, storageCleanupPending, intentFinalizationPending, auditRecorded });
 }
