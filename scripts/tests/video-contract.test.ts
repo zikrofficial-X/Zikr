@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { MAX_AUTO_VIDEO_SECONDS, resolveRenderDuration } from "../../src/features/videos/services/render-duration";
 import { isVideoAiPlanningEnabled } from "../../src/features/videos/providers/types";
+import { CURRENT_VIDEO_RENDERER_VERSION } from "../../src/features/videos/services/video-template-version";
 
 // Contract: TypeScript video status/category unions must match the latest DB check constraints.
 const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
@@ -45,6 +46,24 @@ const footer = readFileSync("src/components/layout/footer.tsx", "utf8");
 assert.ok(smartLinkPromo.includes("MONETAG_SMARTLINK_URL"));
 assert.ok(footer.includes("MONETAG_SMARTLINK_URL"));
 
+const videoOpsGuide = readFileSync("docs/GITHUB_AI_VIDEO.md", "utf8");
+const envExample = readFileSync(".env.example", "utf8");
+const productionVideoWorkflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
+assert.ok(videoOpsGuide.includes("VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template"),
+  "the video operations guide must match the checked-in provider order");
+assert.ok(videoOpsGuide.includes("Cloudinary") && videoOpsGuide.includes("fails closed rather than falling back to Supabase Storage"),
+  "the video operations guide must describe the actual Cloudinary-only MP4 upload path");
+assert.ok(videoOpsGuide.includes(CURRENT_VIDEO_RENDERER_VERSION),
+  "the video operations guide must identify the current renderer contract version");
+assert.doesNotMatch(videoOpsGuide, /existing `videos` bucket|v4 renderer/,
+  "the video operations guide must not retain the retired Supabase bucket or renderer instructions");
+assert.ok(envExample.includes("VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template") &&
+  productionVideoWorkflow.includes('VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"'),
+  "local environment template and production workflow must keep the same reviewed provider order");
+const cloudinaryUploadSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(cloudinaryUploadSource.includes("uploadGeneratedVideoToCloudinary") &&
+  cloudinaryUploadSource.includes("refusing to use Supabase Storage as a fallback"),
+  "the worker must continue to fail closed when Cloudinary is not configured");
 const videoCatalog = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const videoDetailPage = readFileSync("src/app/videos/[slug]/page.tsx", "utf8");
 assert.ok(videoCatalog.includes('metadata.generator === "zikr_internal_video_factory"'), "internal generated video catalog must use a distinct generator marker");
