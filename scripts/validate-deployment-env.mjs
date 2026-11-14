@@ -77,11 +77,11 @@ for (const name of OPTIONAL) {
 }
 
 const googleWebClientId = env("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID");
-if (googleWebClientId && !/^[0-9]+-[a-z0-9-]+\\.apps\\.googleusercontent\\.com$/i.test(googleWebClientId)) {
+if (googleWebClientId && !/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(googleWebClientId)) {
   add("fail", "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID", "must be a Google Web OAuth client ID");
 }
 const iosAssociatedDomainAppId = env("IOS_ASSOCIATED_DOMAIN_APP_ID");
-if (iosAssociatedDomainAppId && !/^[A-Z0-9]{10}\\.com\\.zikr\\.app$/.test(iosAssociatedDomainAppId)) {
+if (iosAssociatedDomainAppId && !/^[A-Z0-9]{10}\.com\.zikr\.app$/.test(iosAssociatedDomainAppId)) {
   add("fail", "IOS_ASSOCIATED_DOMAIN_APP_ID", "must be a 10-character Apple Team ID plus .com.zikr.app");
 }
 
