@@ -22,6 +22,28 @@ $roles$;
 GRANT USAGE, CREATE ON SCHEMA public TO supabase_admin;
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 
+-- Reproduce the permissive default EXECUTE grants before the hardening migration.
+CREATE OR REPLACE FUNCTION public.client_default_execute_postgres_before()
+RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+
+SET ROLE supabase_admin;
+CREATE OR REPLACE FUNCTION public.client_default_execute_supabase_admin_before()
+RETURNS integer LANGUAGE sql AS $ SELECT 1 $;
+RESET ROLE;
+
+DO $default_execute_precheck$
+BEGIN
+  IF NOT has_function_privilege('anon', 'public.client_default_execute_postgres_before()', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.client_default_execute_postgres_before()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Postgres default function ACL fixture did not reproduce browser EXECUTE grants';
+  END IF;
+  IF NOT has_function_privilege('anon', 'public.client_default_execute_supabase_admin_before()', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.client_default_execute_supabase_admin_before()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'supabase_admin default function ACL fixture did not reproduce browser EXECUTE grants';
+  END IF;
+END
+$default_execute_precheck$;
+
 CREATE SCHEMA IF NOT EXISTS private;
 GRANT USAGE ON SCHEMA private TO authenticated;
 
