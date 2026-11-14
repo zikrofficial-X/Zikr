@@ -41,20 +41,41 @@ Use the route-by-route permission matrix in docs/admin/ADMIN_API_PERMISSION_MATR
 
 These are concrete route handlers in src/app/api. Other route handlers exist; consult the source tree and each route's guard for the complete current inventory.
 
-| Method | Route | Authentication / authorization | Contract |
-|---|---|---|---|
-| POST | /api/poetry-insight | Authenticated Supabase user | JSON object with poem and title; request body is bounded to 64 KiB; title and poem have explicit length limits; shared rate limiting is enforced before Gemini generation. |
-| GET | /api/user/profile | Authenticated Supabase user | Returns the current user's profile and selected Auth metadata. |
-| PUT | /api/user/profile | Authenticated Supabase user | Bounded JSON update delegated to the profile service; the route returns 400 for invalid input. |
-| GET | /api/user/favorites | Authenticated Supabase user | Returns only the current user's favorites. |
-| POST | /api/user/favorites | Authenticated Supabase user | Bounded JSON body; accepts quran, hadith, story, scholar, or dua item types. |
-| DELETE | /api/user/favorites | Authenticated Supabase user | Removes by favorite row id or by item reference and type. |
-| GET | /api/admin/social | social.manage | Reads the social queue, connection health, and available insights. |
-| POST | /api/admin/social | social.manage; sensitive publishing/recovery actions also require social.publish and MFA step-up | Dispatches or manages explicit social actions; queue release is separately confirmed and audited. |
+| Method | Route | Session | Required | Contract |
+|---|---|---|---|---|
+| POST | `/api/poetry-insight` | Supabase user | Required | JSON object with poem and title; body bounded to 64 KiB; title max 200 characters; poem max 12,000 characters; five requests per user per 10 minutes. |
+| GET | `/api/user/profile` | Supabase user | Required | Returns the current user's profile and selected Auth metadata. |
+| PUT | `/api/user/profile` | Supabase user | Required | Bounded JSON update delegated to the profile service; invalid input returns 400. |
+| GET | `/api/user/favorites` | Supabase user | Required | Returns only the current user's favorites. |
+| POST | `/api/user/favorites` | Supabase user | Required | Bounded JSON body; accepts quran, hadith, story, scholar, or dua item types. |
+| DELETE | `/api/user/favorites` | Supabase user | Required | Removes by favorite row id or by item reference and type. |
+| GET | `/api/admin/social` | Admin permission | Required | Requires social.manage; reads the social queue, connection health, and available insights. |
+| POST | `/api/admin/social` | Admin permission + step-up for sensitive actions | Required | Requires social.manage; sensitive publishing/recovery actions also require social.publish and MFA step-up. Queue release is separately confirmed and audited. |
+
+### POST /api/poetry-insight
+
+**Authentication:** Required (authenticated Supabase session)
+
+**Authorization:** Any signed-in user; no admin role required
+
+**Request:** JSON object containing non-empty poem and title strings. The streamed request body is capped at 64 KiB; title is limited to 200 characters and poem to 12,000 characters.
+
+**Rate limit:** Five evaluations per authenticated user per 10 minutes. The shared limiter runs before Gemini; if the limiter is unavailable, the route returns 503 rather than invoking Gemini.
+
+**Responses:**
+- 200 — generated insight.
+- 400 — invalid JSON object, missing values, or text exceeds the field limits.
+- 401 Unauthorized — no authenticated Supabase session.
+- 413 — request body exceeds the 64 KiB limit.
+- 429 — the user's quota is exhausted.
+- 500 — generation or unexpected server failure.
+- 503 — the shared rate-limit service is unavailable.
+
+---
 
 ### AI Server Actions
 
-- evaluateMemorizationAction is exported from src/app/memorization/actions.ts. It is a Server Action, not a REST route. It uses a shared server-side rate limit keyed by the trusted client address and validates audio size/type before invoking AI.
+- evaluateMemorizationAction is exported from src/app/memorization/actions.ts. It is a Server Action, not a REST route. It allows 3 evaluations per 10 minutes per trusted client address and accepts audio up to a maximum 3 MiB; size/type validation and the shared rate limit run before Gemini.
 - sendChatMessage is exported from src/app/spiritual-ai/actions.ts. It is a Server Action, not a REST route. It sanitizes history, applies a shared rate limit, and uses the spiritual-answer safety policy and retrieved citations.
 
 These actions are not authenticated by a user session in their current implementation. Their rate-limit and input-safety controls are therefore part of the security boundary; do not document them as authenticated endpoints.
