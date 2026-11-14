@@ -179,8 +179,10 @@ assert.match(worker, /normalizePrayerTimings\(payload\.data\?\.timings, PRAYERS\
   "provider responses must be complete and validated before they enter the schedule cache");
 const subscriptionRoute = readFileSync("src/app/api/push/subscription/route.ts", "utf8");
 const serviceWorker = readFileSync("public/sw.js", "utf8");
-const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(\s*await request\.json\(\)\.catch\(\(\) => null\)\s*\)/g) ?? [];
-assert.equal(normalizedRequestBodyCalls.length, 2, "POST and DELETE must normalize malformed and non-object JSON before reading fields");
+const normalizedRequestBodyCalls = subscriptionRoute.match(/normalizePushSubscriptionRequestBody\(parsedBody\.value\)/g) ?? [];
+assert.equal(normalizedRequestBodyCalls.length, 2, "POST and DELETE must normalize bounded JSON values before reading fields");
+const boundedSubscriptionBodyReads = subscriptionRoute.match(/readBoundedJsonBody\(request, 16 \* 1024\)/g) ?? [];
+assert.equal(boundedSubscriptionBodyReads.length, 2, "POST and DELETE must reject malformed or oversized request bodies before reading subscription fields");
 assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.latitude, -90, 90\)/);
 assert.match(subscriptionRoute, /parsePushCoordinate\(location\?\.longitude, -180, 180\)/);
 assert.match(subscriptionRoute, /isAllowedPushEndpoint\(endpoint\)/, "subscription intake must reject arbitrary HTTPS endpoints");
