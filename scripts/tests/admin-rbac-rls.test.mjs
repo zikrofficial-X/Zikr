@@ -267,12 +267,25 @@ assert.ok(
   supabaseApiConfig.includes('schemas = ["public", "storage", "graphql_public"]'),
   "the API schema inventory must stay aligned with the default-function hardening scope",
 );
-for (const schema of ["public", "storage", "graphql_public", "graphql"]) {
-  assert.ok(
-    defaultFunctionExecuteMigration.includes("IN SCHEMA " + schema + " REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
-    "default EXECUTE must be revoked from browser roles in schema " + schema,
-  );
-}
+assert.ok(
+  defaultFunctionExecuteMigration.includes("ARRAY['public', 'storage', 'graphql_public', 'graphql']"),
+  "the migration must cover every exposed and GraphQL API schema for postgres/supabase_admin owners",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "postgres schema-specific defaults must revoke browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "supabase_admin schema-specific defaults must revoke browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "global PUBLIC EXECUTE must be revoked for the actual Storage function owner",
+);
 assert.match(
   defaultFunctionExecuteMigration,
   /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
@@ -289,7 +302,7 @@ assert.match(
   "server-side execution must be explicitly preserved after removing PUBLIC defaults",
 );
 assert.match(defaultFunctionExecuteSetup, /CREATE ROLE supabase_storage_admin NOLOGIN/i);
-assert.match(defaultFunctionExecuteSetup, /SET ROLE supabase_storage_admin[\\s\\S]*?storage\.client_default_execute_supabase_storage_admin_before/i);
+assert.match(defaultFunctionExecuteSetup, /SET ROLE supabase_storage_admin[\s\S]*?storage\.client_default_execute_supabase_storage_admin_before/i);
 assert.match(
   defaultFunctionExecuteIntegration,
   /storage\.client_default_execute_supabase_storage_admin_after\(\)/,

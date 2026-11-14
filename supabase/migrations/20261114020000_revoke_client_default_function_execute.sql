@@ -60,6 +60,7 @@ DO $supabase_storage_admin_acl$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin')
      AND EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'storage') THEN
+    EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated';
     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated';
     EXECUTE 'ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage GRANT EXECUTE ON FUNCTIONS TO service_role';
   END IF;
