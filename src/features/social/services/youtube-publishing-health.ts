@@ -1,5 +1,5 @@
 import type { SocialPlatformEnvironment } from "./platform-availability";
-import { getYouTubeRefreshToken, selectYouTubeChannel } from "./youtube-oauth-credentials";
+import { findYouTubeChannelAcrossPages, getYouTubeRefreshToken } from "./youtube-oauth-credentials";
 
 export type YouTubePublishingHealthStatus =
   | "not_configured"
@@ -29,6 +29,7 @@ type TokenResponse = { access_token?: string; error?: string };
 type ChannelStatistics = { subscriberCount?: string; videoCount?: string; viewCount?: string };
 type ChannelResponse = {
   items?: Array<{ id?: string; snippet?: { title?: string }; statistics?: ChannelStatistics }>;
+  nextPageToken?: string;
   error?: { errors?: Array<{ reason?: string }> };
 };
 
@@ -77,98 +78,38 @@ async function readPublicChannel(
   if (!apiKey || !channelId) return null;
 
   try {
-    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-    url.searchParams.set("part", "id,snippet,statistics");
-    url.searchParams.set("id", channelId);
-    url.searchParams.set("key", apiKey);
-    const response = await fetcher(url, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!response.ok) return null;
-
-    const channels = await response.json() as ChannelResponse;
-    const channel = channels.items?.find((item) => item.id === channelId);
-    if (!channel?.id) {
-      return result("channel_not_found", "مفتاح YouTube API يعمل، لكن رقم القناة المحدد لم يُرجع قناة عامة.", channelId);
-    }
-
-    const reasonMessage = reason === "oauth_missing"
-      ? "OAuth الخاص بالنشر غير مكتمل؛ تم عرض بيانات القناة العامة فقط."
-      : reason === "reauthorization_required"
-        ? "تمت قراءة بيانات القناة العامة، لكن OAuth الخاص بالنشر يحتاج إعادة تفويض."
-        : "تمت القراءة العامة للقناة باستخدام مفتاح API؛ صلاحية OAuth لقراءة القناة وتقارير Analytics غير ممنوحة.";
-
-    return result(
-      "public_data_only",
-      reasonMessage,
-      channel.id,
-      channel.snippet?.title ?? null,
-      channel.statistics,
-      "api_key",
-    );
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Read-only health check. It prefers OAuth; if channel-read scope is absent,
- * it falls back to the configured public API key + channel ID. It never
- * uploads, edits, publishes, returns or logs OAuth credentials or API keys.
- */
-export async function getYouTubePublishingConnectionHealth(
-  env: SocialPlatformEnvironment = process.env,
-  fetcher: typeof fetch = fetch,
-  resolveReadOnlyRefreshToken: () => Promise<string | null> = () => getYouTubeRefreshToken(env),
-): Promise<YouTubePublishingConnectionHealth> {
-  const clientId = env.YOUTUBE_CLIENT_ID?.trim();
-  const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
-  const refreshToken = await resolveReadOnlyRefreshToken();
-  if (!clientId || !clientSecret || !refreshToken) {
-    const publicRead = await readPublicChannel(env, fetcher, "oauth_missing");
-    return publicRead ?? result("not_configured", "بيانات OAuth الخاصة بـYouTube غير مكتملة.");
-  }
-
-  try {
-    const tokenResponse = await fetcher("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!tokenResponse.ok) {
-      const status = classifyYouTubeHealthHttpStatus(tokenResponse.status, "token");
-      if (status === "reauthorization_required") {
-        const publicRead = await readPublicChannel(env, fetcher, "reauthorization_required");
-        if (publicRead) return publicRead;
+    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
+    const channelLookup = await findYouTubeChannelAcrossPages(async (pageToken) => {
+      const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+      url.searchParams.set("part", "id,snippet,statistics");
+      url.searchParams.set("mine", "true");
+      url.searchParams.set("maxResults", "50");
+      if (pageToken) url.searchParams.set("pageToken", pageToken);
+      const channelResponse = await fetcher(url, {
+        headers: { Authorization: "Bearer " + token.access_token },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      const channels = await channelResponse.json() as ChannelResponse;
+      if (!channelResponse.ok || channels.error) {
+        return {
+          items: [],
+          error: {
+            status: channelResponse.status,
+            reason: channels.error?.errors?.[0]?.reason ?? null,
+          },
+        };
       }
-      return result(status, status === "reauthorization_required"
-        ? "Google رفض تحديث رمز YouTube؛ أعد تفويض القناة."
-        : "تعذر الوصول إلى خدمة OAuth الخاصة بـGoogle حاليًا.");
-    }
-    const token = await tokenResponse.json() as TokenResponse;
-    if (typeof token.access_token !== "string" || !token.access_token) {
-      const publicRead = await readPublicChannel(env, fetcher, "reauthorization_required");
-      return publicRead ?? result("reauthorization_required", "لم يُرجع Google رمز وصول صالحًا؛ أعد تفويض القناة.");
-    }
+      return {
+        items: Array.isArray(channels.items) ? channels.items : [],
+        nextPageToken: channels.nextPageToken,
+      };
+    }, configuredChannelId, 3);
 
-    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-    url.searchParams.set("part", "id,snippet,statistics");
-    url.searchParams.set("mine", "true");
-    const channelResponse = await fetcher(url, {
-      headers: { Authorization: "Bearer " + token.access_token },
-      cache: "no-store",
-      signal: AbortSignal.timeout(12_000),
-    });
-    if (!channelResponse.ok) {
-      const status = classifyYouTubeHealthHttpStatus(channelResponse.status, "channel");
+    if (channelLookup.error) {
+      const status = channelLookup.error.reason === "insufficientPermissions"
+        ? "permission_missing"
+        : classifyYouTubeHealthHttpStatus(channelLookup.error.status, "channel");
       if (status === "permission_missing" || status === "reauthorization_required") {
         const publicRead = await readPublicChannel(
           env,
@@ -183,14 +124,15 @@ export async function getYouTubePublishingConnectionHealth(
           ? "انتهت صلاحية OAuth أو تم رفضها؛ أعد تفويض YouTube."
           : "تعذر قراءة ملف قناة YouTube حاليًا.");
     }
-    const channels = await channelResponse.json() as ChannelResponse;
-    const validChannels = (channels.items ?? []).filter(
-      (item) => typeof item.id === "string" && item.id.trim().length > 0,
-    );
-    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
-    const channel = selectYouTubeChannel(validChannels, configuredChannelId);
-    if (!channel?.id) {
-      if (!configuredChannelId && validChannels.length > 1) {
+
+    if (!channelLookup.channel?.id) {
+      if (!channelLookup.complete) {
+        return result(
+          "unavailable",
+          "تعذر فحص جميع القنوات المرتبطة بالحساب ضمن الحد الآمن للصفحات؛ تحقق من YOUTUBE_CHANNEL_ID ثم أعد الاختبار.",
+        );
+      }
+      if (!configuredChannelId && channelLookup.multipleChannels) {
         return result(
           "channel_selection_required",
           "يرتبط حساب Google بأكثر من قناة YouTube؛ اضبط YOUTUBE_CHANNEL_ID على القناة المقصودة ثم أعد تفويضها.",
@@ -205,6 +147,7 @@ export async function getYouTubePublishingConnectionHealth(
         configuredChannelId || null,
       );
     }
+    const channel = channelLookup.channel;
     return result(
       "connected",
       "تم تحديث OAuth والتحقق من قناة YouTube بنجاح.",
