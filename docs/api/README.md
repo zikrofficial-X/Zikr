@@ -6,7 +6,7 @@ Complete API reference for the ZIKR Islamic platform.
 
 | Method | Endpoint | Description | Auth Required | Tags |
 |--------|----------|-------------|---------------|------|
-| POST | `/api/poetry-insight` | Generate AI literary analysis of a poem | None | AI, Poetry |
+| POST | `/api/poetry-insight` | Generate AI literary analysis of a poem | Required | AI, Poetry |
 | POST | `/auth/login` (Server Action) | Login with email/password | None | Auth |
 | POST | `/auth/register` (Server Action) | Register new account | None | Auth |
 | POST | `/auth/forgot` (Server Action) | Send password reset email | None | Auth |
@@ -93,9 +93,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
 
 **Description:** Generates an AI-powered literary analysis of an Islamic poem using Google Gemini.
 
-**Authentication:** None
+**Authentication:** Required (authenticated Supabase session)
 
-**Authorization:** None
+**Authorization:** Any signed-in user; no admin role required
 
 #### Request
 
@@ -131,6 +131,11 @@ interface PoetryInsightRequest {
 ##### 400 Bad Request
 ```json
 { "error": "Missing poem or title" }
+```
+
+##### 401 Unauthorized
+```json
+{ "error": "Authentication required." }
 ```
 
 ##### 500 Internal Server Error
