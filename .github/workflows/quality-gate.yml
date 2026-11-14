@@ -27,7 +27,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxdHNzdmx2bWt6ZWV5cWdocWZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM5OTAzNDEsImV4cCI6MjEwOTU2NjM0MX0.jux_q16W3CL3lUFT3P4DvqmnjTYWXTlIF86g2j_AKhw
       NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID: 224706285284-fubdladk24v49v2lnq4p5jrk5ht1uqk8.apps.googleusercontent.com
       AUTH_CALLBACK_URL: https://zikrmediaofficial.vercel.app/auth/callback
-      QUALITY_GATE_FULL_SCOPE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-') || startsWith(github.head_ref, 'codex/zikr-final-cleanup-'))) }}
+      QUALITY_GATE_FULL_SCOPE: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && (startsWith(github.head_ref, 'codex/zikr-comprehensive-repair-') || startsWith(github.head_ref, 'codex/zikr-final-cleanup-') || startsWith(github.head_ref, 'audit/zikr-'))) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -44,6 +44,20 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase Edge Functions
+        shell: bash
+        run: |
+          set -euo pipefail
+          deno check supabase/functions/health/index.ts
+          deno check supabase/functions/spiritual-ai/index.ts
+          deno check supabase/functions/source-verified-content-agent/index.ts
+          deno check --config supabase/functions/prayer-notification-worker/deno.json supabase/functions/prayer-notification-worker/index.ts
 
       - name: Verify toolchain
         shell: bash
@@ -72,6 +86,66 @@ jobs:
       - name: Verify atomic Admin role update against PostgreSQL 17
         shell: bash
         run: pnpm admin:role-db:check
+        timeout-minutes: 5
+
+      - name: Verify background reminder scheduling against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/background-reminder-schedule.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify atomic prayer-location default updates against PostgreSQL 17
+        shell: bash
+        run: pnpm prayer-location:db:check
+        timeout-minutes: 5
+
+      - name: Verify prophet section public-read policy against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/prophet-sections-rls.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify Kids game and question publication policies against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/kids-game-levels-rls.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify Kids content active-state public-read policy against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/kids-content-active-rls.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify client table privilege hardening against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/client-table-privilege-hardening.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify video Storage retention RPC contract against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/video-storage-retention-contract.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify admin-managed write permissions against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/admin-managed-write-rls.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify source-agent cron reconciliation against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/source-agent-cron-reconcile.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify scheduled content active-queue uniqueness against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/content-publish-active-queue.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify site-audio upload-intent retention contract against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/site-audio-upload-intents.integration.sh
+        timeout-minutes: 5
+
+      - name: Verify social-publish target-platform contract against PostgreSQL 17
+        shell: bash
+        run: bash scripts/tests/social-publish-target-platforms.integration.sh
         timeout-minutes: 5
 
       - name: Run canonical source and architecture gate

@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSitemapEntries } from '@/app/sitemap';
+import { getSitemapShard } from '@/lib/seo/sitemap-shards';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const SITEMAP_PAGE_SIZE = 45_000;
 
 function escapeXml(value: string) {
   return value
@@ -34,8 +33,7 @@ export async function GET(
   }
 
   const allEntries = await getSitemapEntries();
-  const start = id * SITEMAP_PAGE_SIZE;
-  const entries = allEntries.slice(start, start + SITEMAP_PAGE_SIZE);
+  const entries = getSitemapShard(allEntries, id);
 
   if (entries.length === 0) {
     return new NextResponse('Not Found', { status: 404 });

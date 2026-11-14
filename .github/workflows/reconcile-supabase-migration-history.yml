@@ -27,7 +27,6 @@ jobs:
       name: production
     env:
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-      SUPABASE_DB_URL: ${{ secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL }}
       TAFSIR_EXPECTED_COUNT: "0,6236"
       PGSSLMODE: require
     steps:
@@ -48,6 +47,8 @@ jobs:
 
       - name: Verify required credentials without exposing them
         shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
           set -euo pipefail
           test "${EXPECTED_PROJECT_REF}" = "zqtssvlvmkzeeyqghqfk"
@@ -55,6 +56,8 @@ jobs:
 
       - name: Prove schema/data parity and reconcile history only
         shell: bash
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: bash scripts/reconcile-supabase-migration-history.sh
 
       - name: Reconciliation evidence

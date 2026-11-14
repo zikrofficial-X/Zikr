@@ -29,8 +29,6 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_MODEL: gemini-3.1-flash-lite
       WRITTEN_CONTENT_ENABLED: "true"
       WRITTEN_CONTENT_DAILY_TARGET: "3"
@@ -49,6 +47,9 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
       - name: Validate runtime secrets
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing Supabase service-role secret." >&2; exit 1; }
@@ -57,4 +58,7 @@ jobs:
       - name: Verify written-content contracts
         run: pnpm written-content:check
       - name: Generate and enqueue
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: pnpm written-content:generate -- --category "${WRITTEN_CONTENT_CATEGORY}" --batch-size "${WRITTEN_CONTENT_BATCH_SIZE}"

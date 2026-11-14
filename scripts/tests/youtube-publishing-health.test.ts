@@ -18,19 +18,26 @@ const fakeFetch: typeof fetch = async (input, init) => {
     return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
   }
   assert.ok(url.includes("youtube/v3/channels"));
+  const channelUrl = new URL(url);
+  assert.equal(channelUrl.searchParams.get("maxResults"), "50");
+  assert.equal(channelUrl.searchParams.get("mine"), "true");
   assert.equal(new Headers(init?.headers).get("Authorization"), "Bearer private-access-token");
   return new Response(JSON.stringify({
-    items: [{
-      id: "UC123456789",
-      snippet: { title: "ZIKR Channel" },
-      statistics: { subscriberCount: "1234", viewCount: "98765", videoCount: "42" },
-    }],
+    items: [
+      { id: "UC-other-channel", snippet: { title: "Other Channel" }, statistics: { subscriberCount: "1" } },
+      {
+        id: "UC123456789",
+        snippet: { title: "ZIKR Channel" },
+        statistics: { subscriberCount: "1234", viewCount: "98765", videoCount: "42" },
+      },
+    ],
   }), { status: 200 });
 };
 const connected = await getYouTubePublishingConnectionHealth({
   YOUTUBE_CLIENT_ID: "client-id",
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "private-refresh-token",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
 }, fakeFetch, async () => "verified-read-only-refresh-token");
 assert.equal(connected.status, "connected");
 assert.equal(connected.readSource, "oauth");
@@ -40,6 +47,70 @@ assert.equal(connected.subscribers, 1234);
 assert.equal(connected.totalViews, 98765);
 assert.equal(connected.videoCount, 42);
 assert.equal(oauthRequests, 2);
+
+let ambiguousChannelRequests = 0;
+const multipleChannelsFetch: typeof fetch = async (input) => {
+  if (String(input).includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+  }
+  ambiguousChannelRequests += 1;
+  const url = new URL(String(input));
+  assert.equal(url.searchParams.get("maxResults"), "50");
+  if (!url.searchParams.has("pageToken")) {
+    return new Response(JSON.stringify({
+      items: [{ id: "UC-first", snippet: { title: "First Channel" } }],
+      nextPageToken: "next-channel-page",
+    }), { status: 200 });
+  }
+  assert.equal(url.searchParams.get("pageToken"), "next-channel-page");
+  return new Response(JSON.stringify({
+    items: [{ id: "UC-second", snippet: { title: "Second Channel" } }],
+  }), { status: 200 });
+};
+const ambiguousChannel = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+}, multipleChannelsFetch, async () => "verified-read-only-refresh-token");
+assert.equal(ambiguousChannel.status, "channel_selection_required");
+assert.equal(ambiguousChannel.channelId, null);
+assert.match(ambiguousChannel.message, /YOUTUBE_CHANNEL_ID/);
+assert.equal(ambiguousChannelRequests, 2, "an account with channels on multiple pages must not be reported as connected or trigger a guessed channel");
+
+let configuredChannelPageRequests = 0;
+const configuredChannelAcrossPagesFetch: typeof fetch = async (input) => {
+  const url = String(input);
+  if (url.includes("oauth2.googleapis.com/token")) {
+    return new Response(JSON.stringify({ access_token: "private-access-token" }), { status: 200 });
+  }
+  configuredChannelPageRequests += 1;
+  const channelUrl = new URL(url);
+  assert.equal(channelUrl.searchParams.get("maxResults"), "50");
+  if (!channelUrl.searchParams.has("pageToken")) {
+    return new Response(JSON.stringify({
+      items: [{ id: "UC-first", snippet: { title: "First Channel" } }],
+      nextPageToken: "next-channel-page",
+    }), { status: 200 });
+  }
+  assert.equal(channelUrl.searchParams.get("pageToken"), "next-channel-page");
+  return new Response(JSON.stringify({
+    items: [{
+      id: "UC123456789",
+      snippet: { title: "ZIKR Channel on page two" },
+      statistics: { subscriberCount: "4321", viewCount: "87654", videoCount: "51" },
+    }],
+  }), { status: 200 });
+};
+const configuredChannelAcrossPages = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, configuredChannelAcrossPagesFetch, async () => "verified-read-only-refresh-token");
+assert.equal(configuredChannelAcrossPages.status, "connected");
+assert.equal(configuredChannelAcrossPages.channelId, "UC123456789");
+assert.equal(configuredChannelAcrossPages.channelName, "ZIKR Channel on page two");
+assert.equal(configuredChannelAcrossPages.subscribers, 4321);
+assert.equal(configuredChannelPageRequests, 2, "health must follow nextPageToken when the configured channel is not on the first page");
+
 assert.equal(JSON.stringify(connected).includes("private-access-token"), false);
 assert.equal(JSON.stringify(connected).includes("private-refresh-token"), false);
 
@@ -100,6 +171,27 @@ assert.equal(oauthMissingPublic.status, "public_data_only");
 assert.equal(oauthMissingPublic.readSource, "api_key");
 assert.equal(oauthMissingPublic.totalViews, 77);
 assert.equal(oauthMissingPublic.subscribers, null);
+
+const storedCredentialReadFailure = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+  YOUTUBE_API_KEY: "private-api-key",
+  YOUTUBE_CHANNEL_ID: "UC123456789",
+}, oauthMissingPublicFetch, async () => {
+  throw new Error("database unavailable");
+});
+assert.equal(storedCredentialReadFailure.status, "public_data_only");
+assert.equal(storedCredentialReadFailure.readSource, "api_key");
+
+const storedCredentialReadFailureWithoutFallback = await getYouTubePublishingConnectionHealth({
+  YOUTUBE_CLIENT_ID: "client-id",
+  YOUTUBE_CLIENT_SECRET: "client-secret",
+}, async () => {
+  throw new Error("fetch must not be reached");
+}, async () => {
+  throw new Error("database unavailable");
+});
+assert.equal(storedCredentialReadFailureWithoutFallback.status, "unavailable");
 
 const permissionFailureFetch: typeof fetch = async (input) => {
   if (String(input).includes("oauth2.googleapis.com/token")) {

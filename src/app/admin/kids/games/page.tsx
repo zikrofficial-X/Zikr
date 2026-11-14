@@ -29,15 +29,17 @@ const number = (value: number | null) =>
 export default async function KidsGamesPage() {
   await requireAdminPermission("kids.manage");
 
-  const [gamesResult, levelsResult] = await Promise.allSettled([
+  const [gamesResult, gamesCountResult, levelsResult] = await Promise.allSettled([
     supabaseServerAdminRequest<GameRow[]>(
       "/rest/v1/kids_games?select=id,slug,title_ar,title_en,genre,age_min,age_max,difficulty,engine,published,featured,order_index,reward_xp&order=order_index.asc&limit=100",
       { method: "GET" },
     ),
+    supabaseServerAdminCount("kids_games"),
     supabaseServerAdminCount("kids_game_levels"),
   ]);
 
   const games = gamesResult.status === "fulfilled" ? gamesResult.value : [];
+  const gamesCount = gamesCountResult.status === "fulfilled" ? gamesCountResult.value : null;
   const levelsCount = levelsResult.status === "fulfilled" ? levelsResult.value : null;
   const runtimeIds = new Set(Object.keys(GAME_REGISTRY));
   const databaseIds = new Set(games.map((game) => game.slug));
@@ -64,20 +66,20 @@ export default async function KidsGamesPage() {
       )}
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card><p className="text-xs text-brand-cream/40">ألعاب قاعدة البيانات</p><p className="mt-2 text-3xl font-bold text-brand-gold">{gamesResult.status === "fulfilled" ? number(games.length) : "غير متاح"}</p></Card>
+        <Card><p className="text-xs text-brand-cream/40">إجمالي ألعاب قاعدة البيانات</p><p className="mt-2 text-3xl font-bold text-brand-gold">{number(gamesCount)}</p></Card>
         <Card><p className="text-xs text-brand-cream/40">مسارات التشغيل في الكود</p><p className="mt-2 text-3xl font-bold text-sky-200">{number(runtimeIds.size)}</p></Card>
         <Card><p className="text-xs text-brand-cream/40">المستويات المسجلة</p><p className="mt-2 text-3xl font-bold text-emerald-300">{number(levelsCount)}</p></Card>
-        <Card><p className="text-xs text-brand-cream/40">ألعاب منشورة / مميزة</p><p className="mt-2 text-3xl font-bold text-brand-cream">{gamesResult.status === "fulfilled" ? `${number(publishedCount)} / ${number(featuredCount)}` : "غير متاح"}</p></Card>
+        <Card><p className="text-xs text-brand-cream/40">منشور / مميز ضمن آخر 100</p><p className="mt-2 text-3xl font-bold text-brand-cream">{gamesResult.status === "fulfilled" ? `${number(publishedCount)} / ${number(featuredCount)}` : "غير متاح"}</p></Card>
       </section>
 
-      {missingRuntime.length > 0 && (
+      {gamesResult.status === "fulfilled" && missingRuntime.length > 0 && (
         <div role="alert" className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-sm leading-7 text-amber-100">
           <strong>تعارض يحتاج قرارًا:</strong> توجد ألعاب منشورة في قاعدة البيانات بلا Runtime مطابق في GAME_REGISTRY:
           {" "}{missingRuntime.map((game) => `${game.title_ar} (${game.slug})`).join("، ")}.
           لم يتم حذفها أو إخفاؤها.
         </div>
       )}
-      {missingDatabase.length > 0 && (
+      {gamesResult.status === "fulfilled" && missingDatabase.length > 0 && (
         <div role="alert" className="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-4 text-sm leading-7 text-amber-100">
           توجد مسارات تشغيل في الكود بلا سجل مقابل في kids_games: {missingDatabase.join("، ")}.
         </div>
@@ -120,7 +122,7 @@ export default async function KidsGamesPage() {
               </tbody>
             </table>
           </div>
-          <p className="border-t border-brand-gold/8 px-4 py-3 text-xs text-brand-cream/35">سجل قاعدة البيانات مرتب حسب order_index. لا يتم تغيير ترتيب المستخدم أو حالة النشر من هذه الشاشة.</p>
+          <p className="border-t border-brand-gold/8 px-4 py-3 text-xs text-brand-cream/35">يعرض الجدول آخر 100 سجل مرتبًا حسب order_index؛ المقارنات والتنبيهات تخص هذه العينة. لا يتم تغيير ترتيب المستخدم أو حالة النشر من هذه الشاشة.</p>
         </section>
       )}
     </Container>

@@ -6,11 +6,12 @@ import { Container } from "@/components/ui/container";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 import type {
   SocialPublishQueueItem,
   SocialQueueStatus,
 } from "@/features/social/services/social-publishing";
-import { getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem, getManualReconciliationPlatforms } from "@/features/social/services/platform-availability";
 
 type Status = SocialQueueStatus;
 type QueueItem = SocialPublishQueueItem & {
@@ -24,7 +25,9 @@ type QueueItem = SocialPublishQueueItem & {
 type QueueReadiness = { approvalPending: number; queuedEligible: number };
 type Health = {
   youtubeConfigured: boolean;
-  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "unavailable";
+  youtubeUploadReady: boolean;
+  youtubeAuthBlocked: number;
+  youtubeConnectionStatus?: "not_configured" | "not_tested" | "connected" | "public_data_only" | "reauthorization_required" | "permission_missing" | "channel_not_found" | "channel_selection_required" | "unavailable";
   youtubeReadSource?: "oauth" | "api_key" | null;
   youtubeChannelId?: string | null;
   youtubeChannelName?: string | null;
@@ -88,6 +91,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   facebook: "Facebook",
   facebook_reels: "Facebook Reels",
 };
+const REMOTE_DELETE_PLATFORMS = new Set<string>(["facebook", "facebook_reels"]);
 
 function isVideoQueueItem(item: QueueItem) {
   const value = item.content_type.trim().toLowerCase();
@@ -218,10 +222,12 @@ function facebookReelsInsightsSummary(item: QueueItem, permissionGranted: boolea
   ].filter(Boolean).join(" · ") || "لا توجد إحصاءات Reels متاحة";
 }
 
-export default function AdminSocialPage() {
+export default function AdminSocialClient({ canPublish }: { canPublish: boolean }) {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [health, setHealth] = useState<Health>({
     youtubeConfigured: false,
+    youtubeUploadReady: false,
+    youtubeAuthBlocked: 0,
     facebookEnabled: false,
     facebookCredentialsConfigured: false,
     facebookEnvironmentTokenConfigured: false,
@@ -241,7 +247,6 @@ export default function AdminSocialPage() {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [selected, setSelected] = useState<string[]>([]);
   const [selectedPublished, setSelectedPublished] = useState<string[]>([]);
-  const [deleteLocalMemory, setDeleteLocalMemory] = useState(false);
   const [readiness, setReadiness] = useState<QueueReadiness>({ approvalPending: 0, queuedEligible: 0 });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -312,6 +317,8 @@ export default function AdminSocialPage() {
         refresh_token_missing: "لم يُرجع Google Refresh Token جديدًا. أعد الربط مع الموافقة على Offline access.",
         channel_read_failed: "تم التفويض لكن تعذرت قراءة القناة المرتبطة بحساب Google.",
         channel_mismatch: "القناة التي تم تفويضها لا تطابق YOUTUBE_CHANNEL_ID المضبوط في ZIKR.",
+        channel_selection_required: "حساب Google يدير أكثر من قناة. حدّد YOUTUBE_CHANNEL_ID للقناة المطلوبة ثم أعد الربط؛ لم يتم استبدال الاعتماد الحالي.",
+        channel_lookup_incomplete: "لم تكتمل قراءة قائمة قنوات Google ضمن الحد الآمن للصفحات. لم يتم استبدال الاعتماد الحالي؛ أعد المحاولة أو تحقق من YOUTUBE_CHANNEL_ID.",
         oauth_failed: "فشل تفويض Google. تحقق من إعدادات OAuth Authorized redirect URI وحاول مرة أخرى.",
       };
       setError(youtubeMessages[youtubeStatus] || "تعذر إكمال ربط YouTube.");
@@ -329,11 +336,12 @@ export default function AdminSocialPage() {
     const facebookMessages: Record<string, string> = {
       configuration_missing: "إعداد تطبيق Meta غير مكتمل. تحقق من FACEBOOK_APP_ID وFACEBOOK_APP_SECRET.",
       redirect_uri_mismatch: "عنوان العودة غير مسجل في إعدادات تطبيق Meta. أضف /api/admin/social/facebook/callback إلى Valid OAuth Redirect URIs.",
-      permission_missing: "لم تُمنح جميع صلاحيات صفحة Facebook المطلوبة. وافق على pages_show_list وpages_read_engagement وpages_manage_posts، وread_insights لإحصاءات Reels، ثم أعد الربط.",
+      permission_missing: "لم تُمنح صلاحيات النشر الأساسية لصفحة Facebook. وافق على pages_show_list وpages_read_engagement وpages_manage_posts ثم أعد الربط؛ read_insights اختيارية لإحصاءات Reels ولا توقف النشر.",
       authorization_denied: "تم إلغاء تفويض Facebook. لن يتم تشغيل النشر قبل ربط الصفحة.",
       state_mismatch: "انتهت جلسة الربط لأسباب أمنية. ابدأ الربط من جديد.",
       page_not_found: "الحساب الذي تم تفويضه لا يدير صفحة Facebook المحددة في إعدادات ZIKR.",
-      page_selection_required: "Meta أعادت أكثر من صفحة ولا تطابق أيٌّ منها رقم الصفحة المضبوط في ZIKR. يلزم ضبط FACEBOOK_PAGE_ID على معرّف صفحة Zikr الصحيح ثم إعادة الربط.",
+      page_selection_required: "Meta أعادت أكثر من صفحة يديرها الحساب؛ لم نختر صفحة تلقائيًا. اضبط FACEBOOK_PAGE_ID على معرّف صفحة Zikr الصحيح ثم أعد الربط.",
+      page_lookup_incomplete: "لم تكتمل قراءة صفحات Facebook ضمن الحد الآمن للصفحات. لم يتم حفظ الاعتماد؛ أعد المحاولة أو تحقق من FACEBOOK_PAGE_ID.",
       page_validation_failed: "تعذر التحقق من صفحة Facebook المختارة. لم يتم حفظ الاعتماد.",
       reauthorization_required: "رفض Meta التوكن الحالي. اربط صفحة Facebook من جديد.",
       admin_session_missing: "انتهت جلسة الإدارة أثناء الرجوع من Facebook. سجّل الدخول وافتح مركز النشر مرة أخرى.",
@@ -396,6 +404,7 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        auditRecorded?: boolean;
         health?: { status?: Health["youtubeConnectionStatus"]; readSource?: Health["youtubeReadSource"]; channelId?: string | null; channelName?: string | null; subscribers?: number | null; totalViews?: number | null; videoCount?: number | null; checkedAt?: string; message?: string };
       };
       if (!response.ok || !payload.health) throw new Error(payload.error || "تعذر اختبار اتصال YouTube.");
@@ -411,9 +420,10 @@ export default function AdminSocialPage() {
         youtubeLastCheckedAt: payload.health?.checkedAt ?? null,
         youtubeConnectionMessage: payload.health?.message ?? "انتهى اختبار YouTube.",
       }));
-      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر.");
-      else if (payload.health.status === "public_data_only") setMessage(payload.health.message || "تمت قراءة بيانات القناة العامة.");
-      else setError(payload.health.message || "لم يجتز اتصال YouTube الاختبار.");
+      const auditWarning = payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لم يُعد تنفيذ الاختبار." : "";
+      if (payload.health.status === "connected") setMessage("اختبار YouTube ناجح. تم التحقق من قناة النشر." + auditWarning);
+      else if (payload.health.status === "public_data_only") setMessage((payload.health.message || "تمت قراءة بيانات القناة العامة.") + auditWarning);
+      else setError((payload.health.message || "لم يجتز اتصال YouTube الاختبار.") + auditWarning);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اختبار اتصال YouTube.");
     } finally {
@@ -433,13 +443,13 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
+        auditRecorded?: boolean;
         adopted?: boolean;
         pageName?: string;
-        released?: number;
-        queueUpdateFailed?: boolean;
-        workerDispatched?: boolean;
         health?: Health;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) {
         throw new Error(payload.error || "تعذر اعتماد توكن Facebook المحفوظ على الخادم.");
       }
@@ -448,14 +458,48 @@ export default function AdminSocialPage() {
       }
       const summary = [
         "تم التحقق من التوكن وحفظ اعتماد الصفحة " + (payload.pageName || "Facebook") + ".",
-        "تم تحرير " + (payload.released ?? 0) + " عنصرًا قديمًا لإعادة المعالجة دون تكرار ما نُشر بنجاح.",
-        payload.queueUpdateFailed ? "لكن تعذر تحديث بعض عناصر الطابور؛ أعد تحديث الصفحة قبل تشغيل العامل." : "",
-        (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل العامل المجدول المعالجة خلال دورة النشر التالية." : "",
-      ].filter(Boolean);
-      setMessage(summary.join(" "));
+        "لم يتم استئناف أي عناصر محجوبة. راجعها ثم استخدم زر الاستئناف الصريح إذا رغبت؛ قد تُنشر تلقائيًا بعد إعادتها إلى الطابور.",
+      ];
+      setMessage(summary.join(" ") + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذ اعتماد التوكن." : ""));
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر اعتماد توكن Facebook من إعدادات الخادم.");
+    } finally {
+      setBusy(false);
+    }
+  }, [load]);
+
+  const releaseAuthBlockedQueue = useCallback(async (platform: "facebook" | "youtube" = "facebook") => {
+    const platformLabel = platform === "youtube" ? "YouTube" : "Facebook";
+    if (!window.confirm("سيتم إعادة العناصر المحجوبة المؤهلة على " + platformLabel + " ضمن نافذة النشر الحالية إلى الطابور. العناصر التاريخية الأقدم ستظل محجوبة. قد تُنشر العناصر المعادة تلقائيًا. هل تؤكد المتابعة؟")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/social", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "release_auth_blocked_queue", platform, confirmed: true }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        nextPath?: string;
+        auditRecorded?: boolean;
+        released?: number;
+        queueUpdateFailed?: boolean;
+        workerDispatched?: boolean;
+      };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
+      if (!response.ok) throw new Error(payload.error || "تعذر استئناف العناصر المحجوبة.");
+      const summary = [
+        "تم تحرير " + (payload.released ?? 0) + " عنصرًا مؤهلًا على " + platformLabel + " بعد التحقق من صلاحية النشر. العناصر التاريخية الأقدم تظل محجوبة.",
+        payload.queueUpdateFailed ? "تعذر تحديث بعض العناصر؛ راجع الطابور قبل أي محاولة أخرى." : "",
+        (payload.released ?? 0) > 0 && !payload.workerDispatched ? "سيكمل الناشر المجدول المعالجة في دورته التالية." : "",
+      ].filter(Boolean);
+      setMessage(summary.join(" ") + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذ تحرير الطابور." : ""));
+      await load();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "تعذر استئناف العناصر المحجوبة.");
     } finally {
       setBusy(false);
     }
@@ -473,11 +517,15 @@ export default function AdminSocialPage() {
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
+        auditRecorded?: boolean;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok)
         throw new Error(payload.error || "تعذر تشغيل عامل النشر.");
       setMessage(
-        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. سيعالج العامل العناصر الجاهزة للنشر الآن."
+        "تم إرسال طلب تشغيل العامل إلى GitHub Actions. سيعالج العامل العناصر الجاهزة للنشر الآن." +
+          (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد إرسال الطلب." : "")
       );
       await load();
     } catch (cause) {
@@ -495,7 +543,9 @@ export default function AdminSocialPage() {
     const matchesPlatform = platformFilter === "all" || item.target_platforms.includes(platformFilter);
     return matchesStatus && matchesPlatform;
   }), [filter, queueOpenItems, platformFilter]);
-  const retryable = items.filter(item => item.status === "failed" || item.status === "partial");
+  const retryable = useMemo(() => items.filter(item => item.status === "failed" || item.status === "partial"), [items]);
+  const localDeletable = useMemo(() => items.filter(canDeleteLocalSocialQueueItem), [items]);
+  const selectedLocalDeletableCount = selected.filter(id => localDeletable.some(item => item.id === id)).length;
   const selectedRetryableCount = selected.filter(id => retryable.some(item => item.id === id)).length;
   const selectedManualReconciliationCount = items.filter(item =>
     selected.includes(item.id) && getManualReconciliationPlatforms(item.metadata).length > 0,
@@ -525,14 +575,19 @@ export default function AdminSocialPage() {
         const confirmation = action === "publish_now"
           ? "سيتم إرسال العناصر المؤهلة للنشر فورًا. الفيديو غير المعتمد سيظل محجوبًا ولن يتم تجاوز فحص الجودة."
           : action === "retry_all_failed"
-            ? "سيتم إعادة محاولة العناصر الفاشلة أو الجزئية المؤهلة فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها."
+            ? `ستتم إعادة محاولة ${retryable.length} عنصرًا فاشلًا/جزئيًا ظاهرًا فقط. العناصر التي تتطلب مراجعة يدوية لنتيجة النشر سيتم تجاوزها.`
             : action === "delete_failed"
-              ? `سيتم حذف ${retryable.length} عملية فاشلة أو نشر جزئي من سجل الطابور.`
-              : "سيتم حذف العمليات الفاشلة أو الجزئية المحددة من سجل الطابور.";
+              ? `سيتم حذف ${Math.min(localDeletable.length, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT)} من ${localDeletable.length} سجل فشل آمن ظاهر فقط. لن يُحذف أي سجل جزئي أو يحمل نتيجة منصة ناجحة أو غير مؤكدة.`
+              : `سيتم حذف ${selectedLocalDeletableCount} سجل فشل آمن من المحدد فقط. ستظل السجلات الجزئية والناجحة والملتبسة محفوظة.`;
         if (!window.confirm(confirmation)) return;
+        if (action === "delete" || action === "delete_failed") confirmedNoRemotePublication = true;
       }
-      const ids = action === "retry_all_failed" || action === "delete_failed" ? [] : selected;
-      if ((action === "retry" || action === "delete") && ids.length === 0) {
+      const ids = action === "retry_all_failed"
+        ? retryable.map(item => item.id)
+        : action === "delete_failed"
+          ? localDeletable.slice(0, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT).map(item => item.id)
+          : selected;
+      if (["retry", "retry_all_failed", "delete", "delete_failed"].includes(action) && ids.length === 0) {
         setError("حدد عملية فاشلة أو نشرًا جزئيًا أولًا.");
         return;
       }
@@ -551,26 +606,58 @@ export default function AdminSocialPage() {
         });
         const payload = (await response.json().catch(() => ({}))) as {
           error?: string;
+          nextPath?: string;
+          auditRecorded?: boolean;
+          workerDispatched?: boolean;
+          workerDispatchFailed?: boolean;
+          queueUpdateFailed?: boolean;
           affected?: number;
+          preserved?: number;
+          stale?: number;
+          uncertain?: number;
+          staleSkipped?: number;
           manualReconciliationSkipped?: number;
           blocked?: Array<{ id: string; title?: string | null; reason: string }>;
         };
+        if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
+        if (payload.queueUpdateFailed) {
+          throw new Error("تعذر تأكيد تحديث الطابور؛ حدّث الحالة قبل أي محاولة أخرى ولا تكرر الإجراء قبل مراجعة الحالة.");
+        }
         if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
+        const auditWarning = payload.auditRecorded === false ? " تحذير: تم تنفيذ الإجراء لكن تعذر حفظ سجل التدقيق؛ لا تعِد تنفيذه." : "";
+        const dispatchWarning = payload.workerDispatchFailed
+          ? " تم حفظ العناصر في الطابور لكن تعذر تشغيل العامل فورًا؛ تحقّق من تفعيل الناشر المجدول قبل إعادة المحاولة. لا تعِد تنفيذ الإجراء."
+          : "";
         if (action === "publish_now") {
           setMessage(
-            `تم تجهيز ${payload.affected ?? 0} عنصرًا للتشغيل الفوري عبر GitHub Actions.` +
+            `تم تجهيز ${payload.affected ?? 0} عنصرًا في طابور النشر.` +
+              ((payload.affected ?? 0) > 0 && payload.workerDispatched === true ? " تم إرسال طلب التشغيل الفوري." : "") +
               ((payload.manualReconciliationSkipped ?? 0) > 0
                 ? ` تم تجاوز ${payload.manualReconciliationSkipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.`
-                : ""),
+                : "") + dispatchWarning + auditWarning,
+          );
+          if (payload.blocked?.length) {
+            setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
+          }
+        } else if (action === "delete" || action === "delete_failed") {
+          const preserved = payload.preserved ?? 0;
+          const stale = payload.stale ?? 0;
+          const uncertain = payload.uncertain ?? 0;
+          setMessage(
+            `حُذف ${payload.affected ?? 0} سجل محلي آمن. تم الاحتفاظ بـ${preserved} سجل بسبب نتيجة ناجحة أو جزئية أو غير مؤكدة.` +
+              (stale > 0 ? ` تم تجاوز ${stale} سجل تغيّر قبل تنفيذ الحذف.` : "") +
+              (uncertain > 0 ? ` تعذر تأكيد نتيجة ${uncertain} عملية؛ حدّث الطابور قبل أي محاولة أخرى.` : "") + auditWarning,
           );
           if (payload.blocked?.length) {
             setError(payload.blocked.map(item => `${item.title || item.id}: ${item.reason}`).join("\n"));
           }
         } else {
           const skipped = payload.manualReconciliationSkipped ?? 0;
+          const staleSkipped = payload.staleSkipped ?? 0;
           setMessage(
-            `تم تنفيذ الإجراء بنجاح${typeof payload.affected === "number" ? ` (${payload.affected})` : ""}.` +
-              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : ""),
+            `تم تنفيذ الإجراء على ${payload.affected ?? 0} عنصر ظاهر.` +
+              (skipped > 0 ? ` تم تجاوز ${skipped} عنصر يتطلب مراجعة يدوية لنتيجة النشر.` : "") +
+              (staleSkipped > 0 ? ` تم تجاوز ${staleSkipped} سجل تغيّر أثناء العملية.` : "") + dispatchWarning + auditWarning,
           );
         }
         await load();
@@ -580,7 +667,7 @@ export default function AdminSocialPage() {
         setBusy(false);
       }
     },
-    [load, retryable.length, selected, selectedManualReconciliationCount, selectedPublishNowCount]
+    [load, localDeletable, retryable, selected, selectedLocalDeletableCount, selectedManualReconciliationCount, selectedPublishNowCount]
   );
 
   const deletePublished = useCallback(async (ids: string[], platforms?: string[]) => {
@@ -588,10 +675,15 @@ export default function AdminSocialPage() {
       setError("حدد فيديو منشورًا أولًا.");
       return;
     }
-    const targetText = platforms?.length ? platforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و") : "كل المنصات التي نُشر عليها الفيديو";
+    const requestedPlatforms = platforms?.length ? platforms : [...REMOTE_DELETE_PLATFORMS];
+    if (requestedPlatforms.some(platform => !REMOTE_DELETE_PLATFORMS.has(platform))) {
+      setError("حذف منشورات YouTube غير متاح حاليًا؛ صلاحية الحذف غير موجودة في مسار OAuth المعتمد.");
+      return;
+    }
+    const targetText = requestedPlatforms.map(value => PLATFORM_LABELS[value] ?? value).join(" و");
     const confirmation = `تأكيد الحذف النهائي من ${targetText}؟
 
-سيتم حذف المنشور الفعلي من المنصة. ${deleteLocalMemory ? "سيتم حذف ملف الفيديو المولّد من ذاكرة ZIKR أيضًا." : "سيظل ملف الفيديو المولّد داخل ذاكرة ZIKR."} سيظل سجل النشر والتدقيق محفوظًا داخل ZIKR.`;
+سيتم حذف المنشور الفعلي من Facebook/Facebook Reels فقط. لن يتم إرسال طلب حذف إلى YouTube لأن تكامل OAuth الحالي لا يمنح صلاحية الحذف. ستظل نسخة الفيديو داخل ZIKR وسجل النشر والتدقيق محفوظة.`;
     if (!window.confirm(confirmation)) return;
 
     setBusy(true);
@@ -601,34 +693,36 @@ export default function AdminSocialPage() {
       const response = await fetch("/api/admin/social", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete_published", ids, platforms, deleteLocalMemory }),
+        body: JSON.stringify({ action: "delete_published", ids, platforms: requestedPlatforms, confirmed: true }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        nextPath?: string;
+        auditRecorded?: boolean;
         deleted?: number;
         failed?: number;
         missingRemoteId?: number;
-        localMemoryDeleted?: number;
-        localMemoryFailed?: number;
+        inProgress?: number;
+        staleSkipped?: number;
         results?: Array<{ id: string; title: string; platform: string; status: string; error?: string }>;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر حذف المنشور من المنصة.");
-      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا. ملفات الذاكرة المحذوفة: ${payload.localMemoryDeleted ?? 0}، فشل حذفها: ${payload.localMemoryFailed ?? 0}. الفشل الخارجي: ${payload.failed ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. سجل التدقيق محفوظ.`);
+      setMessage(`تم حذف ${payload.deleted ?? 0} منشورًا فعليًا من Facebook/Facebook Reels. الفشل الخارجي: ${payload.failed ?? 0}، قيد التنفيذ: ${payload.inProgress ?? 0}، تغيّرت سجلاتها أثناء الفحص: ${payload.staleSkipped ?? 0}، ومعرّفات غير محفوظة: ${payload.missingRemoteId ?? 0}. لم يتم إرسال طلب حذف إلى YouTube. نسخة الفيديو داخل ZIKR محفوظة.` + (payload.auditRecorded === false ? " تحذير: تعذر حفظ سجل التدقيق؛ لا تعِد طلب الحذف." : ""));
       const issues = (payload.results ?? []).filter(result =>
-        result.status === "failed" || result.status === "missing_remote_id"
+        result.status === "failed" || result.status === "missing_remote_id" || result.status === "in_progress" || result.status === "stale"
       );
       if (issues.length) {
         setError(issues.map(result => `${result.title} — ${PLATFORM_LABELS[result.platform] ?? result.platform}: ${result.error || "معرّف المنشور غير متاح."}`).join("\n"));
       }
       setSelectedPublished([]);
-      setDeleteLocalMemory(false);
       await load();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر حذف المنشور من المنصة.");
     } finally {
       setBusy(false);
     }
-  }, [deleteLocalMemory, load]);
+  }, [load]);
 
   function toggleVisibleRetryable() {
     const ids = visibleSelectable.map(item => item.id);
@@ -663,11 +757,11 @@ export default function AdminSocialPage() {
             <Button variant="outline" disabled={busy} onClick={() => void connectYouTube()}>
               إعادة تفويض YouTube للرفع والتحليلات
             </Button>
-            <Button variant="outline" disabled={busy} onClick={() => void connectFacebook()}>
-              ربط Facebook عبر OAuth
+            <Button variant="outline" disabled={busy || !canPublish} onClick={() => void connectFacebook()}>
+              ربط Facebook عبر OAuth — يتطلب social.publish وMFA
             </Button>
             {health.facebookEnvironmentTokenConfigured && (
-              <Button disabled={busy} onClick={() => void adoptServerToken()}>
+              <Button disabled={busy || !canPublish} onClick={() => void adoptServerToken()}>
                 اعتماد توكن الخادم
               </Button>
             )}
@@ -774,11 +868,12 @@ export default function AdminSocialPage() {
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-brand-cream/50">YouTube</div>
             <span className={`text-xs ${health.youtubeConnectionStatus === "connected" ? "text-emerald-300" : "text-amber-200/80"}`}>
-              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "public_data_only" ? "قراءة عامة فقط" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
+              {health.youtubeConnectionStatus === "connected" ? "متصل" : health.youtubeConnectionStatus === "public_data_only" ? "قراءة عامة فقط" : health.youtubeConnectionStatus === "reauthorization_required" ? "يحتاج إعادة تفويض" : health.youtubeConnectionStatus === "permission_missing" ? "صلاحية قراءة القناة ناقصة" : health.youtubeConnectionStatus === "channel_selection_required" ? "اختيار القناة مطلوب" : health.youtubeConnectionStatus === "channel_not_found" ? "القناة المحددة غير موجودة" : health.youtubeConfigured ? "لم يُختبر الاتصال" : "غير مضبوط"}
             </span>
           </div>
           <p className="text-sm font-semibold text-brand-cream/85">{health.youtubeChannelName || (health.youtubeConfigured ? "قناة YouTube — يلزم الاختبار" : "بيانات YouTube غير مكتملة")}</p>
           {health.youtubeConnectionMessage && <p className="text-xs leading-5 text-brand-cream/55">{health.youtubeConnectionMessage}</p>}
+          {health.youtubeConnectionStatus === "connected" && !health.youtubeUploadReady && <p className="text-xs leading-5 text-amber-200/80">قراءة القناة متاحة، لكن صلاحية رفع الفيديو غير مكتملة. أعد ربط YouTube قبل تحرير العناصر المحجوبة.</p>}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectYouTube()}>
               ربط YouTube للنشر والإحصاءات
@@ -817,7 +912,7 @@ export default function AdminSocialPage() {
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => void connectFacebook()}>
+            <Button variant="outline" size="sm" disabled={busy || !canPublish} onClick={() => void connectFacebook()}>
               تجديد الاتصال
             </Button>
             <Button variant="outline" size="sm" disabled={busy} onClick={() => void testFacebook()}>
@@ -832,6 +927,13 @@ export default function AdminSocialPage() {
           </div>
           <div className="mt-1 font-semibold">{health.facebookAuthBlocked}</div>
         </Card>
+        <Card>
+          <div className="text-xs text-brand-cream/50">
+            <span aria-hidden="true">YouTube Auth Blocks</span>
+            <span className="sr-only">سجلات فشل اعتماد YouTube السابقة</span>
+          </div>
+          <div className="mt-1 font-semibold">{health.youtubeAuthBlocked}</div>
+        </Card>
       </section>
 
       {health.facebookAuthBlocked > 0 && (
@@ -839,8 +941,45 @@ export default function AdminSocialPage() {
           role="status"
           className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200"
         >
-          يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
-          هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. بعد اعتماد توكن صالح، سيعاد فتح العناصر تلقائيًا مع الاحتفاظ بنتائج النشر الناجحة لتجنب تكرارها.
+          <p>
+            يوجد {health.facebookAuthBlocked} عنصرًا قديمًا محجوبًا بسبب فشل اعتماد Facebook.
+            هذا عدّاد للطابور وليس تشخيصًا للتوكن الحالي. إعادة ربط Facebook أو اعتماد توكن الخادم تحفظ الاعتماد فقط ولا تستأنف العناصر المحجوبة تلقائيًا. استخدم زر الاستئناف الصريح بعد مراجعة العناصر؛ يتطلب تأكيدًا وMFA، ولا يعيد إلا العناصر الواقعة ضمن نافذة النشر الحالية. العناصر التاريخية الأقدم تظل محجوبة.
+          </p>
+          {canPublish ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !health.facebookEnabled || health.facebookConnectionStatus !== "connected"}
+              onClick={() => void releaseAuthBlockedQueue("facebook")}
+            >
+              استئناف نشر العناصر المحجوبة ({health.facebookAuthBlocked}) — يتطلب MFA
+            </Button>
+          ) : (
+            <p className="text-xs">استئناف النشر يتطلب صلاحية social.publish.</p>
+          )}
+        </div>
+      )}
+
+      {health.youtubeAuthBlocked > 0 && (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-200"
+        >
+          <p>
+            يوجد {health.youtubeAuthBlocked} عنصرًا متوقفًا بسبب اعتماد YouTube. إعادة ربط القناة تحفظ الاعتماد فقط؛ لا تستأنف الطابور تلقائيًا. بعد التحقق من صلاحية الرفع استخدم زر الاستئناف الصريح. العناصر الأقدم من نافذة النشر الحالية تظل محجوبة.
+          </p>
+          {canPublish ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !health.youtubeUploadReady}
+              onClick={() => void releaseAuthBlockedQueue("youtube")}
+            >
+              استئناف نشر YouTube المحجوب ({health.youtubeAuthBlocked}) — يتطلب MFA
+            </Button>
+          ) : (
+            <p className="text-xs">استئناف النشر يتطلب صلاحية social.publish.</p>
+          )}
         </div>
       )}
         </>
@@ -1022,7 +1161,7 @@ export default function AdminSocialPage() {
               disabled={!retryable.length || busy}
               onClick={() => void runAction("retry_all_failed")}
             >
-              إعادة محاولة الفاشلة/الجزئية ({retryable.length})
+              إعادة محاولة الظاهرة ({retryable.length})
             </Button>
             <Button
               variant="outline"
@@ -1033,10 +1172,10 @@ export default function AdminSocialPage() {
             </Button>
             <Button
               variant="outline"
-              disabled={!retryable.length || busy}
+              disabled={!localDeletable.length || busy}
               onClick={() => void runAction("delete_failed")}
             >
-              حذف الفاشلة/الجزئية ({retryable.length})
+              حذف الفاشلة الآمنة ({Math.min(localDeletable.length, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT)} / {localDeletable.length})
             </Button>
           </div>
         </div>
@@ -1209,15 +1348,12 @@ export default function AdminSocialPage() {
                   الحذف هنا يزيل المنشور من المنصة نفسها. سجل ZIKR ونتائج النشر يظلان محفوظين للمراجعة والتدقيق.
                 </p>
               </div>
-              <label className="flex items-center gap-2 text-xs text-brand-cream/70">
-                <input type="checkbox" checked={deleteLocalMemory} onChange={event => setDeleteLocalMemory(event.target.checked)} disabled={busy} className="h-4 w-4" />
-                حذف ملف الفيديو من ذاكرة ZIKR أيضًا
-              </label>
+              <p className="text-xs text-brand-cream/55">نسخة الفيديو داخل ZIKR لا تُحذف من هذا الإجراء؛ حذف النسخ الاحتياطية يخضع لمراجعة الاحتفاظ المنفصلة بعد التحقق من النسخ البديلة.</p>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" disabled={!publishedVideos.length || busy} onClick={togglePublishedSelection}>
                   {allPublishedSelected ? "إلغاء تحديد الكل" : "تحديد كل المنشورات"}
                 </Button>
-                <Button variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10" size="sm" disabled={!selectedPublished.length || busy} onClick={() => void deletePublished(selectedPublished)}>
+                <Button variant="outline" className="border-red-400/30 text-red-200 hover:bg-red-400/10" size="sm" disabled={!selectedPublished.length || busy} onClick={() => void deletePublished(selectedPublished, [...REMOTE_DELETE_PLATFORMS])}>
                   حذف المحدد من المنصات ({selectedPublished.length})
                 </Button>
               </div>
@@ -1277,7 +1413,8 @@ export default function AdminSocialPage() {
                     const delivered = delivery?.ok === true && Boolean(remoteId);
                     const deleted = deletion?.status === "deleted";
                     const href = publishedPlatformUrl(item, platform);
-                    const hasSafeDeleteId = delivered && !deleted;
+                    const remoteDeleteSupported = REMOTE_DELETE_PLATFORMS.has(platform);
+                    const hasSafeDeleteId = delivered && !deleted && remoteDeleteSupported;
                     return (
                       <div key={platform} className="space-y-2 rounded-xl border border-brand-gold/10 bg-black/15 p-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1288,6 +1425,7 @@ export default function AdminSocialPage() {
                         </div>
                         {remoteId ? <p className="break-all font-mono text-[11px] text-brand-cream/40" dir="ltr">{remoteId}</p> : <p className="text-xs leading-5 text-amber-100/65">لا يوجد معرّف منشور محفوظ لهذا السجل؛ لا يمكن تنفيذ حذف آمن.</p>}
                         {deletion?.status === "failed" && typeof deletion.error === "string" && <p className="text-xs leading-5 text-red-300/80">{deletion.error}</p>}
+                        {platform === "youtube" && <p className="text-xs leading-5 text-amber-200/80">الحذف عن بُعد من YouTube غير متاح حاليًا؛ لا نطلب صلاحية الحذف في تكامل OAuth الحالي.</p>}
                         {deleted && typeof deletion.deletedAt === "string" && <p className="text-[11px] text-brand-cream/40">تاريخ الحذف: {new Date(deletion.deletedAt).toLocaleString("ar-EG")}</p>}
                         <div className="flex flex-wrap gap-2">
                           {href && !deleted && <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold underline underline-offset-2">فتح المنشور</a>}
@@ -1297,7 +1435,7 @@ export default function AdminSocialPage() {
                             disabled={!hasSafeDeleteId || busy}
                             onClick={() => void deletePublished([item.id], [platform])}
                           >
-                            حذف من {PLATFORM_LABELS[platform] ?? platform}
+                            {remoteDeleteSupported ? `حذف من ${PLATFORM_LABELS[platform] ?? platform}` : "حذف YouTube غير متاح"}
                           </Button>
                         </div>
                       </div>

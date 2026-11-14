@@ -1,7 +1,9 @@
 import "server-only";
 
 import { getServerEnv } from '@/lib/env';
+import { normalizeCloudinaryFolderPath } from '@/features/media/services/cloudinary-folder';
 import { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
+import { deleteCloudinaryImageIfUnreferenced as deleteCloudinaryImageIfUnreferencedCore } from "@/features/media/services/cloudinary-orphan-compensation";
 
 export { validateCloudinaryImage } from '@/features/media/services/cloudinary-validation';
 
@@ -53,7 +55,7 @@ export async function uploadCloudinaryImage(params: {
   tags?: string[];
   maxBytes?: number;
 }): Promise<CloudinaryImageUpload> {
-  validateCloudinaryImage(params.file, params.maxBytes);
+  await validateCloudinaryImage(params.file, params.maxBytes);
   const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
 
   const form = new FormData();
@@ -64,9 +66,9 @@ export async function uploadCloudinaryImage(params: {
     new Blob([await params.file.arrayBuffer()], { type: params.file.type }),
     `${fileName}.${extension}`
   );
-  form.append('folder', safeSegment(params.folder, 'zikr'));
+  form.append('folder', normalizeCloudinaryFolderPath(params.folder));
   form.append('public_id', safeSegment(params.publicId, 'image'));
-  form.append('overwrite', 'true');
+  form.append('overwrite', 'false');
   form.append('resource_type', 'image');
   form.append('invalidate', 'true');
   if (params.tags?.length) form.append('tags', params.tags.map(tag => safeSegment(tag, '')).filter(Boolean).join(','));
@@ -93,4 +95,13 @@ export async function uploadCloudinaryImage(params: {
     bytes: payload.bytes ?? params.file.size,
     format: payload.format ?? null,
   };
+}
+
+export async function deleteCloudinaryImageIfUnreferenced(
+  params: Parameters<typeof deleteCloudinaryImageIfUnreferencedCore>[0],
+) {
+  const { cloudName, apiKey, apiSecret } = cloudinaryConfig();
+  return deleteCloudinaryImageIfUnreferencedCore(params, {
+    credentials: { cloudName, apiKey, apiSecret },
+  });
 }

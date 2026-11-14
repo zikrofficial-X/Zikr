@@ -123,7 +123,7 @@ export const ADMIN_NAVIGATION: readonly AdminNavigationGroup[] = [
     icon: "bar-chart-3",
     items: [
       { href: "/admin/analytics", label: "تحليلات المنصة", permission: "analytics.read", icon: "bar-chart-3" },
-      { href: "/admin/seo", label: "تحسين الظهور", permission: "settings.manage", icon: "search-check" },
+      { href: "/admin/seo", label: "تحسين الظهور", permission: "site.metadata.manage", icon: "search-check" },
     ],
   },
   {

@@ -7,6 +7,7 @@ import { SocialLogin } from "@capgo/capacitor-social-login";
 import { Button } from "@/components/ui/button";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 type GoogleOAuthButtonProps = {
   next?: string;
@@ -16,9 +17,7 @@ type GoogleOAuthButtonProps = {
 let nativeGoogleInitialization: Promise<void> | null = null;
 
 function getSafeNextPath(next?: string): string {
-  return typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
-    ? next
-    : "/profile";
+  return sanitizeInternalPath(next);
 }
 
 function getCanonicalBrowserOrigin(): string {
@@ -27,6 +26,11 @@ function getCanonicalBrowserOrigin(): string {
     if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
       return window.location.origin;
     }
+
+    // Supabase's redirect allowlist is intentionally locked to the canonical
+    // production origin. Vercel deployment aliases are not independent OAuth
+    // callback hosts; only the explicitly configured v0 preview may stay local.
+
   }
   return PRODUCTION_URL;
 }
@@ -34,7 +38,7 @@ function getCanonicalBrowserOrigin(): string {
 function buildNativeOAuthRedirect(nextPath: string): string {
   // Browser fallback returns the PKCE callback to the installed app through
   // NativeGoogleOAuthHandler. This also supports older APKs without SocialLogin.
-  const url = new URL("/auth/callback", getCanonicalBrowserOrigin());
+  const url = new URL("/auth/callback", PRODUCTION_URL);
   url.searchParams.set("native", "1");
   url.searchParams.set("next", nextPath);
   return url.toString();

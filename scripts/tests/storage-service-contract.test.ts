@@ -99,4 +99,15 @@ assert.match(migration, /bucket_id in \('avatars', 'media', 'audio', 'documents'
 assert.doesNotMatch(migration, /to anon/i, "the migration must not grant anonymous write access");
 assert.doesNotMatch(migration, /insert into storage\.buckets/i, "the migration must not alter bucket visibility or limits");
 
-console.log("Storage owner-policy, MIME, path, and upload-expiry contracts passed.");
+
+const storagePresignRouteSource = readFileSync("src/app/api/storage/presign/route.ts", "utf8");
+assert.match(storagePresignRouteSource, /readBoundedJsonBody\(request\)/);
+assert.doesNotMatch(storagePresignRouteSource, /request\.json\(\)/);
+assert.match(storagePresignRouteSource, /export const dynamic = ['"]force-dynamic['"]/);
+assert.equal(
+  (storagePresignRouteSource.match(/"Cache-Control": "no-store"/g) || []).length,
+  3,
+  "upload, download, and error responses must never cache signed storage capabilities",
+);
+
+console.log("Storage owner-policy, MIME, path, upload-expiry, and bounded no-store presign contracts passed.");

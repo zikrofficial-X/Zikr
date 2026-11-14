@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
 import { getServerEnv } from "@/lib/env";
+import { isSocialPlatformDeletionCurrent } from "./social-deletion-visibility";
 
 type SocialQueueRow = {
   id: string;
@@ -89,6 +90,9 @@ export async function getFacebookPublishedPosts(limit = 6): Promise<FacebookPubl
         : "";
       const facebookUrl = remoteId ? buildFacebookPostUrl(remoteId) : null;
       if (!facebookUrl) return [];
+      const metadata = asRecord(row.metadata);
+      const deletion = asRecord(metadata?.platformDeletions)?.facebook;
+      if (isSocialPlatformDeletionCurrent(deletion, remoteId, row.published_at)) return [];
 
       const title = row.title?.trim() || row.body?.trim().slice(0, 90) || "منشور ذِكر";
       return [{

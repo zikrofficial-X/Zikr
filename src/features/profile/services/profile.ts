@@ -4,6 +4,9 @@ import {
   createAdminClient,
   createClient,
 } from "@/lib/supabase/server";
+import { resolveAdminRole } from "@/features/admin/services/permissions";
+import { buildAuthProfileSyncPayload } from "./profile-sync";
+import { normalizeIanaTimeZone } from "@/lib/timezone";
 
 export type ProfileFavorite = {
   id: string;
@@ -81,6 +84,16 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
         .limit(10),
     ]);
 
+  const effectiveRole = resolveAdminRole(
+    profileRes.data?.[0]?.role,
+    assignmentRes.data?.role,
+    Boolean(assignmentRes.error),
+  );
+  const assignedRole =
+    effectiveRole !== "admin" && effectiveRole !== "user"
+      ? effectiveRole
+      : null;
+
   return {
     user: {
       id: user.id,
@@ -102,7 +115,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
           display_name: profileRes.data[0].display_name ?? null,
           avatar_url: profileRes.data[0].avatar_url ?? null,
           locale: profileRes.data[0].locale ?? null,
-          role: profileRes.data[0].role ?? null,
+          role: effectiveRole,
           bio: profileRes.data[0].bio ?? null,
           preferred_reciter_code: profileRes.data[0].preferred_reciter_code ?? null,
           daily_wird_target: profileRes.data[0].daily_wird_target ?? 20,
@@ -111,10 +124,7 @@ export async function getCurrentProfileData(): Promise<CurrentProfileData | null
           updated_at: profileRes.data[0].updated_at ?? null,
         }
       : null,
-    assignedRole:
-      typeof assignmentRes.data?.role === "string"
-        ? assignmentRes.data.role
-        : null,
+    assignedRole,
     favorites: (favoritesRes.data ?? []) as ProfileFavorite[],
     readingProgress: (progressRes.data ?? []) as ProfileReadingProgress[],
   };
@@ -236,7 +246,10 @@ function parseProfileUpdate(
     if (typeof body.timezone !== "string" || body.timezone.length > 80) {
       return { error: "timezone must be a valid string" };
     }
-    parsed.timezone = body.timezone.trim() || "Africa/Cairo";
+    const candidate = body.timezone.trim() || "Africa/Cairo";
+    const timezone = normalizeIanaTimeZone(candidate);
+    if (!timezone) return { error: "timezone must be a valid IANA timezone" };
+    parsed.timezone = timezone;
   }
 
   return parsed;
@@ -326,34 +339,31 @@ export async function syncAuthProfile(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!user.id.trim()) return { ok: false, error: "Invalid user" };
 
-  const metadata =
-    user.user_metadata && typeof user.user_metadata === "object"
-      ? user.user_metadata
-      : {};
+  let adminClient: ReturnType<typeof createAdminClient>;
+  try {
+    adminClient = createAdminClient();
+  } catch (error) {
+    console.error("[profile] auth sync client unavailable:", error);
+    return { ok: false, error: "profile_sync_unavailable" };
+  }
+  const { data: existingProfile, error: readError } = await adminClient
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  const displayName =
-    typeof metadata.full_name === "string"
-      ? metadata.full_name.trim()
-      : typeof metadata.name === "string"
-        ? metadata.name.trim()
-        : null;
+  if (readError) {
+    console.error("[profile] auth sync read failed:", readError);
+    return { ok: false, error: "profile_sync_read_failed" };
+  }
 
-  const avatarUrl =
-    typeof metadata.avatar_url === "string"
-      ? metadata.avatar_url.trim()
-      : typeof metadata.picture === "string"
-        ? metadata.picture.trim()
-        : null;
-
-  const adminClient = createAdminClient();
+  const payload = buildAuthProfileSyncPayload(
+    user,
+    existingProfile,
+    new Date().toISOString(),
+  );
   const { error } = await adminClient.from("profiles").upsert(
-    {
-      id: user.id,
-      email: user.email ?? null,
-      display_name: displayName || null,
-      avatar_url: avatarUrl || null,
-      updated_at: new Date().toISOString(),
-    },
+    payload,
     { onConflict: "id" },
   );
 
@@ -364,7 +374,6 @@ export async function syncAuthProfile(
 
   return { ok: true };
 }
-
 
 export async function updateCurrentProfileAvatar(
   avatarUrl: string,

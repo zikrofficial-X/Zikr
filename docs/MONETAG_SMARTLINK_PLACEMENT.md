@@ -12,10 +12,11 @@ Its UI label must clearly identify it as an advertisement or external sponsored 
 
 The disclosed link is placed in:
 - The homepage promotional section.
-- The public video hub.
+- A standalone promotional section on the About page and Articles index.
 - The shared footer on eligible general public pages.
+- The public video hub and individual video-detail routes do not render a SmartLink component.
 
-The footer placement is suppressed on administration/authentication, child-directed, sacred-text, worship-tool, and individual video-detail routes. Keep the external link separate from Quran, Hadith, dua, adhkar, prayer, Qibla, and children's learning interfaces.
+The footer placement is suppressed on administration/authentication, child-directed, sacred-text, worship-tool, About, Articles, and video routes. About and Articles have their own explicit promotional placement. Keep the external link separate from Quran, Hadith, dua, adhkar, prayer, Qibla, and children's learning interfaces.
 
 The link opens a new tab and uses `rel="nofollow sponsored noopener noreferrer"`. Its disclosure explains that the destination may be a third-party offer or website.
 
@@ -36,11 +37,23 @@ runtime guard. These exclusions apply to newly rebuilt APK/AAB artifacts; a
 previously installed build must receive the updated app/web runtime and worker
 before its old advertising integration can be removed.
 
+## Canonical-host restriction
+
+Monetag tags and the Monetag service-worker import are permitted only on the
+exact canonical HTTPS origin (`https://zikrmediaofficial.vercel.app`). The
+browser compares the complete origin, not just the hostname, before registering
+`/sw.js?monetag=1`; alternate ports, Vercel Preview aliases, staging aliases,
+and local development register `/sw.js` without Monetag. The worker independently
+checks both the marker and exact canonical origin before calling `importScripts`;
+a failed third-party import is non-fatal so offline caching and notification
+handlers can still install. Non-canonical and native workers remove only cached
+HTML that contains legacy advertising markup.
+
 The website continues to use its approved, disclosed Monetag placements.
 
 ## Social video metadata
 
-Social captions use approved platform metadata. Monetag SmartLinks remain website-only and are not appended to YouTube descriptions, Facebook/Reels captions, or any external platform metadata. Existing historical posts are not edited or republished.
+Social captions use approved platform metadata. Monetag SmartLinks are website-only and must not be appended to YouTube descriptions, Facebook/Reels captions, tags, or any external platform metadata. Existing historical posts are not edited or republished.
 
 ## Publishing behavior
 

@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
+import { parseWrittenGenerationRequest } from "@/features/social/services/written-content";
 
 export const dynamic = "force-dynamic";
-
-const categories = new Set([
-  "auto",
-  "quran",
-  "hadith",
-  "dua",
-  "adhkar",
-  "story",
-  "prophets",
-  "companions",
-  "knowledge",
-  "kids",
-]);
 
 type WrittenQueueItem = {
   id: string;
@@ -64,21 +54,27 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const manageAuth = await requireAdminApi("social.manage");
   if (!manageAuth.ok) return NextResponse.json({ error: manageAuth.error }, { status: manageAuth.status });
-  const publishAuth = await requireAdminApi("social.publish");
-  if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error }, { status: publishAuth.status });
+  const publishAuth = await requireAdminStepUpApi("social.publish", "/admin/social/written-studio");
+  if (!publishAuth.ok) return NextResponse.json({ error: publishAuth.error, nextPath: "nextPath" in publishAuth ? publishAuth.nextPath : undefined }, { status: publishAuth.status, headers: { "Cache-Control": "no-store" } });
 
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      category?: unknown;
-      batchSize?: unknown;
-    };
-    const category = typeof body.category === "string" && categories.has(body.category)
-      ? body.category
-      : "auto";
-    const requestedBatchSize = Number(body.batchSize ?? 1);
-    if (!Number.isInteger(requestedBatchSize) || requestedBatchSize < 1 || requestedBatchSize > 3) {
-      return NextResponse.json({ error: "عدد المنشورات يجب أن يكون من 1 إلى 3." }, { status: 400 });
+    const bodyResult = await readBoundedJsonBody(request);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { "Cache-Control": "no-store" } },
+      );
     }
+    const parsedRequest = parseWrittenGenerationRequest(bodyResult.value);
+    if (!parsedRequest.ok) {
+      const message = parsedRequest.reason === "invalid_category"
+        ? "تصنيف المحتوى غير صالح."
+        : parsedRequest.reason === "invalid_batch_size"
+          ? "عدد المنشورات يجب أن يكون من 1 إلى 3."
+          : "بيانات الطلب غير صالحة.";
+      return NextResponse.json({ error: message }, { status: 400 });
+    }
+    const { category, batchSize: requestedBatchSize } = parsedRequest.value;
 
     const dispatch = await dispatchGitHubWorkflow("generate-written-content.yml", {
       category,

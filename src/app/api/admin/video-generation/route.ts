@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { supabaseServerAdminRequest } from '@/lib/supabase/server';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 import { buildVideoApprovalSnapshotHash, hasCompleteVideoApprovalChecklist, REQUIRED_VIDEO_APPROVAL_CHECKS } from '@/features/videos/services/video-publish-approval';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_STATUSES = new Set(['pending', 'processing', 'completed', 'failed']);
+const VIDEO_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function idsFromBody(body: unknown): string[] {
-  if (!body || typeof body !== 'object') return [];
-  const ids = (body as { ids?: unknown }).ids;
-  if (!Array.isArray(ids)) return [];
-  return [...new Set(ids.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+function idsFromBody(body: unknown): { ids: string[]; invalid: boolean } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ids: [], invalid: true };
+  const rawIds = (body as { ids?: unknown }).ids;
+  if (rawIds === undefined) return { ids: [], invalid: false };
+  if (!Array.isArray(rawIds) || rawIds.length > 500) return { ids: [], invalid: true };
+  const ids = new Set<string>();
+  for (const value of rawIds) {
+    if (typeof value !== 'string' || !VIDEO_REQUEST_ID_PATTERN.test(value)) return { ids: [], invalid: true };
+    ids.add(value.toLowerCase());
+  }
+  return { ids: [...ids], invalid: false };
 }
 
 export async function GET() {
@@ -50,13 +59,19 @@ export async function GET() {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireAdminApi('video.delete');
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const auth = await requireAdminStepUpApi('video.delete', '/admin/video/requests');
+  if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
 
   try {
-    const body = await request.json().catch(() => ({}));
-    const ids = idsFromBody(body);
-    const deleteFailed = Boolean((body as { deleteFailed?: unknown })?.deleteFailed);
+    const parsedBody = await readBoundedJsonBody(request, 32 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: { "Cache-Control": "no-store" } });
+    }
+    const body = parsedBody.value;
+    const parsedIds = idsFromBody(body);
+    if (parsedIds.invalid) return NextResponse.json({ error: "Invalid video request IDs." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    const ids = parsedIds.ids;
+    const deleteFailed = (body as { deleteFailed?: unknown }).deleteFailed === true;
 
     if (!ids.length && !deleteFailed) {
       return NextResponse.json({ error: 'حدد عمليات للحذف أو استخدم deleteFailed.' }, { status: 400 });
@@ -72,13 +87,16 @@ export async function DELETE(request: NextRequest) {
     if (!deleted.length) {
       return NextResponse.json({ ok: true, affected: 0 });
     }
-    await recordAdminAuditEvent({
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
       action: "video_generation.delete_failed",
       permission: "video.delete",
       resourceType: "video_generation_requests",
       metadata: { requestedIds: ids.length, deleteFailed, affected: deleted.length },
-    });
-    return NextResponse.json({ ok: true, affected: deleted.length });
+      }),
+      (auditError) => console.error("[api/admin/video-generation] audit event failed after committed mutation:", auditError),
+    );
+    return NextResponse.json({ ok: true, affected: deleted.length, auditRecorded });
   } catch (error) {
     console.error('[api/admin/video-generation] DELETE:', error);
     return NextResponse.json({ error: 'تعذر حذف عمليات توليد الفيديو الفاشلة.' }, { status: 500 });
@@ -86,21 +104,26 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireAdminApi('video.manage');
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const auth = await requireAdminStepUpApi('video.manage', '/admin/video/requests');
+  if (!auth.ok) return NextResponse.json({ error: auth.error, nextPath: 'nextPath' in auth ? auth.nextPath : undefined }, { status: auth.status, headers: { 'Cache-Control': 'no-store' } });
 
   try {
-    const body = await request.json() as {
+    const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: parsedBody.error }, { status: parsedBody.status, headers: { 'Cache-Control': 'no-store' } });
+    }
+    if (!parsedBody.value || typeof parsedBody.value !== 'object' || Array.isArray(parsedBody.value)) {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+    }
+    const body = parsedBody.value as {
       id?: unknown;
-      status?: unknown;
       errorMessage?: unknown;
       action?: unknown;
       qaChecklist?: unknown;
     };
-    const id = typeof body.id === 'string' ? body.id : '';
-    const status = typeof body.status === 'string' ? body.status : '';
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
     const action = typeof body.action === 'string' ? body.action : '';
-    if (!id) return NextResponse.json({ error: 'معرّف العملية مطلوب.' }, { status: 400 });
+    if (!VIDEO_REQUEST_ID_PATTERN.test(id)) return NextResponse.json({ error: 'معرّف العملية غير صالح.' }, { status: 400 });
 
     // Publish retry preserves the generated provider job and any successful
     // platform IDs so only missing publication work is attempted again.
@@ -154,14 +177,17 @@ export async function PATCH(request: NextRequest) {
           body: JSON.stringify({ content: updatedContent, updated_at: reviewedAt }) },
       );
       if (!updated?.length) return NextResponse.json({ error: 'تغيرت حالة العملية أثناء المراجعة؛ حدّث التفاصيل ثم أعد الفحص.' }, { status: 409 });
-      await recordAdminAuditEvent({
+      const auditRecorded = await runPostCommitAudit(
+        () => recordAdminAuditEvent({
         action: "video_generation.publish.approve",
         permission: "video.manage",
         resourceType: "video_generation_requests",
         resourceId: id,
         metadata: { category: current.category, approvalChecks: REQUIRED_VIDEO_APPROVAL_CHECKS.length, approvalSnapshotHash },
-      });
-      return NextResponse.json({ ok: true, approvalStatus: 'approved',
+        }),
+        (auditError) => console.error("[api/admin/video-generation] audit event failed after committed mutation:", auditError),
+      );
+      return NextResponse.json({ ok: true, auditRecorded, approvalStatus: 'approved',
         note: 'تم اعتماد جودة الفيديو لمكتبة ZIKR الداخلية فقط؛ لا يتم نشره على منصات خارجية.' });
     }
 
@@ -176,38 +202,13 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (!ALLOWED_STATUSES.has(status)) {
-      return NextResponse.json({ error: 'معرّف أو حالة غير صالحة.' }, { status: 400 });
-    }
-
-    const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-    if (status === 'pending') {
-      patch.error_message = null;
-      patch.error_details = null;
-      patch.heygen_status = null;
-      patch.heygen_video_id = null;
-      patch.heygen_submitted_at = null;
-      patch.heygen_last_polled_at = null;
-      patch.youtube_id = null;
-      patch.facebook_id = null;
-      patch.video_url = null;
-    }
-    if (typeof body.errorMessage === 'string') patch.error_message = body.errorMessage.slice(0, 1000);
-
-    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' },
-      body: JSON.stringify(patch),
-    });
-    if (!updated.length) return NextResponse.json({ error: 'عملية الفيديو غير موجودة.' }, { status: 404 });
-    await recordAdminAuditEvent({
-      action: "video_generation.status.update",
-      permission: "video.manage",
-      resourceType: "video_generation_requests",
-      resourceId: id,
-      metadata: { status, changedFields: Object.keys(patch) },
-    });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      {
+        error: 'تغيير حالة الفيديو يدويًا متوقف؛ يستخدم العامل انتقالات الطابور، وتتم إعادة المحاولة عبر المسار المخصص للعمليات الفاشلة.',
+        code: 'DIRECT_VIDEO_STATUS_MUTATION_RETIRED',
+      },
+      { status: 410, headers: { 'Cache-Control': 'no-store' } },
+    );
   } catch (error) {
     console.error('[api/admin/video-generation] PATCH:', error);
     return NextResponse.json({ error: 'تعذر تحديث العملية.' }, { status: 500 });

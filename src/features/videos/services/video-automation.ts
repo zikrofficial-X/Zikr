@@ -1,7 +1,7 @@
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
-import { appendSmartLinkDisclosure, MONETAG_SMARTLINK_YOUTUBE_TAGS } from '@/lib/smartlink';
 import { getServerEnv } from '@/lib/env';
 import { getYouTubeUploadRefreshToken } from '@/features/social/services/youtube-oauth-credentials';
+import { assertCloudinaryVideoUrl } from '@/features/videos/services/video-media-url';
 import {
   getFacebookPageCredentials,
   setFacebookReelsNextAllowedAt,
@@ -26,13 +26,7 @@ function getEnv(name: string): string | undefined {
 
 
 function assertRemoteVideoUrl(videoUrl: string, target: string): string {
-  const parsed = new URL(videoUrl);
-  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(`${target} requires an HTTP(S) media URL`);
-  const host = parsed.hostname.toLowerCase();
-  if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be' || host.endsWith('.youtu.be')) {
-    throw new Error(`${target} requires the original media file, not a YouTube watch URL`);
-  }
-  return parsed.toString();
+  return assertCloudinaryVideoUrl(videoUrl, target);
 }
 
 async function getYoutubeAccessToken(): Promise<string> {
@@ -40,7 +34,7 @@ async function getYoutubeAccessToken(): Promise<string> {
   const clientSecret = getEnv('YOUTUBE_CLIENT_SECRET');
   const refreshToken = await getYouTubeUploadRefreshToken();
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('YouTube OAuth is not configured: YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET and YOUTUBE_REFRESH_TOKEN are required');
+    throw new Error('YouTube OAuth is not configured: set YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET, then reconnect a channel with the youtube.upload scope in the admin publishing center.');
   }
 
   try {
@@ -122,7 +116,7 @@ function sourceSocialCaption(request: VideoGenerationRequest) {
     ? String((ai as Record<string, unknown>).socialCaption).trim()
     : '';
   const baseCaption = [caption || request.description || '', growthCallToAction()].filter(Boolean).join('\n\n').slice(0, 800);
-  return appendSmartLinkDisclosure(baseCaption, content.audience !== 'kids');
+  return baseCaption;
 }
 
 /** Create a durable video-generation request for the canonical template worker. */
@@ -267,6 +261,7 @@ export async function updateVideoRequestStatus(
   videoId: string,
   status: 'pending' | 'processing' | 'completed' | 'failed',
   metadata?: { youtubeId?: string; facebookId?: string; videoUrl?: string },
+  expectedStatus?: "failed",
 ): Promise<boolean> {
   try {
     const body: Record<string, unknown> = {
@@ -276,11 +271,15 @@ export async function updateVideoRequestStatus(
     if (metadata?.youtubeId) body.youtube_id = metadata.youtubeId;
     if (metadata?.facebookId) body.facebook_id = metadata.facebookId;
     if (metadata?.videoUrl) body.video_url = metadata.videoUrl;
+    let expectedUpdatedAt: string | null = null;
     if (status === 'pending') {
-      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown }>>(
-        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content&limit=1',
+      const existingContentRows = await supabaseServerAdminRequest<Array<{ content: unknown; status: string; updated_at: string }>>(
+        '/rest/v1/video_generation_requests?id=eq.' + encodeURIComponent(videoId) + '&select=content,status,updated_at&limit=1',
       );
-      const existing = existingContentRows?.[0]?.content;
+      const existingRow = existingContentRows?.[0];
+      if (!existingRow || (expectedStatus && existingRow.status !== expectedStatus)) return false;
+      expectedUpdatedAt = existingRow.updated_at;
+      const existing = existingRow.content;
       const content = existing && typeof existing === 'object' && !Array.isArray(existing)
         ? existing as Record<string, unknown> : {};
       body.content = { ...content, approvalStatus: 'awaiting_human_review', approvalReviewedAt: null, qualityReview: null };
@@ -294,11 +293,15 @@ export async function updateVideoRequestStatus(
       body.heygen_submitted_at = null;
       body.heygen_last_polled_at = null;
     }
-    await supabaseServerAdminRequest(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(videoId)}`,
-      { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=minimal' }, body: JSON.stringify(body) },
+    if (expectedStatus && !expectedUpdatedAt) return false;
+    const filter = expectedStatus && expectedUpdatedAt
+      ? `id=eq.${encodeURIComponent(videoId)}&status=eq.${encodeURIComponent(expectedStatus)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`
+      : `id=eq.${encodeURIComponent(videoId)}`;
+    const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/video_generation_requests?${filter}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json', Prefer: 'return=representation' }, body: JSON.stringify(body) },
     );
-    return true;
+    return Array.isArray(updated) && updated.length > 0;
   } catch (error) {
     console.error('[video-automation] Failed to update video request:', error);
     return false;
@@ -314,7 +317,7 @@ export function generateYoutubeMetadata(request: VideoGenerationRequest) {
   return {
     title,
     description: [sourceSocialCaption(request), qualityNote, sourceLabel, isShort ? '#Shorts' : '', '#ذكر #تدبر #اسلاميات'].filter(Boolean).join('\n\n'),
-    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : []), ...(content.audience === 'kids' ? [] : [...MONETAG_SMARTLINK_YOUTUBE_TAGS])],
+    tags: ['zikr', 'islamic', 'quran', 'hadith', 'dua', 'adhkar', 'تعلم', 'تدبر', 'ذكر', ...(isShort ? ['shorts', 'ريلز'] : [])],
     categoryId: '27',
     isShort,
   };

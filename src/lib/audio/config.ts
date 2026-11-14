@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { saveOfflinePreference } from "@/lib/offline-settings";
 import { CURATED_AUDIO_CHOICES } from "@/lib/audio/curated-library";
 
@@ -52,13 +53,23 @@ function getBundledFallback(slot: AudioSlot): AudioChoice {
 }
 
 export function registerAudioChoices(choices: readonly AudioChoice[]): void {
-  const merged = new Map(remoteAudioChoices.map(choice => [choice.key, choice]));
-  for (const choice of choices) merged.set(choice.key, choice);
-  remoteAudioChoices = Array.from(merged.values());
+  // Callers provide the complete current server snapshot. Do not retain choices
+  // that were unpublished or removed; failed fetches must skip this function.
+  const current = new Map<string, AudioChoice>();
+  for (const choice of choices) current.set(choice.key, choice);
+  remoteAudioChoices = Array.from(current.values());
 }
 
 export function isAudioChoiceKey(value: unknown): value is string {
   return typeof value === "string" && allChoices().some(choice => choice.key === value);
+}
+
+export function isAudioChoiceKeyForSlot(value: unknown, slot: AudioSlot): value is string {
+  if (typeof value !== "string") return false;
+  const knownChoice = allChoices().find(choice => choice.key === value);
+  // Keep unknown server-library IDs while offline; getAudioChoice will use a
+  // safe slot-specific bundled fallback until the remote catalog is available.
+  return knownChoice ? knownChoice.slot === slot : value.startsWith("site:id:");
 }
 
 export function normalizeAudioSettings(
@@ -66,13 +77,13 @@ export function normalizeAudioSettings(
 ): AudioSettings {
   const normalized = { ...DEFAULT_AUDIO_SETTINGS };
   for (const slot of Object.keys(normalized) as AudioSlot[]) {
-    if (isAudioChoiceKey(value?.[slot])) normalized[slot] = value[slot] as string;
+    if (isAudioChoiceKeyForSlot(value?.[slot], slot)) normalized[slot] = value[slot] as string;
   }
   return normalized;
 }
 
-export function getAudioChoice(key: string): AudioChoice {
-  return allChoices().find(choice => choice.key === key) ?? getBundledFallback("prayer");
+export function getAudioChoice(key: string, slot: AudioSlot = "prayer"): AudioChoice {
+  return allChoices().find(choice => choice.key === key && choice.slot === slot) ?? getBundledFallback(slot);
 }
 
 export function getAudioSettingsFromStorage(): AudioSettings {
@@ -144,7 +155,7 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
       } satisfies AudioChoice;
     });
 
-    registerAudioChoices(remote);
+    if (audioResponse.ok) registerAudioChoices(remote);
 
     const stored = getAudioSettingsFromStorage();
     const configured = settingsPayload.data?.audioSettings;
@@ -167,19 +178,30 @@ export async function loadAudioSettings(): Promise<AudioSettings> {
 }
 
 export function getAudioUrl(slot: AudioSlot): string {
-  return getAudioChoice(getAudioSettingsFromStorage()[slot]).webUrl;
+  return getAudioChoice(getAudioSettingsFromStorage()[slot], slot).webUrl;
 }
 
-export function getNativeAudio(slot: AudioSlot): {
+export function getNativeAudio(
+  slot: AudioSlot,
+  platform: string = Capacitor.getPlatform(),
+): {
   sound: string;
   channelId: string;
 } {
   const settings = getAudioSettingsFromStorage();
-  const choice = getAudioChoice(settings[slot]);
+  const choice = getAudioChoice(settings[slot], slot);
   const native = choice.nativeFile ? choice : getBundledFallback(slot);
+
+  // iOS notification sounds must be present in the native app bundle and use
+  // supported WAV/CAF formats. The iOS target ships only adhan.wav/salawat.wav;
+  // remote choices and the Android-only MP3 fallback remain foreground audio.
+  const sound = platform === "ios"
+    ? slot === "salawat" ? "salawat.wav" : "adhan.wav"
+    : native.nativeFile as string;
+
   return {
-    sound: native.nativeFile as string,
-    channelId: "zikr-audio-" + settings[slot] + "-v2",
+    sound,
+    channelId: "zikr-audio-" + slot + "-" + settings[slot] + "-v3",
   };
 }
 

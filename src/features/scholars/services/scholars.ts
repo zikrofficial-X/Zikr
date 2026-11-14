@@ -77,7 +77,7 @@ export async function getAllScholars(): Promise<Scholar[]> {
 
   try {
     const response = await supabaseServerAnonRequest<ScholarRow[]>(
-      "/rest/v1/scholars?select=id,slug,name_ar,name_en,bio_ar,bio_en,thumbnail_url,website_url,youtube_url,published,created_at,updated_at,metadata&published=eq.true&limit=100&order=created_at.desc",
+      "/rest/v1/scholars?select=id,slug,name_ar,name_en,bio_ar,bio_en,thumbnail_url,website_url,youtube_url,published,created_at,updated_at,metadata&published=eq.true&limit=1000&order=created_at.desc",
       { cache: "force-cache", next: { revalidate: 3600 } },
     );
 

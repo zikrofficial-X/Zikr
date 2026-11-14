@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { hasAdminPermission } from "@/features/admin/services/permissions";
 import { getAdminSettings } from "@/features/admin/services/platform";
 import { saveCustomVideoSpacesAction } from "@/app/admin/system-actions";
 import { AI_VISUAL_POLICY_TEXT, AI_VISUAL_POLICY_VERSION } from "@/features/videos/providers/ai-visual-policy";
@@ -23,7 +24,8 @@ const PROVIDER_LABELS: Partial<Record<VideoProviderName, string>> = {
 };
 
 export default async function VideoFactoryVisualsPage() {
-  await requireAdminPermission("video.manage");
+  const admin = await requireAdminPermission("video.manage");
+  const canManageCustomSpaces = hasAdminPermission(admin.role, "system.manage");
   const adminSettings = await getAdminSettings();
   const storedSpaces = Array.isArray(adminSettings.video_custom_spaces)
     ? adminSettings.video_custom_spaces
@@ -118,47 +120,53 @@ export default async function VideoFactoryVisualsPage() {
             إدخال المعرّف لا يضمن الحصة المجانية أو توفر GPU. لا تدخل أي مفتاح API أو كلمة مرور هنا.
           </p>
         </div>
-        <form action={saveCustomVideoSpacesAction} className="space-y-3">
-          {Array.from({ length: 5 }, (_, index) => {
-            const entry = config.customSpaces[index];
-            const number = index + 1;
-            return (
-              <div key={number} className="grid gap-3 rounded-xl border border-brand-gold/10 p-3 md:grid-cols-[1fr_180px_110px] md:items-end">
-                <label className="space-y-1 text-sm text-brand-cream/70">
-                  <span>Space {number} — owner/name</span>
-                  <input
-                    name={"space_" + number}
-                    defaultValue={entry?.space ?? ""}
-                    placeholder="owner/space-name"
-                    dir="ltr"
-                    className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-left text-sm text-brand-cream outline-none focus:border-brand-gold/40"
-                  />
-                </label>
-                <label className="space-y-1 text-sm text-brand-cream/70">
-                  <span>محول التوليد</span>
-                  <select
-                    name={"variant_" + number}
-                    defaultValue={entry?.variant ?? "wan2_2_fast"}
-                    className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-sm text-brand-cream"
-                  >
-                    <option value="wan2_2_fast">Wan 2.2 Fast</option>
-                    <option value="ltx_fast">LTX Fast</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 pb-2 text-sm text-brand-cream/70">
-                  <input type="checkbox" name={"enabled_" + number} value="true" defaultChecked={Boolean(entry)} className="h-4 w-4 accent-brand-gold" />
-                  مفعّل
-                </label>
-              </div>
-            );
-          })}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xs text-brand-cream/40">يتم حفظ القائمة في إعدادات الإدارة، ويقرأها عامل GitHub عند التشغيل التالي.</p>
-            <button type="submit" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">
-              حفظ قائمة المولدات
-            </button>
-          </div>
-        </form>
+        {canManageCustomSpaces ? (
+          <form action={saveCustomVideoSpacesAction} className="space-y-3">
+            {Array.from({ length: 5 }, (_, index) => {
+              const entry = config.customSpaces[index];
+              const number = index + 1;
+              return (
+                <div key={number} className="grid gap-3 rounded-xl border border-brand-gold/10 p-3 md:grid-cols-[1fr_180px_110px] md:items-end">
+                  <label className="space-y-1 text-sm text-brand-cream/70">
+                    <span>Space {number} — owner/name</span>
+                    <input
+                      name={"space_" + number}
+                      defaultValue={entry?.space ?? ""}
+                      placeholder="owner/space-name"
+                      dir="ltr"
+                      className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-left text-sm text-brand-cream outline-none focus:border-brand-gold/40"
+                    />
+                  </label>
+                  <label className="space-y-1 text-sm text-brand-cream/70">
+                    <span>محول التوليد</span>
+                    <select
+                      name={"variant_" + number}
+                      defaultValue={entry?.variant ?? "wan2_2_fast"}
+                      className="w-full rounded-lg border border-brand-gold/15 bg-black/30 px-3 py-2 text-sm text-brand-cream"
+                    >
+                      <option value="wan2_2_fast">Wan 2.2 Fast</option>
+                      <option value="ltx_fast">LTX Fast</option>
+                    </select>
+                  </label>
+                  <label className="flex items-center gap-2 pb-2 text-sm text-brand-cream/70">
+                    <input type="checkbox" name={"enabled_" + number} value="true" defaultChecked={Boolean(entry)} className="h-4 w-4 accent-brand-gold" />
+                    مفعّل
+                  </label>
+                </div>
+              );
+            })}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-xs text-brand-cream/40">يتم حفظ القائمة في إعدادات الإدارة، ويقرأها عامل GitHub عند التشغيل التالي.</p>
+              <button type="submit" className="rounded-xl border border-brand-gold/25 bg-brand-gold/10 px-4 py-2 text-sm font-semibold text-brand-gold hover:bg-brand-gold/15">
+                حفظ قائمة المولدات
+              </button>
+            </div>
+          </form>
+        ) : (
+          <p className="text-sm leading-6 text-brand-cream/55">
+            إدارة المولدات الخارجية تتطلب صلاحية مدير النظام والتحقق الإضافي.
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5">

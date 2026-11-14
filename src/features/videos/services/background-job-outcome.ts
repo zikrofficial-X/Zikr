@@ -54,3 +54,71 @@ export function shouldClearRunNowRequest(input: RunNowConsumptionInput): boolean
     Number.isFinite(input.videosProcessed) &&
     input.videosProcessed > 0;
 }
+
+export type RunNowRequestIdentity = {
+  requestedAt: string;
+  requestId?: string | null;
+};
+
+/** A worker may consume only the exact Run Now request it started with. */
+export function isSameRunNowRequest(
+  current: RunNowRequestIdentity,
+  expected: RunNowRequestIdentity,
+): boolean {
+  return current.requestedAt === expected.requestedAt &&
+    (current.requestId ?? null) === (expected.requestId ?? null);
+}
+
+/**
+ * Build an atomic JSONB compare-and-set filter for mutating a Run Now row.
+ * A worker/action may update the row only while it still contains the exact
+ * request object it originally wrote; this prevents a slower dispatch from
+ * overwriting a newer administrator request.
+ */
+export function buildRunNowRequestValueFilter(value: unknown): string | null {
+  const serializedValue = JSON.stringify(value);
+  if (typeof serializedValue !== "string") return null;
+
+  return [
+    "key=eq.video_automation_run_now",
+    `value=eq.${encodeURIComponent(serializedValue)}`,
+  ].join("&");
+}
+
+/**
+ * Build a compare-and-set filter for consuming a Run Now row.
+ *
+ * updated_at alone is not sufficient: callers write millisecond timestamps, so
+ * two distinct requests can share one timestamp. Comparing the complete JSONB
+ * value in the DELETE predicate makes the read/check/delete sequence atomic
+ * with respect to a replacement request, including legacy string requests.
+ */
+export function buildRunNowRequestDeleteFilter(
+  updatedAt: string | null,
+  value: unknown,
+): string | null {
+  if (!updatedAt) return null;
+  const serializedValue = JSON.stringify(value);
+  if (typeof serializedValue !== "string") return null;
+
+  return [
+    "key=eq.video_automation_run_now",
+    `updated_at=eq.${encodeURIComponent(updatedAt)}`,
+    `value=eq.${encodeURIComponent(serializedValue)}`,
+  ].join("&");
+}
+
+
+export type ScheduledContentPublishingInput = {
+  target: string;
+  videoDryRun: boolean;
+};
+
+/**
+ * Scheduled internal site publication is part of the video worker's public
+ * side effects. A video dry run must not claim or publish content queue rows.
+ * The independent social publisher remains governed by its own opt-in.
+ */
+export function shouldRunScheduledContentPublishing(input: ScheduledContentPublishingInput): boolean {
+  return !input.videoDryRun && (input.target === "videos" || input.target === "all");
+}

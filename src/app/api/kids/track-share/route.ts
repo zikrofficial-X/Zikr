@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
+import { consumeKidsShareRateLimit } from '@/features/kids/services/share-rate-limit';
+import { getTrustedClientAddress } from '@/features/kids/services/client-address';
+import { MAX_REQUEST_BODY_BYTES, readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 const VALID_PLATFORMS = new Set([
   'facebook',
@@ -8,10 +11,6 @@ const VALID_PLATFORMS = new Set([
   'copy-link',
 ]);
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 20;
-const rateLimitBuckets = new Map<string, { count: number; resetAt: number }>();
-
 type ShareRequest = {
   slug?: unknown;
   platform?: unknown;
@@ -19,42 +18,46 @@ type ShareRequest = {
 };
 
 function getClientAddress(request: NextRequest): string {
-  return (
-    request.headers.get('x-real-ip')?.trim() ||
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    'unknown'
+  return getTrustedClientAddress(
+    request.headers.get('x-real-ip'),
+    request.headers.get('x-forwarded-for'),
   );
 }
 
-function isRateLimited(request: NextRequest, slug: string, platform: string): boolean {
-  const now = Date.now();
-  const key = `${getClientAddress(request)}:${slug}:${platform}`;
-  const current = rateLimitBuckets.get(key);
-  if (!current || current.resetAt <= now) {
-    rateLimitBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    if (rateLimitBuckets.size > 2_000) {
-      for (const [bucketKey, bucket] of rateLimitBuckets) {
-        if (bucket.resetAt <= now) rateLimitBuckets.delete(bucketKey);
-      }
-    }
-    return false;
-  }
-  if (current.count >= RATE_LIMIT_MAX_REQUESTS) return true;
-  current.count += 1;
-  return false;
-}
-
 export async function POST(request: NextRequest) {
-  let body: ShareRequest;
   try {
-    const parsed = await request.json();
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    const allowed = await consumeKidsShareRateLimit(getClientAddress(request));
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Too many share events. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } },
+      );
     }
-    body = parsed as ShareRequest;
-  } catch {
-    return NextResponse.json({ error: 'Malformed JSON request body' }, { status: 400 });
+  } catch (error) {
+    console.error('[Kids Share Tracking Error] Rate limiter unavailable:', error);
+    return NextResponse.json(
+      { error: 'Share tracking is temporarily unavailable.' },
+      { status: 503, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } },
+    );
   }
+
+  const parsedBody = await readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      {
+        status: parsedBody.status,
+        headers: { 'Cache-Control': 'no-store' },
+      },
+    );
+  }
+  if (!parsedBody.value || typeof parsedBody.value !== 'object' || Array.isArray(parsedBody.value)) {
+    return NextResponse.json(
+      { error: 'Invalid request body' },
+      { status: 400, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
+  const body = parsedBody.value as ShareRequest;
 
   try {
     const slug = typeof body.slug === 'string' ? body.slug.trim() : '';
@@ -70,13 +73,6 @@ export async function POST(request: NextRequest) {
     if (action !== 'share') {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
-    if (isRateLimited(request, slug, platform)) {
-      return NextResponse.json(
-        { error: 'Too many share events. Please try again later.' },
-        { status: 429, headers: { 'Retry-After': '60', 'Cache-Control': 'no-store' } },
-      );
-    }
-
     const supabase = createAdminClient();
     const { data, error } = await supabase.rpc('increment_kids_content_shares', {
       p_slug: slug,

@@ -52,6 +52,24 @@ export function buildDuplicateVideoOwnerVideoUrlFilter(videoUrl: string | null |
 }
 
 /**
+ * Compare-and-set guard for restoring a canonical completed request. The URL
+ * check protects the media pointer; updated_at protects the rest of the row
+ * from a concurrent metadata/hash change after the duplicate was inspected.
+ */
+export function buildDuplicateVideoOwnerRecoveryFilter(
+  videoUrl: string | null | undefined,
+  updatedAt: string | null | undefined,
+): string | null {
+  const revision = updatedAt?.trim();
+  if (!revision || !Number.isFinite(Date.parse(revision))) return null;
+  return [
+    "status=eq.completed",
+    "updated_at=eq." + encodeURIComponent(revision),
+    buildDuplicateVideoOwnerVideoUrlFilter(videoUrl),
+  ].join("&");
+}
+
+/**
  * Reuse a newly rendered asset only when the canonical completed request has
  * lost its media and its public catalog row is absent or explicitly marked as
  * purged. Ambiguous, live, or intentionally unpublished records fail closed.

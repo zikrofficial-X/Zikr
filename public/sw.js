@@ -1,16 +1,26 @@
 // Keep the website's Monetag service-worker integration out of the native
 // Capacitor worker. The app registers this same file with ?native=1 so its
 // offline cache and notification handlers remain available without ad code.
+const serviceWorkerLocation = new URL(self.location.href);
 const isNativeCapacitorWorker =
-  new URL(self.location.href).searchParams.get("native") === "1";
+  serviceWorkerLocation.searchParams.get("native") === "1";
+const isCanonicalMonetagWorker =
+  !isNativeCapacitorWorker &&
+  serviceWorkerLocation.searchParams.get("monetag") === "1" &&
+  serviceWorkerLocation.origin === "https://zikrmediaofficial.vercel.app";
 
-if (!isNativeCapacitorWorker) {
+if (isCanonicalMonetagWorker) {
   self.options = {
     "domain": "5gvci.com",
     "zoneId": 12171818
   };
   self.lary = "";
-  importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw');
+  try {
+    importScripts('https://5gvci.com/act/files/service-worker.min.js?r=sw');
+  } catch (error) {
+    // Third-party advertising must never prevent the core offline worker from installing.
+    console.warn("[SW] Monetag service-worker integration unavailable:", error);
+  }
 }
 
 // Service Worker for Zikr PWA
@@ -33,8 +43,8 @@ const PUBLIC_CONTENT_API_PREFIXES = [
   "/api/kids/games/verse",
 ];
 
-async function purgeNativeAdvertisingMarkup() {
-  if (!isNativeCapacitorWorker) return;
+async function purgeDisabledAdvertisingMarkup() {
+  if (isCanonicalMonetagWorker) return;
 
   const cache = await caches.open(CACHE_NAME);
   const requests = await cache.keys();
@@ -62,11 +72,17 @@ function isPublicContentApi(url) {
 }
 
 function isSafeOfflineRoute(route) {
-  if (typeof route !== "string" || !route.startsWith("/") || route.startsWith("//")) return false;
+  if (
+    typeof route !== "string" ||
+    !route.startsWith("/") ||
+    route.startsWith("//") ||
+    route.includes("\\") ||
+    /%(?:2f|5c)/i.test(route)
+  ) return false;
   let pathname;
   try {
     const url = new URL(route, self.location.origin);
-    if (url.origin !== self.location.origin) return false;
+    if (url.origin !== self.location.origin || url.search || url.hash) return false;
     pathname = url.pathname.replace(/\/+$/, "") || "/";
   } catch {
     return false;
@@ -204,6 +220,29 @@ async function cacheOfflineRoutes(routes, replyPort) {
   });
 }
 
+async function pruneOfflineRoutes(routes, replyPort) {
+  if (!Array.isArray(routes)) throw new Error("The current offline route inventory is invalid.");
+
+  const keep = new Set(
+    routes
+      .filter(isSafeOfflineRoute)
+      .map(route => new URL(route, self.location.origin).href),
+  );
+  const cache = await caches.open(CACHE_NAME);
+  const requests = await cache.keys();
+  let removed = 0;
+
+  for (const request of requests) {
+    if (request.method !== "GET" || !request.headers.get("accept")?.includes("text/html")) continue;
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin || !isSafeOfflineRoute(url.pathname) || url.search || url.hash) continue;
+    if (keep.has(url.href)) continue;
+    if (await cache.delete(request)) removed += 1;
+  }
+
+  replyPort?.postMessage({ ok: true, removed });
+}
+
 // The complete offline pack is cached explicitly by the user from the Offline Library page.
 // Only the tiny shell is installed automatically so first install stays lightweight.
 const CORE_INSTALL_ASSETS = [
@@ -245,7 +284,7 @@ self.addEventListener("activate", event => {
       );
       // Remove only previously cached HTML containing ad markup. Keep the
       // user's Quran/audio/offline data and the current cache intact.
-      await purgeNativeAdvertisingMarkup();
+      await purgeDisabledAdvertisingMarkup();
     })
   );
   self.clients.claim();
@@ -332,17 +371,32 @@ self.addEventListener("fetch", event => {
   }
 
   if (url.pathname.startsWith(OFFLINE_CONTENT_PREFIX)) {
+    // The offline manifest changes when the validated public snapshot is
+    // refreshed. Fetch datasets from the network first (bypassing the HTTP
+    // cache), then replace the Cache Storage copy; use the cached copy only
+    // when the device is actually offline.
     event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached;
-        return fetch(request).then(response => {
+      fetch(new Request(request, { cache: "no-store" }))
+        .then(response => {
           if (response.ok) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
           return response;
-        });
-      })
+        })
+        .catch(() =>
+          caches.match(request).then(
+            cached =>
+              cached ||
+              new Response(
+                JSON.stringify({ error: "Offline snapshot unavailable" }),
+                {
+                  status: 503,
+                  headers: { "Content-Type": "application/json" },
+                }
+              )
+          )
+        )
     );
     return;
   }
@@ -492,6 +546,18 @@ self.addEventListener("message", event => {
     return;
   }
 
+  if (event.data && event.data.type === "PRUNE_OFFLINE_ROUTES") {
+    event.waitUntil(
+      pruneOfflineRoutes(event.data.routes, event.ports?.[0]).catch(error => {
+        event.ports?.[0]?.postMessage({
+          ok: false,
+          error: error instanceof Error ? error.message : "Offline route pruning failed",
+        });
+      }),
+    );
+    return;
+  }
+
   if (event.data && event.data.type === "CACHE_OFFLINE_ROUTES") {
     event.waitUntil(
       cacheOfflineRoutes(event.data.routes, event.ports?.[0]).catch(error => {
@@ -562,6 +628,7 @@ self.addEventListener("push", event => {
     // A malformed payload must not prevent the browser from showing a safe fallback.
   }
 
+  const safeNotificationUrl = isSafeOfflineRoute(data.url) ? data.url : "/";
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -569,10 +636,7 @@ self.addEventListener("push", event => {
       badge: "/icons/icon-192.png",
       tag: data.tag,
       data: {
-        url:
-          typeof data.url === "string" && data.url.startsWith("/")
-            ? data.url
-            : "/",
+        url: safeNotificationUrl,
       },
       renotify: false,
       dir: "rtl",
@@ -583,7 +647,8 @@ self.addEventListener("push", event => {
 
 self.addEventListener("notificationclick", event => {
   event.notification.close();
-  const target = event.notification.data?.url || "/";
+  const rawTarget = event.notification.data?.url;
+  const target = isSafeOfflineRoute(rawTarget) ? rawTarget : "/";
   event.waitUntil(
     clients
       .matchAll({ type: "window", includeUncontrolled: true })

@@ -69,7 +69,10 @@ if (!insightsWorkflow.includes("push:") || !insightsWorkflow.includes('branches:
     !insightsWorkflow.includes('"src/features/videos/services/video-automation.ts"')) {
   failures.push("daily insights worker must refresh after relevant YouTube/Facebook publisher and insights changes reach main");
 }
-if (!socialService.includes("created_at=gte.${createdSince}") || !socialService.includes("Invalid SOCIAL_PUBLISH_AFTER cutoff")) failures.push("social queue claims and stale recovery must respect the launch cutoff");
+if (!socialService.includes("created_at=gte.${createdSince}") ||
+    (socialService.match(/resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/g) ?? []).length < 2) {
+  failures.push("social queue claims and stale recovery must share the validated launch cutoff");
+}
 if (publisher.includes("if: false")) failures.push("social publisher must not retain the retired workflow kill switch");
 const mediaAuditWorkflow = read(".github/workflows/audit-video-media.yml");
 if (!mediaAuditWorkflow.includes('cron: "41 4 * * *"') ||

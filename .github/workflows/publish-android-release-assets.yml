@@ -19,6 +19,7 @@ permissions:
   contents: write
   statuses: read
   checks: read
+  pull-requests: read
 
 # Tag pushes and recovery dispatches can target the same GitHub Release from
 # different refs. A single shared lock prevents concurrent asset delete/upload
@@ -37,11 +38,11 @@ jobs:
        (github.ref == 'refs/heads/main' ||
         startsWith(github.ref_name, 'android-release-v')))
     runs-on: ubuntu-24.04
-    env:
-      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout exact release ref
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Decide whether this is a release publish run
         id: gate
@@ -59,8 +60,11 @@ jobs:
           echo "publish=${PUBLISH}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve release tag
+        id: resolve_tag
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
@@ -104,10 +108,21 @@ jobs:
 
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "TAG_TARGET_SHA=$TAG_TARGET_SHA" >> "$GITHUB_ENV"
+          echo "tag_target_sha=$TAG_TARGET_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Verify current PR CODEOWNER approval before publishing Android assets
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT_SHA: ${{ steps.resolve_tag.outputs.tag_target_sha }}
+          REQUIRE_VERCEL_STATUS: "false"
+        run: node scripts/verify-release-gates.mjs
 
       - name: Fail fast if a published immutable release is missing APK/AAB
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           RELEASE_JSON=""
@@ -177,6 +192,8 @@ jobs:
       - name: Verify all CircleCI and GitHub release prerequisites before waiting for artifacts
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           latest_context_state() {
@@ -265,6 +282,8 @@ jobs:
       - name: Wait for GitHub Release Android artifacts
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           asset_url() {
@@ -305,6 +324,8 @@ jobs:
       - name: Verify release metadata
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           TAG="${TAG}"
@@ -390,6 +411,8 @@ jobs:
         id: release_state
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           RELEASE_JSON=""
@@ -448,6 +471,8 @@ jobs:
       - name: Upload release assets and publish
         if: steps.gate.outputs.publish == 'true' && steps.release_state.outputs.upload_allowed == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # Use GitHub CLI so the upload endpoint is resolved from the Release
@@ -471,6 +496,8 @@ jobs:
       - name: Verify published GitHub Release contains the exact signed assets
         if: steps.gate.outputs.publish == 'true'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           RELEASE_BODY="$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")"

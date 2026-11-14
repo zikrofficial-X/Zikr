@@ -1,6 +1,7 @@
 import { getServerEnv } from "@/lib/env";
 import { readStoredFacebookCredential } from "@/features/social/services/facebook-credentials";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { requireSocialQueueRows } from "@/features/social/services/social-queue-selection";
 
 type QueueRow = {
   id: string;
@@ -65,17 +66,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function facebookReelId(metadata: Record<string, unknown> | null): string | null {
+export function facebookReelId(metadata: Record<string, unknown> | null): string | null {
   const results = metadata?.platformResults;
   if (!isRecord(results)) return null;
   const reel = results.facebook_reels;
   if (!isRecord(reel) || reel.ok !== true) return null;
-  // New queue rows persist both IDs; videoId is required by /video_insights.
-  // Older rows only have remoteId (the FINISH post_id) and use the resolver below.
-  const id = typeof reel.videoId === "string" ? reel.videoId.trim()
-    : typeof reel.remoteId === "string" ? reel.remoteId.trim()
-    : "";
-  return /^[0-9]{8,}$/.test(id) ? id : null;
+
+  // New queue rows persist a numeric videoId for /video_insights. Older rows
+  // only retain the FINISH post_id (pageId_postId), which must reach the Page
+  // posts resolver after Graph reports that post insights are unsupported.
+  const videoId = typeof reel.videoId === "string" ? reel.videoId.trim() : "";
+  if (/^[0-9]{8,20}$/.test(videoId)) return videoId;
+
+  const remoteId = typeof reel.remoteId === "string" ? reel.remoteId.trim() : "";
+  return /^(?:[0-9]{8,20}|[0-9]{8,20}_[0-9]{8,20})$/.test(remoteId)
+    ? remoteId
+    : null;
 }
 
 export function shouldRefreshFacebookReelsInsights(
@@ -275,7 +281,7 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
       "/rest/v1/social_publish_queue?content_type=like.*_video&select=id,title,metadata,created_at&order=created_at.asc,id.asc&limit=" +
         pageSize + "&offset=" + page * pageSize,
     );
-    const batch = Array.isArray(rows) ? rows : [];
+    const batch = requireSocialQueueRows<QueueRow>(rows, "Facebook Reels queue candidate query");
     if (batch.length === 0) break;
 
     const withVideoIds = batch.flatMap((row) => {
@@ -287,9 +293,13 @@ async function getFacebookReelCandidates(limit: number): Promise<Array<{ queueId
       const existing = await supabaseServerAdminRequest<ExistingFacebookInsightRow[]>(
         "/rest/v1/social_post_insights?platform=eq.facebook_reels&queue_id=in.(" +
           queueIds.join(",") + ")&select=queue_id,captured_at",
-      ).catch(() => []);
+      );
+      const validatedExisting = requireSocialQueueRows<ExistingFacebookInsightRow>(
+        existing,
+        "Facebook Reels insight freshness query",
+      );
       const capturedAtByQueueId = new Map(
-        (existing ?? []).map((row) => [row.queue_id, row.captured_at]),
+        validatedExisting.map((row) => [row.queue_id, row.captured_at]),
       );
 
       for (const item of withVideoIds) {

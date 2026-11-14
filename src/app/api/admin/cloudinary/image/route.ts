@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { requireAdminApi } from '@/features/admin/services/admin';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
@@ -6,7 +7,7 @@ import { uploadCloudinaryImage } from '@/features/media/services/cloudinary';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const ALLOWED_FOLDERS = new Set(['homepage', 'stories', 'articles', 'videos', 'competitions', 'branding', 'kids', 'media']);
 
@@ -32,22 +33,26 @@ export async function POST(request: NextRequest) {
     if (!(file instanceof File)) return errorResponse('يرجى اختيار صورة صالحة.', 400);
     if (!folder) return errorResponse('مجلد الرفع غير صالح.', 400);
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) return errorResponse('الصيغ المدعومة: JPG وPNG وWEBP وGIF.', 400);
-    if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return errorResponse('حجم الصورة يجب ألا يتجاوز 8 ميجابايت.', 400);
+    if (file.size <= 0 || file.size > MAX_IMAGE_BYTES) return errorResponse('حجم الصورة يجب ألا يتجاوز 4 ميجابايت.', 400);
 
     const upload = await uploadCloudinaryImage({
       file,
       folder: `zikr/${folder}`,
-      publicId: requestedPublicId || `${guard.profile.id}-${Date.now()}`,
+      publicId: requestedPublicId || `${guard.profile.id}-${randomUUID()}`,
       tags: ['zikr', 'admin', folder],
       maxBytes: MAX_IMAGE_BYTES,
     });
-    await recordAdminAuditEvent({
-      action: "media.cloudinary.image.upload",
-      permission: "media.manage",
-      resourceType: "cloudinary_assets",
-      resourceId: upload.publicId,
-      metadata: { folder, bytes: upload.bytes, format: upload.format },
-    });
+    try {
+      await recordAdminAuditEvent({
+        action: "media.cloudinary.image.upload",
+        permission: "media.manage",
+        resourceType: "cloudinary_assets",
+        resourceId: upload.publicId,
+        metadata: { folder, bytes: upload.bytes, format: upload.format },
+      });
+    } catch (auditError) {
+      console.warn("[api/admin/cloudinary/image] audit event unavailable after upload:", auditError);
+    }
 
     return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

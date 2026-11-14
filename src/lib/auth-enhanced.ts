@@ -7,6 +7,7 @@
 
 import { getServerEnv } from "@/lib/env";
 import { PRODUCTION_URL, isV0PreviewHost } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 /**
  * Build OAuth redirect URI
@@ -32,6 +33,22 @@ export function buildOAuthRedirectUri(
  * aliases for the same deployment, but those aliases are not the public OAuth
  * origin for ZIKR. Localhost remains supported for development.
  */
+function isTrustedVercelPreviewHost(host: string): boolean {
+  if (process.env.VERCEL_ENV !== "preview") return false;
+  const allowedHosts = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL]
+    .map((value) => {
+      const candidate = value?.trim();
+      if (!candidate) return "";
+      try {
+        return new URL(candidate.includes("://") ? candidate : `https://${candidate}`).hostname.toLowerCase();
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean);
+  return allowedHosts.includes(host);
+}
+
 export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
   if (!baseUrl) return PRODUCTION_URL;
 
@@ -39,11 +56,18 @@ export function getCanonicalAuthBaseUrl(baseUrl?: string | null): string {
     const url = new URL(baseUrl);
     const host = url.hostname.toLowerCase();
 
-    if (host === "localhost" || host === "127.0.0.1" || host === "::1") {
-      return url.origin;
+    const isLocalHost = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (isLocalHost) {
+      const isProductionRuntime =
+        process.env.NODE_ENV === "production" ||
+        process.env.VERCEL_ENV === "production" ||
+        process.env.NEXT_PUBLIC_VERCEL_ENV === "production";
+      return isProductionRuntime ? PRODUCTION_URL : url.origin;
     }
 
-    if (isV0PreviewHost(host)) {
+    if (isV0PreviewHost(host) || isTrustedVercelPreviewHost(host)) {
+      // Preview OAuth must complete on the same deployment origin that created
+      // the PKCE verifier cookie; never exchange on preview then redirect to production.
       return url.origin;
     }
 
@@ -103,15 +127,13 @@ export function getGoogleOAuthConfigStatus() {
  * Resolve the safe origin used by auth route handlers after callback.
  */
 export function getTrustedAuthOrigin(request: Request): string {
-  const forwardedProto = request.headers.get("x-forwarded-proto") ?? "https";
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const host = forwardedHost ?? request.headers.get("host");
-
-  if (host) {
-    return getCanonicalAuthBaseUrl(`${forwardedProto}://${host}`);
+  try {
+    // The absolute request URL is supplied by the trusted hosting adapter.
+    // Do not build an OAuth redirect from client-controlled forwarded headers.
+    return getCanonicalAuthBaseUrl(new URL(request.url).origin);
+  } catch {
+    return PRODUCTION_URL;
   }
-
-  return PRODUCTION_URL;
 }
 
 /**
@@ -119,20 +141,7 @@ export function getTrustedAuthOrigin(request: Request): string {
  * Validates against open-redirect: only same-origin relative paths are allowed.
  */
 export function extractNextPath(searchParams: URLSearchParams): string {
-  const next = searchParams.get("next");
-
-  if (!next) return "/profile";
-
-  if (!next.startsWith("/") || next.startsWith("//")) return "/profile";
-
-  try {
-    const url = new URL(next, "http://localhost");
-    if (url.origin === "http://localhost" && url.pathname.startsWith("/")) {
-      return url.pathname + url.search;
-    }
-  } catch {
-    // Invalid URL, use default
-  }
-
-  return "/profile";
+  const safePath = sanitizeInternalPath(searchParams.get("next"));
+  const hashIndex = safePath.indexOf("#");
+  return hashIndex === -1 ? safePath : safePath.slice(0, hashIndex);
 }

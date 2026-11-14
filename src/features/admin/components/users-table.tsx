@@ -46,12 +46,25 @@ const ASSIGNABLE_ROLE_VALUES: AdminRole[] = [
 ];
 
 
-export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; currentAdminId: string }) {
+export function UsersTable({
+  users,
+  currentAdminId,
+  canManageRoles,
+  canAssignFullAdminAccounts,
+}: {
+  users: UserProfile[];
+  currentAdminId: string;
+  canManageRoles: boolean;
+  canAssignFullAdminAccounts: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [role, setRole] = useState<"all" | AdminRole>("all");
   const [recentOnly, setRecentOnly] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 25;
+  const roleOptions = canAssignFullAdminAccounts
+    ? ASSIGNABLE_ROLE_VALUES
+    : ASSIGNABLE_ROLE_VALUES.filter(value => value !== "admin" && value !== "super_admin");
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
@@ -204,6 +217,10 @@ export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; cu
                   <td className="px-4 py-3">
                     {isSelf ? (
                       <span className="text-xs arabic-muted">لا يمكن تعديل نفسك</span>
+                    ) : !canManageRoles ? (
+                      <span className="text-xs arabic-muted">عرض فقط</span>
+                    ) : !canAssignFullAdminAccounts && (effectiveRole === "admin" || effectiveRole === "super_admin") ? (
+                      <span className="text-xs text-amber-200/80">حساب محمي بإدارة المدير الأعلى</span>
                     ) : (
                       <form action={updateUserRoleAuditedAction} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="userId" value={user.id} />
@@ -213,7 +230,7 @@ export function UsersTable({ users, currentAdminId }: { users: UserProfile[]; cu
                           className="rounded-lg border border-brand-gold/20 bg-black/25 px-3 py-2 text-xs text-brand-cream outline-none focus:border-brand-gold/60"
                           dir="rtl"
                         >
-                          {ASSIGNABLE_ROLE_VALUES.map((value) => (
+                          {roleOptions.map((value) => (
                             <option key={value} value={value}>
                               {ROLE_LABELS[value]}
                             </option>

@@ -10,6 +10,7 @@ const actionRoots = [
   join(root, "src/features/admin/actions"),
 ].filter((dir) => existsSync(dir));
 const failures = [];
+const permissionMatrix = readFileSync(join(root, "docs/admin/ADMIN_API_PERMISSION_MATRIX_2026-11-06.md"), "utf8");
 const methods = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]);
 
 if (!existsSync(apiRoot) || actionRoots.length === 0) {
@@ -46,7 +47,7 @@ const privilegedPatterns = [
 
 function checkGuardedBlock({ block, label, allow405 = false }) {
   const gatePattern =
-    /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z0-9_.-]*)\3\s*\)|\brequireAdminStepUp\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\5\s*,|\brequireAdmin\s*\(\s*\)/;
+    /\brequireAdminApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\1\s*\)|\brequireAdminStepUpApi\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\3\s*,|\brequireAdminPermission\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\5\s*\)|\brequireAdminStepUp\s*\(\s*(['"])([a-z][a-z0-9_-]*\.[a-z][a-z0-9_.-]*)\7\s*,|\brequireAdmin\s*\(\s*\)/;
   const gate = gatePattern.exec(block);
 
   if (!gate && allow405 && isMethodRejectionOnly(block)) {
@@ -93,9 +94,9 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/site-audio/route.ts DELETE": ["audio.manage"],
   "src/app/api/admin/site-audio/upload/route.ts POST": ["audio.manage"],
   "src/app/api/admin/social/facebook/callback/route.ts GET": ["social.manage"],
-  "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/facebook/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/youtube/callback/route.ts GET": ["social.manage"],
-  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage"],
+  "src/app/api/admin/social/youtube/connect/route.ts GET": ["social.manage", "social.publish"],
   "src/app/api/admin/social/route.ts GET": ["social.manage"],
   "src/app/api/admin/social/route.ts POST": ["social.manage", "social.publish"],
   "src/app/api/admin/social/written/route.ts GET": ["social.manage"],
@@ -121,7 +122,92 @@ const CANONICAL_API_GUARDS = {
   "src/app/api/admin/youtube-facebook/upload-url/route.ts POST": ["media.manage"],
 };
 
+const documentedHandlers = new Map();
+for (const line of permissionMatrix.split(/\r?\n/)) {
+  const row = /^\|\s*(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s*\|\s*`([^`]+)`\s*\|\s*(.+?)\s*\|$/.exec(line);
+  if (!row) continue;
+  const permissions = [...row[3].matchAll(/`([^`]+)`/g)].map((match) => match[1]).sort();
+  documentedHandlers.set(`${row[1]} ${row[2]}`, { permissions, cell: row[3] });
+}
+
+for (const [handlerKey, expectedPermissions] of Object.entries(CANONICAL_API_GUARDS)) {
+  const [route, method] = handlerKey.split(" ");
+  const apiPath = route.replace("src/app", "").replace(/\/route\.ts$/, "");
+  const documented = documentedHandlers.get(`${method} ${apiPath}`);
+  if (!documented) {
+    failures.push(handlerKey + ": missing from the human-readable Admin API permission matrix.");
+    continue;
+  }
+  const expected = [...expectedPermissions].sort();
+  if (expected.length === 0) {
+    if (!documented.cell.includes("405") || documented.permissions.length > 0) {
+      failures.push(handlerKey + ": documentation must identify an explicit side-effect-free HTTP 405 response.");
+    }
+  } else if (documented.permissions.join("|") !== expected.join("|")) {
+    failures.push(handlerKey + ": documented permissions do not match the executable canonical permission matrix.");
+  }
+}
+if (documentedHandlers.size !== Object.keys(CANONICAL_API_GUARDS).length) {
+  failures.push("Human-readable Admin API permission matrix contains missing or extra HTTP handler rows.");
+}
+
+const activeSocialHandlers = [
+  "GET /api/admin/social/facebook/callback",
+  "GET /api/admin/social/facebook/connect",
+  "GET /api/admin/social",
+  "POST /api/admin/social",
+  "GET /api/admin/social/written",
+  "POST /api/admin/social/written",
+  "GET /api/admin/social/youtube/connect",
+  "GET /api/admin/social/youtube/callback",
+];
+for (const key of activeSocialHandlers) {
+  const row = documentedHandlers.get(key);
+  if (!row || /retired|HTTP 410/i.test(row.cell)) {
+    failures.push(key + ": active OAuth/social queue route must not be documented as retired.");
+  }
+}
+for (const key of [
+  "POST /api/admin/youtube-facebook/register-media",
+  "POST /api/admin/youtube-facebook/upload-url",
+]) {
+  const row = documentedHandlers.get(key);
+  if (!row || !/retired|HTTP 410/i.test(row.cell)) {
+    failures.push(key + ": retired external media-import route must remain documented as HTTP 410.");
+  }
+}
+if (
+  !permissionMatrix.includes("youtube.upload") ||
+  !permissionMatrix.includes("youtube.readonly") ||
+  !permissionMatrix.includes("yt-analytics.readonly")
+) {
+  failures.push("YouTube OAuth documentation must disclose all requested upload, channel-read, and analytics-read scopes.");
+}
+
+const videoPurgeSource = readFileSync(join(apiRoot, "video-purge/route.ts"), "utf8");
+const videoPurgePostStart = videoPurgeSource.indexOf("export async function POST(");
+const videoPurgePost = videoPurgePostStart >= 0 ? videoPurgeSource.slice(videoPurgePostStart) : "";
+if (!videoPurgePost.includes('requireAdminStepUpApi("video.delete",')) {
+  failures.push("video purge POST must enforce the configured destructive-action MFA step-up policy");
+}
+
+const videoRetrySource = readFileSync(join(apiRoot, "videos/[id]/retry/route.ts"), "utf8");
+if (!/requireAdminStepUpApi\s*\(\s*['"]video\.manage['"]\s*,\s*['"]\/admin\/video\/requests['"]\s*\)/.test(videoRetrySource)) {
+  failures.push("video retry POST must enforce the configured step-up policy before re-queuing external video generation");
+}
+
 const socialRouteSource = readFileSync(join(apiRoot, "social/route.ts"), "utf8");
+const adoptionActionStart = socialRouteSource.indexOf('if (action === "adopt_server_facebook_token")');
+const adoptionActionEnd = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")', adoptionActionStart);
+const adoptionActionBlock = adoptionActionStart >= 0 && adoptionActionEnd > adoptionActionStart
+  ? socialRouteSource.slice(adoptionActionStart, adoptionActionEnd)
+  : "";
+if (
+  !adoptionActionBlock.includes("adoptServerConfiguredFacebookPageToken()") ||
+  /unblockFacebookAuthBlockedQueue|triggerSocialWorker/.test(adoptionActionBlock)
+) {
+  failures.push("server Facebook token adoption must validate/store credentials only; it must not resume or dispatch queued posts");
+}
 const socialActionGateStart = socialRouteSource.indexOf("if ([");
 const socialActionGateEnd = socialRouteSource.indexOf("const ids", socialActionGateStart);
 const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > socialActionGateStart
@@ -129,9 +215,34 @@ const socialActionGate = socialActionGateStart >= 0 && socialActionGateEnd > soc
   : "";
 if (
   !socialActionGate.includes("adopt_server_facebook_token") ||
-  !socialActionGate.includes('requireAdminApi("social.publish")')
+  !socialActionGate.includes("release_auth_blocked_queue") ||
+  !/\brequireAdmin(?:StepUp)?Api\s*\(\s*["']social\.publish["']\s*(?:,|\))/.test(socialActionGate)
 ) {
-  failures.push("social token adoption must require social.publish because it releases and dispatches public queue items");
+  failures.push("social token adoption and auth-blocked queue release must require social.publish MFA step-up");
+}
+const facebookOAuthCallbackSource = readFileSync(join(apiRoot, "social/facebook/callback/route.ts"), "utf8");
+if (facebookOAuthCallbackSource.includes("unblockFacebookAuthBlockedQueue")) {
+  failures.push("Facebook OAuth callback must store credentials only; queue recovery requires the separate confirmed social.publish action");
+}
+const facebookOAuthConnectSource = readFileSync(join(apiRoot, "social/facebook/connect/route.ts"), "utf8");
+if (!facebookOAuthConnectSource.includes('requireAdminStepUpApi("social.publish"')) {
+  failures.push("Facebook OAuth connect must require social.publish MFA step-up before beginning a publishing-capable OAuth flow");
+}
+const youtubeOAuthConnectSource = readFileSync(join(apiRoot, "social/youtube/connect/route.ts"), "utf8");
+if (!youtubeOAuthConnectSource.includes('requireAdminStepUpApi("social.publish"')) {
+  failures.push("YouTube OAuth connect must require social.publish MFA step-up before beginning a publishing-capable OAuth flow");
+}
+const releaseActionStart = socialRouteSource.indexOf('if (action === "release_auth_blocked_queue")');
+const releaseActionEnd = socialRouteSource.indexOf('if (action === "run_worker")', releaseActionStart);
+const releaseActionBlock = releaseActionStart >= 0 && releaseActionEnd > releaseActionStart
+  ? socialRouteSource.slice(releaseActionStart, releaseActionEnd)
+  : "";
+if (
+  !releaseActionBlock.includes("body.confirmed !== true") ||
+  !releaseActionBlock.includes('health.facebookConnectionStatus !== "connected"') ||
+  !releaseActionBlock.includes("unblockFacebookAuthBlockedQueue()")
+) {
+  failures.push("Facebook auth-blocked queue release must require confirmation, a healthy connected Page, and the explicit social.publish step-up gate");
 }
 
 const routeFiles = walk(apiRoot)
@@ -163,7 +274,7 @@ for (const file of routeFiles) {
     if (
       route === "src/app/api/admin/social/written/route.ts" &&
       match[1] === "POST" &&
-      !/requireAdminApi\s*\(\s*(["'])social\.publish\1\s*\)/.test(block)
+      !/requireAdmin(?:StepUp)?Api\s*\(\s*(["'])social\.publish\1\s*(?:,|\))/.test(block)
     ) {
       failures.push(route + " POST: auto-published written-content generation requires social.publish.");
     }
@@ -173,9 +284,9 @@ for (const file of routeFiles) {
       failures.push(handlerKey + ": missing canonical permission matrix entry.");
     } else {
       const guardMatches = [
-        ...block.matchAll(/\brequireAdminApi\s*\(\s*(["'])([^"']+)\1\s*\)|\brequireAdminPermission\s*\(\s*(["'])([^"']+)\3\s*\)|\brequireAdminStepUp\s*\(\s*(["'])([^"']+)\5\s*,/g),
+        ...block.matchAll(/\brequireAdminApi\s*\(\s*(["'])([^"']+)\1\s*\)|\brequireAdminStepUpApi\s*\(\s*(["'])([^"']+)\3\s*,|\brequireAdminPermission\s*\(\s*(["'])([^"']+)\5\s*\)|\brequireAdminStepUp\s*\(\s*(["'])([^"']+)\7\s*,/g),
       ];
-      const actualPermissions = [...new Set(guardMatches.map((item) => item[2] ?? item[4] ?? item[6]).filter(Boolean))].sort();
+      const actualPermissions = [...new Set(guardMatches.map((item) => item[2] ?? item[4] ?? item[6] ?? item[8]).filter(Boolean))].sort();
       const expectedSorted = [...expectedPermissions].sort();
       if (actualPermissions.join("|") !== expectedSorted.join("|")) {
         failures.push(handlerKey + ": expected [" + expectedSorted.join(", ") + "] but found [" + actualPermissions.join(", ") + "].");

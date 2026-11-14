@@ -75,7 +75,7 @@ const CANONICAL_ARCHITECTURE = {
   ],
   "النمو والتحليلات": [
     ["/admin/analytics", "تحليلات المنصة", "analytics.read"],
-    ["/admin/seo", "تحسين الظهور", "settings.manage"],
+    ["/admin/seo", "تحسين الظهور", "site.metadata.manage"],
   ],
   "النظام والأمان": [
     ["/admin/audit", "سجل التدقيق", "audit.read"],
@@ -188,10 +188,10 @@ if (
 }
 if (
   !writtenSocialApi.includes('requireAdminApi("social.manage")') ||
-  !writtenSocialApi.includes('requireAdminApi("social.publish")') ||
+  !writtenSocialApi.includes('requireAdminStepUpApi("social.publish"') ||
   !writtenSocialApi.includes('dispatchGitHubWorkflow("generate-written-content.yml"')
 ) {
-  failures.push("written Facebook API must enforce management and publishing permissions before controlled workflow dispatch");
+  failures.push("written Facebook API must enforce management permission plus publishing permission with MFA step-up before controlled workflow dispatch");
 }
 const socialNavigationGroup = navigation.match(/key:\s*"social-publishing"[\s\S]*?items:\s*\[([\s\S]*?)\]/);
 if (

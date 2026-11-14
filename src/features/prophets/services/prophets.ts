@@ -5,6 +5,8 @@ import path from "node:path";
 
 import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 
 import type { Prophet } from "@/features/prophets/types/prophets";
 import { prophets as FALLBACK_PROPHETS } from "@/features/prophets/data/fallback";
@@ -163,7 +165,7 @@ async function getDatabaseProphets(): Promise<Prophet[] | null> {
     return null;
   });
 
-  return rows?.length ? rows.map(mapProphetRow) : null;
+  return rows === null ? null : rows.map(mapProphetRow);
 }
 
 export async function getProphets(): Promise<Prophet[]> {
@@ -175,7 +177,11 @@ export async function getProphets(): Promise<Prophet[]> {
   }
 
   const database = isSupabaseConfigured() ? await getDatabaseProphets() : null;
-  if (database?.length) return resolveCanonicalPublished(database, offline);
+  if (database !== null) {
+    if (database.length) return resolveCanonicalPublished(database, offline);
+    // A successful empty published query must not fall back to an old DB snapshot.
+    return FALLBACK_PROPHETS.map(mapFallbackProphet);
+  }
 
   return offline.length ? offline : FALLBACK_PROPHETS.map(mapFallbackProphet);
 }
@@ -225,14 +231,22 @@ export async function getProphetBySlug(slug: string): Promise<ProphetDetail | nu
   }
 
   const encodedSlug = encodeURIComponent(cleanSlug);
+  let databaseLookupFailed = false;
   const dbRows = isSupabaseConfigured()
     ? await supabaseServerAnonRequest<ProphetRow[]>(
         `/rest/v1/prophets?slug=eq.${encodedSlug}&published=eq.true&limit=1`,
       ).catch((error) => {
+        databaseLookupFailed = true;
         console.error("[prophets] Failed to fetch prophet detail:", error);
         return [];
       })
     : [];
+
+  const hasLocalFallback = Boolean(localProphet || FALLBACK_PROPHETS.some((item) => item.slug === cleanSlug));
+  if (isSupabaseConfigured() && !dbRows.length && !databaseLookupFailed && hasLocalFallback) {
+    const publicationState = await getDatabasePublicationState("prophets", cleanSlug);
+    if (shouldSuppressOfflineFallback(publicationState)) return null;
+  }
 
   const dbProphet = dbRows[0] ? mapProphetRow(dbRows[0]) : null;
   if (dbProphet) {

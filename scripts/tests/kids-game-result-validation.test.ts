@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { validateGameResultPayload } from "../../src/lib/games/validation";
+import {
+  getGameDefinition,
+  isRegisteredGameId,
+  parseGameContentMetadata,
+} from "../../src/lib/games/registry";
 
 const valid = {
   gameId: "zikr-runner",
@@ -27,6 +32,29 @@ assert.ok(accepted, "a bounded registered game result must validate");
 assert.deepEqual(accepted.metadata, valid.metadata);
 assert.equal(accepted.gameId, "zikr-runner");
 assert.equal(accepted.difficulty, "normal");
+
+for (const inheritedKey of ["toString", "constructor", "__proto__"]) {
+  assert.equal(
+    isRegisteredGameId(inheritedKey),
+    false,
+    `inherited object key ${inheritedKey} must not be accepted as a registered game ID`,
+  );
+  assert.equal(
+    getGameDefinition(inheritedKey),
+    null,
+    `game definition lookup must reject inherited object key ${inheritedKey}`,
+  );
+  assert.equal(
+    parseGameContentMetadata({ gameId: inheritedKey }),
+    null,
+    `game content metadata must reject inherited object key ${inheritedKey}`,
+  );
+  assert.equal(
+    validateGameResultPayload({ ...valid, gameId: inheritedKey }),
+    null,
+    `game result validation must reject inherited object key ${inheritedKey}`,
+  );
+}
 
 assert.equal(
   validateGameResultPayload({ ...valid, metadata: { admin: true } }),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 const CONFIRMATION_PHRASE = "امسح الفيديوهات المولّدة فقط";
 type PurgeScope = "files" | "memory" | "both";
@@ -28,7 +29,7 @@ export function PurgeGeneratedVideosControl({
   onCompleted?: () => void | Promise<void>;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [scope, setScope] = useState<PurgeScope>("both");
+  const [scope, setScope] = useState<PurgeScope | "">("");
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +50,7 @@ export function PurgeGeneratedVideosControl({
   }, []);
 
   async function purge() {
-    if (confirmation !== CONFIRMATION_PHRASE || busy) return;
+    if (!scope || confirmation !== CONFIRMATION_PHRASE || busy) return;
     setBusy(true);
     setError("");
     setMessage("");
@@ -62,6 +63,7 @@ export function PurgeGeneratedVideosControl({
       });
       const payload = await response.json().catch(() => ({})) as {
         error?: string;
+        nextPath?: string;
         paused?: boolean;
         ok?: boolean;
         scope?: PurgeScope;
@@ -78,6 +80,7 @@ export function PurgeGeneratedVideosControl({
         automationRunsDeleted?: number;
         externalSocialPostsDeleted?: false;
       };
+      if (payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok || payload.ok !== true) {
         throw new Error(
           payload.error ||
@@ -88,7 +91,7 @@ export function PurgeGeneratedVideosControl({
       }
       const completed: PurgeResult = {
         ok: true,
-        scope: payload.scope ?? scope,
+        scope: payload.scope ?? (scope || "files"),
         automationResumed: payload.automationResumed === true,
         cloudinaryAssetsDeleted: payload.cloudinaryAssetsDeleted ?? 0,
         cloudinaryBytesDeleted: payload.cloudinaryBytesDeleted ?? 0,
@@ -104,6 +107,7 @@ export function PurgeGeneratedVideosControl({
       };
       setResult(completed);
       setConfirmation("");
+      setScope("");
       setExpanded(false);
       setMessage(
         scope === "files"
@@ -128,14 +132,19 @@ export function PurgeGeneratedVideosControl({
         <div className="min-w-0">
           <p className="text-sm font-semibold text-red-200">تصفير مكتبة الفيديوهات</p>
           <p className="mt-1 text-xs leading-6 text-brand-cream/55">
-            اختر بوضوح هل تريد حذف الملفات المولّدة، أو ذاكرة المشروع الداخلية، أو الاثنين معًا. لا توجد أي عملية حذف على YouTube أو Facebook أو أي منصة خارجية.
+            حذف ملفات Cloudinary وSupabase Storage وذاكرة التوليد متوقف مؤقتًا حتى يكتمل فحص جميع مراجع الملفات والسجلات المرتبطة في جداول المشروع.
           </p>
         </div>
         <button
           type="button"
           disabled={busy}
           onClick={() => {
-            setExpanded(value => !value);
+            const nextExpanded = !expanded;
+            setExpanded(nextExpanded);
+            if (!nextExpanded) {
+              setScope("");
+              setConfirmation("");
+            }
             setError("");
             setMessage("");
           }}
@@ -156,20 +165,23 @@ export function PurgeGeneratedVideosControl({
               disabled={busy}
               className="w-full rounded-xl border border-brand-gold/20 bg-black/30 px-3 py-3 text-sm text-brand-cream"
             >
-              <option value="files">ملفات الفيديو فقط — Cloudinary وSupabase Storage</option>
-              <option value="memory">ذاكرة المشروع فقط — إخفاء مكتبة ZIKR وسجلات التوليد، مع إبقاء الملفات</option>
-              <option value="both">الملفات وذاكرة المشروع معًا</option>
+              <option value="" disabled>اختر نطاق الحذف صراحةً</option>
+              <option value="files" disabled>ملفات الفيديو — متوقفة مؤقتًا لحماية المراجع</option>
+              <option value="memory" disabled>ذاكرة المشروع — متوقفة مؤقتًا لحماية مراجع السجلات</option>
+              <option value="both" disabled>الملفات وذاكرة المشروع — متوقفة مؤقتًا لحماية المراجع</option>
             </select>
             <p className="text-xs leading-6 text-brand-cream/55">
               {scope === "files"
                 ? "سيتم حذف ملفات MP4، وإخفاء سجلات الفيديو حتى لا تظهر روابط مكسورة. ستبقى عناوينها ومصادرها وسجلات التوليد."
                 : scope === "memory"
                   ? "سيتم إخفاء سجلات الفيديو الداخلية وإزالة طلبات وسجلات التوليد، بينما تبقى ملفات Cloudinary دون حذف."
-                  : "سيتم حذف ملفات MP4 وإخفاء ذاكرة الفيديو الداخلية وإزالة سجلات التوليد. ستبقى سجلات التدقيق والمنصات الخارجية دون تغيير."}
+                  : scope === "both"
+                  ? "سيتم حذف ملفات MP4 وإخفاء ذاكرة الفيديو الداخلية وإزالة سجلات التوليد. ستبقى سجلات التدقيق والمنصات الخارجية دون تغيير."
+                  : "اختر نطاق الحذف قبل كتابة عبارة التأكيد."}
             </p>
           </div>
           <p className="text-xs leading-6 text-amber-200/90">
-            لا يتأثر المحتوى اليدوي أو القوالب أو الأصوات أو الحسابات. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
+            حذف الملفات والذاكرة معطّل حتى يكتمل فحص المراجع المشتركة في جميع الجداول. سجلات النشر الاجتماعي التاريخية ومنشورات الحسابات الخارجية لن تُحذف أو تُعدّل.
           </p>
           <label className="block space-y-2">
             <span className="text-xs text-brand-cream/60">
@@ -188,7 +200,7 @@ export function PurgeGeneratedVideosControl({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy || confirmation !== CONFIRMATION_PHRASE}
+              disabled={busy || !scope || confirmation !== CONFIRMATION_PHRASE}
               onClick={() => void purge()}
               className="rounded-xl border border-red-400/45 bg-red-600/20 px-4 py-3 text-sm font-bold text-red-100 hover:bg-red-600/30 disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -199,6 +211,7 @@ export function PurgeGeneratedVideosControl({
               disabled={busy}
               onClick={() => {
                 setExpanded(false);
+                setScope("");
                 setConfirmation("");
               }}
               className="rounded-xl border border-brand-gold/15 px-4 py-3 text-sm text-brand-cream/65 hover:bg-white/5 disabled:opacity-50"

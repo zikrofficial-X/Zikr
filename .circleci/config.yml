@@ -68,6 +68,16 @@ jobs:
             pnpm install --frozen-lockfile --prefer-offline --reporter=append-only
           no_output_timeout: 20m
       - run:
+          name: Ensure Python 3 for provider safety tests
+          shell: /bin/bash
+          command: |
+            set -euo pipefail
+            if ! command -v python3 >/dev/null 2>&1; then
+              sudo apt-get update
+              sudo apt-get install -y python3
+            fi
+            python3 --version
+      - run:
           name: Verify installed toolchain
           shell: /bin/bash
           command: |
@@ -261,16 +271,22 @@ jobs:
             article_status=0
             hadith_status=0
 
-            if [[ -n "${GEMINI_API_KEY:-}" ]]; then
-              echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
-              pnpm translate:articles:en || article_status=$?
+            if ! command -v timeout >/dev/null 2>&1; then
+              echo "GNU timeout is required to bound both scheduled English sync workers." >&2
+              article_status=127
+              hadith_status=127
             else
-              echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
-              article_status=1
-            fi
+              if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+                echo "Translating at most ${TRANSLATION_BATCH_SIZE} published articles."
+                timeout --signal=TERM --kill-after=60s 40m pnpm translate:articles:en || article_status=$?
+              else
+                echo "Missing GEMINI_API_KEY; article translation cannot run." >&2
+                article_status=1
+              fi
 
-            echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
-            pnpm sync:hadith:en || hadith_status=$?
+              echo "Synchronizing at most ${HADITH_TRANSLATION_BATCH_SIZE} Hadith records."
+              timeout --signal=TERM --kill-after=60s 15m pnpm sync:hadith:en || hadith_status=$?
+            fi
 
             if (( article_status != 0 || hadith_status != 0 )); then
               echo "English sync incomplete (articles=${article_status}, hadith=${hadith_status})." >&2
@@ -399,7 +415,7 @@ jobs:
         -Dorg.gradle.daemon=false
         -Dorg.gradle.workers.max=1
         -Dorg.gradle.jvmargs=-Xmx2048m
-        -XX:MaxMetaspaceSize=512m
+        -XX:MaxMetaspaceSize=768m
         -Dfile.encoding=UTF-8
     steps:
       - checkout
@@ -550,7 +566,7 @@ jobs:
           command: |
             set -euo pipefail
             cd android
-            ./gradlew clean --no-daemon --max-workers=1 --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew clean --no-daemon --max-workers=1 --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
           no_output_timeout: 20m
       - run:
           name: Build signed APK and AAB
@@ -558,7 +574,7 @@ jobs:
           command: |
             set -euo pipefail
             cd android
-            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+            ./gradlew :app:assembleRelease :app:bundleRelease --no-daemon --max-workers=1 --stacktrace --warning-mode all -Dorg.gradle.jvmargs="-Xmx2048m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8"
           no_output_timeout: 40m
       - run:
           name: Verify APK, AAB, signature and version
@@ -697,6 +713,7 @@ workflows:
             branches:
               only:
                 - main
+                - /^audit\/zikr-.*$/
                 - /^fix\/facebook-profile-metrics-refresh-20261110$/
                 - /^feat\/kids-written-social-posts-20261110$/
                 - /^android-release-v[0-9]+\.[0-9]+\.[0-9]+$/
@@ -726,6 +743,7 @@ workflows:
             branches:
               only:
                 - main
+                - /^audit\/zikr-.*$/
                 - /^fix\/facebook-profile-metrics-refresh-20261110$/
                 - /^feat\/kids-written-social-posts-20261110$/
                 - /^feat\/autonomous-video-qa-publishing-20261107$/
@@ -760,9 +778,9 @@ workflows:
               only: main
             tags:
               ignore: /.*/
+      # This read-only Supabase gate uses the project-scoped service key;
+      # keep Android signing material limited to signed Android release jobs.
       - supabase-production-gate:
-          context:
-            - android-signing
           requires:
             - source-verify
           filters:

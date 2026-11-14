@@ -3,6 +3,8 @@
 import { useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { hydrateOfflineContent } from '@/lib/offline-pack';
+import { getServiceWorkerScriptUrl } from '@/lib/ads/runtime-policy';
+import { PRODUCTION_URL } from '@/lib/site';
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -90,9 +92,11 @@ export function ServiceWorkerRegister() {
 
     const registerServiceWorker = async () => {
       try {
-        const serviceWorkerUrl = Capacitor.isNativePlatform()
-          ? '/sw.js?native=1'
-          : '/sw.js';
+        const serviceWorkerUrl = getServiceWorkerScriptUrl({
+          isNative: Capacitor.isNativePlatform(),
+          origin: window.location.origin,
+          productionUrl: PRODUCTION_URL,
+        });
         registration = await navigator.serviceWorker.register(serviceWorkerUrl, {
           scope: '/',
           updateViaCache: 'none'
@@ -111,7 +115,13 @@ export function ServiceWorkerRegister() {
         // Check for updates periodically and retry the offline pack if the
         // connection was initially too slow or Data Saver was enabled.
         updateInterval = setInterval(() => {
-          registration?.update();
+          if (registration) {
+            void registration.update().catch((error: unknown) => {
+              if (process.env.NODE_ENV === 'production') {
+                console.warn('[PWA] Service Worker update check failed:', error);
+              }
+            });
+          }
           handleNetworkChange();
         }, 60000); // Check every minute
 

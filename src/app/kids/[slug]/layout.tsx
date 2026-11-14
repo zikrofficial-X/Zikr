@@ -1,34 +1,43 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { pageMetadata } from '@/lib/site';
-import { supabaseServerAnonRequest } from '@/lib/supabase/server';
-import { getKidsItemBySlug } from '@/features/kids/data/content';
+import { getKidsContentBySlug } from '@/features/kids/services/kids-content';
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  let title = 'محتوى الأطفال';
-  let description = 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
-
-  // Static curated content first, then database fallback.
-  const staticItem = getKidsItemBySlug(slug);
-  if (staticItem) {
-    title = staticItem.title_ar;
-    if (staticItem.content_ar) description = staticItem.content_ar.replace(/\s+/g, ' ').slice(0, 160);
-  } else {
-    try {
-      const data = await supabaseServerAnonRequest<{ title_ar: string; summary_ar?: string }[]>(
-        `/rest/v1/kids_content?select=title_ar,summary_ar&slug=eq.${encodeURIComponent(slug)}&published=eq.true&limit=1`
-      );
-      if (data?.[0]) {
-        title = data[0].title_ar;
-        if (data[0].summary_ar) description = data[0].summary_ar.slice(0, 160);
-      }
-    } catch {
-      // fall back to generic metadata
-    }
+  const item = await getKidsContentBySlug(slug, "ar").catch(() => null);
+  if (!item) {
+    return {
+      ...pageMetadata({
+        title: 'محتوى الأطفال',
+        description: 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.',
+        path: `/kids/${slug}`,
+      }),
+      robots: { index: false, follow: false },
+    };
   }
-  return pageMetadata({ title, description, path: `/kids/${slug}` });
+
+  const description = item.content_ar
+    ? item.content_ar.replace(/\s+/g, " ").slice(0, 160)
+    : 'قصص وأنشطة إسلامية تعليمية ممتعة للأطفال.';
+  return pageMetadata({
+    title: item.title_ar || item.title_en,
+    description,
+    path: `/kids/${slug}`,
+  });
 }
 
-export default function KidsSlugLayout({ children }: { children: React.ReactNode }) {
-  return children;
+export default async function KidsSlugLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const item = await getKidsContentBySlug(slug, "ar").catch(() => null);
+  if (!item) notFound();
+  return <>{children}</>;
 }

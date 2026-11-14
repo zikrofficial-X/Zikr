@@ -4,13 +4,11 @@ on:
   schedule:
     - cron: "41 4 * * *"
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/audit-video-media.yml"
-      - "scripts/jobs/audit-video-media.ts"
-      - "src/features/social/services/social-publishing.ts"
-      - "src/features/videos/services/videos.ts"
+    inputs:
+      confirmation:
+        description: "Type RUN_MEDIA_AUDIT to authorize production video catalog reconciliation"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,7 +19,7 @@ concurrency:
 
 jobs:
   audit:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.confirmation == 'RUN_MEDIA_AUDIT'))
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 20
@@ -29,7 +27,6 @@ jobs:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v7
@@ -51,6 +48,8 @@ jobs:
 
       - name: Validate production database credentials
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || {
@@ -63,5 +62,7 @@ jobs:
         timeout-minutes: 15
 
       - name: Audit Cloudinary playback masters and reconcile published YouTube IDs
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: pnpm video:media:audit
         timeout-minutes: 10

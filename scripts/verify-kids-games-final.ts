@@ -10,6 +10,35 @@ import { getZikrColoringRules } from "../src/lib/games/zikr-coloring";
 import { KIDS_LEVEL_COUNT, getKidsLevelMeta } from "../src/lib/games/kids-level-system";
 
 const root = process.cwd();
+
+const legacySubmitResultRoute = readFileSync(
+  join(root, "src/app/api/kids/games/submit-result/route.ts"),
+  "utf8",
+);
+const currentScoreRoute = readFileSync(
+  join(root, "src/app/api/kids/games/score/route.ts"),
+  "utf8",
+);
+const boundedJsonBodyReader = readFileSync(
+  join(root, "src/lib/request/bounded-json-body.ts"),
+  "utf8",
+);
+const boundedBodyCall = "readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES)";
+const hasUnboundedBodyRead = (source: string) =>
+  ["request.text(", "request.json(", "request.arrayBuffer("].some((marker) => source.includes(marker));
+if (
+  !legacySubmitResultRoute.includes(boundedBodyCall) ||
+  !currentScoreRoute.includes(boundedBodyCall) ||
+  hasUnboundedBodyRead(legacySubmitResultRoute) ||
+  hasUnboundedBodyRead(currentScoreRoute) ||
+  !boundedJsonBodyReader.includes("MAX_REQUEST_BODY_BYTES = 16_384") ||
+  !boundedJsonBodyReader.includes("request.body.getReader()") ||
+  !boundedJsonBodyReader.includes("totalBytes > maxBytes") ||
+  !boundedJsonBodyReader.includes("reader.cancel()") ||
+  !boundedJsonBodyReader.includes("JSON.parse(decoded)")
+) {
+  throw new Error("Kids result endpoints must use the shared streaming JSON reader and enforce the 16 KiB limit before parsing.");
+}
 const required = [
   "src/features/kids/components/games/kids-game-kit.tsx",
   "src/features/kids/components/games/kids-action-runner-road.tsx",

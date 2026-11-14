@@ -4,6 +4,7 @@ import { join } from "node:path";
 const root = process.cwd();
 const worker = readFileSync(join(root, "scripts/run-background-jobs.ts"), "utf8");
 const queue = readFileSync(join(root, "scripts/jobs/template-video-automation.ts"), "utf8");
+const claim = readFileSync(join(root, "src/features/videos/services/video-queue-claim.ts"), "utf8");
 
 function assert(condition, message) {
   if (!condition) {
@@ -40,6 +41,14 @@ assert(
   queue.includes("export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number)"),
   "queue processor supports an optional daily priority key",
 );
+assert(
+  queue.includes("calculateDailyVideoQuotaState(todaysRows ?? [])"),
+  "daily video quota excludes terminal failed/cancelled requests while retaining their slot keys",
+);
+assert(
+  queue.includes("const slot = dailyQuota.nextSlot + i;"),
+  "replacement video requests use a fresh automation slot after terminal rows",
+);
 const priorityQuery = queue.indexOf("automation_key=like.*:${priorityDay}:*");
 const fallbackQuery = queue.indexOf("const backlog =", priorityQuery);
 assert(priorityQuery >= 0 && fallbackQuery > priorityQuery, "today's automation keys are selected before legacy backlog");
@@ -53,6 +62,97 @@ assert(claimGuard >= 0 && claimedCounter > claimGuard, "processed count incremen
 assert(
   queue.includes("return { processed, succeeded, failed, skipped };"),
   "processed count reflects actual claimed rows rather than fetched candidates",
+);
+assert(
+  queue.includes("select=id,generation_attempts,updated_at"),
+  "stale recovery reads the exact row version before attempting a claim",
+);
+assert(
+  queue.includes("buildStaleVideoRequestRecoveryFilter(request.id, request.updated_at, staleBefore)"),
+  "stale recovery update is fenced by the selected updated_at value",
+);
+assert(
+  queue.includes("buildVideoRequestClaimFilter(request, claimNow)"),
+  "pending/retry claims recheck the selected row version and retry due time atomically",
+);
+assert(
+  queue.includes("buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt)"),
+  "pause-lock release cannot overwrite a request changed after the worker claim",
+);
+assert(
+  queue.includes("pause-lock release lost ownership") && queue.includes("skipped += 1;"),
+  "a superseded pause-lock release is skipped without failing or overwriting the newer owner",
+);
+const workerStart = queue.indexOf("export async function processTemplateVideoQueue");
+const postClaimWorker = workerStart >= 0 ? queue.slice(workerStart) : "";
+const hasRollingVideoLease =
+  /let\s+leaseUpdatedAt\s*=\s*claimUpdatedAt\s*;/.test(postClaimWorker) &&
+  /const\s+patchProcessingRequestWithLease\s*=\s*createSerializedLeaseMutation\s*\(\s*async/.test(postClaimWorker) &&
+  /buildProcessingVideoRequestLeaseFilter\s*\(\s*request\.id\s*,\s*leaseUpdatedAt\s*,\s*leaseVideoUrl\s*\)/.test(postClaimWorker);
+assert(hasRollingVideoLease, "post-claim writes use a rolling exact-row-version lease");
+const hasLeaseFencedTransitions =
+  /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*content_hash:\s*rendered\.contentHash\s*\}\s*\)/.test(postClaimWorker) &&
+  /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*status:\s*["']completed["']\s*,/.test(postClaimWorker) &&
+  /await\s+patchProcessingRequestWithLease\s*\(\s*\{\s*status:\s*terminalStatus\s*,/.test(postClaimWorker);
+assert(hasLeaseFencedTransitions, "hash claim, completion and failure updates are fenced by the processing lease");
+
+const catalogRegistrationStart = queue.indexOf("async function registerGeneratedVideoOnSite");
+const catalogRegistrationEnd = queue.indexOf("type MissingMediaSocialQueueRow", catalogRegistrationStart);
+const catalogRegistration = queue.slice(catalogRegistrationStart, catalogRegistrationEnd).replace(/\s+/g, " ");
+assert(
+  catalogRegistration.includes("&select=id,published,updated_at,metadata&limit=1") &&
+    catalogRegistration.includes('metadata.mediaState !== "purged"') &&
+    catalogRegistration.includes("metadata.mediaPurgedFromPublished !== true") &&
+    catalogRegistration.includes("buildUnpublishedVideoCatalogUpdateFilter(videoId, existingVideo?.updated_at)") &&
+    catalogRegistration.includes('Prefer: "return=representation"') &&
+    catalogRegistration.includes("if (!updatedVideoRows?.[0]?.id)"),
+  "generated-video catalog recovery rechecks purged state and compare-and-sets the exact catalog row revision",
+);
+const normalizedPostClaimWorker = postClaimWorker.replace(/\s+/g, " ");
+assert(
+  normalizedPostClaimWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))") &&
+    normalizedPostClaimWorker.includes("await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite( recoveredRequest, rendered, { recoverPurgedRecord: true }, signal, ))"),
+  "normal and duplicate generated-video catalog registration run under the processing lease heartbeat",
+);
+
+assert(
+  !postClaimWorker.includes("/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}"),
+  "no post-claim ID-only PATCH can overwrite a newer worker",
+);
+assert(
+  postClaimWorker.includes("error instanceof VideoRequestLeaseLostError"),
+  "a worker that loses its lease is skipped without rewriting the newer owner",
+);
+assert(
+  postClaimWorker.includes("withVideoRequestLeaseHeartbeat") &&
+    postClaimWorker.includes("getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes)") &&
+    postClaimWorker.includes("renew: () => patchProcessingRequestWithLease({})"),
+  "long-running provider renders renew the exact processing lease before stale recovery can requeue them",
+);
+assert(
+  claim.includes("updated_at=eq.") && claim.includes("next_retry_at=lte."),
+  "video queue filters include optimistic row-version and retry-due predicates",
+);
+
+assert(
+  queue.includes("recoverPendingVideoSocialQueueEnqueues(") &&
+    queue.includes("content->>socialQueueEnqueueStatus=eq.pending") &&
+    queue.includes("content->>socialQueueEnqueueStatus=eq.processing") &&
+    queue.includes("buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore)") &&
+    queue.includes("buildVideoSocialQueueRecoveryLeaseFilter("),
+  "failed or interrupted social enqueue handoffs are retried under an exact-row-version lease",
+);
+const socialQueueHandoffContract =
+  /let\s+socialQueueResult:\s*["']queued["']\s*\|\s*["']not_required["']\s*;/.test(postClaimWorker) &&
+  /socialQueueEnqueueStatus:\s*socialQueueResult/.test(postClaimWorker) &&
+  /catch\s*\(socialError\)[\s\S]*?socialQueueEnqueueStatus:\s*["']pending["'][\s\S]*?continue\s*;/.test(postClaimWorker);
+assert(
+  socialQueueHandoffContract,
+  "video completion cannot hide a failed social queue handoff",
+);
+assert(
+  claim.includes("video_url=eq.") && claim.includes("content->>socialQueueEnqueueStatus=eq.processing"),
+  "social queue recovery leases are fenced by the exact generated media URL and processing marker",
 );
 
 if (process.exitCode) {

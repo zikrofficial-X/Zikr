@@ -5,6 +5,9 @@ import { isSupabaseConfigured, supabaseServerAnonRequest } from "@/lib/supabase/
 import type { VideoCategory, Video } from "@/features/videos/types/videos";
 import { FALLBACK_VIDEO_CATEGORIES, FALLBACK_VIDEOS } from "@/features/videos/data/fallback";
 import { defaultOgImage } from "@/lib/site";
+import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
+import { resolveKidsVideoSocialPublication } from "@/features/social/services/kids-video-social-visibility";
+import { loadKidsSocialQueueRows, type KidsSocialQueueRequest } from "@/features/social/services/kids-video-social-query";
 import { resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "./video-media-contract";
 
 function isPubliclyRenderableVideo(row: Record<string, unknown>): boolean {
@@ -87,7 +90,7 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     `/rest/v1/videos?select=*&slug=eq.${safeSlug}&published=eq.true&or=(metadata->>audience.is.null,metadata->>audience.neq.kids)&limit=1`,
-    { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 900 } },
+    { timeoutMs: 8000, retries: 1, cache: "no-store" },
   ).catch(error => {
     console.error("[content] Failed to fetch video by slug:", error);
     return [];
@@ -126,13 +129,19 @@ function hasPassedKidsVideoQa(metadata: Record<string, unknown>): boolean {
 
 export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
   const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
-  if (!isSupabaseConfigured()) return [];
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured; Kids generated videos are unavailable.");
+  }
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
-    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&order=created_at.desc&limit=" + safeLimit,
-  ).catch(() => []);
+    "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&published=eq.true&metadata->>audience=eq.kids&metadata->>generator=eq.zikr_internal_video_factory&metadata->>kidsVideoQaStatus=eq.passed&metadata->automatedVideoQa->>status=eq.passed&order=created_at.desc&limit=" + safeLimit,
+    { cache: "no-store" },
+  );
+  if (!Array.isArray(rows)) {
+    throw new Error("Kids generated video query returned an invalid row set.");
+  }
 
-  return (rows ?? [])
+  return rows
     .filter((row) => {
       const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
         ? row.metadata as Record<string, unknown>
@@ -158,21 +167,45 @@ export async function getKidsGeneratedVideos(limit = 60): Promise<Video[]> {
     }));
 }
 
+const VIDEO_GENERATION_REQUEST_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+async function resolveKidsVideoSocialPublicationForDetail(requestId: unknown, stored: unknown) {
+  if (typeof requestId !== "string" || !VIDEO_GENERATION_REQUEST_ID_PATTERN.test(requestId)) {
+    return resolveKidsVideoSocialPublication([], stored, true);
+  }
+
+  try {
+    const request: KidsSocialQueueRequest = <T>(path: string) =>
+      supabaseServerAdminRequest<T>(path, { timeoutMs: 8000, retries: 1, cache: "no-store" });
+    const rows = await loadKidsSocialQueueRows([requestId], request);
+    return resolveKidsVideoSocialPublication(rows, stored, true);
+  } catch (error) {
+    console.warn("[content] Failed to reconcile Kids video social publication:", error);
+    return null;
+  }
+}
 export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video | null> {
   const safeSlug = encodeURIComponent(slug?.trim() ?? "");
-  if (!safeSlug || !isSupabaseConfigured()) return null;
+  if (!safeSlug) return null;
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured; Kids generated video details are unavailable.");
+  }
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     "/rest/v1/videos?select=id,title,slug,description,youtube_id,thumbnail_url,duration,views,published,category_id,metadata,created_at&slug=eq." +
       safeSlug + "&published=eq.true&metadata->>audience=eq.kids&limit=1",
     { timeoutMs: 8000, retries: 1, cache: "no-store" },
-  ).catch(() => []);
-  const row = rows?.[0];
+  );
+  if (!Array.isArray(rows)) {
+    throw new Error("Kids generated video detail query returned an invalid row set.");
+  }
+  const row = rows[0];
   const metadata = row?.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
     ? row.metadata as Record<string, unknown>
     : {};
   if (!row || !hasPassedKidsVideoQa(metadata) ||
       metadata.generator !== "zikr_internal_video_factory" ||
       !isPubliclyRenderableVideo(row)) return null;
+  const socialPublication = await resolveKidsVideoSocialPublicationForDetail(metadata.videoGenerationRequestId, metadata.socialPublication);
   return {
     id: row.id as string,
     title: row.title as string,
@@ -184,7 +217,7 @@ export async function getKidsGeneratedVideoBySlug(slug: string): Promise<Video |
     views: (row.views as number) || 0,
     published: row.published as boolean,
     categoryId: row.category_id as string | undefined,
-    metadata: row.metadata as Record<string, unknown>,
+    metadata: { ...metadata, socialPublication },
     createdAt: row.created_at as string,
   };
 }

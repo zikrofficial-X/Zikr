@@ -7,6 +7,7 @@ import {
 } from "@/features/favorites/services/favorites";
 import { requireSupabaseAuth } from "@/lib/supabase/guard";
 import { NextRequest, NextResponse } from "next/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 function isFavoriteItemType(value: unknown): value is FavoriteItemType {
   return (
@@ -39,7 +40,14 @@ export async function POST(request: NextRequest) {
   if (unauthenticated) return unauthenticated;
 
   try {
-    const body: unknown = await request.json();
+    const parsedBody = await readBoundedJsonBody(request, 4 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
+    const body: unknown = parsedBody.value;
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }

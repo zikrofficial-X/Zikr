@@ -1,16 +1,9 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeWirdProgressState, type WirdProgressState } from "@/features/wird/utils/progress-validation";
 
-export type WirdProgressState = {
-  dailyTarget: number;
-  position: number;
-  khatmaCount: number;
-  todayCount: number;
-  todayDate: string;
-  streak: number;
-  lastStreakDate: string;
-};
+export type { WirdProgressState } from "@/features/wird/utils/progress-validation";
 
 async function getCurrentUser() {
   const supabase = await createClient();
@@ -24,10 +17,13 @@ async function getCurrentUser() {
 
 export async function getCurrentWirdProgress(): Promise<{
   loggedIn: boolean;
+  userId: string | null;
   state: WirdProgressState | null;
+  readError: boolean;
+  invalidState: boolean;
 }> {
   const session = await getCurrentUser();
-  if (!session) return { loggedIn: false, state: null };
+  if (!session) return { loggedIn: false, userId: null, state: null, readError: false, invalidState: false };
 
   const { data, error } = await session.supabase
     .from("reading_progress")
@@ -37,24 +33,37 @@ export async function getCurrentWirdProgress(): Promise<{
     .eq("ref", "wird")
     .maybeSingle();
 
-  if (error || !data?.progress_json) {
-    return { loggedIn: true, state: null };
+  if (error) {
+    console.error('[wird] read progress failed:', error);
+    return { loggedIn: true, userId: session.user.id, state: null, readError: true, invalidState: false };
   }
-
+  if (!data?.progress_json) {
+    return { loggedIn: true, userId: session.user.id, state: null, readError: false, invalidState: false };
+  }
+  const state = normalizeWirdProgressState(data.progress_json);
   return {
     loggedIn: true,
-    state: data.progress_json as WirdProgressState,
+    userId: session.user.id,
+    state,
+    readError: false,
+    invalidState: state === null,
   };
 }
 
 export async function saveCurrentWirdProgress(
-  state: WirdProgressState,
+  state: unknown,
+  expectedUserId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const normalizedState = normalizeWirdProgressState(state);
+  if (!normalizedState) {
+    return { success: false, error: "بيانات تقدم الورد غير صالحة" };
+  }
+
   const session = await getCurrentUser();
-  if (!session) {
+  if (!session || session.user.id !== expectedUserId) {
     return {
       success: false,
-      error: "يجب تسجيل الدخول لمزامنة تقدمك",
+      error: "انتهت جلسة الحساب أو تغير المستخدم قبل المزامنة",
     };
   }
 
@@ -65,7 +74,7 @@ export async function saveCurrentWirdProgress(
         user_id: session.user.id,
         scope: "quran",
         ref: "wird",
-        progress_json: state,
+        progress_json: normalizedState,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id,scope,ref" },

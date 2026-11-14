@@ -10,8 +10,13 @@ on:
         required: true
         default: false
         type: boolean
+      reference_writes_paused:
+        description: "Confirm video generation, social publishing, and all admin/content media-reference writers are paused for the entire apply window"
+        required: true
+        default: false
+        type: boolean
       confirmation:
-        description: "Type DELETE_STAGING_COPIES to authorize irreversible removal of verified redundant copies"
+        description: "Type DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE to authorize irreversible removal of verified redundant copies"
         required: false
         default: ""
         type: string
@@ -31,11 +36,7 @@ jobs:
     timeout-minutes: 25
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
-      GITHUB_TOKEN: ${{ github.token }}
+      EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@v7
@@ -47,10 +48,15 @@ jobs:
         shell: bash
         env:
           RETENTION_CONFIRMATION: ${{ inputs.confirmation }}
+          RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         run: |
           set -euo pipefail
-          test "${RETENTION_CONFIRMATION}" = "DELETE_STAGING_COPIES" || {
-            echo "::error::Destructive retention requires typed confirmation DELETE_STAGING_COPIES." >&2
+          test "${RETENTION_REFERENCE_WRITES_PAUSED}" = "true" || {
+            echo "::error::Destructive retention requires the owner to pause video generation, social publishing, and all admin/media-reference writes for the entire apply window." >&2
+            exit 1
+          }
+          test "${RETENTION_CONFIRMATION}" = "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE" || {
+            echo "::error::Destructive retention requires typed confirmation DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE." >&2
             exit 1
           }
 
@@ -68,14 +74,17 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Validate protected runtime credentials
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing SUPABASE_URL" >&2; exit 1; }
+          test "${EXPECTED_PROJECT_REF:-}" = "zqtssvlvmkzeeyqghqfk" || { echo "::error::Unexpected EXPECTED_PROJECT_REF" >&2; exit 1; }
           test -n "${SUPABASE_SERVICE_ROLE_KEY:-}" || { echo "::error::Missing protected SUPABASE_SERVICE_ROLE_KEY" >&2; exit 1; }
           test -n "${CLOUDINARY_CLOUD_NAME:-}" || { echo "::error::Missing CLOUDINARY_CLOUD_NAME" >&2; exit 1; }
-          test -n "${CLOUDINARY_API_KEY:-}" || { echo "::error::Missing CLOUDINARY_API_KEY" >&2; exit 1; }
-          test -n "${CLOUDINARY_API_SECRET:-}" || { echo "::error::Missing CLOUDINARY_API_SECRET" >&2; exit 1; }
           test -n "${GITHUB_TOKEN:-}" || { echo "::error::Missing GitHub release read token" >&2; exit 1; }
 
       - name: Install runtime dependencies
@@ -85,16 +94,27 @@ jobs:
         run: node scripts/tests/storage-retention.test.mjs
 
       - name: Print deletion plan (dry run)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: pnpm storage:cleanup
 
       - name: Apply manually approved full storage retention
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.confirmation == 'DELETE_STAGING_COPIES' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE' }}
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
+          RETENTION_CONFIRMATION: ${{ inputs.confirmation }}
+          RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         run: pnpm storage:cleanup -- --apply
 
-      - name: Verify final bucket inventory
+      - name: Report post-cleanup inventory (exact object paths verified by retention script)
         shell: bash
         run: |
           set -euo pipefail
           echo "Storage retention run completed for commit ${GITHUB_SHA}."
+          echo "The retention script verifies every removed object path is absent before marking video records purged."
           echo "Only fully published videos older than 48 hours and checksum-verified redundant Android copies are eligible."
           echo "Queued, partial, recently published, non-queued, pinned, rollback, or unbacked release assets are retained."

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 const CATEGORY_TABLES = new Set([
@@ -30,6 +31,15 @@ function revalidateCategoryPages(table: string) {
   if (table === "dua_categories") revalidatePath("/dua");
   if (table === "video_categories") revalidatePath("/videos");
   if (table === "tawasheeh_categories") revalidatePath("/tawasheeh");
+}
+
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/categories] audit event failed after committed mutation:", error),
+  );
 }
 
 export async function createCategoryAction(formData: FormData) {
@@ -80,7 +90,7 @@ export async function createCategoryAction(formData: FormData) {
   const id = rows[0]?.id;
   if (!id) throw new Error("لم يتم تأكيد إنشاء التصنيف من قاعدة البيانات.");
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "categories.create",
     permission: "content.manage",
     resourceType: table,
@@ -128,7 +138,7 @@ export async function toggleCategoryVisibilityAction(formData: FormData) {
     throw new Error("تم تعديل التصنيف بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "categories.visibility.update",
     permission: "content.manage",
     resourceType: table,

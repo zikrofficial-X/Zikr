@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
+import { parsePrayerCoordinate } from "@/features/prayer/services/prayer-location-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +13,22 @@ type LocationPayload = {
   timezone?: unknown;
 };
 
+type SavedPrayerLocation = {
+  id: string;
+  city: string;
+  country: string | null;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  is_default: boolean;
+  updated_at: string;
+  created: boolean;
+};
+
 function boundedText(value: unknown, max: number): string | null {
   return typeof value === "string" && value.trim().length > 0 && value.trim().length <= max
     ? value.trim()
     : null;
-}
-
-function coordinate(value: unknown, min: number, max: number): number | null {
-  const numeric = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(numeric) && numeric >= min && numeric <= max ? numeric : null;
 }
 
 function validTimezone(value: string): boolean {
@@ -86,76 +95,61 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const body = (await request.json().catch(() => ({}))) as LocationPayload;
+  const parsedBody = await readBoundedJsonBody(request, 8 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  if (
+    !parsedBody.value ||
+    typeof parsedBody.value !== "object" ||
+    Array.isArray(parsedBody.value)
+  ) {
+    return NextResponse.json({ error: "Invalid prayer location." }, { status: 400 });
+  }
+  const body = parsedBody.value as LocationPayload;
   const city = boundedText(body.city, 160);
   const country = boundedText(body.country, 160);
   const timezone = boundedText(body.timezone, 120);
-  const latitude = coordinate(body.latitude, -90, 90);
-  const longitude = coordinate(body.longitude, -180, 180);
+  const latitude = parsePrayerCoordinate(body.latitude, -90, 90);
+  const longitude = parsePrayerCoordinate(body.longitude, -180, 180);
 
   if (!city || !timezone || latitude === null || longitude === null || !validTimezone(timezone)) {
     return NextResponse.json({ error: "Invalid prayer location." }, { status: 400 });
   }
 
   const supabase = await createClient();
-
-  // Keep the user's previous locations available but guarantee one durable
-  // default location that survives reloads, browser changes and new devices.
-  const { error: clearDefaultError } = await supabase
-    .from("prayer_locations")
-    .update({ is_default: false, updated_at: new Date().toISOString() })
-    .eq("user_id", user.id)
-    .eq("is_default", true);
-
-  if (clearDefaultError) {
-    console.error("[prayer-location] clear default failed:", clearDefaultError);
-    return NextResponse.json({ error: "Unable to update saved prayer location." }, { status: 500 });
-  }
-
-  const { data: existing } = await supabase
-    .from("prayer_locations")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("city", city)
-    .eq("latitude", latitude)
-    .eq("longitude", longitude)
-    .maybeSingle();
-
-  const payload = {
-    user_id: user.id,
-    city,
-    country,
-    latitude,
-    longitude,
-    timezone,
-    is_default: true,
-    updated_at: new Date().toISOString(),
-  };
-
-  const query = existing
-    ? supabase.from("prayer_locations").update(payload).eq("id", existing.id).select("id,city,country,latitude,longitude,timezone,is_default,updated_at").single()
-    : supabase.from("prayer_locations").insert(payload).select("id,city,country,latitude,longitude,timezone,is_default,updated_at").single();
-
-  const { data, error } = await query;
-  if (error) {
-    console.error("[prayer-location] save failed:", error);
-    return NextResponse.json({ error: "Unable to save prayer location." }, { status: 500 });
+  // The RPC changes the previous default and upserts this location in one
+  // transaction, serialized per user. A failed insert can never leave no default.
+  const { data, error } = await supabase.rpc("save_default_prayer_location", {
+    p_city: city,
+    p_country: country,
+    p_latitude: latitude,
+    p_longitude: longitude,
+    p_timezone: timezone,
+  }).single();
+  const savedLocation = data as unknown as SavedPrayerLocation | null;
+  if (error || !savedLocation) {
+    console.error("[prayer-location] save failed:", error ?? "RPC returned no location row");
+    return NextResponse.json({ error: "Unable to save prayer location." }, { status: 500, headers: { "Cache-Control": "private, no-store" } });
   }
 
   return NextResponse.json(
     {
       ok: true,
       location: {
-        id: data.id,
-        city: data.city,
-        country: data.country,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        timezone: data.timezone,
-        isDefault: data.is_default,
-        updatedAt: data.updated_at,
+        id: savedLocation.id,
+        city: savedLocation.city,
+        country: savedLocation.country,
+        latitude: savedLocation.latitude,
+        longitude: savedLocation.longitude,
+        timezone: savedLocation.timezone,
+        isDefault: savedLocation.is_default,
+        updatedAt: savedLocation.updated_at,
       },
     },
-    { status: existing ? 200 : 201 },
+    { status: savedLocation.created ? 201 : 200, headers: { "Cache-Control": "private, no-store" } },
   );
 }

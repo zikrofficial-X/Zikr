@@ -35,10 +35,6 @@ jobs:
       # The canonical Supabase URL is public configuration; only the service-role key remains secret.
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       NEXT_PUBLIC_SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
-      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
       NEXT_PUBLIC_SITE_URL: https://zikrmediaofficial.vercel.app
       # Free-only production path: no Gemini/custom endpoint billing; public free Spaces may fall back to FFmpeg.
       VIDEO_FREE_ONLY: "true"
@@ -49,8 +45,6 @@ jobs:
       AUTO_VIDEO_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_ENABLED: "true"
       AUTO_VIDEO_PUBLISH_REQUIRES_APPROVAL: "false"
-      YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
-      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
       FACEBOOK_PUBLISHING_REQUESTED: ${{ vars.FACEBOOK_PUBLISHING_ENABLED || 'true' }}
       YOUTUBE_PUBLISHING_REQUESTED: ${{ vars.YOUTUBE_PUBLISHING_ENABLED || 'true' }}
       AUTO_VIDEO_BATCH_SIZE: ${{ inputs.batch_size || '10' }}
@@ -69,7 +63,6 @@ jobs:
       VIDEO_WORKER_BATCH_SIZE: "2"
       HF_WAN_SPACE: "zerogpu-aoti/wan2-2-fp8da-aoti-faster"
       HF_LTX_FAST_SPACE: "Lightricks/ltx-video-distilled"
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
       ARABIC_TTS_VENV: ${{ github.workspace }}/.automation-venv
       ARABIC_TTS_PROFILE: "hadith_male_msa"
       ARABIC_TTS_PYTHON: ${{ github.workspace }}/.automation-venv/bin/python
@@ -82,17 +75,17 @@ jobs:
       VIDEO_OUTPUT_CRF: "17"
       VIDEO_AUDIO_BITRATE: "192k"
       VERIFY_VIDEO_RUNTIME_TOOLS: "true"
-      ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
-      ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET || secrets.WEBHOOK_SECRET }}
-      ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
-      ADMIN_QUEUE_ALERT_EMAIL_FROM: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_FROM || secrets.ADMIN_QUEUE_ALERT_EMAIL_FROM }}
-      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
       - name: Validate production automation credentials before dependency installation
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "Missing canonical SUPABASE_URL configuration." >&2; exit 1; }
@@ -175,6 +168,8 @@ jobs:
 
       - name: Verify Supabase data-plane access
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           response_file="$(mktemp)"
@@ -191,6 +186,19 @@ jobs:
 
 
       - name: Run autonomous queue
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ADMIN_QUEUE_ALERT_WEBHOOK_URL: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_URL }}
+          ADMIN_QUEUE_ALERT_WEBHOOK_SECRET: ${{ secrets.ADMIN_QUEUE_ALERT_WEBHOOK_SECRET }}
+          ADMIN_QUEUE_ALERT_EMAIL_TO: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_TO || secrets.ADMIN_QUEUE_ALERT_EMAIL_TO }}
+          ADMIN_QUEUE_ALERT_EMAIL_FROM: ${{ vars.ADMIN_QUEUE_ALERT_EMAIL_FROM || secrets.ADMIN_QUEUE_ALERT_EMAIL_FROM }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: pnpm background:jobs
 
       - name: Print run summary

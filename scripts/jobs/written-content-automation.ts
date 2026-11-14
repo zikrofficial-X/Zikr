@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
+import { asWrittenRecord } from "../../src/features/social/services/written-content";
 import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
-import { buildWrittenPost, buildWrittenSocialQueuePayload, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
+import { buildWrittenArticleBackfillCreatedAtFilter, buildWrittenBackfillQueuePayload, countUniqueWrittenContentReservations, buildWrittenPost, buildWrittenSocialQueuePayload, chooseWrittenSourceKind, shouldBackfillKidsWrittenPost, scheduleKidsBackfillWithinUtcDay, containsKidsPersonalDataSolicitation, createWrittenAutomationKey, createWrittenSocialAutomationKey, isKidsWrittenPostCandidate, isKidsWrittenSourceReservation, normalizeWrittenCategory, validateWrittenPostDraft, type WrittenContentSource, type WrittenPostDraft } from "../../src/features/social/services/written-content";
 
 type Row = Record<string, unknown>;
 const str=(v:unknown)=>typeof v==="string"?v.trim():"";
@@ -24,14 +25,14 @@ async function loadSources():Promise<WrittenContentSource[]>{
   read<Row>("/rest/v1/hadiths?select=id,text_ar,narrator_ar,grade_ar,ref,hadith_number,book_id&published=eq.true&grade_ar=not.is.null&order=created_at.desc&limit=150&offset="+hadithOffset),
   read<Row>("/rest/v1/hadith_books?select=id,name_ar&limit=150"),
   read<Row>("/rest/v1/duas?select=id,title_ar,text_ar,source_ar,slug&published=eq.true&limit=150"),
-  read<Row>("/rest/v1/stories?select=id,title,summary,content,slug&published=eq.true&is_approved=eq.true&limit=100"),
+  read<Row>("/rest/v1/stories?select=id,title,summary,content,slug&published=eq.true&is_approved=eq.true&user_id=is.null&limit=100"),
   read<Row>("/rest/v1/prophet_sections?select=id,prophet_id,title_ar,content_ar,order_num&order=order_num.asc&limit=120"),
   read<Row>("/rest/v1/prophets?select=id,name_ar,slug,published&published=eq.true&limit=50"),
   read<Row>("/rest/v1/content_library?select=id,title_ar,summary_ar,body_ar,category,slug,review_status,author_name&published=eq.true&review_status=eq.approved&limit=200"),
-  read<Row>("/rest/v1/articles?select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published&published=eq.true&limit=200"),
+  read<Row>("/rest/v1/articles?select=id,title,title_ar,summary,summary_ar,content,content_ar,slug,author,published,metadata&published=eq.true&limit=200"),
   read<Row>("/rest/v1/companion_stories?select=id,companion_id,title_ar,content_ar,story_type&order=order_num.asc&limit=200"),
   read<Row>("/rest/v1/companions?select=id,name_ar,slug,published&published=eq.true&limit=200"),
-  read<Row>("/rest/v1/kids_content?select=id,title_ar,content_ar,summary_ar,slug,age_group,metadata,published,is_active&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&order=created_at.desc&limit=100"),
+  readRequired<Row>("/rest/v1/kids_content?select=id,title_ar,content_ar,summary_ar,slug,age_group,metadata,published,is_active&type=eq.story&published=eq.true&is_active=eq.true&metadata->>age_appropriate=eq.true&order=created_at.desc&limit=100"),
  ]);
  const surahMap=new Map(surahs.map(x=>[String(x.id),x]));
  const bookMap=new Map(books.map(x=>[String(x.id),x]));
@@ -85,6 +86,8 @@ async function loadSources():Promise<WrittenContentSource[]>{
   out.push({kind:"kids_story",id:String(x.id),title,sourceText:text.slice(0,6000),reference:"قصة أطفال منشورة ومعتمدة في عالم ZIKR للأطفال",publicPath:"/kids/"+slug,categoryLabel:"قصص الأطفال",sourceVerified:true,quoteRequired:false,ageGroup});
  }
  for(const x of articles){
+  const metadata=x.metadata&&typeof x.metadata==="object"&&!Array.isArray(x.metadata)?x.metadata as Row:{};
+  if(metadata.automation==="written-content-v2")continue;
   const title=str(x.title_ar)||str(x.title);
   const text=str(x.content_ar)||str(x.summary_ar)||str(x.content)||str(x.summary);
   if(!title||!text)continue;
@@ -97,7 +100,7 @@ async function makeDraft(source:WrittenContentSource,key:string):Promise<Written
  const url=`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(key)}`;
  const kidsPolicy=source.kind==="kids_story"?("هذا منشور مخصص للأطفال من الفئة العمرية "+(source.ageGroup||"غير محددة")+". استخدم لغة بسيطة جدًا ودافئة، وفكرة واحدة إيجابية من القصة فقط. لا تطلب من الطفل اسمه أو صورته أو رقم هاتفه أو عنوانه أو اسم مدرسته أو موقعه. لا تذكر مقابلة أو مراسلة خاصة أو مشاركة أسرار. لا تضف أحداثًا أو شخصيات أو أحكامًا غير موجودة في المصدر. إذا كان المصدر لا يسمح بمنشور آمن ومناسب للعمر فأعد eligible=false."):"";
  const policy=source.quoteRequired?"النص المصدر ديني موثق: لا تعيد صياغته أو تغير حرفًا منه. لا تضف حديثًا أو آية أو حكمًا أو فضلًا غير وارد بالمصدر. اكتب تأملًا عامًا وليس تفسيرًا متخصصًا أو فتوى.":kidsPolicy||"لخص المصدر كما هو دون اختراع أحداث أو أقوال أو أحكام أو اقتباسات. إذا لم يكف المصدر أعد eligible=false.";
- const prompt=["أنت محرر محتوى عربي لمنصة إسلامية موثوقة اسمها ZIKR.","أنشئ منشور Facebook واحدًا بالعربية الفصحى السهلة، جذابًا دون مبالغة أو تفاعل مضلل.",policy,"أعد JSON فقط بالمفاتيح eligible boolean, title, hook, reflection, question.","العنوان 8-90 حرفًا، المقدمة 12-260، reflection 70-900. لا تنسب كلامًا لله أو النبي أو العلماء.","لا تضع نص المصدر داخل reflection؛ سيضاف كما هو في موضع مستقل.","التصنيف: "+source.categoryLabel,"العنوان: "+source.title,"المرجع: "+source.reference,"النص المعتمد:\n"+source.sourceText].join("\n\n");
+ const prompt=["أنت محرر محتوى عربي لمنصة إسلامية موثوقة اسمها ZIKR.","أنشئ منشور Facebook واحدًا بالعربية الفصحى السهلة، جذابًا دون مبالغة أو تفاعل مضلل.",policy,"أعد JSON فقط بالمفاتيح eligible boolean, title, hook, reflection, question.","العنوان 8-90 حرفًا، المقدمة 12-260، reflection 70-900، والسؤال اختياري بحد أقصى 240 حرفًا. لا تنسب كلامًا لله أو النبي أو العلماء.","لا تضع نص المصدر داخل reflection؛ سيضاف كما هو في موضع مستقل.","التصنيف: "+source.categoryLabel,"العنوان: "+source.title,"المرجع: "+source.reference,"النص المعتمد:\n"+source.sourceText].join("\n\n");
  const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt}]}],generationConfig:{temperature:0.45,responseMimeType:"application/json"}}),signal:AbortSignal.timeout(60000)});
  if(!res.ok)throw new Error("Gemini HTTP "+res.status+": "+(await res.text().catch(()=>"")).slice(0,350));
  const payload=await res.json() as {candidates?:Array<{content?:{parts?:Array<{text?:string}>}}>} ;
@@ -169,8 +172,14 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
   "/rest/v1/articles?slug=eq."+encodeURIComponent(slug)+"&select=id,published,metadata&limit=1",
  );
  let articleId=isKidsStory?source.id:(existing[0]?str(existing[0].id):"");
+ const existingMetadata=asWrittenRecord(existing[0]?.metadata);
+ if(existing[0]&&existing[0].published!==true&&existingMetadata.automationPublicationHold===true){
+  console.warn("[written-content] explicit admin publication hold prevents automation requeue",articleId);
+  return {status:"held",id:articleId};
+ }
  const now=new Date();
  const nowIso=now.toISOString();
+ let socialScheduledAt=nowIso;
  if(!isKidsStory&&!articleId){
   const payload=buildWrittenArticlePayload(source,draft,automationKey,slug,nowIso);
   const saved=await supabaseServerAdminRequest<Array<{id:string}>>("/rest/v1/articles",{
@@ -186,23 +195,36 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  // the independent Facebook written-post delivery record.
  if(!isKidsStory&&existing[0]?.published!==true){
   const contentQueue=await readRequired<Row>(
-   "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&select=id,status&limit=1",
+   "/rest/v1/content_publish_queue?content_table=eq.articles&content_id=eq."+encodeURIComponent(articleId)+"&status=in.(queued,processing)&select=id,status,scheduled_at&order=scheduled_at.asc,id.asc&limit=1",
   );
+  let siteScheduledAt: string;
   if(!contentQueue[0]){
-   const scheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
+   siteScheduledAt=new Date(now.getTime()+5*60*1000).toISOString();
    await supabaseServerAdminRequest("/rest/v1/content_publish_queue",{
     method:"POST",
     headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
     body:JSON.stringify({
      content_table:"articles",
      content_id:articleId,
-     scheduled_at:scheduledAt,
+     scheduled_at:siteScheduledAt,
      status:"queued",
      created_at:nowIso,
      updated_at:nowIso,
     }),
    });
+  } else {
+   const existingSchedule=str(contentQueue[0].scheduled_at);
+   if(existingSchedule){
+    const timestamp=Date.parse(existingSchedule);
+    if(!Number.isFinite(timestamp))throw new Error("Existing site publication schedule is invalid; refusing to enqueue social delivery early.");
+    siteScheduledAt=new Date(timestamp).toISOString();
+   } else if(contentQueue[0].status==="processing"){
+    siteScheduledAt=nowIso;
+   } else {
+    throw new Error("Existing site publication schedule is missing; refusing to enqueue social delivery early.");
+   }
   }
+  socialScheduledAt=new Date(Math.max(now.getTime(),Date.parse(siteScheduledAt))+5*60*1000).toISOString();
  }
 
  const socialAutomationKey=createWrittenSocialAutomationKey(source.kind,source.id);
@@ -211,7 +233,7 @@ async function enqueue(source: WrittenContentSource, draft: WrittenPostDraft) {
  );
  if(!socialRows[0]){
   const socialPayload=buildWrittenSocialQueuePayload(
-   source,draft,articleId,socialAutomationKey,nowIso,
+   source,draft,articleId,socialAutomationKey,nowIso,socialScheduledAt,
   );
   await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
    method:"POST",
@@ -226,96 +248,156 @@ async function enqueueExistingWrittenArticlesForFacebook(limit=100) {
  const cutoffValue=process.env.SOCIAL_PUBLISH_AFTER?.trim()||"2026-11-06T20:00:00Z";
  const cutoff=new Date(cutoffValue);
  if(!Number.isFinite(cutoff.getTime()))throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff for written-post backfill.");
- const rows=await readRequired<Row>(
-  "/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte."+encodeURIComponent(cutoff.toISOString())+
-  "&select=id,title,content,slug,metadata,created_at&order=created_at.asc&limit="+String(Math.max(1,Math.min(200,limit))),
+ const createdAtFilter=buildWrittenArticleBackfillCreatedAtFilter(cutoff.toISOString());
+ const maxNewRows=Math.max(1,Math.min(200,Math.floor(Number(limit)||100)));
+ const pageSize=Math.min(100,maxNewRows);
+ const today = new Date();
+ today.setUTCHours(0, 0, 0, 0);
+ const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+ const dayStartIso = today.toISOString();
+ const dayEndIso = tomorrow.toISOString();
+ const kidsDayFilter = encodeURIComponent(
+  `(and(created_at.gte.${dayStartIso},created_at.lt.${dayEndIso}),and(scheduled_at.gte.${dayStartIso},scheduled_at.lt.${dayEndIso}),and(published_at.gte.${dayStartIso},published_at.lt.${dayEndIso}))`,
  );
- let created=0,slot=0;
- for(const article of rows){
-  const metadata=article.metadata&&typeof article.metadata==="object"&&!Array.isArray(article.metadata)?article.metadata as Row:{};
-  const quality=metadata.quality&&typeof metadata.quality==="object"&&!Array.isArray(metadata.quality)?metadata.quality as Row:{};
-  const source=metadata.source&&typeof metadata.source==="object"&&!Array.isArray(metadata.source)?metadata.source as Row:{};
-  const articleId=str(article.id),title=str(article.title),body=str(article.content);
-  const publicPath=str(metadata.publicPath);
-  const sourceType=str(source.type),sourceId=str(source.id);
-  if(!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
-     !sourceType||!sourceId||!publicPath.startsWith("/")||publicPath.startsWith("//"))continue;
-  const automationKey=createWrittenSocialAutomationKey(sourceType,sourceId);
-  const existing=await readRequired<Row>(
-   "/rest/v1/social_publish_queue?automation_key=eq."+encodeURIComponent(automationKey)+"&select=id&limit=1",
+ const todaysKidsPosts = await readRequired<Row>(
+  `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&select=id,content_type,automation_key,metadata&limit=1000`,
+ );
+ const todaysKidsArticles = await readRequired<Row>(
+  `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata,published&limit=1000`,
+ );
+ if (todaysKidsPosts.length >= 1000 || todaysKidsArticles.length >= 1000) {
+  throw new Error("Kids daily reservation scan reached its safe row limit; refusing to backfill without a complete check.");
+ }
+ let hasKidsPostToday = todaysKidsPosts.some(isKidsWrittenPostCandidate) ||
+  todaysKidsArticles.some((row) => isKidsWrittenSourceReservation(row.metadata));
+ let created=0,slot=0,offset=0;
+ while(created < maxNewRows){
+  const rows=await readRequired<Row>(
+   `/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&${createdAtFilter}`+
+   `&select=id,title,content,slug,metadata,created_at,published&order=created_at.asc,id.asc&limit=${pageSize}&offset=${offset}`,
   );
-  if(existing[0]){slot++;continue;}
-  const nowIso=new Date().toISOString();
-  const scheduledAt=new Date(Date.now()+5*60*1000+slot*8*60*60*1000).toISOString();
-  await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
-   method:"POST",
-   headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
-   body:JSON.stringify({
-    content_type:"written_post",
-    content_id:articleId,
-    title,
-    body,
-    image_url:null,
-    video_url:null,
-    target_platforms:["facebook"],
-    status:"queued",
-    scheduled_at:scheduledAt,
-    published_at:null,
-    error_message:null,
-    metadata:{
-     contentType:"written_post",
-     publicPath,
-     source:{
-      type:sourceType,
-      id:sourceId,
-      title:str(source.title)||title,
-      reference:str(source.reference),
-      verified:true,
-     },
-     generation:{
-      provider:"gemini",
-      version:"written-facebook-backfill-v1",
-      importedFromArticleId:articleId,
-      originalCreatedAt:str(article.created_at),
-     },
-    },
-    automation_key:automationKey,
-    created_at:nowIso,
-    updated_at:nowIso,
-   }),
+  if(rows.length===0)break;
+  const candidates=rows.flatMap(article=>{
+   const metadata=article.metadata&&typeof article.metadata==="object"&&!Array.isArray(article.metadata)?article.metadata as Row:{};
+   const quality=metadata.quality&&typeof metadata.quality==="object"&&!Array.isArray(metadata.quality)?metadata.quality as Row:{};
+   const source=metadata.source&&typeof metadata.source==="object"&&!Array.isArray(metadata.source)?metadata.source as Row:{};
+   const articleId=str(article.id),title=str(article.title),body=str(article.content);
+   const publicPath=str(metadata.publicPath);
+   const sourceType=str(source.type),sourceId=str(source.id);
+   if(article.published!==true||!articleId||title.length<8||!body||body.length>12000||quality.passed!==true||source.verified!==true||
+      !sourceType||!sourceId||!publicPath.startsWith("/")||publicPath.startsWith("//"))return [];
+   return [{
+    articleId,title,body,publicPath,sourceType,sourceId,
+    sourceTitle:str(source.title)||title,
+    sourceReference:str(source.reference),
+    ageGroup:str(source.ageGroup)||null,
+    originalCreatedAt:str(article.created_at),
+    automationKey:createWrittenSocialAutomationKey(sourceType,sourceId),
+   }];
   });
-  created++;
-  slot++;
+  const existingKeys=new Set<string>();
+  if(candidates.length){
+   const automationKeyFilter=candidates.map(candidate=>encodeURIComponent(candidate.automationKey)).join(",");
+   const existingRows=await readRequired<Row>(
+    `/rest/v1/social_publish_queue?automation_key=in.(${automationKeyFilter})&select=automation_key&limit=${candidates.length}`,
+   );
+   for(const row of existingRows){
+    const key=str(row.automation_key);
+    if(key)existingKeys.add(key);
+   }
+  }
+  for(const candidate of candidates){
+   if(created>=maxNewRows)break;
+   const {
+    articleId,title,body,publicPath,sourceType,sourceId,sourceTitle,
+    sourceReference,ageGroup,originalCreatedAt,automationKey,
+   }=candidate;
+   if(!shouldBackfillKidsWrittenPost(sourceType,hasKidsPostToday))continue;
+   if(existingKeys.has(automationKey))continue;
+   const now=new Date();
+   const nowIso=now.toISOString();
+   const scheduledAt=sourceType==="kids_story"
+    ? scheduleKidsBackfillWithinUtcDay(now)
+    : new Date(now.getTime()+5*60*1000+slot*8*60*60*1000).toISOString();
+   if(!scheduledAt)continue;
+   let queuePayload: ReturnType<typeof buildWrittenBackfillQueuePayload>;
+   try {
+    queuePayload=buildWrittenBackfillQueuePayload({
+     articleId,title,body,publicPath,sourceType,sourceId,sourceTitle,
+     sourceReference,ageGroup,originalCreatedAt,automationKey,
+     now:nowIso,scheduledAt,
+    });
+   } catch (error) {
+    console.warn("[written-content] skipped invalid written-post backfill", articleId, error instanceof Error ? error.message : String(error));
+    continue;
+   }
+   await supabaseServerAdminRequest("/rest/v1/social_publish_queue",{
+    method:"POST",
+    headers:{"Content-Type":"application/json",Prefer:"return=minimal"},
+    body:JSON.stringify(queuePayload),
+   });
+   existingKeys.add(automationKey);
+   created++;
+   if(sourceType==="kids_story")hasKidsPostToday=true;
+   slot++;
+  }
+  if(rows.length<pageSize)break;
+  offset+=rows.length;
  }
  return created;
 }
-
 export async function runWrittenContentAutomation(options:{category?:string;batchSize?:number}={}){
  if(process.env.WRITTEN_CONTENT_ENABLED?.toLowerCase()==="false")return {enabled:false,created:0,duplicates:0,skipped:0};
  const apiKey=process.env.GEMINI_API_KEY?.trim();if(!apiKey)throw new Error("GEMINI_API_KEY is required.");
  const facebookBackfilled=await enqueueExistingWrittenArticlesForFacebook();
  const dailyTarget=clamp(process.env.WRITTEN_CONTENT_DAILY_TARGET,3,1,10),batchSize=clamp(options.batchSize??process.env.WRITTEN_CONTENT_BATCH_SIZE,1,1,3);
  const today=new Date();today.setUTCHours(0,0,0,0);
- const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
- const todaysSocial=await readRequired<Row>(`/rest/v1/social_publish_queue?automation_key=like.written-social-v1:*&created_at=gte.${encodeURIComponent(today.toISOString())}&select=id&limit=100`);
- const dailyUsed=Math.max(todays.length,todaysSocial.length);
+ const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+ const dayStartIso = today.toISOString();
+ const dayEndIso = tomorrow.toISOString();
+ const todays=await readRequired<Row>(`/rest/v1/articles?metadata->>automation=eq.written-content-v2&published=eq.true&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,metadata&limit=1000`);
+ const todaysSocial=await readRequired<Row>(`/rest/v1/social_publish_queue?automation_key=like.written-social-v1:*&created_at=gte.${encodeURIComponent(dayStartIso)}&created_at=lt.${encodeURIComponent(dayEndIso)}&select=id,automation_key,metadata&limit=1000`);
+ if (todays.length >= 1000 || todaysSocial.length >= 1000) {
+  throw new Error("Daily written-content reservation scan reached its safe row limit; refusing to generate without a complete check.");
+ }
+ const dailyUsed=countUniqueWrittenContentReservations(todays,todaysSocial);
  const remaining=Math.max(0,dailyTarget-dailyUsed);if(!remaining)return {enabled:true,created:0,duplicates:0,skipped:0,facebookBackfilled,dailyTarget,dailyUsed};
  const category=normalizeWrittenCategory(options.category||process.env.WRITTEN_CONTENT_CATEGORY||"auto"),all=await loadSources(),pool=category==="auto"?[...all]:category==="kids"?all.filter(x=>x.kind==="kids_story"):all.filter(x=>x.kind===category);
  if(!pool.length)throw new Error("No approved and published source for category "+category);
 
+ const kidsDayFilter = encodeURIComponent(
+  `(and(created_at.gte.${dayStartIso},created_at.lt.${dayEndIso}),and(scheduled_at.gte.${dayStartIso},scheduled_at.lt.${dayEndIso}),and(published_at.gte.${dayStartIso},published_at.lt.${dayEndIso}))`,
+ );
+ const todaysKidsPosts = category === "auto" || category === "kids"
+  ? await readRequired<Row>(
+   `/rest/v1/social_publish_queue?content_type=eq.written_post&or=${kidsDayFilter}&select=id,content_type,automation_key,metadata&limit=1000`,
+  )
+  : [];
+ if (todaysKidsPosts.length >= 1000) {
+  throw new Error("Kids daily reservation scan reached its safe row limit; refusing to generate without a complete check.");
+ }
+ let hasKidsPostToday = todays.some((row) => isKidsWrittenSourceReservation(row.metadata)) ||
+  todaysKidsPosts.some(isKidsWrittenPostCandidate);
  const groups = new Map<WrittenContentSource["kind"], WrittenContentSource[]>();
  for (const item of pool) groups.set(item.kind, [...(groups.get(item.kind) ?? []), item]);
  const ids:string[]=[];let duplicates=0,skipped=0;
  while(ids.length<Math.min(batchSize,remaining)&&groups.size){
   const kinds=[...groups.keys()];
-  const kind=kinds[Math.floor(Math.random()*kinds.length)];
+  const kind=chooseWrittenSourceKind(kinds,category,hasKidsPostToday,Math.floor(Math.random()*kinds.length));
+  if(!kind)break;
   const candidates=groups.get(kind) ?? [];
   const source=pick(candidates);
   if(!source){groups.delete(kind);continue;}
   candidates.splice(candidates.indexOf(source),1);
   if(!candidates.length)groups.delete(kind);
-  try{const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);if(result.status==="queued")ids.push(result.id);else duplicates++;}
-  catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
+  try{
+   const draft=await makeDraft(source,apiKey),result=await enqueue(source,draft);
+   if(result.status==="queued"){
+    ids.push(result.id);
+    if(kind==="kids_story")hasKidsPostToday=true;
+   }else if(result.status==="duplicate")duplicates++;
+   else skipped++;
+  }catch(error){skipped++;console.warn("[written-content] quarantined",source.kind,source.id,error instanceof Error?error.message:String(error));}
  }
  return {enabled:true,created:ids.length,duplicates,skipped,facebookBackfilled,dailyTarget,dailyUsed:dailyUsed+ids.length,ids};
 }

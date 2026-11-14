@@ -1,3 +1,5 @@
+import { normalizeSocialPlatformResults } from "../../social/services/platform-availability";
+
 type VideoMetadata = Record<string, unknown>;
 
 function metadataFor(row: Record<string, unknown>): VideoMetadata {
@@ -50,10 +52,189 @@ export function getConfirmedYoutubeFallbackId(row: Record<string, unknown>): str
   return youtubeIdFromUrl(metadata.youtubePublishedUrl) === id ? id : null;
 }
 
+export type YoutubeQueuePublicationState =
+  | { status: "published"; id: string; publishedAt: string }
+  | { status: "deleted"; deletedAt: string | null }
+  | { status: "conflict" };
+
+/**
+ * Resolve the newest confirmed YouTube queue event for one video-generation
+ * request. A confirmed deletion wins equal timestamps and malformed deletion
+ * timestamps fail closed; a strictly later confirmed publication may restore
+ * the fallback.
+ */
+export function resolveLatestConfirmedYoutubeQueueState(
+  rows: unknown[],
+): YoutubeQueuePublicationState | null {
+  type Publication = { id: string; publishedAt: string; timestamp: number };
+  type Deletion = { remoteId: string | null; deletedAt: string | null; timestamp: number };
+
+  // Deletions are scoped to the exact remote post ID. A late deletion of an
+  // older upload must not erase a newer YouTube publication for this request.
+  const publications = new Map<string, Publication>();
+  const deletions = new Map<string, Deletion>();
+  let uncorrelatedDeletion: Deletion | null = null;
+
+  for (const value of rows) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    const row = value as Record<string, unknown>;
+    const metadata = metadataFor(row);
+    const results = normalizeSocialPlatformResults(metadata.platformResults);
+    const youtube = results.youtube && typeof results.youtube === "object" && !Array.isArray(results.youtube)
+      ? results.youtube as Record<string, unknown>
+      : {};
+    const publishedAt = typeof row.published_at === "string" ? row.published_at.trim() : "";
+    const publicationTimestamp = publishedAt ? Date.parse(publishedAt) : Number.NaN;
+
+    if (
+      (row.status === "published" || row.status === "partial") &&
+      Number.isFinite(publicationTimestamp) &&
+      youtube.ok === true &&
+      isValidYoutubeId(youtube.remoteId)
+    ) {
+      const id = youtube.remoteId.trim();
+      const previous = publications.get(id);
+      if (!previous || publicationTimestamp > previous.timestamp) {
+        publications.set(id, { id, publishedAt, timestamp: publicationTimestamp });
+      }
+    }
+
+    const deletionMap = metadata.platformDeletions &&
+      typeof metadata.platformDeletions === "object" &&
+      !Array.isArray(metadata.platformDeletions)
+      ? metadata.platformDeletions as Record<string, unknown>
+      : {};
+    const youtubeDeletion = deletionMap.youtube &&
+      typeof deletionMap.youtube === "object" &&
+      !Array.isArray(deletionMap.youtube)
+      ? deletionMap.youtube as Record<string, unknown>
+      : {};
+
+    if (youtubeDeletion.status === "deleted") {
+      const deletedAt = typeof youtubeDeletion.deletedAt === "string"
+        ? youtubeDeletion.deletedAt.trim()
+        : "";
+      const parsedDeletedAt = deletedAt ? Date.parse(deletedAt) : Number.NaN;
+      const deletionTimestamp = Number.isFinite(parsedDeletedAt)
+        ? parsedDeletedAt
+        : Number.POSITIVE_INFINITY;
+      const rawDeletionId = typeof youtubeDeletion.remoteId === "string"
+        ? youtubeDeletion.remoteId.trim()
+        : "";
+      const deletionRemoteId = isValidYoutubeId(rawDeletionId) ? rawDeletionId : null;
+      const deletion: Deletion = {
+        remoteId: deletionRemoteId,
+        deletedAt: Number.isFinite(parsedDeletedAt) ? deletedAt : null,
+        timestamp: deletionTimestamp,
+      };
+
+      if (deletionRemoteId) {
+        const previous = deletions.get(deletionRemoteId);
+        if (!previous || deletionTimestamp > previous.timestamp) {
+          deletions.set(deletionRemoteId, deletion);
+        }
+      } else if (!uncorrelatedDeletion || deletionTimestamp > uncorrelatedDeletion.timestamp) {
+        // Legacy deletion records without a remote ID cannot safely be matched
+        // to one of several publications; keep the media audit fail-closed.
+        uncorrelatedDeletion = deletion;
+      }
+    }
+  }
+
+  const latestPublicationTimestamp = Math.max(
+    Number.NEGATIVE_INFINITY,
+    ...[...publications.values()].map((publication) => publication.timestamp),
+  );
+  const latestActivePublications = [...publications.values()].filter((publication) => {
+    const deletion = deletions.get(publication.id);
+    return !deletion || deletion.timestamp < publication.timestamp;
+  });
+  const latestActiveTimestamp = Math.max(
+    Number.NEGATIVE_INFINITY,
+    ...latestActivePublications.map((publication) => publication.timestamp),
+  );
+
+  if (latestActivePublications.length > 0) {
+    const newest = latestActivePublications.filter(
+      (publication) => publication.timestamp === latestActiveTimestamp,
+    );
+    if (newest.length > 1) return { status: "conflict" };
+    if (
+      uncorrelatedDeletion &&
+      uncorrelatedDeletion.timestamp >= latestPublicationTimestamp &&
+      uncorrelatedDeletion.timestamp >= latestActiveTimestamp
+    ) {
+      return { status: "conflict" };
+    }
+    const publication = newest[0];
+    return {
+      status: "published",
+      id: publication.id,
+      publishedAt: publication.publishedAt,
+    };
+  }
+
+  if (uncorrelatedDeletion && uncorrelatedDeletion.timestamp >= latestPublicationTimestamp) {
+    return { status: "conflict" };
+  }
+
+  const deletionEvents = [...deletions.values()];
+  if (deletionEvents.length === 0) return null;
+  const latestDeletion = deletionEvents.reduce((latest, current) =>
+    current.timestamp > latest.timestamp ? current : latest,
+  );
+  return { status: "deleted", deletedAt: latestDeletion.deletedAt };
+}
+
+/** Keep the catalog's YouTube fallback in sync with an authoritative queue event. */
+export function reconcileYoutubeFallbackMetadata(
+  metadataValue: unknown,
+  state: YoutubeQueuePublicationState | null,
+): VideoMetadata {
+  const metadata = metadataValue && typeof metadataValue === "object" && !Array.isArray(metadataValue)
+    ? { ...metadataValue as VideoMetadata }
+    : {};
+
+  if (state?.status === "deleted") {
+    return {
+      ...metadata,
+      youtubePublishedVideoId: null,
+      youtubePublishedUrl: null,
+      youtubePublishedAt: null,
+      mediaFallbackAvailable: false,
+    };
+  }
+
+  if (state?.status === "published") {
+    return {
+      ...metadata,
+      youtubePublishedVideoId: state.id,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + state.id,
+      youtubePublishedAt: state.publishedAt,
+      mediaFallbackAvailable: true,
+    };
+  }
+
+  return metadata;
+}
+
+export function isUnlinkedInternalVideoMedia(row: Record<string, unknown>): boolean {
+  const metadata = metadataFor(row);
+  return metadata.generator === "zikr_internal_video_factory" && metadata.mediaState === "unlinked";
+}
+
+/** Keep an explicit purge tombstone until a confirmed publication recovery changes it. */
+export function isPurgedInternalVideoMedia(row: Record<string, unknown>): boolean {
+  const metadata = metadataFor(row);
+  return metadata.generator === "zikr_internal_video_factory" && metadata.mediaState === "purged";
+}
+
 export function resolveVideoYoutubeId(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
-  const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  if (metadata.generator === "zikr_internal_video_factory" && mediaState === "purged") {
+  if (isUnlinkedInternalVideoMedia(row)) return null;
+  if (metadata.generator === "zikr_internal_video_factory") {
+    // Internal factory IDs are usable only after the publisher recorded the
+    // remote ID and matching canonical URL, regardless of the current media state.
     return getConfirmedYoutubeFallbackId(row);
   }
   const id = typeof row.youtube_id === "string" ? row.youtube_id.trim() : "";
@@ -71,6 +252,7 @@ export function shouldKeepPublishedVideoAfterMediaPurge(
 
 export function resolveVideoMediaUrl(row: Record<string, unknown>): string | null {
   const metadata = metadataFor(row);
+  if (isUnlinkedInternalVideoMedia(row)) return null;
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
   const youtubeId = resolveVideoYoutubeId(row);
   const youtubeUrl = youtubeId
@@ -82,7 +264,7 @@ export function resolveVideoMediaUrl(row: Record<string, unknown>): string | nul
   // a safe playback fallback.
   if (
     metadata.generator === "zikr_internal_video_factory" &&
-    ["cloudinary_missing", "unavailable", "purged"].includes(mediaState)
+    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState)
   ) {
     return youtubeUrl;
   }
@@ -123,10 +305,12 @@ export function resolveVideoThumbnail(
   fallbackImage: string,
 ): string {
   const metadata = metadataFor(row);
+  if (isUnlinkedInternalVideoMedia(row)) return fallbackImage;
   const mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "";
-  const internalPurged = metadata.generator === "zikr_internal_video_factory" && mediaState === "purged";
+  const internalFallbackState = metadata.generator === "zikr_internal_video_factory" &&
+    ["cloudinary_missing", "unavailable", "youtube_only", "purged"].includes(mediaState);
   const youtubeId = resolveVideoYoutubeId(row);
-  if (internalPurged) {
+  if (internalFallbackState) {
     return youtubeId
       ? "https://i.ytimg.com/vi/" + encodeURIComponent(youtubeId) + "/hqdefault.jpg"
       : fallbackImage;

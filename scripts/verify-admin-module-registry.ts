@@ -37,6 +37,14 @@ for (const group of ADMIN_NAVIGATION) {
     }
   }
 }
+const seoManagerPermissions = ADMIN_ROLE_PERMISSIONS.seo_manager;
+if (seoManagerPermissions.includes("settings.manage")) {
+  failures.push("seo_manager must not receive settings.manage; global admin settings include security controls.");
+}
+if (!seoManagerPermissions.includes("site.metadata.manage")) {
+  failures.push("seo_manager must retain the dedicated public site metadata permission.");
+}
+
 const seen = new Set<string>();
 for (const adminModule of ADMIN_MODULES) {
   if (seen.has(adminModule.key)) failures.push(`Duplicate admin module key: ${adminModule.key}`);

@@ -4,6 +4,7 @@ import {
 } from '@/features/reminders/services/reminder-preferences';
 import { requireSupabaseAuth } from '@/lib/supabase/guard';
 import { NextRequest, NextResponse } from 'next/server';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 export async function GET() {
   const blocked = requireSupabaseAuth();
@@ -27,8 +28,14 @@ export async function PUT(request: NextRequest) {
   if (blocked) return blocked;
 
   try {
-    const body: unknown = await request.json();
-    const result = await updateCurrentReminderPreferences(body);
+    const parsedBody = await readBoundedJsonBody(request, 8 * 1024);
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    }
+    const result = await updateCurrentReminderPreferences(parsedBody.value);
 
     if (!result) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

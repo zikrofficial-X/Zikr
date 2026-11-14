@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdminPermission } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { siteConfig } from "@/lib/site";
 
@@ -59,8 +60,17 @@ function safeImagePath(raw: string): string {
   return url;
 }
 
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/seo] audit event failed after committed mutation:", error),
+  );
+}
+
 export async function savePublicSiteSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("settings.manage");
+  const profile = await requireAdminPermission("site.metadata.manage");
   const section = value(formData, "section");
   if (section !== "homepage" && section !== "seo" && section !== "social") {
     throw new Error("قسم الإعدادات العامة غير مدعوم.");
@@ -135,9 +145,9 @@ export async function savePublicSiteSettingAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.site_settings.update",
-    permission: "settings.manage",
+    permission: "site.metadata.manage",
     resourceType: "site_settings",
     resourceId: section,
     metadata: { section, fields: Object.keys(setting), actor: profile.id },

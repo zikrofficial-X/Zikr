@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { MAX_AUTO_VIDEO_SECONDS, resolveRenderDuration } from "../../src/features/videos/services/render-duration";
+import { isVideoAiPlanningEnabled } from "../../src/features/videos/providers/types";
+import { CURRENT_VIDEO_RENDERER_VERSION } from "../../src/features/videos/services/video-template-version";
 
 // Contract: TypeScript video status/category unions must match the latest DB check constraints.
 const migrations = readdirSync("supabase/migrations").filter((f) => f.endsWith(".sql")).sort();
@@ -27,6 +29,41 @@ const voice = readFileSync("scripts/generate-arabic-voice.py", "utf8");
 assert.ok(!voice.includes("ZariyahNeural"), "default Arabic TTS voice must be male (Zariyah is female)");
 assert.ok(voice.includes("ar-SA-HamedNeural"), "male MSA profile required");
 
+const videoAutomation = readFileSync("src/features/videos/services/video-automation.ts", "utf8");
+const socialPublishing = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+for (const [sourceName, source] of [
+  ["video metadata generator", videoAutomation],
+  ["social publishing worker", socialPublishing],
+]) {
+  assert.doesNotMatch(
+    source,
+    /appendSmartLinkDisclosure|MONETAG_SMARTLINK_YOUTUBE_TAGS|MONETAG_SMARTLINK_URL|uplcm\.com\/4\/12171895/,
+    `${sourceName} must never inject website advertising into external platform metadata`,
+  );
+}
+const smartLinkPromo = readFileSync("src/components/smartlink-promo.tsx", "utf8");
+const footer = readFileSync("src/components/layout/footer.tsx", "utf8");
+assert.ok(smartLinkPromo.includes("MONETAG_SMARTLINK_URL"));
+assert.ok(footer.includes("MONETAG_SMARTLINK_URL"));
+
+const videoOpsGuide = readFileSync("docs/GITHUB_AI_VIDEO.md", "utf8");
+const envExample = readFileSync(".env.example", "utf8");
+const productionVideoWorkflow = readFileSync(".github/workflows/generate-ai-video.yml", "utf8");
+assert.ok(videoOpsGuide.includes("VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template"),
+  "the video operations guide must match the checked-in provider order");
+assert.ok(videoOpsGuide.includes("Cloudinary") && videoOpsGuide.includes("fails closed rather than falling back to Supabase Storage"),
+  "the video operations guide must describe the actual Cloudinary-only MP4 upload path");
+assert.ok(videoOpsGuide.includes(CURRENT_VIDEO_RENDERER_VERSION),
+  "the video operations guide must identify the current renderer contract version");
+assert.doesNotMatch(videoOpsGuide, /existing `videos` bucket|v4 renderer/,
+  "the video operations guide must not retain the retired Supabase bucket or renderer instructions");
+assert.ok(envExample.includes("VIDEO_PROVIDER_ORDER=hf_ltx_fast,hf_wan,template") &&
+  productionVideoWorkflow.includes('VIDEO_PROVIDER_ORDER: "hf_ltx_fast,hf_wan,template"'),
+  "local environment template and production workflow must keep the same reviewed provider order");
+const cloudinaryUploadSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(cloudinaryUploadSource.includes("uploadGeneratedVideoToCloudinary") &&
+  cloudinaryUploadSource.includes("refusing to use Supabase Storage as a fallback"),
+  "the worker must continue to fail closed when Cloudinary is not configured");
 const videoCatalog = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const videoDetailPage = readFileSync("src/app/videos/[slug]/page.tsx", "utf8");
 assert.ok(videoCatalog.includes('metadata.generator === "zikr_internal_video_factory"'), "internal generated video catalog must use a distinct generator marker");
@@ -54,6 +91,29 @@ assert.ok(
   Math.abs(resolveRenderDuration(53.6, 20) - 54.4) < 0.001,
   "a 53.6-second narration must render with its full duration and audio tail",
 );
+assert.equal(
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "true", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  false,
+  "free-only mode must never call Gemini even when the AI feature flag is enabled",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "false", GEMINI_API_KEY: "test-key" }),
+  false,
+  "VIDEO_AI_ENABLED=false must prevent Gemini calls even when free-only mode is disabled",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "test-key" }),
+  true,
+  "Gemini planning requires both explicit opt-in flags and a server key",
+);
+assert.equal(
+  isVideoAiPlanningEnabled({ NODE_ENV: "test", VIDEO_FREE_ONLY: "false", VIDEO_AI_ENABLED: "true", GEMINI_API_KEY: "  " }),
+  false,
+  "a blank Gemini key must not enable AI planning",
+);
+const videoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(videoWorker.includes("return isVideoAiPlanningEnabled();"), "the video worker must use the shared Gemini opt-in policy");
+
 assert.equal(resolveRenderDuration(0, 20), 20, "invalid audio duration must fall back to the requested target duration");
 assert.throws(
   () => resolveRenderDuration(59.3, 20),

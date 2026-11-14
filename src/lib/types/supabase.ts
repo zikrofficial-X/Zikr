@@ -345,6 +345,7 @@ export type Database = {
           quran_time: string
           salawat_enabled: boolean
           salawat_interval_minutes: number
+          timezone: string
           updated_at: string
           user_id: string
         }
@@ -358,6 +359,7 @@ export type Database = {
           quran_time?: string
           salawat_enabled?: boolean
           salawat_interval_minutes?: number
+          timezone?: string
           updated_at?: string
           user_id: string
         }
@@ -371,6 +373,7 @@ export type Database = {
           quran_time?: string
           salawat_enabled?: boolean
           salawat_interval_minutes?: number
+          timezone?: string
           updated_at?: string
           user_id?: string
         }
@@ -3374,6 +3377,53 @@ export type Database = {
           },
         ]
       }
+      site_audio_upload_intents: {
+        Row: {
+          asset_id: string | null
+          cleanup_after: string
+          created_at: string
+          mime_type: string
+          owner_user_id: string
+          size_bytes: number
+          status: string
+          storage_path: string
+          updated_at: string
+          upload_expires_at: string
+        }
+        Insert: {
+          asset_id?: string | null
+          cleanup_after: string
+          created_at?: string
+          mime_type: string
+          owner_user_id: string
+          size_bytes: number
+          status?: string
+          storage_path: string
+          updated_at?: string
+          upload_expires_at: string
+        }
+        Update: {
+          asset_id?: string | null
+          cleanup_after?: string
+          created_at?: string
+          mime_type?: string
+          owner_user_id?: string
+          size_bytes?: number
+          status?: string
+          storage_path?: string
+          updated_at?: string
+          upload_expires_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "site_audio_upload_intents_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "site_audio_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           created_at: string
@@ -4547,6 +4597,7 @@ export type Database = {
       }
       youtube_sync_state: {
         Row: {
+          playlists: Json
           channel_id: string | null
           id: number
           last_attempted_at: string | null
@@ -4557,6 +4608,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          playlists?: Json
           channel_id?: string | null
           id?: number
           last_attempted_at?: string | null
@@ -4567,6 +4619,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          playlists?: Json
           channel_id?: string | null
           id?: number
           last_attempted_at?: string | null

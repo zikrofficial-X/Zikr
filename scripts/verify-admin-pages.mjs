@@ -73,8 +73,9 @@ for (const token of [
   if (!seoPage.includes(token)) failures.push(`SEO/Admin editor is missing wired control: ${token}`);
 }
 for (const token of [
-  'requireAdminPermission("settings.manage")',
-  'recordAdminAuditEvent({',
+  'requireAdminPermission("site.metadata.manage")',
+  'recordAdminAuditEventSafely({',
+  'runPostCommitAudit(',
   'optionalHttpsUrl(',
   'key: section',
   'value: mergedSetting',
@@ -93,9 +94,19 @@ for (const [label, source] of [["Kids dashboard", kidsEntryPage], ["Kids content
     failures.push(`${label} must enforce kids.manage before rendering the shared content manager.`);
   }
 }
+if (
+  !kidsContentManager.includes('from "@/app/admin/kids/actions"') ||
+  !kidsContentManager.includes("saveKidsContentAction") ||
+  !kidsContentManager.includes("reviewKidsStoryAgeSuitabilityAction")
+) {
+  failures.push("Shared Kids content manager must import the dedicated create and age-review server actions.");
+}
+
 for (const token of [
-  'import { saveKidsContentAction } from "@/app/admin/kids/actions"',
   "CloudinaryImageUploadField",
+  "reviewKidsStoryAgeSuitabilityAction",
+  "content_ar,content_en,updated_at",
+  'name="confirm_review"',
   'name="title_ar"',
   'name="content_ar"',
   'name="quiz_data"',
@@ -260,7 +271,7 @@ for (const token of [
   "scheduledAvailable?: boolean",
   "طابور جدولة المحتوى غير متاح",
   "scheduledAvailable && !item.published",
-  "scheduledAvailable && queued",
+  "scheduledAvailable && activeSchedule",
   "scheduledAvailable && selected",
 ]) {
   if (!contentConsole.includes(token)) failures.push(`Admin content console must disable schedule operations when the queue is unavailable: ${token}`);

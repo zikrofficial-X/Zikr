@@ -21,18 +21,25 @@ export const cumulativeOffset: Record<number, number> = (() => {
 /**
  * Convert a (surah, ayah) pair to an absolute ayah index in range 1..6236.
  */
-export function toAbsoluteAyah(surah: number, ayah: number): number {
-  if (surah < 1 || surah > 114) return 0;
+/** Validate a one-based Quran position against the canonical ayah count for its surah. */
+export function isValidQuranPosition(surah: number, ayah: number): boolean {
+  if (!Number.isSafeInteger(surah) || !Number.isSafeInteger(ayah)) return false;
   const count = surahAyahCounts[surah] ?? 0;
-  const clampedAyah = Math.min(Math.max(ayah, 1), count);
-  return cumulativeOffset[surah] + clampedAyah;
+  return count > 0 && ayah >= 1 && ayah <= count;
+}
+
+/** Convert a (surah, ayah) pair to an absolute ayah index in range 1..6236. */
+export function toAbsoluteAyah(surah: number, ayah: number): number {
+  if (!isValidQuranPosition(surah, ayah)) return 0;
+  return cumulativeOffset[surah] + ayah;
 }
 
 /**
  * Convert an absolute ayah index (1..6236) back to a (surah, ayah) pair.
  */
 export function fromAbsoluteAyah(absolute: number): { surah: number; ayah: number } {
-  const clamped = Math.min(Math.max(absolute, 1), TOTAL_AYAHS);
+  const safeAbsolute = Number.isSafeInteger(absolute) ? absolute : 1;
+  const clamped = Math.min(Math.max(safeAbsolute, 1), TOTAL_AYAHS);
   for (let s = 1; s <= 114; s++) {
     const count = surahAyahCounts[s] ?? 0;
     if (clamped <= cumulativeOffset[s] + count) {
@@ -44,6 +51,7 @@ export function fromAbsoluteAyah(absolute: number): { surah: number; ayah: numbe
 
 /** Number of ayahs read so far given a completed-through absolute position. */
 export function ayahsReadFromPosition(absolute: number): number {
+  if (!Number.isSafeInteger(absolute)) return 0;
   return Math.min(Math.max(absolute, 0), TOTAL_AYAHS);
 }
 

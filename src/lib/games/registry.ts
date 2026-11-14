@@ -419,7 +419,8 @@ export type OfflineQueuedResult = GameResultPayload & {
 };
 
 export function isRegisteredGameId(value: unknown): value is GameId {
-  return typeof value === "string" && value in GAME_REGISTRY;
+  return typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(GAME_REGISTRY, value);
 }
 
 export function getGameDefinition(value: unknown): GameDefinition | null {

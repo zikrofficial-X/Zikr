@@ -70,11 +70,56 @@ for (const token of ["scene text", "render_duration_ms integer", "video_generati
 if (!template.includes("content_hash")) failures.push("video seed must persist a deterministic content hash");
 if (!template.includes("video_generation_requests_content_hash_unique")) failures.push("video seed must tolerate duplicate content-hash races without aborting the worker");
 if (!template.includes("function isContentHashConflict(error: unknown)")) failures.push("video worker must recognize content-hash uniqueness conflicts consistently");
-const renderedHashClaimPosition = template.indexOf("const hashClaimRows = await supabaseServerAdminRequest");
-const renderedHashWritePosition = template.indexOf("content_hash: rendered.contentHash", renderedHashClaimPosition);
-const siteRegistrationPosition = template.indexOf("await registerGeneratedVideoOnSite(request, rendered)");
-if (renderedHashClaimPosition < 0 || renderedHashWritePosition < renderedHashClaimPosition || siteRegistrationPosition < 0 || renderedHashWritePosition > siteRegistrationPosition) {
-  failures.push("rendered content hash must be atomically written before public site registration");
+const leaseHelperPosition = template.indexOf("const patchProcessingRequestWithLease = createSerializedLeaseMutation(async");
+const leaseFencePosition = template.indexOf("buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt, leaseVideoUrl)", leaseHelperPosition);
+const renderedHashWritePosition = template.indexOf("await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });", leaseHelperPosition);
+const leaseHeartbeatPosition = template.indexOf("const withLeaseHeartbeat = <T>", leaseHelperPosition);
+const renderPosition = template.indexOf(
+  "const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));",
+  leaseHeartbeatPosition,
+);
+const siteRegistrationPosition = template.indexOf(
+  "await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal))",
+  renderedHashWritePosition,
+);
+const socialQueuePosition = template.indexOf(
+  "socialQueueResult = await withLeaseHeartbeat(",
+  siteRegistrationPosition,
+);
+const socialQueueCallPosition = template.indexOf(
+  "queueSocialItems(request, rendered.videoUrl, signal)",
+  socialQueuePosition,
+);
+const durableHandoffPosition = template.indexOf('socialQueueEnqueueStatus: "processing"', siteRegistrationPosition);
+const pendingHandoffPosition = template.indexOf('socialQueueEnqueueStatus: "pending"', socialQueueCallPosition);
+const leaseAbortGuardPosition = template.indexOf("function throwIfVideoLeaseAborted(signal?: AbortSignal)");
+const leaseAwareRestWritePosition = template.indexOf("...(signal ? { signal } : {})");
+const adminRest = read("src/lib/supabase/admin-rest.ts");
+if (
+  leaseHelperPosition < 0 ||
+  leaseFencePosition < leaseHelperPosition ||
+  leaseHeartbeatPosition < leaseFencePosition ||
+  renderPosition < leaseHeartbeatPosition ||
+  renderedHashWritePosition < renderPosition ||
+  siteRegistrationPosition < renderedHashWritePosition ||
+  socialQueuePosition < siteRegistrationPosition ||
+  socialQueueCallPosition < socialQueuePosition ||
+  durableHandoffPosition < siteRegistrationPosition ||
+  pendingHandoffPosition < socialQueueCallPosition ||
+  leaseAbortGuardPosition < 0 ||
+  leaseAwareRestWritePosition < 0 ||
+  !adminRest.includes("AbortSignal.any([controller.signal, fetchInit.signal])")
+) {
+  failures.push("rendered hash, catalog registration, and social queue writes must remain inside the current processing lease; lease loss must abort in-flight rendering and REST side effects");
+}
+if (
+  !template.includes("leaseVideoUrl = typeof patch.video_url") ||
+  !template.includes("async function recoverPendingVideoSocialQueueEnqueues(") ||
+  !template.includes("content->>socialQueueEnqueueStatus=eq.pending") ||
+  !template.includes("content->>socialQueueEnqueueStatus=eq.processing") ||
+  !template.includes("buildVideoSocialQueueRecoveryLeaseFilter(")
+) {
+  failures.push("social enqueue failures and interrupted handoffs must remain processing and recover under an exact media-URL lease");
 }
 for (const token of [
   'status: "cancelled"',

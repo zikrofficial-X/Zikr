@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 import { getPublicEnv } from "@/lib/env";
 import { normalizedText } from "@/lib/content-quality";
 import type { ArticleCategory, Article } from "@/features/articles/types/articles";
@@ -177,7 +179,7 @@ export async function getArticleCategories(): Promise<ArticleCategory[]> {
 }
 
 export async function getArticles(categoryId?: string, limit = 100, locale?: Locale): Promise<Article[]> {
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
   const activeLocale = locale ?? await getRequestLocale();
 
   if (hasSupabaseConfig()) {
@@ -191,33 +193,36 @@ export async function getArticles(categoryId?: string, limit = 100, locale?: Loc
 
       const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         query,
-        { cache: "force-cache", next: { revalidate: 1800 } },
+        { cache: "force-cache", next: { revalidate: 60, tags: ["public-articles"] } },
       );
 
-      const publicArticles = rows
-        .map((row) => mapRow(row, activeLocale))
-        .filter(article => article.title && normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS);
-
-      if (publicArticles.length > 0) {
-        let offlineArticles: Article[] = [];
-        try {
-          offlineArticles = await loadOfflineArticles(activeLocale);
-        } catch (error) {
-          console.error("[articles] Offline catalogue unavailable:", error);
-        }
-
-        return withLongformArticles(
-          resolveCanonicalPublished(publicArticles, [...offlineArticles, ...getFallbackArticles(activeLocale)])
-            .filter(
-              (article) =>
-                !categoryId ||
-                categoryId === "all" ||
-                article.categoryId === categoryId,
-            ),
-          activeLocale,
-          categoryId,
-        ).slice(0, safeLimit);
+      if (rows.length === 0) {
+        // A successful empty published query is authoritative. Do not resurrect
+        // stale database snapshots; retain only bundled editorial fallbacks.
+        const staticFallback = getFallbackArticles(activeLocale).filter(
+          article => !categoryId || categoryId === "all" || article.categoryId === categoryId,
+        );
+        return withLongformArticles(staticFallback, activeLocale, categoryId).slice(0, safeLimit);
       }
+
+      let offlineArticles: Article[] = [];
+      try {
+        offlineArticles = await loadOfflineArticles(activeLocale);
+      } catch (error) {
+        console.error("[articles] Offline catalogue unavailable:", error);
+      }
+
+      const canonicalArticles = resolveCanonicalPublished(
+        rows.map((row) => mapRow(row, activeLocale)),
+        [...offlineArticles, ...getFallbackArticles(activeLocale)],
+      ).filter(
+        (article) =>
+          article.title &&
+          normalizedText(article.content).length >= MIN_PUBLIC_ARTICLE_CHARS &&
+          (!categoryId || categoryId === "all" || article.categoryId === categoryId),
+      );
+
+      return withLongformArticles(canonicalArticles, activeLocale, categoryId).slice(0, safeLimit);
     } catch (error) {
       if (!isUnavailableArticlesTable(error)) {
         console.error("[articles] Failed to fetch published articles:", error);
@@ -289,26 +294,49 @@ export async function getArticleBySlug(slug: string, locale?: Locale): Promise<A
   if (!safeSlug) return null;
 
   if (hasSupabaseConfig()) {
+    let databaseLookupFailed = false;
+    let rows: Array<Record<string, unknown>> = [];
     try {
-      const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
+      rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
         `/rest/v1/articles?select=id,title,title_ar,title_en,slug,summary,summary_ar,summary_en,content,content_ar,content_en,author,featured_image_url,views,published,category_id,tags,metadata,created_at&slug=eq.${encodeURIComponent(safeSlug)}&published=eq.true&limit=1`,
-        { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 1800 } },
+        { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 60, tags: ["public-articles"] } },
       );
-      const row = rows[0];
-      if (row) {
-        const localized = mapRow(row, activeLocale);
-        if (isSubstantialPublicArticle(localized)) return localized;
-
-        // English translations are incomplete for part of the published catalogue.
-        // Keep the canonical Arabic article accessible instead of turning it into a 404.
-        if (activeLocale === "en") {
-          const arabicSource = mapRow(row, "ar");
-          if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
-        }
-      }
     } catch (error) {
+      databaseLookupFailed = true;
       if (!isUnavailableArticlesTable(error)) {
         console.error("[articles] Failed to fetch article:", error);
+      }
+    }
+
+    const row = rows[0];
+    if (row) {
+      const localized = mapRow(row, activeLocale);
+      if (isSubstantialPublicArticle(localized)) return localized;
+
+      // English translations are incomplete for part of the published catalogue.
+      // Keep the canonical Arabic article accessible instead of turning it into a 404.
+      if (activeLocale === "en") {
+        const arabicSource = mapRow(row, "ar");
+        if (isSubstantialPublicArticle(arabicSource)) return arabicSource;
+      }
+    } else if (!databaseLookupFailed) {
+      const fallbackLocales = activeLocale === "en" ? ["en", "ar"] as const : ["ar"] as const;
+      let hasOfflineFallback = false;
+      for (const contentLocale of fallbackLocales) {
+        try {
+          const offlineArticles = await loadOfflineArticles(contentLocale);
+          hasOfflineFallback = offlineArticles.some(article => article.slug === safeSlug && isSubstantialPublicArticle(article));
+        } catch (error) {
+          console.error("[articles] Offline article catalogue unavailable:", error);
+        }
+        if (!hasOfflineFallback) {
+          hasOfflineFallback = getFallbackArticles(contentLocale).some(article => article.slug === safeSlug && isSubstantialPublicArticle(article));
+        }
+        if (hasOfflineFallback) break;
+      }
+      if (hasOfflineFallback) {
+        const publicationState = await getDatabasePublicationState("articles", safeSlug);
+        if (shouldSuppressOfflineFallback(publicationState)) return null;
       }
     }
   }

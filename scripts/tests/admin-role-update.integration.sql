@@ -6,7 +6,7 @@ SELECT public.admin_update_user_role(
 );
 RESET ROLE;
 
-DO $$
+DO $role_update_result$
 DECLARE
   v_profile_role text;
   v_assignment_role text;
@@ -28,7 +28,34 @@ BEGIN
     RAISE EXCEPTION 'role update did not append exactly one audit event';
   END IF;
 END;
-$$;
+$role_update_result$;
+
+-- Reassign a different user's delegated role from a second super administrator.
+-- The assignment's created_by value must continue to identify its original creator.
+SET ROLE service_role;
+SELECT public.admin_update_user_role(
+  '44444444-4444-4444-8444-444444444444',
+  'editor',
+  '55555555-5555-4555-8555-555555555555'
+);
+RESET ROLE;
+
+DO $created_by_preserved$
+DECLARE
+  v_role text;
+  v_created_by uuid;
+BEGIN
+  SELECT role, created_by
+  INTO v_role, v_created_by
+  FROM public.admin_role_assignments
+  WHERE user_id = '44444444-4444-4444-8444-444444444444';
+
+  IF v_role <> 'editor'
+     OR v_created_by <> '11111111-1111-4111-8111-111111111111' THEN
+    RAISE EXCEPTION 'role reassignment overwrote the original created_by attribution';
+  END IF;
+END;
+$created_by_preserved$;
 
 -- A primary site-audio switch and its audit event commit atomically.
 SET ROLE service_role;
@@ -170,4 +197,140 @@ BEGIN
 END;
 $$;
 
+-- A full administrator cannot demote or otherwise change their own role.
+SET ROLE service_role;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '11111111-1111-4111-8111-111111111111',
+      'admin',
+      '11111111-1111-4111-8111-111111111111'
+    );
+    RAISE EXCEPTION 'super administrator unexpectedly changed its own role to admin';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    NULL;
+  END;
+
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '11111111-1111-4111-8111-111111111111',
+      'user',
+      '11111111-1111-4111-8111-111111111111'
+    );
+    RAISE EXCEPTION 'super administrator unexpectedly demoted itself to user';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    NULL;
+  END;
+END;
+$$;
+RESET ROLE;
+
+DO $$
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles WHERE id = '11111111-1111-4111-8111-111111111111';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments WHERE user_id = '11111111-1111-4111-8111-111111111111';
+
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'super_admin' THEN
+    RAISE EXCEPTION 'self-role rejection did not preserve the super administrator assignment';
+  END IF;
+END;
+$$;
+
+-- An ordinary administrator must not promote their own delegated role to super_admin.
+SET ROLE service_role;
+DO $admin_self_promotion$
+DECLARE
+  v_message text;
+BEGIN
+  BEGIN
+    PERFORM public.admin_update_user_role(
+      '77777777-7777-4777-8777-777777777777',
+      'super_admin',
+      '77777777-7777-4777-8777-777777777777'
+    );
+    RAISE EXCEPTION 'ordinary administrator unexpectedly promoted itself to super_admin';
+  EXCEPTION WHEN SQLSTATE '42501' THEN
+    GET STACKED DIAGNOSTICS v_message = MESSAGE_TEXT;
+    IF v_message <> 'self-role changes are not allowed through this action' THEN
+      RAISE EXCEPTION 'self-promotion was rejected for an unexpected reason: %', v_message;
+    END IF;
+  END;
+END;
+$admin_self_promotion$;
+RESET ROLE;
+
+DO $admin_self_promotion_preserved$
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles
+  WHERE id = '77777777-7777-4777-8777-777777777777';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments
+  WHERE user_id = '77777777-7777-4777-8777-777777777777';
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'admin' THEN
+    RAISE EXCEPTION 'rejected self-promotion changed the administrator role assignment';
+  END IF;
+END;
+$admin_self_promotion_preserved$;
+
 SELECT 'ADMIN_ROLE_UPDATE_INTEGRATION_PASSED' AS result;
+
+
+-- Browser roles can read delegated role metadata but cannot bypass the audited RPC.
+DO $role_assignment_acl$
+BEGIN
+  IF NOT has_table_privilege('authenticated', 'public.admin_role_assignments', 'SELECT') THEN
+    RAISE EXCEPTION 'authenticated cannot read its delegated role assignment';
+  END IF;
+  IF has_table_privilege('authenticated', 'public.admin_role_assignments', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.admin_role_assignments', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.admin_role_assignments', 'DELETE') THEN
+    RAISE EXCEPTION 'authenticated retains direct role-assignment write privileges';
+  END IF;
+  IF NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'INSERT')
+     OR NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'UPDATE')
+     OR NOT has_table_privilege('service_role', 'public.admin_role_assignments', 'DELETE') THEN
+    RAISE EXCEPTION 'service_role lost the table access required by the audited RPC';
+  END IF;
+END;
+$role_assignment_acl$;
+
+SET ROLE authenticated;
+DO $blocked_direct_role_delete$
+BEGIN
+  BEGIN
+    DELETE FROM public.admin_role_assignments
+    WHERE user_id = '33333333-3333-4333-8333-333333333333';
+    RAISE EXCEPTION 'authenticated direct role deletion unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END;
+$blocked_direct_role_delete$;
+RESET ROLE;
+
+DO $role_assignment_preserved$
+DECLARE
+  v_profile_role text;
+  v_assignment_role text;
+BEGIN
+  SELECT role::text INTO v_profile_role
+  FROM public.profiles
+  WHERE id = '33333333-3333-4333-8333-333333333333';
+  SELECT role INTO v_assignment_role
+  FROM public.admin_role_assignments
+  WHERE user_id = '33333333-3333-4333-8333-333333333333';
+  IF v_profile_role <> 'admin' OR v_assignment_role <> 'content_manager' THEN
+    RAISE EXCEPTION 'blocked direct deletion changed or promoted the delegated administrator';
+  END IF;
+END;
+$role_assignment_preserved$;

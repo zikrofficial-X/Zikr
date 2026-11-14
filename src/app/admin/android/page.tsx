@@ -76,6 +76,9 @@ async function getReleases(): Promise<{ rows: Release[]; ok: boolean }> {
         Boolean(release.tag_name) &&
         release.assets?.some(asset =>
           asset.name?.toLowerCase().endsWith(".apk"),
+        ) &&
+        release.assets?.some(asset =>
+          asset.name?.toLowerCase().endsWith(".aab"),
         ),
     );
 

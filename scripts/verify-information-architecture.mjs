@@ -18,10 +18,13 @@ function extractQuoted(text, pattern) {
 
 const catalog = await read('src/lib/navigation/catalog.ts');
 const sitemap = await read('src/app/sitemap.ts');
+const rootLayout = await read('src/app/layout.tsx');
 const videosPage = await read('src/app/videos/page.tsx');
 const audioPage = await read('src/app/audio/page.tsx');
 const kidsLayout = await read('src/app/kids/layout.tsx');
 const kidsDetailLayout = await read('src/app/kids/[slug]/layout.tsx');
+const kidsContentService = await read('src/features/kids/services/kids-content.ts');
+const kidsContentData = await read('src/features/kids/data/content.ts');
 const searchService = await read('src/features/search/services/search.ts');
 const mobileNavigation = await read('src/components/layout/mobile-nav.tsx');
 // The normalized index lives in the v2 migration; the current definition of search_public_content
@@ -47,11 +50,22 @@ if (!site.includes('path: "/library"') || !site.includes('path: "/audio"')) {
 if (!sitemap.includes('siteConfigRoutes().map')) {
   failures.push('Sitemap must derive public static routes from the canonical site route catalog.');
 }
+if (rootLayout.includes('alternates: { canonical: "/" }')) {
+  failures.push('Root layout must not publish a homepage canonical inherited by unrelated child routes.');
+}
+if (/openGraph:\s*\{[^}]*url:\s*siteConfig\.url/.test(rootLayout)) {
+  failures.push('Root layout must not publish a homepage og:url inherited by unrelated child routes.');
+}
+if (!sitemap.includes('getKidsContent("ar")')) {
+  failures.push('Sitemap Kids entries must use a stable Arabic locale, not the requesting visitor locale.');
+}
 if (!audioPage.includes("path: '/audio'")) {
   failures.push('Audio hub must expose page-level canonical metadata.');
 }
-if (!kidsDetailLayout.includes('select=title_ar,summary_ar') || kidsDetailLayout.includes('description_ar')) {
-  failures.push('Kids detail metadata must use the live kids_content.summary_ar column, not a nonexistent description_ar column.');
+if (!kidsDetailLayout.includes('getKidsContentBySlug(slug, "ar")') ||
+    !kidsContentService.includes('published=eq.true&is_active=eq.true') ||
+    !kidsContentData.includes('content_ar: row.content_ar ?? row.summary_ar')) {
+  failures.push('Kids detail metadata must use the visibility-aware Kids resolver and map the live kids_content.summary_ar column.');
 }
 if (!searchService.includes('/rest/v1/rpc/search_public_content') || !searchService.includes('searchIndexedContent')) {
   failures.push('Public search must call the normalized Supabase full-text search RPC before any bounded fallback.');
@@ -68,8 +82,12 @@ if (!mobileNavigation.includes('mobile-platform-menu-search') || !mobileNavigati
 if (!kidsLayout.includes('path: "/kids"')) {
   failures.push('Kids hub must expose a route-level canonical metadata contract.');
 }
-if (!sitemap.includes('getPublicContentLibrary(100)')) {
-  failures.push('Sitemap must evaluate substantive public library content routes.');
+if (!sitemap.includes('getPublicContentLibrary(1000)') ||
+    !sitemap.includes('getArticles(undefined, 1000, "ar")') ||
+    !sitemap.includes('getDuas(undefined, 1000, "ar")') ||
+    !sitemap.includes('getHadithBooks("ar")') ||
+    !sitemap.includes('getStories(1000)')) {
+  failures.push('Sitemap must evaluate the full bounded published catalogue with a deterministic Arabic locale for articles, duas, hadith books, stories, and public library content.');
 }
 const duplicateCatalogHrefs = catalogHrefs.filter((href, index) => catalogHrefs.indexOf(href) !== index);
 if (duplicateCatalogHrefs.length) failures.push(`تكرار روابط في كتالوج الأقسام: ${unique(duplicateCatalogHrefs).join(', ')}`);
@@ -97,9 +115,24 @@ const home = await read('src/app/page.tsx');
 const homeInteractive = await read('src/features/home/components/home-interactive.tsx');
 const prayerPage = await read('src/features/prayer/components/prayer-times-page.tsx');
 const prayerLocationRoute = await read('src/app/api/prayer-location/route.ts');
+const prayerLocationMigration = await read('supabase/migrations/20261114040000_save_default_prayer_location_atomically.sql');
 
-if (!prayerLocationRoute.includes('is_default: true')) failures.push('Prayer location API does not persist a default per-user location.');
+if (
+  !prayerLocationRoute.includes('rpc("save_default_prayer_location"') ||
+  !prayerLocationRoute.includes('p_city: city') ||
+  !prayerLocationRoute.includes('p_latitude: latitude') ||
+  !prayerLocationRoute.includes('p_longitude: longitude')
+) {
+  failures.push('Prayer location API must persist the selected location through the atomic per-user default-location RPC.');
+}
 if (!prayerLocationRoute.includes('eq("is_default", true)')) failures.push('Prayer location API does not read the user default location.');
+if (
+  !prayerLocationMigration.includes('SECURITY INVOKER') ||
+  !prayerLocationMigration.includes('pg_advisory_xact_lock') ||
+  !prayerLocationMigration.includes('GRANT EXECUTE ON FUNCTION public.save_default_prayer_location')
+) {
+  failures.push('Prayer location default updates must be serialized, transactionally atomic, and executable only by authenticated users.');
+}
 if (!homeInteractive.includes('getSavedPrayerLocation')) failures.push('Home prayer panel does not restore the saved user location first.');
 if (!homeInteractive.includes('if (!found && !disposed) chooseCurrentLocation()')) failures.push('Home prayer panel no longer protects the saved-location-first flow.');
 if (!prayerPage.includes('getSavedPrayerLocation')) failures.push('Prayer page does not restore the saved user location first.');

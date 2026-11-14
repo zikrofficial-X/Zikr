@@ -10,6 +10,8 @@ GitHub Actions invokes `pnpm background:jobs` with free Hugging Face video provi
 
 The queue is idempotent through `video_generation_requests.automation_key` and conditional pending claims, so scheduled reruns do not create duplicate automated jobs.
 
+`VIDEO_AUTOMATION_DRY_RUN=true` also suppresses scheduled internal site publication for `videos` and `all` worker targets, so a rehearsal cannot claim or publish `content_publish_queue` rows. The separate social publisher is not controlled by this flag; keep `SOCIAL_PUBLISH_ENABLED=false` when no external publishing is intended.
+
 Admin **Run Now** is a one-shot dispatch signal stored in `admin_settings.video_automation_run_now`. The video worker consumes it after it has processed at least one request, even when the batch contains both successful and failed items. Failed rows retain their own queue retry state and are not retried by repeatedly replaying the same Run Now signal. A disabled worker, social-only run, or run that processed zero video rows does not consume the request. Each `video_automation_runs` audit row records the actual worker start timestamp and completion timestamp explicitly.
 
 ## Automated-QA external social publishing
@@ -24,7 +26,7 @@ The video worker reads the Admin `video_automation_ai_attempts_per_run` budget a
 
 Child-directed videos are stored in the dedicated `kids-stories` category and queried only by the Kids video library through the explicit `metadata.audience = kids` filter. The general `/videos` route excludes the Kids category and audience. The one-time legacy QA backfill revalidates published source text, Kids story contracts, stored source/content fingerprints, the current QA checklist, and live Cloudinary media availability. It only records passed or blocked QA snapshots; it never republishes or enqueues historical items.
 
-A partial video batch is not a workflow-wide failure when at least one video passes all QA checks: failed items remain failed in the audit, while the successful rows stay eligible for the dependent social publisher. A wholly failed generation batch, a social provider failure, or an internal site-publishing failure still fails the workflow. The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent.
+A partial video batch is not a workflow-wide failure when at least one video passes all QA checks: failed items remain failed in the audit, while the successful rows stay eligible for the dependent social publisher. A wholly failed generation batch, a social provider failure, or an internal site-publishing failure still fails the workflow. The video generation worker stores verified MP4 files in Cloudinary and registers them in the ZIKR `videos` catalog. Internal site publication uses `content_publish_queue` with `content_table=videos`; external social delivery uses a separate `social_publish_queue` worker. Both paths are independent. Explicitly unpublishing an admin-managed item cancels its queued/in-flight site schedule; the worker revalidates story approval and commits only while its queue claim remains active. Generated video rows must match a completed, snapshot-approved generation request; Kids rows additionally require the dedicated Kids QA pass.
 
 ## Written Facebook and internal site content generator
 

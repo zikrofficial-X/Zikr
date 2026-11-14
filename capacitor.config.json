@@ -1,7 +1,7 @@
 {
   "appId": "com.zikr.app",
   "appName": "ZIKR | ذِكرٌ",
-  "webDir": ".next",
+  "webDir": "mobile-shell",
   "server": {
     "url": "https://zikrmediaofficial.vercel.app",
     "cleartext": false,
@@ -30,7 +30,7 @@
     ]
   },
   "ios": {
-    "scheme": "ZIKR",
+    "scheme": "App",
     "contentInset": "automatic",
     "limitsNavigationsToAppBoundDomains": true
   },

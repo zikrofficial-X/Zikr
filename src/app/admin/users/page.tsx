@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { readAdminRows } from "@/features/admin/services/safe-read";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { hasAdminPermission, resolveAdminRole } from "@/features/admin/services/permissions";
 import {
   supabaseServerAdminRequest,
   supabaseServerAdminCount,
@@ -48,15 +49,20 @@ async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
       "/rest/v1/profiles?select=id,display_name,email,role,avatar_url,created_at,updated_at&order=created_at.desc&limit=200",
       { cache: "no-store" }
     );
-    const assignments = await supabaseServerAdminRequest<Array<{ user_id: string; role: string }>>(
-      "/rest/v1/admin_role_assignments?select=user_id,role&limit=500",
-      { cache: "no-store" },
-    );
+    const userIds = (users ?? []).map((user) => user.id).filter(Boolean);
+    const assignments = userIds.length
+      ? await supabaseServerAdminRequest<Array<{ user_id: string; role: string }>>(
+          "/rest/v1/admin_role_assignments?select=user_id,role&user_id=in.(" +
+            userIds.map((id) => encodeURIComponent(id)).join(",") +
+            ")&limit=" + userIds.length,
+          { cache: "no-store" },
+        )
+      : [];
     const roleByUser = new Map(assignments.map((row) => [row.user_id, row.role]));
     return {
       rows: (users || []).map((user) => ({
         ...user,
-        effective_role: roleByUser.get(user.id) ?? user.role ?? "user",
+        effective_role: resolveAdminRole(user.role, roleByUser.get(user.id)),
       })),
       ok: true,
     };
@@ -66,15 +72,27 @@ async function getUsers(): Promise<{ rows: UserProfile[]; ok: boolean }> {
   }
 }
 
+async function getTotalUsers(): Promise<number | null> {
+  try {
+    return await supabaseServerAdminCount("profiles");
+  } catch (error) {
+    console.error("Failed to count users:", error);
+    return null;
+  }
+}
+
 export default async function AdminUsersPage() {
   const currentAdmin = await requireAdminPermission("users.read");
+  const canReadAudit = hasAdminPermission(currentAdmin.role, "audit.read");
+  const canManageRoles = hasAdminPermission(currentAdmin.role, "users.roles");
+  const canAssignFullAdminAccounts = currentAdmin.role === "super_admin";
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [users, totalUsers, recentActions, adminAssignments, legacyAdmins, recentProfiles] = await Promise.all([
     getUsers(),
-    supabaseServerAdminCount("profiles"),
-    getRecentAdminActions(),
+    getTotalUsers(),
+    canReadAudit ? getRecentAdminActions() : Promise.resolve({ rows: [], ok: false }),
     readAdminRows<{ user_id: string }>(
       "/rest/v1/admin_role_assignments?select=user_id&role=neq.user&limit=5000",
       { cache: "no-store" },
@@ -102,14 +120,14 @@ export default async function AdminUsersPage() {
       <section className="space-y-3">
         <h1 className="text-3xl font-bold text-brand-gold">إدارة المستخدمين</h1>
         <p className="max-w-3xl leading-8 arabic-muted">
-          عرض وإدارة جميع مستخدمي الموقع والتحكم في الأدوار والصلاحيات
+          {canManageRoles ? "عرض وإدارة المستخدمين والأدوار المسموح بها" : "عرض بيانات المستخدمين دون صلاحيات تعديل الأدوار"}
         </p>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         <Card>
           <p className="text-sm arabic-muted">إجمالي المستخدمين</p>
-          <strong className="text-3xl text-brand-gold">{totalUsers}</strong>
+          <strong className="text-3xl text-brand-gold">{totalUsers ?? "غير متاح"}</strong>
         </Card>
         <Card>
           <p className="text-sm arabic-muted">مسجلون خلال 30 يومًا</p>
@@ -138,12 +156,18 @@ export default async function AdminUsersPage() {
             تعذر تحميل قائمة المستخدمين. لا يعني ذلك أنه لا يوجد مستخدمون؛ أعد المحاولة أو راجع صحة النظام.
           </p>
         ) : (
-          <UsersTable users={users.rows} currentAdminId={currentAdmin.id} />
+          <UsersTable
+            users={users.rows}
+            currentAdminId={currentAdmin.id}
+            canManageRoles={canManageRoles}
+            canAssignFullAdminAccounts={canAssignFullAdminAccounts}
+          />
         )}
       </Card>
 
       <RolePermissionsMatrix />
 
+      {canReadAudit && (
       <Card className="space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -190,6 +214,7 @@ export default async function AdminUsersPage() {
           </div>
         )}
       </Card>
+      )}
     </Container>
   );
 }

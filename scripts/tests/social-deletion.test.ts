@@ -1,11 +1,27 @@
 import assert from "node:assert/strict";
 import { deleteSocialPlatformPost } from "../../src/features/social/services/social-deletion";
+import { claimSocialQueuePlatformDeletion, mergeSocialQueueMetadata, patchSocialQueueMetadataWithCas } from "../../src/features/social/services/social-queue-metadata";
+import { LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, canDeleteLocalSocialQueueItem } from "../../src/features/social/services/platform-availability";
+import { readFileSync } from "node:fs";
+import { readBoundedJsonBody } from "../../src/lib/request/bounded-json-body";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
+import { isSocialPlatformDeletionCurrent } from "../../src/features/social/services/social-deletion-visibility";
+
+const socialClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
+assert.match(
+  socialClient,
+  /const confirmation = `تأكيد الحذف النهائي من \$\{targetText\}؟[\s\S]*?سجل النشر والتدقيق محفوظة\.`;\s*if \(!window\.confirm\(confirmation\)\) return;/,
+  "the admin remote-delete confirmation must close before the confirmation action and must state that the internal ZIKR copy is retained",
+);
 
 const youtubeEnv = {
   YOUTUBE_CLIENT_ID: "client-id",
   YOUTUBE_CLIENT_SECRET: "client-secret",
   YOUTUBE_REFRESH_TOKEN: "legacy-environment-refresh-token",
 };
+// This injected resolver models a future, separately approved delete-only credential.
+// Production upload/read credentials intentionally reject delete scopes; the admin UI keeps
+// YouTube deletion disabled until a dedicated credential flow is approved.
 const resolveStoredYouTubeRefreshToken = async () => "private-refresh-token";
 
 let youtubeDeleteRequests = 0;
@@ -141,3 +157,484 @@ await assert.rejects(
 );
 
 console.log("Social remote deletion tests passed.");
+
+const deletionQueueRow: {
+  id: string;
+  status: string;
+  video_url: string | null;
+  metadata: Record<string, unknown>;
+  published_at: string | null;
+  updated_at: string;
+} = {
+  id: "queue-delete-1",
+  status: "published",
+  video_url: "https://cdn.example.test/published.mp4",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: {},
+  },
+  published_at: "2026-11-12T17:00:00.000Z",
+  updated_at: "2026-11-12T18:00:00.000Z",
+};
+const deletionClaimCalls: Array<{ path: string; init?: RequestInit }> = [];
+const deletionClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  deletionClaimCalls.push({ path, init });
+  if (!init) return [{ ...deletionQueueRow, metadata: { ...deletionQueueRow.metadata } }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected deletion-claim method.");
+  const expectedVersion = encodeURIComponent(deletionQueueRow.updated_at);
+  if (!path.includes("updated_at=eq." + expectedVersion)) return [] as T;
+  const payload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  deletionQueueRow.metadata = payload.metadata;
+  deletionQueueRow.updated_at = payload.updated_at;
+  return [{ id: deletionQueueRow.id }] as T;
+};
+const deletionClaimInput = {
+  id: deletionQueueRow.id,
+  expectedStatus: "published",
+  expectedVideoUrl: deletionQueueRow.video_url,
+  expectedRemoteId: "youtube-remote-1",
+  platform: "youtube",
+  now: new Date("2026-11-12T18:00:00.000Z"),
+};
+const deletionClaimRequestTyped = deletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest;
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, deletionClaimRequestTyped),
+  "claimed",
+  "the first administrator must atomically reserve the platform deletion before calling the provider",
+);
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, deletionClaimRequestTyped),
+  "in_progress",
+  "a concurrent administrator must observe the reservation and must not send a second provider delete",
+);
+const expiredDeletionClaimRow: typeof deletionQueueRow = {
+  ...deletionQueueRow,
+  updated_at: "2026-11-12T18:00:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleting", remoteId: "youtube-remote-1", attemptedAt: "2026-11-12T17:45:00.000Z" } },
+  },
+};
+const expiredDeletionClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...expiredDeletionClaimRow }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected expired deletion-claim method.");
+  const expectedVersion = encodeURIComponent(expiredDeletionClaimRow.updated_at);
+  if (!path.includes("updated_at=eq." + expectedVersion)) return [] as T;
+  const payload = JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string };
+  expiredDeletionClaimRow.metadata = payload.metadata;
+  expiredDeletionClaimRow.updated_at = payload.updated_at;
+  return [{ id: expiredDeletionClaimRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, expiredDeletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "claimed",
+  "a deletion claim whose timestamp is older than the lease must be safely reclaimable after a crashed request",
+);
+
+const invalidDeletionClaimRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleting", remoteId: "youtube-remote-1", attemptedAt: "not-a-timestamp" } },
+  },
+};
+let invalidDeletionPatchCalls = 0;
+const invalidDeletionClaimRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") invalidDeletionPatchCalls += 1;
+  return [{ ...invalidDeletionClaimRow }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, invalidDeletionClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "in_progress",
+  "a deleting reservation with an invalid timestamp must fail closed rather than risk a duplicate remote delete",
+);
+assert.equal(invalidDeletionPatchCalls, 0, "invalid lease timestamps must never be reclaimed automatically");
+
+assert.equal(
+  deletionClaimCalls.filter((call) => call.init?.method === "PATCH").length,
+  1,
+  "only one competing deletion request may acquire the row-version reservation",
+);
+assert.equal(
+  ((deletionQueueRow.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube).status,
+  "deleting",
+  "the durable reservation must remain until the provider outcome is persisted",
+);
+
+const alreadyDeletedRequest = async <T>(): Promise<T> => [{
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } },
+  },
+}] as T;
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, alreadyDeletedRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "already_deleted",
+  "a confirmed remote deletion must never be claimed again",
+);
+
+const legacyDeletedLaterDeliveryRow = {
+  ...deletionQueueRow,
+  published_at: "2026-11-13T10:00:00.000Z",
+  updated_at: "2026-11-13T11:00:00.000Z",
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: {
+      youtube: { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    },
+  },
+};
+const legacyDeletionPayloads: Array<{ metadata: Record<string, unknown>; updated_at: string }> = [];
+const legacyDeletionRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...legacyDeletedLaterDeliveryRow }] as T;
+  if (init.method !== "PATCH") throw new Error("Unexpected legacy deletion-claim method.");
+  legacyDeletionPayloads.push(JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string });
+  return [{ id: legacyDeletedLaterDeliveryRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    {
+      ...deletionClaimInput,
+      expectedRemoteId: "youtube-remote-2",
+      now: new Date("2026-11-13T12:00:00.000Z"),
+    },
+    legacyDeletionRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "claimed",
+  "a legacy deletion without a remote ID must not block a later delivery whose published_at is newer than deletedAt",
+);
+assert.equal(
+  (legacyDeletionPayloads[0]?.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
+  "youtube-remote-2",
+  "the replacement deletion lease must bind to the new provider ID",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(
+    { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    "youtube-remote-2",
+    "2026-11-13T10:00:00.000Z",
+  ),
+  false,
+  "a newer delivery must supersede a legacy deletion record without a provider ID",
+);
+assert.equal(
+  isSocialPlatformDeletionCurrent(
+    { status: "deleted", deletedAt: "2026-11-12T10:00:00.000Z" },
+    "youtube-remote-2",
+    null,
+  ),
+  true,
+  "missing publication time must fail closed for an ambiguous legacy deletion record",
+);
+
+
+const staleQueueRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-1" } },
+    platformDeletions: {},
+  },
+  updated_at: "2026-11-12T18:00:00.000Z",
+};
+const staleClaimRequest = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...staleQueueRow, metadata: { ...staleQueueRow.metadata } }] as T;
+  staleQueueRow.updated_at = "2026-11-12T18:00:00.010Z";
+  return [] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(deletionClaimInput, staleClaimRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  "stale",
+  "a concurrent queue edit must win the CAS and prevent a remote deletion from starting",
+);
+
+
+
+
+const mismatchedRemoteIdRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: {},
+  },
+};
+let mismatchedRemoteIdPatchCalls = 0;
+const mismatchedRemoteIdRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") mismatchedRemoteIdPatchCalls += 1;
+  return [{ ...mismatchedRemoteIdRow }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    deletionClaimInput,
+    mismatchedRemoteIdRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "stale",
+  "a changed successful provider ID must stop deletion before any remote provider call can be made",
+);
+assert.equal(mismatchedRemoteIdPatchCalls, 0, "a stale provider ID must not acquire a deletion lease");
+
+const previousRemoteDeletionRow = {
+  ...deletionQueueRow,
+  metadata: {
+    platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } },
+    platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } },
+  },
+};
+const replacementDeletionPayloads: Array<{ metadata: Record<string, unknown>; updated_at: string }> = [];
+const replacementDeletionRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (!init) return [{ ...previousRemoteDeletionRow }] as T;
+  replacementDeletionPayloads.push(JSON.parse(String(init.body)) as { metadata: Record<string, unknown>; updated_at: string });
+  return [{ id: previousRemoteDeletionRow.id }] as T;
+};
+assert.equal(
+  await claimSocialQueuePlatformDeletion(
+    { ...deletionClaimInput, expectedRemoteId: "youtube-remote-2" },
+    replacementDeletionRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest,
+  ),
+  "claimed",
+  "a new successful provider ID may receive a new deletion claim without inheriting the old ID's terminal state",
+);
+const replacementDeletionPayload = replacementDeletionPayloads[0];
+assert.ok(replacementDeletionPayload, "the new provider ID must be persisted in a deletion lease");
+assert.equal(
+  (replacementDeletionPayload.metadata.platformDeletions as Record<string, Record<string, unknown>>).youtube.remoteId,
+  "youtube-remote-2",
+  "the new deletion lease must store the exact provider ID it protects",
+);
+
+const preservedOldDeletion = mergeSocialQueueMetadata(
+  { platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } } },
+  { platformDeletions: { youtube: { status: "failed", remoteId: "youtube-remote-1", error: "stale failure" } } },
+);
+assert.equal(
+  (preservedOldDeletion.platformDeletions as Record<string, Record<string, unknown>>).youtube.status,
+  "deleted",
+  "a stale failure for the same provider ID must never overwrite a confirmed deletion",
+);
+
+let staleMetadataPatchCalls = 0;
+const staleMetadataPatchRequest = async <T>(_path: string, init?: RequestInit): Promise<T> => {
+  if (init?.method === "PATCH") staleMetadataPatchCalls += 1;
+  return [{
+    ...deletionQueueRow,
+    metadata: { platformResults: { youtube: { ok: true, remoteId: "youtube-remote-2" } }, platformDeletions: {} },
+  }] as T;
+};
+assert.equal(
+  await patchSocialQueueMetadataWithCas({
+    id: deletionQueueRow.id,
+    expectedStatus: "published",
+    expectedVideoUrl: deletionQueueRow.video_url,
+    expectedPlatformRemoteId: { platform: "youtube", remoteId: "youtube-remote-1" },
+    patch: { platformDeletions: { youtube: { status: "deleted", remoteId: "youtube-remote-1" } } },
+  }, staleMetadataPatchRequest as typeof import("../../src/lib/supabase/admin-rest").supabaseServerAdminRequest),
+  false,
+  "a provider result must not be attached to a queue row after its successful remote ID changes",
+);
+assert.equal(staleMetadataPatchCalls, 0, "a mismatched provider ID must prevent the metadata PATCH");
+
+assert.equal(LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT, 50, "local queue cleanup must remain bounded to a small, auditable batch");
+
+const safeFailedQueueItem = {
+  status: "failed",
+  target_platforms: ["facebook", "youtube"],
+  error_message: "The providers rejected the requests.",
+  metadata: {
+    platformResults: {
+      facebook: { ok: false, error: "Facebook rejected the post (HTTP 400)." },
+      youtube: { ok: false, error: "YouTube rejected the video (HTTP 422)." },
+    },
+  },
+};
+assert.equal(
+  canDeleteLocalSocialQueueItem(safeFailedQueueItem),
+  true,
+  "a wholly failed row with an explicit non-ambiguous failure for every target can be removed from the local queue",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { unavailablePlatforms: ["youtube"], platformResults: {} },
+  }),
+  true,
+  "a target explicitly marked unavailable was never sent to a provider and may be cleaned up",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "partial",
+    target_platforms: ["facebook", "youtube"],
+    error_message: "One provider failed.",
+    metadata: {
+      platformResults: {
+        facebook: { ok: true, remoteId: "1234567890123456" },
+        youtube: { ok: false, error: "HTTP 422 rejected." },
+      },
+    },
+  }),
+  false,
+  "partial rows must retain their queue IDs even when one provider result failed",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { platformResults: { youtube: { ok: true, remoteId: "FKQ4tsQOtTs" } } },
+  }),
+  false,
+  "a recorded successful remote post must never be orphaned by local queue cleanup",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: "fetch failed",
+    metadata: { platformResults: { youtube: { ok: false, error: "fetch failed", requiresReconciliation: true } } },
+  }),
+  false,
+  "ambiguous provider outcomes must remain available for manual reconciliation",
+);
+
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["facebook"],
+    error_message: null,
+    metadata: {
+      platformResults: {
+        facebook: { ok: false, error: "Facebook rejected the post (HTTP 422)." },
+        youtube: { ok: false, error: "YouTube rejected the request (HTTP 422).", remoteId: "FKQ4tsQOtTs" },
+      },
+    },
+  }),
+  false,
+  "an unexpected legacy platform result with a remote ID must preserve the queue row even when ok is false",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["facebook"],
+    error_message: null,
+    metadata: {
+      platformResults: {
+        facebook: { ok: false, error: "Facebook rejected the post (HTTP 400)." },
+        tiktok: { ok: false, error: "Unsupported provider result." },
+      },
+    },
+  }),
+  false,
+  "an unrecognized provider result must remain in the audit queue until its outcome is classified",
+);
+
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube", "facebook"],
+    error_message: null,
+    metadata: { platformResults: { youtube: { ok: false, error: "HTTP 422 rejected." } } },
+  }),
+  false,
+  "missing per-platform outcomes must fail closed instead of deleting an incomplete audit record",
+);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+    metadata: { sourceMediaMissing: true, platformResults: { youtube: { ok: false, error: "HTTP 422 rejected." } } },
+  }),
+  false,
+  "missing source media requires a separate reconciliation path and cannot be erased by queue cleanup",
+);
+
+const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
+assert.ok(socialAdminRoute.includes("readBoundedJsonBody(request)"), "social admin actions must parse a bounded JSON body");
+assert.equal(socialAdminRoute.includes("request.json()"), false, "social admin actions must not buffer unbounded JSON");
+assert.ok(
+  socialAdminRoute.includes('!parsedBody.value || typeof parsedBody.value !== "object" || Array.isArray(parsedBody.value)'),
+  "null, primitive and array request bodies must be rejected before reading action fields",
+);
+const nullSocialRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/social", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: "null",
+});
+const parsedNullSocialBody = await readBoundedJsonBody(nullSocialRequest);
+assert.deepEqual(parsedNullSocialBody, { ok: true, value: null }, "JSON null must reach the route's explicit object guard");
+const oversizedSocialRequest = new Request("https://zikrmediaofficial.vercel.app/api/admin/social", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ action: "retry_all_failed", padding: "x".repeat(20_000) }),
+});
+assert.deepEqual(
+  await readBoundedJsonBody(oversizedSocialRequest),
+  { ok: false, status: 413, error: "Request body is too large" },
+  "social admin actions must reject oversized JSON before buffering it",
+);
+assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
+assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
+assert.match(socialAdminRoute, /expectedRemoteId:\s*remoteId/);
+assert.match(socialAdminRoute, /isSocialPlatformDeletionCurrent\(previousDeletion,\s*remoteId,\s*item\.published_at\)/);
+assert.doesNotMatch(socialAdminRoute, /previousDeletion\?\.status === "deleted" && \(!previousDeletedRemoteId/);
+assert.match(socialAdminRoute, /expectedPlatformRemoteId:\s*\{\s*platform,\s*remoteId\s*\}/);
+const remoteDeleteActionStart = socialAdminRoute.indexOf('if (action === "delete_published") {');
+const remoteDeleteConfirmationGuard = socialAdminRoute.indexOf("if (body.confirmed !== true)", remoteDeleteActionStart);
+const remoteDeletePlatformGuard = socialAdminRoute.indexOf(
+  'if (requestedPlatforms.length === 0 || requestedPlatforms.includes("youtube"))',
+  remoteDeleteActionStart,
+);
+const firstRemoteDeleteQueueRead = socialAdminRoute.indexOf("const selectedItems =", remoteDeleteActionStart);
+const firstRemoteDeleteCall = socialAdminRoute.indexOf("deleteSocialPlatformPost(", remoteDeleteActionStart);
+assert.ok(
+  remoteDeleteActionStart >= 0 &&
+    remoteDeleteConfirmationGuard > remoteDeleteActionStart &&
+    remoteDeletePlatformGuard > remoteDeleteConfirmationGuard &&
+    remoteDeletePlatformGuard < firstRemoteDeleteQueueRead &&
+    firstRemoteDeleteCall > remoteDeletePlatformGuard,
+  "the server must require explicit Facebook-only targets and reject YouTube before reading deletion candidates or calling a provider",
+);
+assert.match(
+  readFileSync("src/app/admin/social/social-client.tsx", "utf8"),
+  /JSON\.stringify\(\{ action: "delete_published", ids, platforms: requestedPlatforms, confirmed: true \}\)/,
+  "the admin UI must send the server-validated confirmation only after its explicit confirmation dialog",
+);
+assert.match(socialAdminRoute, /updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/);
+assert.match(socialAdminRoute, /status=eq\.failed&updated_at=eq/);
+assert.equal(
+  (socialAdminRoute.match(/buildNextRowVersionUpdatedAt\(expectedUpdatedAt, now\)/g) ?? []).length,
+  2,
+  "both admin retry transitions must advance the exact row-version token used by their compare-and-set filters",
+);
+assert.doesNotMatch(socialAdminRoute, /updated_at:\s*new Date\(\)\.toISOString\(\)/,
+  "admin queue CAS updates must not reuse the observed timestamp within the same millisecond");
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
+  "2026-11-13T01:30:00.124Z",
+  "admin queue retry row versions must advance even when the write occurs in the same millisecond",
+);
+assert.match(
+  socialAdminRoute,
+  /retry_all_failed[\s\S]*?id=in\.\(.*?ids\.map\(encodeURIComponent\)/,
+  "bulk retry must be scoped to the IDs shown in the admin queue",
+);
+assert.doesNotMatch(
+  socialAdminRoute,
+  /social_publish_queue\?status=in\.\(failed,partial\)&select=id[\s\S]*?method: "DELETE"/,
+  "the API must not expose an unbounded failed/partial queue delete",
+);
+const socialAdminClient = readFileSync("src/app/admin/social/social-client.tsx", "utf8");
+assert.match(socialAdminClient, /localDeletable\.slice\(0, LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT\)\.map\(item => item\.id\)/);
+assert.match(socialAdminClient, /retryable\.map\(item => item\.id\)/);
+assert.match(socialAdminClient, /حذف الفاشلة الآمنة/);
+assert.match(socialAdminClient, /confirmedNoRemotePublication = true/);
+assert.equal(
+  canDeleteLocalSocialQueueItem({
+    status: "failed",
+    target_platforms: ["youtube"],
+    error_message: null,
+  }),
+  false,
+  "a failed queue row without metadata must be preserved because per-platform outcomes cannot be verified",
+);

@@ -5,23 +5,20 @@ export type PushSubscriptionRegistrationResult =
   | { status: "unsupported" }
   | { status: "unavailable" };
 
+import {
+  getSavedPrayerLocation,
+  loadLocalPrayerLocation,
+} from "@/features/prayer/services/saved-prayer-location";
+
 type StoredSubscription = {
   endpoint: string;
   keys?: { p256dh?: string; auth?: string };
 };
 
 const DEVICE_ID_KEY = "zikr_push_device_id";
-const PRAYER_LOCATION_KEY = "zikr_prayer_location";
 
 type PrayerPushContext = {
   enabledPrayers: Record<string, boolean>;
-};
-
-type CachedPrayerLocation = {
-  lat?: unknown;
-  lon?: unknown;
-  city?: unknown;
-  country?: unknown;
 };
 
 function getDeviceId(): string {
@@ -62,36 +59,20 @@ async function getPublicKey(): Promise<string | null> {
     : null;
 }
 
-function getPrayerContext(enabledPrayers: Record<string, boolean>) {
-  const raw = window.localStorage.getItem(PRAYER_LOCATION_KEY);
-  if (!raw) {
+async function getPrayerContext(enabledPrayers: Record<string, boolean>) {
+  const location =
+    loadLocalPrayerLocation() ?? (await getSavedPrayerLocation());
+  if (!location) {
     throw new Error("حدّد موقعك من صفحة مواقيت الصلاة قبل تفعيل التنبيهات.");
-  }
-
-  let cached: CachedPrayerLocation;
-  try {
-    cached = JSON.parse(raw) as CachedPrayerLocation;
-  } catch {
-    throw new Error("تعذر قراءة موقع الصلاة المحفوظ. أعد تحديد موقعك.");
-  }
-
-  const latitude = Number(cached.lat);
-  const longitude = Number(cached.lon);
-  const city = typeof cached.city === "string" ? cached.city.trim() : "";
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !city) {
-    throw new Error(
-      "حدّد موقعاً صالحاً من صفحة مواقيت الصلاة قبل تفعيل التنبيهات."
-    );
   }
 
   return {
     location: {
-      latitude,
-      longitude,
-      city,
-      country:
-        typeof cached.country === "string" ? cached.country.trim() : null,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      city: location.city,
+      country: location.country,
+      timezone: location.timezone,
     },
     prayerReminders: Object.fromEntries(
       ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].map(prayer => [
@@ -119,6 +100,9 @@ export async function registerPrayerPushSubscription(
   const publicKey = await getPublicKey();
   if (!publicKey) return { status: "unavailable" };
 
+  // Validate the saved location before creating a browser subscription. A
+  // missing location must not leave an unregistered PushSubscription behind.
+  const prayerContext = await getPrayerContext(context.enabledPrayers);
   const existing = await registration.pushManager.getSubscription();
   const subscription =
     existing ??
@@ -137,7 +121,7 @@ export async function registerPrayerPushSubscription(
       deviceId: getDeviceId(),
       userAgent: navigator.userAgent,
       platform: navigator.platform || null,
-      prayerContext: getPrayerContext(context.enabledPrayers),
+      prayerContext,
     }),
   });
 

@@ -1,6 +1,16 @@
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoContentType } from "../../src/features/videos/services/video-publish-approval";
-import { supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import {
+  getConfirmedYoutubeFallbackId,
+  isPurgedInternalVideoMedia,
+  isUnlinkedInternalVideoMedia,
+  reconcileYoutubeFallbackMetadata,
+  resolveLatestConfirmedYoutubeQueueState,
+  type YoutubeQueuePublicationState,
+} from "../../src/features/videos/services/video-media-contract";
+import { supabaseServerAdminExactCount, supabaseServerAdminRequest } from "../../src/lib/supabase/admin-rest";
+import { assertCompleteVideoMediaAuditInventory, isBlockingVideoMediaAuditOutcome } from "../../src/features/videos/services/video-media-audit-outcome";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 type JsonRecord = Record<string, unknown>;
 type VideoCatalogRow = {
@@ -18,6 +28,7 @@ type SocialQueueRow = {
   content_type: string;
   status: string;
   metadata: JsonRecord | null;
+  published_at: string | null;
 };
 type MediaProbe = {
   status: "available" | "missing" | "unknown";
@@ -35,14 +46,6 @@ function validYouTubeId(value: unknown): string | null {
   return /^[A-Za-z0-9_-]{6,20}$/.test(id) ? id : null;
 }
 
-function youtubeIdFromQueue(row: SocialQueueRow): string | null {
-  if (row.status !== "published" || !row.content_id || !isVideoContentType(row.content_type)) return null;
-  const metadata = asRecord(row.metadata);
-  const platformResults = asRecord(metadata.platformResults);
-  const youtube = asRecord(platformResults.youtube);
-  if (youtube.ok !== true) return null;
-  return validYouTubeId(youtube.remoteId);
-}
 
 function cloudinaryAssetUrl(metadata: JsonRecord): string | null {
   for (const key of ["generatedVideoUrl", "videoUrl", "video_url", "sourceVideoUrl"]) {
@@ -102,9 +105,15 @@ async function probeCloudinary(url: string): Promise<MediaProbe> {
   }
 }
 
-function thumbnailFor(metadata: JsonRecord, youtubeId: string | null, current: string | null): string | null {
+function thumbnailFor(
+  metadata: JsonRecord,
+  youtubeId: string | null,
+  current: string | null,
+  allowCloudinary = true,
+): string | null {
   if (current?.trim()) return current.trim();
   if (youtubeId) return "https://i.ytimg.com/vi/" + youtubeId + "/hqdefault.jpg";
+  if (!allowCloudinary) return "/branding/og-image.jpg";
   const url = cloudinaryAssetUrl(metadata);
   if (url) {
     const parsed = new URL(url);
@@ -116,67 +125,142 @@ function thumbnailFor(metadata: JsonRecord, youtubeId: string | null, current: s
 }
 
 async function patchCatalog(row: VideoCatalogRow, patch: Record<string, unknown>) {
+  const updatedAt = row.updated_at;
+  if (!updatedAt) {
+    throw new Error("Cannot safely update video media audit without an updated_at compare-and-set token.");
+  }
   const filter = "/rest/v1/videos?id=eq." + encodeURIComponent(row.id) +
-    (row.updated_at ? "&updated_at=eq." + encodeURIComponent(row.updated_at) : "");
+    "&updated_at=eq." + encodeURIComponent(updatedAt);
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(filter, {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(updatedAt) }),
   });
   return Boolean(updated?.length);
 }
 
+function comparableMediaAudit(value: unknown): JsonRecord {
+  const { checkedAt: _checkedAt, ...stableFields } = asRecord(value);
+  return stableFields;
+}
+
 async function auditOne(
   row: VideoCatalogRow,
-  youtubeIdsByRequest: Map<string, string>,
+  youtubePublicationsByRequest: Map<string, YoutubeQueuePublicationState>,
   now: string,
 ) {
   const metadata = asRecord(row.metadata);
+  if (isUnlinkedInternalVideoMedia(row)) {
+    return {
+      state: "skipped",
+      id: row.id,
+      title: row.title,
+      reason: "media_explicitly_unlinked",
+    };
+  }
+  const explicitlyPurged = isPurgedInternalVideoMedia(row);
   const requestId = typeof metadata.videoGenerationRequestId === "string"
     ? metadata.videoGenerationRequestId
     : "";
-  const queueYouTubeId = requestId ? youtubeIdsByRequest.get(requestId) ?? null : null;
-  const existingYouTubeId = validYouTubeId(row.youtube_id);
-  if (existingYouTubeId && queueYouTubeId && existingYouTubeId !== queueYouTubeId) {
-    return { state: "conflict", id: row.id, title: row.title, reason: "catalog_youtube_id_conflicts_with_published_queue" };
+  const queueState = requestId ? youtubePublicationsByRequest.get(requestId) ?? null : null;
+  if (queueState?.status === "conflict") {
+    return { state: "conflict", id: row.id, title: row.title, reason: "multiple_youtube_publications_share_timestamp" };
   }
-  const youtubeId = existingYouTubeId ?? queueYouTubeId;
-  const assetUrl = cloudinaryAssetUrl(metadata);
+  const queuePublication = queueState?.status === "published" ? queueState : null;
+  const queueYouTubeId = queuePublication?.id ?? null;
+  const youtubeDeletionConfirmed = queueState?.status === "deleted";
+  const existingYouTubeId = validYouTubeId(row.youtube_id);
+  const metadataYoutubeId = getConfirmedYoutubeFallbackId({
+    youtube_id: row.youtube_id,
+    metadata: row.metadata,
+  });
+  const candidateYoutubeIds = [existingYouTubeId, metadataYoutubeId, queueYouTubeId]
+    .filter((value): value is string => value !== null);
+  if (!youtubeDeletionConfirmed && new Set(candidateYoutubeIds).size > 1) {
+    return { state: "conflict", id: row.id, title: row.title, reason: "catalog_youtube_id_conflicts_with_confirmed_fallback" };
+  }
+  const confirmedYoutubeFallbackId = youtubeDeletionConfirmed ? null : queueYouTubeId ?? metadataYoutubeId;
+  const youtubeId = youtubeDeletionConfirmed ? null : existingYouTubeId ?? confirmedYoutubeFallbackId;
+  const hasConfirmedYoutubeFallback = Boolean(
+    confirmedYoutubeFallbackId && confirmedYoutubeFallbackId === youtubeId,
+  );
+  // A purge tombstone is authoritative. sourceVideoUrl may remain as historical
+  // metadata, but it must never be probed and promoted back into public playback.
+  const assetUrl = explicitlyPurged ? null : cloudinaryAssetUrl(metadata);
   const probe = assetUrl ? await probeCloudinary(assetUrl) : null;
 
   let mediaState: string;
-  if (assetUrl && probe?.status === "available") mediaState = "cloudinary_ready";
+  if (explicitlyPurged) mediaState = "purged";
+  else if (assetUrl && probe?.status === "available") mediaState = "cloudinary_ready";
   else if (assetUrl && probe?.status === "missing") mediaState = "cloudinary_missing";
-  else if (!assetUrl && youtubeId) mediaState = "youtube_only";
-  else if (!assetUrl && !youtubeId) mediaState = "unavailable";
+  else if (!assetUrl && hasConfirmedYoutubeFallback) mediaState = "youtube_only";
+  else if (!assetUrl) mediaState = "unavailable";
   else mediaState = typeof metadata.mediaState === "string" ? metadata.mediaState : "unverified";
 
   const nextMetadata: JsonRecord = {
-    ...metadata,
+    ...reconcileYoutubeFallbackMetadata(metadata, queueState),
     mediaState,
     mediaAudit: {
       checkedAt: now,
-      source: assetUrl ? "cloudinary_head_or_range" : youtubeId ? "published_youtube_reference" : "no_playable_reference",
+      source: explicitlyPurged
+        ? "explicit_purge_tombstone"
+        : assetUrl ? "cloudinary_head_or_range" : hasConfirmedYoutubeFallback ? "published_youtube_reference" : "no_confirmed_playable_reference",
       httpStatus: probe?.httpStatus ?? null,
       contentType: probe?.contentType ?? null,
-      result: probe?.status ?? (youtubeId ? "youtube_fallback" : "unavailable"),
-      reason: probe?.reason ?? null,
-      youtubeFallbackAvailable: Boolean(youtubeId),
+      result: probe?.status ?? (explicitlyPurged
+        ? hasConfirmedYoutubeFallback ? "youtube_fallback" : "purged"
+        : hasConfirmedYoutubeFallback ? "youtube_fallback" : "unavailable"),
+      reason: probe?.reason ?? (explicitlyPurged ? "media_explicitly_purged" : null),
+      youtubeFallbackAvailable: hasConfirmedYoutubeFallback,
     },
+    ...(queueYouTubeId ? {
+      youtubePublishedVideoId: queueYouTubeId,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + queueYouTubeId,
+      ...(queuePublication?.publishedAt ? { youtubePublishedAt: queuePublication.publishedAt } : {}),
+      mediaFallbackAvailable: true,
+    } : {}),
   };
-  const thumbnail = thumbnailFor(metadata, youtubeId, row.thumbnail_url);
+  const thumbnail = thumbnailFor(metadata, confirmedYoutubeFallbackId, row.thumbnail_url, !explicitlyPurged);
   const patch: Record<string, unknown> = {
     metadata: nextMetadata,
   };
-  if (!existingYouTubeId && youtubeId) patch.youtube_id = youtubeId;
+  if (row.youtube_id !== youtubeId) patch.youtube_id = youtubeId;
   if (!row.thumbnail_url && thumbnail) patch.thumbnail_url = thumbnail;
 
-  const needsUpdate = JSON.stringify(nextMetadata) !== JSON.stringify(metadata) ||
-    (!existingYouTubeId && Boolean(youtubeId)) ||
+  const mediaStateChanged = nextMetadata.mediaState !== metadata.mediaState;
+  const mediaAuditChanged = JSON.stringify(comparableMediaAudit(nextMetadata.mediaAudit)) !==
+    JSON.stringify(comparableMediaAudit(metadata.mediaAudit));
+  // checkedAt is observational metadata, not a catalog change. Do not rewrite
+  // every published row on every daily audit and invalidate admin updated_at guards.
+  const confirmedFallbackChanged =
+    nextMetadata.youtubePublishedVideoId !== metadata.youtubePublishedVideoId ||
+    nextMetadata.youtubePublishedUrl !== metadata.youtubePublishedUrl ||
+    nextMetadata.youtubePublishedAt !== metadata.youtubePublishedAt ||
+    nextMetadata.mediaFallbackAvailable !== metadata.mediaFallbackAvailable;
+  const needsUpdate = mediaStateChanged || mediaAuditChanged || confirmedFallbackChanged ||
+    row.youtube_id !== youtubeId ||
     (!row.thumbnail_url && Boolean(thumbnail));
-  if (!needsUpdate) return { state: mediaState, id: row.id, updated: false };
+  if (!needsUpdate) {
+    return { state: mediaState, id: row.id, updated: false, youtubeFallback: hasConfirmedYoutubeFallback };
+  }
+  if (!row.updated_at) {
+    return {
+      state: "conflict",
+      id: row.id,
+      title: row.title,
+      reason: "catalog_row_missing_updated_at_for_compare_and_set",
+    };
+  }
   const updated = await patchCatalog(row, patch);
-  return { state: mediaState, id: row.id, title: row.title, updated, youtubeFallback: Boolean(youtubeId), httpStatus: probe?.httpStatus ?? null };
+  if (!updated) {
+    return {
+      state: "conflict",
+      id: row.id,
+      title: row.title,
+      reason: "catalog_row_changed_during_media_audit",
+    };
+  }
+  return { state: mediaState, id: row.id, title: row.title, updated: true, youtubeFallback: hasConfirmedYoutubeFallback, httpStatus: probe?.httpStatus ?? null };
 }
 
 async function main() {
@@ -184,19 +268,31 @@ async function main() {
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Video media audit requires the production Supabase service-role environment.");
   }
-  const [videos, queue] = await Promise.all([
+  const [videos, queue, videoTableCount, socialQueueTableCount] = await Promise.all([
     supabaseServerAdminRequest<VideoCatalogRow[]>(
       "/rest/v1/videos?published=eq.true&metadata->>generator=eq.zikr_internal_video_factory&select=id,slug,title,published,youtube_id,thumbnail_url,metadata,updated_at&order=created_at.asc&limit=1000",
     ),
     supabaseServerAdminRequest<SocialQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=eq.published&select=content_id,content_type,status,metadata&order=published_at.desc&limit=2000",
+      "/rest/v1/social_publish_queue?status=in.(published,partial)&select=content_id,content_type,status,metadata,published_at&order=published_at.desc&limit=1000",
     ),
+    // Count the whole tables exactly: Supabase PostgREST caps responses at max_rows=1000.
+    // If either table reaches that cap, refuse to mutate a possibly partial audit inventory.
+    supabaseServerAdminExactCount("videos"),
+    supabaseServerAdminExactCount("social_publish_queue"),
   ]);
-  const youtubeIdsByRequest = new Map<string, string>();
+  assertCompleteVideoMediaAuditInventory(videoTableCount, socialQueueTableCount);
+
+  const youtubeQueueRowsByRequest = new Map<string, SocialQueueRow[]>();
   for (const row of queue ?? []) {
-    if (!row.content_id) continue;
-    const youtubeId = youtubeIdFromQueue(row);
-    if (youtubeId && !youtubeIdsByRequest.has(row.content_id)) youtubeIdsByRequest.set(row.content_id, youtubeId);
+    if (!row.content_id || !isVideoContentType(row.content_type)) continue;
+    const requestRows = youtubeQueueRowsByRequest.get(row.content_id) ?? [];
+    requestRows.push(row);
+    youtubeQueueRowsByRequest.set(row.content_id, requestRows);
+  }
+  const youtubePublicationsByRequest = new Map<string, YoutubeQueuePublicationState>();
+  for (const [requestId, requestRows] of youtubeQueueRowsByRequest) {
+    const state = resolveLatestConfirmedYoutubeQueueState(requestRows);
+    if (state) youtubePublicationsByRequest.set(requestId, state);
   }
 
   const rows = videos ?? [];
@@ -209,7 +305,7 @@ async function main() {
       const index = cursor++;
       if (index >= rows.length) return;
       try {
-        results[index] = await auditOne(rows[index], youtubeIdsByRequest, now);
+        results[index] = await auditOne(rows[index], youtubePublicationsByRequest, now);
       } catch (error) {
         results[index] = {
           state: "error",
@@ -227,11 +323,13 @@ async function main() {
     return acc;
   }, {});
   console.log("[video-media-audit] " + JSON.stringify({ checked: rows.length, summary, at: now }));
-  for (const result of results) {
-    if (result.state === "conflict" || result.state === "error" ||
-        (result.state === "cloudinary_missing" && !("youtubeFallback" in result && result.youtubeFallback))) {
-      console.error("[video-media-audit] attention:", JSON.stringify(result));
-    }
+  const blockingResults = results.filter(isBlockingVideoMediaAuditOutcome);
+  for (const result of blockingResults) {
+    console.error("[video-media-audit] attention:", JSON.stringify(result));
+  }
+  if (blockingResults.length > 0) {
+    console.error(`[video-media-audit] ${blockingResults.length} blocking result(s); marking the job failed.`);
+    process.exitCode = 1;
   }
 }
 

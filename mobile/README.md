@@ -14,6 +14,7 @@ and other native capabilities.
 
 - Android package: `com.zikr.app`
 - iOS bundle id: `com.zikr.app`
+- Minimum iOS version: `15.0` (aligned with Capacitor 7 support)
 - App name: `ZIKR | ذِكرٌ`
 - Custom scheme redirect: `com.zikr.app://auth/callback`
 - HTTPS redirect: `https://zikrmediaofficial.vercel.app/auth/callback`
@@ -30,15 +31,17 @@ com.zikr.app://auth/callback
 
 ## Native capability checklist
 
-Capacitor configuration enables splash screen, status bar, keyboard, local notifications, push notification presentation, app links, universal links, deep links, camera, filesystem, share, network, preferences-backed local settings, haptics and background-task extension points. The current release does not expose a biometric UI or install a biometric plugin; the old `@capacitor-community/biometric-auth` reference was removed because that package is not published under that name.
+Capacitor configuration enables splash screen, status bar, keyboard, local notifications, push notification presentation, app links, universal links, deep links, camera, filesystem, share, network, preferences-backed local settings, haptics and background-task extension points. The current release does not expose a biometric UI or install a biometric plugin, and it does not request Face ID permission. The iOS plist intentionally omits `NSFaceIDUsageDescription` until a supported native biometric feature is implemented and reviewed; the old `@capacitor-community/biometric-auth` reference was removed because that package is not published under that name.
 
-Prayer notifications use the bundled `adhan.wav` asset and the `zikr-prayer-adhan-v2` Android channel. Salawat reminders use the bundled `salawat.wav` asset and the `zikr-salawat-v2` channel; the clip says `صل على سيدنا محمد` and is generated locally for this application. The short clips are also available under `public/audio` for foreground playback and offline PWA use.
+Prayer and Quran reminders use the bundled `adhan.wav` notification sound on iOS; salawat reminders use the bundled `salawat.wav` sound. iOS notifications deliberately use these app-bundled WAV assets even when a remote or MP3 audio choice is selected, because notification sounds must be packaged in a supported native format. Android uses the selected bundled native sound where available (including the MP3 fallback). Android notification channel IDs are versioned from the selected audio key (`zikr-audio-…-v2`), created for prayer/Quran/salawat, and refreshed before reminders are rescheduled after an audio-setting change; users may need to enable sound for the new channel in Android settings. The salawat clip says `صل على سيدنا محمد` and is generated locally for this application. The short clips are also available under `public/audio` for foreground playback and offline PWA use.
 
 ## Dependency installation
 
 The root `package.json` includes the Capacitor 7 runtime/platform/plugin packages and the CLI pinned in `mobile/capacitor-dependencies.json`. The current CLI is `7.4.3`, aligned with the Capacitor 7 native runtime; keep all Capacitor versions on the supported 7.x line and change them only as a controlled migration. Run `pnpm install --frozen-lockfile` before syncing native projects.
 
 ## Build sequence
+
+The Capacitor CLI requires `webDir` to contain a root `index.html`. The repository uses Next.js SSR and loads the live canonical origin inside native shells, so `mobile-shell/index.html` is a minimal local fallback entry point—not a static export of the Next.js application. Keep `capacitor.config.json` pointed at this directory; do not point it at `.next`, which is a server build output rather than a Capacitor web-asset bundle.
 
 ```bash
 pnpm install --frozen-lockfile

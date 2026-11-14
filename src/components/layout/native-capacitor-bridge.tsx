@@ -1,21 +1,33 @@
 "use client";
 
 import { useEffect } from "react";
-import { getNativeAudio, loadAudioSettings } from "@/lib/audio/config";
-import { LocalNotifications } from "@capacitor/local-notifications";
+import { App } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { Camera } from "@capacitor/camera";
 import { Capacitor } from "@capacitor/core";
+import { Filesystem } from "@capacitor/filesystem";
+import { Geolocation } from "@capacitor/geolocation";
+import { Haptics } from "@capacitor/haptics";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { Network } from "@capacitor/network";
+import { Share } from "@capacitor/share";
+import { SplashScreen } from "@capacitor/splash-screen";
+import { StatusBar } from "@capacitor/status-bar";
+import { loadAudioSettings } from "@/lib/audio/config";
+import { ensureNativeNotificationChannels } from "@/features/notifications/services/native-notification-channels";
 import { syncQuranReminderFromAccount } from "@/features/notifications/services/quran-reminder";
 import { PRODUCTION_URL } from "@/lib/site";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 type CapacitorPlugin = Record<
   string,
   (...args: unknown[]) => Promise<unknown> | unknown
 >;
+type NativePluginListenerHandle = {
+  remove: () => Promise<void> | void;
+};
+
 type CapacitorWindow = Window & {
-  Capacitor?: {
-    isNativePlatform?: () => boolean;
-    Plugins?: Record<string, CapacitorPlugin | undefined>;
-  };
   zikrNative?: {
     isNative: boolean;
     share: (data: {
@@ -50,14 +62,21 @@ type CapacitorWindow = Window & {
 };
 
 function getNativePlugins(): Record<string, CapacitorPlugin | undefined> | null {
-  const capacitor = (window as CapacitorWindow).Capacitor;
-  if (!capacitor?.isNativePlatform?.()) return null;
+  if (!Capacitor.isNativePlatform()) return null;
+  // Use official Capacitor 7 package exports. The deprecated global Plugins
+  // registry is not guaranteed to expose every plugin in production builds.
   return {
-    ...(capacitor.Plugins ?? {}),
-    // Capacitor v7 does not guarantee that every plugin is exposed through the
-    // legacy Capacitor.Plugins registry. Use the official plugin export for
-    // notifications so background alarms remain available in release builds.
+    App: App as unknown as CapacitorPlugin,
+    Browser: Browser as unknown as CapacitorPlugin,
+    Camera: Camera as unknown as CapacitorPlugin,
+    Filesystem: Filesystem as unknown as CapacitorPlugin,
+    Geolocation: Geolocation as unknown as CapacitorPlugin,
+    Haptics: Haptics as unknown as CapacitorPlugin,
     LocalNotifications: LocalNotifications as unknown as CapacitorPlugin,
+    Network: Network as unknown as CapacitorPlugin,
+    Share: Share as unknown as CapacitorPlugin,
+    SplashScreen: SplashScreen as unknown as CapacitorPlugin,
+    StatusBar: StatusBar as unknown as CapacitorPlugin,
   };
 }
 
@@ -142,6 +161,7 @@ function installNativeFacade(
     },
     async scheduleLocalNotification(notification) {
       const localNotifications = plugins.LocalNotifications;
+
       if (!localNotifications?.schedule) {
         throw new Error("Capacitor LocalNotifications plugin is unavailable");
       }
@@ -187,10 +207,7 @@ function installNativeFacade(
       window.location.assign(url);
     },
     async startGoogleOAuth(nextPath = "/profile") {
-      const safeNext =
-        nextPath.startsWith("/") && !nextPath.startsWith("//")
-          ? nextPath
-          : "/profile";
+      const safeNext = sanitizeInternalPath(nextPath);
       // Native OAuth always starts from the canonical production origin so a
       // deployment alias never remains open in the Android custom tab.
       const startUrl = new URL("/auth/google", PRODUCTION_URL);
@@ -243,48 +260,72 @@ export function NativeCapacitorBridge() {
     const network = plugins.Network;
     const localNotifications = plugins.LocalNotifications;
 
+    let disposed = false;
+    const listenerHandles: NativePluginListenerHandle[] = [];
+    const registerPluginListener = (
+      plugin: CapacitorPlugin | undefined,
+      eventName: string,
+      listener: (...args: unknown[]) => void,
+    ) => {
+      const pendingHandle = plugin?.addListener?.(eventName, listener);
+      if (pendingHandle === undefined) return;
+
+      void Promise.resolve(pendingHandle)
+        .then((handle) => {
+          const listenerHandle = handle as NativePluginListenerHandle | null;
+          if (!listenerHandle || typeof listenerHandle.remove !== "function") return;
+          if (disposed) {
+            void Promise.resolve(listenerHandle.remove()).catch((error: unknown) => {
+              console.warn("[native-bridge] Listener cleanup failed", error);
+            });
+            return;
+          }
+          listenerHandles.push(listenerHandle);
+        })
+        .catch((error: unknown) => {
+          console.warn("[native-bridge] Plugin listener registration failed", error);
+        });
+    };
+    let audioSettingsRefreshQueue = Promise.resolve();
+    const refreshNativeAudioSettings = (notifyReady = true) => {
+      audioSettingsRefreshQueue = audioSettingsRefreshQueue
+        .then(async () => {
+          if (disposed) return;
+          await ensureNativeNotificationChannels(
+            localNotifications,
+            Capacitor.getPlatform(),
+          );
+          await syncQuranReminderFromAccount();
+          if (notifyReady && !disposed) {
+            window.dispatchEvent(
+              new CustomEvent("zikr:native-audio-channels-ready"),
+            );
+          }
+        })
+        .catch(error => {
+          console.warn(
+            "[native-bridge] Audio notification channel refresh failed",
+            error,
+          );
+        });
+      return audioSettingsRefreshQueue;
+    };
+    const handleAudioSettingsChanged = () => {
+      void refreshNativeAudioSettings();
+    };
+
     void (async () => {
       try {
         await loadAudioSettings();
-        const prayerAudio = getNativeAudio("prayer");
-        const dhikrAudio = getNativeAudio("dhikr");
-        const salawatAudio = getNativeAudio("salawat");
-        const channels = [
-          {
-            ...prayerAudio,
-            name: "أوقات الصلاة والأذان",
-            description: "تنبيهات أوقات الصلاة بالصوت المختار",
-            importance: 5,
-          },
-          {
-            ...dhikrAudio,
-            name: "تذكير الذكر",
-            description: "تذكيرات الذكر بالصوت المختار",
-            importance: 3,
-          },
-          {
-            ...salawatAudio,
-            name: "الصلاة على النبي",
-            description: "تذكيرات الصلاة على النبي بالصوت المختار",
-            importance: 3,
-          },
-        ];
-        const uniqueChannels = Array.from(
-          new Map(
-            channels.map(channel => [channel.channelId, channel])
-          ).values()
+        if (disposed) return;
+        window.addEventListener(
+          "zikr:audio-settings-changed",
+          handleAudioSettingsChanged,
         );
-        for (const channel of uniqueChannels) {
-          await localNotifications?.createChannel?.({
-            id: channel.channelId,
-            name: channel.name,
-            description: channel.description,
-            importance: channel.importance,
-            sound: channel.sound,
-            vibration: true,
-            visibility: 1,
-          });
-        }
+        await ensureNativeNotificationChannels(
+          localNotifications,
+          Capacitor.getPlatform(),
+        );
 
         // Keep the account's Quran reminder schedule alive after app restart.
         await syncQuranReminderFromAccount();
@@ -299,7 +340,9 @@ export function NativeCapacitorBridge() {
       } finally {
         // Do not let prayer hooks race channel creation. They can now safely
         // schedule background alarms when this event is dispatched.
-        window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+        if (!disposed) {
+          window.dispatchEvent(new CustomEvent("zikr:native-ready"));
+        }
       }
     })();
     // Push permission is requested only when the user explicitly enables
@@ -307,13 +350,15 @@ export function NativeCapacitorBridge() {
 
     // Browser emits this when the user closes the system Custom Tab. Notify
     // the login button so an interrupted OAuth flow never leaves the UI stuck.
-    void browser?.addListener?.("browserFinished", () => {
+    registerPluginListener(browser, "browserFinished", () => {
+      if (disposed) return;
       window.dispatchEvent(new CustomEvent("zikr:native-browser-finished"));
     });
 
     const syncNetworkState = async () => {
       const status = (await network?.getStatus?.()) as
         { connected?: boolean } | undefined;
+      if (disposed) return;
       document.documentElement.dataset.network =
         status?.connected === false ? "offline" : "online";
       window.dispatchEvent(
@@ -322,7 +367,8 @@ export function NativeCapacitorBridge() {
     };
 
     void syncNetworkState();
-    void network?.addListener?.("networkStatusChange", (status: unknown) => {
+    registerPluginListener(network, "networkStatusChange", (status: unknown) => {
+      if (disposed) return;
       document.documentElement.dataset.network =
         (status as { connected?: boolean })?.connected === false
           ? "offline"
@@ -336,7 +382,28 @@ export function NativeCapacitorBridge() {
     // NativeGoogleOAuthHandler is the single owner of the com.zikr.app://auth/callback
     // flow so the PKCE verifier remains in the same WebView storage context.
 
-    void app?.addListener?.("appStateChange", (state: unknown) => {
+    // Universal links for public content must navigate the existing WebView.
+    // OAuth callbacks are excluded from AASA; the HTTPS callback forwards the
+    // authorization code to the custom scheme, where this WebView exchanges it.
+    registerPluginListener(app, "appUrlOpen", (event: unknown) => {
+      if (disposed) return;
+      const incomingUrl = (event as { url?: string })?.url;
+      if (!incomingUrl) return;
+
+      try {
+        const target = new URL(incomingUrl);
+        if (target.origin !== PRODUCTION_URL) return;
+        if (target.pathname.startsWith("/auth/callback")) return;
+
+        const path = sanitizeInternalPath(target.pathname + target.search + target.hash);
+        window.location.assign(path);
+      } catch (error) {
+        console.warn("[native-bridge] Ignored invalid universal link", error);
+      }
+    });
+
+    registerPluginListener(app, "appStateChange", (state: unknown) => {
+      if (disposed) return;
       const isActive = (state as { isActive?: boolean })?.isActive === true;
       if (isActive) {
         window.dispatchEvent(new CustomEvent("zikr:native-resumed"));
@@ -346,6 +413,19 @@ export function NativeCapacitorBridge() {
         new CustomEvent("zikr:native-app-state", { detail: state })
       );
     });
+
+    return () => {
+      disposed = true;
+      for (const handle of listenerHandles.splice(0)) {
+        void Promise.resolve(handle.remove()).catch((error: unknown) => {
+          console.warn("[native-bridge] Listener cleanup failed", error);
+        });
+      }
+      window.removeEventListener(
+        "zikr:audio-settings-changed",
+        handleAudioSettingsChanged,
+      );
+    };
   }, []);
 
   return null;

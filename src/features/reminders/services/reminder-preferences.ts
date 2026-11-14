@@ -1,8 +1,9 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { normalizeIanaTimeZone } from "@/lib/timezone";
 
-const ALLOWED_INTERVALS = new Set([15, 30, 60, 120]);
+const ALLOWED_INTERVALS = new Set([0, 15, 30, 60, 120]);
 
 export type ReminderPreferences = {
   user_id: string;
@@ -15,6 +16,7 @@ export type ReminderPreferences = {
   quran_message: string;
   quiet_hours_start: string | null;
   quiet_hours_end: string | null;
+  timezone: string;
   updated_at?: string;
 };
 
@@ -28,6 +30,7 @@ export type ReminderPreferenceUpdate = {
   quran_message?: string;
   quiet_hours_start?: string | null;
   quiet_hours_end?: string | null;
+  timezone?: string;
 };
 
 const DEFAULT_PREFERENCES = {
@@ -40,6 +43,7 @@ const DEFAULT_PREFERENCES = {
   quran_message: "اهدأ قليلًا… وافتح وردك اليومي. آية واحدة قد تغيّر يومك.",
   quiet_hours_start: null,
   quiet_hours_end: null,
+  timezone: "UTC",
 } as const;
 
 function isClockTime(value: unknown): value is string {
@@ -99,6 +103,13 @@ function parseUpdate(value: unknown): ReminderPreferenceUpdate | { error: string
     updates.quran_message = message || DEFAULT_PREFERENCES.quran_message;
   }
 
+
+  if (body.timezone !== undefined) {
+    const timezone = normalizeIanaTimeZone(body.timezone);
+    if (!timezone) return { error: "Invalid timezone" };
+    updates.timezone = timezone;
+  }
+
   for (const key of ["quiet_hours_start", "quiet_hours_end"] as const) {
     if (body[key] !== undefined) {
       const value = body[key];
@@ -124,7 +135,7 @@ export async function getCurrentReminderPreferences(): Promise<ReminderPreferenc
   const { data, error } = await supabase
     .from("background_reminder_preferences")
     .select(
-      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,updated_at",
+      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,timezone,updated_at",
     )
     .eq("user_id", user.id)
     .maybeSingle();
@@ -169,7 +180,7 @@ export async function updateCurrentReminderPreferences(
     .from("background_reminder_preferences")
     .upsert(payload, { onConflict: "user_id" })
     .select(
-      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quiet_hours_start,quiet_hours_end,updated_at",
+      "user_id,dhikr_enabled,dhikr_interval_minutes,salawat_enabled,salawat_interval_minutes,quran_enabled,quran_time,quran_message,quiet_hours_start,quiet_hours_end,timezone,updated_at",
     )
     .single();
 

@@ -1,18 +1,38 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireAdminPermission } from "@/features/admin/services/admin";
+import { requireAdminStepUp } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 import { dispatchGitHubWorkflow } from "@/lib/github/dispatch-workflow";
+import { buildRunNowRequestValueFilter } from "@/features/videos/services/background-job-outcome";
+import { isVideoAutomationEnabled, isVideoPurgeLockResponseActive } from "@/features/videos/services/background-job-settings";
 
 function formValue(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/system] audit event failed after committed mutation:", error),
+  );
+}
+
 export async function saveAdminSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("settings.manage");
   const key = formValue(formData, "key");
+  // The policy can be disabled; changing it must still require a fresh AAL2 session.
+  const requiresConditionalStepUp = key === "maintenance_mode" || key === "admin_alerts_enabled";
+  const profile = key === "require_mfa_for_destructive"
+    ? await requireAdminStepUp("settings.manage", "/admin/settings", true)
+    : requiresConditionalStepUp
+      ? await requireAdminStepUp("settings.manage", "/admin/settings")
+      : await requireAdminPermission("settings.manage");
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
   if (!key) throw new Error("مفتاح الإعداد مطلوب.");
@@ -42,7 +62,7 @@ export async function saveAdminSettingAction(formData: FormData) {
     body: JSON.stringify({ key, value, updated_by: profile.id, updated_at: new Date().toISOString() }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.settings.update",
     permission: "settings.manage",
     resourceType: "admin_settings",
@@ -55,9 +75,18 @@ export async function saveAdminSettingAction(formData: FormData) {
 }
 
 export async function saveVideoAutomationSettingAction(formData: FormData) {
-  const profile = await requireAdminPermission("system.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/automation");
   const key = formValue(formData, "key");
   if (!key.startsWith("video_automation_")) throw new Error("إعداد أتمتة الفيديو غير صالح.");
+
+  if (key === "video_automation_enabled") {
+    const purgeRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
+      "/rest/v1/admin_settings?key=eq.video_purge_in_progress&select=value&limit=1",
+    );
+    if (isVideoPurgeLockResponseActive(purgeRows)) {
+      throw new Error("لا يمكن تغيير تشغيل أتمتة الفيديو أثناء تنظيف ملفات التوليد.");
+    }
+  }
 
   const rawValues = formData.getAll("value").map((value) => String(value).trim());
   const rawValue = rawValues.at(-1) ?? "";
@@ -111,7 +140,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.video_automation.setting_update",
     permission: "system.manage",
     resourceType: "admin_settings",
@@ -125,7 +154,7 @@ export async function saveVideoAutomationSettingAction(formData: FormData) {
 }
 
 export async function requestVideoAutomationRunAction() {
-  const profile = await requireAdminPermission("system.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/automation");
   const batchRows = await supabaseServerAdminRequest<Array<{ value: unknown }>>(
     "/rest/v1/admin_settings?key=eq.video_automation_batch_size&select=value&limit=1",
   ).catch(() => []);
@@ -135,12 +164,14 @@ export async function requestVideoAutomationRunAction() {
     "/rest/v1/admin_settings?key=eq.video_automation_enabled&select=value&limit=1",
   );
   const configuredEnabled = enabledRows?.[0]?.value;
-  if (configuredEnabled === false || configuredEnabled === "false") {
+  if (!isVideoAutomationEnabled(configuredEnabled)) {
     throw new Error("أتمتة الفيديو متوقفة. فعّل «التشغيل التلقائي» أولاً ثم أعد طلب التشغيل.");
   }
   const key = "video_automation_run_now";
   const requestedAt = new Date().toISOString();
-  const request = { requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+  const request = { requestId: randomUUID(), requestedAt, requestedBy: profile.id, dispatchedAt: null as string | null, failedAt: null as string | null, error: null as string | null };
+  const requestFilter = buildRunNowRequestValueFilter(request);
+  if (!requestFilter) throw new Error("تعذر إنشاء شرط آمن لطلب التشغيل الفوري.");
 
   try {
     await supabaseServerAdminRequest("/rest/v1/admin_settings?on_conflict=key", {
@@ -155,13 +186,13 @@ export async function requestVideoAutomationRunAction() {
     });
 
     const dispatchedAt = new Date().toISOString();
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ value: { ...request, dispatchedAt }, updated_at: dispatchedAt }),
     });
 
-    await recordAdminAuditEvent({
+    await recordAdminAuditEventSafely({
       action: "admin.video_automation.run_requested",
       permission: "system.manage",
       resourceType: "admin_settings",
@@ -180,12 +211,12 @@ export async function requestVideoAutomationRunAction() {
         queuedForScheduledWorker: true,
         fallbackMessage: "تم حفظ الطلب. سيعالجه عامل الفيديو عند دورة GitHub Actions المجدولة التالية؛ التشغيل الفوري يحتاج ضبط GITHUB_DISPATCH_TOKEN في Vercel.",
       };
-      await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+      await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
         method: "PATCH",
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ value: queuedRequest, updated_at: queuedAt }),
       });
-      await recordAdminAuditEvent({
+      await recordAdminAuditEventSafely({
         action: "admin.video_automation.run_requested_queued",
         permission: "system.manage",
         resourceType: "admin_settings",
@@ -197,12 +228,12 @@ export async function requestVideoAutomationRunAction() {
     }
 
     const failedAt = new Date().toISOString();
-    await supabaseServerAdminRequest("/rest/v1/admin_settings?key=eq." + encodeURIComponent(key), {
+    await supabaseServerAdminRequest("/rest/v1/admin_settings?" + requestFilter, {
       method: "PATCH",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ value: { ...request, failedAt, error: message.slice(0, 500) }, updated_at: failedAt }),
     }).catch(() => {});
-    await recordAdminAuditEvent({
+    await recordAdminAuditEventSafely({
       action: "admin.video_automation.run_requested_failed",
       permission: "system.manage",
       resourceType: "admin_settings",
@@ -217,7 +248,7 @@ export async function requestVideoAutomationRunAction() {
 }
 
 export async function createAdminNotificationAction(formData: FormData) {
-  const profile = await requireAdminPermission("notifications.manage");
+  const profile = await requireAdminStepUp("notifications.manage", "/admin/notifications");
   const title = formValue(formData, "title");
   const body = formValue(formData, "body");
   const link = formValue(formData, "link") || null;
@@ -237,7 +268,7 @@ export async function createAdminNotificationAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.notification.create",
     permission: "notifications.manage",
     resourceType: "notifications",
@@ -254,7 +285,7 @@ export async function markAdminNotificationsReadAction() {
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({ read: true }),
   });
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.notification.mark_all_read",
     permission: "notifications.manage",
     resourceType: "notifications",
@@ -264,7 +295,7 @@ export async function markAdminNotificationsReadAction() {
 
 
 export async function saveCustomVideoSpacesAction(formData: FormData) {
-  const profile = await requireAdminPermission("video.manage");
+  const profile = await requireAdminStepUp("system.manage", "/admin/video/visuals");
   const entries: Array<{ space: string; variant: "wan2_2_fast" | "ltx_fast"; enabled: true }> = [];
   const seen = new Set<string>();
 
@@ -297,9 +328,9 @@ export async function saveCustomVideoSpacesAction(formData: FormData) {
     }),
   });
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "admin.video_custom_spaces.update",
-    permission: "video.manage",
+    permission: "system.manage",
     resourceType: "admin_settings",
     resourceId: "video_custom_spaces",
     metadata: {

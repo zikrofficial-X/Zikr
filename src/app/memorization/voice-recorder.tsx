@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { evaluateMemorizationAction } from './actions';
+import { MAX_MEMORIZATION_AUDIO_BYTES, MEMORIZATION_AUDIO_LIMIT_MESSAGE } from '@/features/memorization/constants';
 
 function getSupportedAudioMimeType(): string | null {
   if (typeof MediaRecorder === 'undefined') return null;
@@ -37,6 +38,8 @@ export function VoiceRecorder() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingBytesRef = useRef(0);
+  const recordingTooLargeRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -100,9 +103,21 @@ export function VoiceRecorder() {
     try {
       const recorder = new MediaRecorder(stream, { mimeType });
       chunksRef.current = [];
+      recordingBytesRef.current = 0;
+      recordingTooLargeRef.current = false;
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
+        if (recordingTooLargeRef.current || event.data.size <= 0) return;
+        const nextSize = recordingBytesRef.current + event.data.size;
+        if (nextSize > MAX_MEMORIZATION_AUDIO_BYTES) {
+          recordingTooLargeRef.current = true;
+          setIsRecording(false);
+          setMicError(MEMORIZATION_AUDIO_LIMIT_MESSAGE);
+          if (recorder.state !== 'inactive') recorder.stop();
+          return;
+        }
+        recordingBytesRef.current = nextSize;
+        chunksRef.current.push(event.data);
       };
 
       recorder.onerror = () => {
@@ -113,12 +128,18 @@ export function VoiceRecorder() {
       };
 
       recorder.onstop = () => {
-        const finalType = recorder.mimeType || mimeType;
-        const blob = new Blob(chunksRef.current, { type: finalType });
-        if (blob.size > 0) {
-          setAudioBlob(blob);
+        if (recordingTooLargeRef.current) {
+          chunksRef.current = [];
+          setAudioBlob(null);
+          setMicError(MEMORIZATION_AUDIO_LIMIT_MESSAGE);
         } else {
-          setMicError('لم يتم التقاط صوت. تأكد من السماح بالميكروفون وحاول مرة أخرى.');
+          const finalType = recorder.mimeType || mimeType;
+          const blob = new Blob(chunksRef.current, { type: finalType });
+          if (blob.size > 0) {
+            setAudioBlob(blob);
+          } else {
+            setMicError('لم يتم التقاط صوت. تأكد من السماح بالميكروفون وحاول مرة أخرى.');
+          }
         }
         recorderRef.current = null;
         stopStream();
@@ -187,7 +208,7 @@ export function VoiceRecorder() {
         {isRecording ? 'إيقاف التسجيل' : 'ابدأ تسجيل التسميع'}
       </Button>
       <Button type='submit' disabled={!audioBlob || isPending}>تقييم الحفظ والتجويد</Button>
-      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>لن يُطلب إذن الميكروفون إلا عند الضغط على بدء التسجيل.</span>}
+      {audioBlob ? <span className='text-sm text-emerald-300'>تم تسجيل الصوت وجاهز للتقييم.</span> : <span className='text-sm arabic-muted'>لن يُطلب إذن الميكروفون إلا عند الضغط على بدء التسجيل. الحد الأقصى للتسجيل 3 ميجابايت.</span>}
     </div>
 
     {micError ? (

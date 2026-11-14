@@ -28,14 +28,13 @@ jobs:
     timeout-minutes: 20
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
     steps:
       - name: Checkout canonical main branch
         uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Prepare stable review branch from the latest main
         shell: bash
@@ -58,6 +57,8 @@ jobs:
 
       - name: Validate protected Supabase access
         shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -euo pipefail
           test -n "${SUPABASE_URL:-}" || { echo "::error::Missing canonical SUPABASE_URL." >&2; exit 1; }
@@ -80,6 +81,8 @@ jobs:
         run: pnpm install --frozen-lockfile --prod=false
 
       - name: Refresh all validated public offline datasets
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: pnpm offline:export
 
       - name: Verify complete snapshot and manifest
@@ -87,8 +90,11 @@ jobs:
 
       - name: Commit and open a reviewable snapshot pull request
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
         run: |
           set -euo pipefail
+          gh auth setup-git
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/offline-content/v1

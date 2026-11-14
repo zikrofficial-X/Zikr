@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { createAdminClient, supabaseServerAdminRequest } from '@/lib/supabase/server';
 import { requireAdminPermission } from '@/features/admin/services/admin';
 import { requireAdminStepUp } from '@/features/admin/services/security';
@@ -173,7 +173,14 @@ async function mutate(formData: FormData) {
   }
 
   revalidatePath('/admin/library');
+  updateTag('public-content-library');
   revalidatePath('/library');
+  // Public detail pages and sitemap entries are cached independently of the
+  // admin route; invalidate them after every review/publication mutation.
+  revalidatePath('/content/[slug]', 'page');
+  revalidatePath('/sitemap.xml');
+  revalidatePath('/sitemap-index.xml');
+  revalidatePath('/sitemap-content/[id]', 'page');
   redirectLibrary({ success: 'تم تنفيذ العملية بنجاح.' });
 }
 

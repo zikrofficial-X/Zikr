@@ -9,47 +9,26 @@ import { getServerEnv } from "@/lib/env";
 import { safeApiFetch } from "@/lib/services/http";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { hasHadithPageRows, type Hadith, type HadithBook, type HadithResponse } from "@/features/hadith/types/hadith";
+import { createOfflineHadithBooksLoader, type OfflineHadithBookRow } from "@/features/hadith/services/offline-books-loader";
 import type { Locale } from "@/lib/i18n";
 import type { PaginationMeta } from "@/lib/types/common";
 
 const HADITH_API_BASE =
   getServerEnv().HADITH_API_BASE_URL || "https://ummahapi.com/api/hadith";
 
-type OfflineHadithBookRow = {
-  id?: string;
-  slug?: string;
-  name_ar?: string;
-  name_en?: string;
-  hadith_count?: number | null;
-};
-
-let offlineBooksPromise: Promise<HadithBook[]> | null = null;
-
-async function loadOfflineHadithBooks(): Promise<HadithBook[]> {
-  if (!offlineBooksPromise) {
-    offlineBooksPromise = readFile(
-      path.join(
-        process.cwd(),
-        "public",
-        "offline-content",
-        "v1",
-        "hadith_books.json",
-      ),
-      "utf8",
-    ).then((raw) => {
-      const rows = JSON.parse(raw) as OfflineHadithBookRow[];
-      return rows
-        .filter((row) => row.slug && row.name_ar)
-        .map((row) => ({
-          id: String(row.slug),
-          slug: String(row.slug),
-          name: String(row.name_ar),
-          available: Number(row.hadith_count) || 0,
-        }));
-    });
-  }
-  return offlineBooksPromise;
-}
+const loadOfflineHadithBooks = createOfflineHadithBooksLoader(async () => {
+  const raw = await readFile(
+    path.join(
+      process.cwd(),
+      "public",
+      "offline-content",
+      "v1",
+      "hadith_books.json",
+    ),
+    "utf8",
+  );
+  return JSON.parse(raw) as OfflineHadithBookRow[];
+});
 
 type DbHadithBook = {
   id: string;
@@ -239,7 +218,7 @@ export async function getHadithBooks(locale: Locale = "ar"): Promise<HadithBook[
   if (remote.length > 0) return remote;
 
   try {
-    const local = await loadOfflineHadithBooks();
+    const local = await loadOfflineHadithBooks(locale);
     if (local.length > 0) return local;
   } catch (error) {
     console.error("[hadith-service] Offline book catalogue unavailable:", error);
@@ -300,9 +279,7 @@ export async function getHadithBook(
     if (remoteLocalized) return remoteLocalized;
   }
 
-  return locale === "en"
-    ? null
-    : getUmmahBook(clean, page, limit, locale);
+  return getUmmahBook(clean, page, limit, locale);
 }
 
 export async function getHadithByNumber(
@@ -343,10 +320,10 @@ export async function searchHadith(query: string, locale: Locale = "ar"): Promis
   const dbHadiths = await readSupabase<DbHadith[]>(
     `/rest/v1/hadiths?select=hadith_number,text_ar,text_en,ref&published=eq.true&searchable_normalized=plfts(simple).${encodeURIComponent(safeQuery)}&order=hadith_number.asc&limit=50`,
   );
-  if (dbHadiths) {
-    return dbHadiths
-      .map(mapDbHadith)
-      .filter((item) => locale === "ar" || Boolean(item.english?.trim()));
+  if (hasHadithPageRows(dbHadiths)) {
+    // Preserve Arabic originals when an English translation is missing; the
+    // display layer labels that fallback instead of silently dropping results.
+    return dbHadiths.map(mapDbHadith);
   }
 
   const books = await getHadithBooks(locale);

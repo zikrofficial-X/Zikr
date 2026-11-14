@@ -6,9 +6,11 @@ import { getArticles } from "@/features/articles/services/articles";
 import { getDuas } from "@/features/dua/services/dua";
 import { getProphets } from "@/features/prophets/services/prophets";
 import { getPublicContentLibrary } from "@/features/content-library/services/content-library";
+import { getKidsContent } from "@/features/kids/services/kids-content";
 import { surahs as fallbackSurahs } from "@/features/quran/data/fallback";
 import { supabaseServerAnonRequest } from "@/lib/supabase/server";
 import { appRoutes, siteConfig } from "@/lib/site";
+import { getSitemapShard, getSitemapShardCountForEntryCount } from "@/lib/seo/sitemap-shards";
 import { PUBLIC_CONTENT_THRESHOLDS } from "@/lib/content-quality";
 import type { Surah } from "@/features/quran/types/quran";
 import type { Scholar } from "@/features/scholars/types/scholars";
@@ -23,7 +25,6 @@ type SlugRow = { slug: string };
 
 const MIN_INDEXABLE_EDITORIAL_CHARS = PUBLIC_CONTENT_THRESHOLDS.article;
 const MIN_INDEXABLE_STORY_CHARS = PUBLIC_CONTENT_THRESHOLDS.story;
-const SITEMAP_URL_LIMIT = 50_000;
 const NON_INDEXABLE_PATHS = new Set(["/admin", "/api", "/auth", "/favorites", "/profile", "/settings", "/search", "/qibla", "/prayer-times", "/tasbeeh", "/memorization", "/wird", "/zakat", "/offline-library", "/spiritual-ai", "/radio", "/reciters", "/tawasheeh"]);
 
 export const dynamic = "force-dynamic";
@@ -52,10 +53,7 @@ function uniqueRoutes(routes: MetadataRoute.Sitemap): MetadataRoute.Sitemap {
   return Array.from(new Map(routes.map(entry => [entry.url, entry])).values());
 }
 
-let sitemapCache: { entries: MetadataRoute.Sitemap; expiresAt: number } | null = null;
-
 export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
-  if (sitemapCache && sitemapCache.expiresAt > Date.now()) return sitemapCache.entries;
   const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = siteConfigRoutes().map(appRoute => route(appRoute.path === "/" ? "" : appRoute.path, {
     lastModified: now,
@@ -64,19 +62,20 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent] = await Promise.all([
+    const [surahs, scholars, hadithBooks, stories, articles, prophets, battles, duas, companions, conquests, competitions, publicContent, kidsContentItems] = await Promise.all([
       Promise.resolve(fallbackSurahs.map(surah => ({ number: surah.id, name: surah.nameAr, englishName: surah.nameEn, englishNameTranslation: "", numberOfAyahs: surah.ayahCount, revelationType: surah.revelationPlace === "meccan" ? "Meccan" : "Medinan" }) satisfies Surah)),
       getAllScholars().catch((error): Scholar[] => { console.error("[sitemap] Scholars fetch failed:", error); return []; }),
-      getHadithBooks().catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
-      getStories().catch((error): Story[] => { console.error("[sitemap] Stories fetch failed:", error); return []; }),
-      getArticles(undefined, 1000).catch((): Article[] => []),
+      getHadithBooks("ar").catch((error): HadithBook[] => { console.error("[sitemap] Hadith fetch failed:", error); return []; }),
+      getStories(1000).catch((error): Story[] => { console.error("[sitemap] Stories fetch failed:", error); return []; }),
+      getArticles(undefined, 1000, "ar").catch((): Article[] => []),
       getProphets().catch((): Prophet[] => []),
       getPublishedSlugs("battles"),
-      getDuas().catch((): Dua[] => []),
+      getDuas(undefined, 1000, "ar").catch((): Dua[] => []),
       getPublishedSlugs("companions"),
       getPublishedSlugs("conquests"),
       supabaseServerAnonRequest<{ id: string }[]>("/rest/v1/competitions?select=id&published=eq.true&limit=1").catch(() => []),
-      getPublicContentLibrary(100).catch(() => []),
+      getPublicContentLibrary(1000).catch(() => []),
+      getKidsContent("ar").catch(() => []),
     ]);
 
     const dynamicRoutes: MetadataRoute.Sitemap = [
@@ -100,24 +99,23 @@ export async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
           changeFrequency: "monthly",
           priority: 0.6,
         })),
+      ...kidsContentItems.map((item) => route(`/kids/${item.slug}`, { lastModified: now, changeFrequency: "weekly", priority: 0.65 })),
     ];
 
-    const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]).slice(0, SITEMAP_URL_LIMIT);
-    sitemapCache = { entries: safeEntries, expiresAt: Date.now() + 60 * 60 * 1000 };
+    const safeEntries = uniqueRoutes([...staticRoutes, ...dynamicRoutes]);
     return safeEntries;
   } catch (error) {
     console.error("[sitemap] Error generating dynamic routes:", error);
-    const fallbackEntries = uniqueRoutes(staticRoutes).slice(0, SITEMAP_URL_LIMIT);
-    sitemapCache = { entries: fallbackEntries, expiresAt: Date.now() + 10 * 60 * 1000 };
+    const fallbackEntries = uniqueRoutes(staticRoutes);
     return fallbackEntries;
   }
 }
 
 export async function getSitemapShardCount(): Promise<number> {
   const entries = await getSitemapEntries();
-  return Math.max(1, Math.ceil(entries.length / SITEMAP_URL_LIMIT));
+  return getSitemapShardCountForEntryCount(entries.length);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  return getSitemapEntries();
+  return getSitemapShard(await getSitemapEntries(), 0);
 }

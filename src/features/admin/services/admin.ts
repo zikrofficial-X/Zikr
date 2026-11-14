@@ -5,7 +5,7 @@ import {
   hasAdminPermission,
   type AdminPermission,
   type AdminRole,
-  ADMIN_ROLE_PERMISSIONS,
+  resolveAdminRole,
 } from '@/features/admin/services/permissions';
 
 export type AdminProfile = {
@@ -31,19 +31,20 @@ export async function getCurrentProfile(): Promise<AdminProfile | null> {
 
     if (!profile) return { id: user.id, email: user.email, display_name: null, role: 'user' };
 
-    const { data: assignment } = await supabase
+    const { data: assignment, error: assignmentError } = await supabase
       .from('admin_role_assignments')
       .select('role')
       .eq('user_id', user.id)
       .maybeSingle();
 
-    const assignedRole = assignment?.role as AdminRole | null;
-    const role: AdminRole =
-      assignedRole && assignedRole in ADMIN_ROLE_PERMISSIONS
-        ? assignedRole
-        : profile.role === 'admin'
-          ? 'admin'
-          : 'user';
+    if (assignmentError) {
+      console.error('[admin] Failed to resolve delegated role; denying admin access.', assignmentError);
+    }
+    const role: AdminRole = resolveAdminRole(
+      profile.role,
+      assignment?.role,
+      Boolean(assignmentError),
+    );
 
     return { ...profile, email: user.email, role };
   } catch {

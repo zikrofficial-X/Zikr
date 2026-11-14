@@ -2,7 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 
 const requiredFiles = [
   "capacitor.config.json",
+  "mobile-shell/index.html",
   "android/app/src/main/AndroidManifest.xml",
+  "android/app/src/main/res/xml/file_paths.xml",
   "android/gradle/wrapper/gradle-wrapper.properties",
   "android/app/src/main/java/com/zikr/app/MainActivity.java",
   "android/app/src/main/res/drawable/ic_stat_zikr.xml",
@@ -53,6 +55,10 @@ try {
 const packageDependencies = { ...(packageJson.dependencies || {}), ...(packageJson.devDependencies || {}) };
 if (!packageDependencies["@capgo/capacitor-social-login"]) failures.push("package.json is missing @capgo/capacitor-social-login required for Android native Google login");
 
+const mobileWebDir = typeof capacitor.webDir === "string" ? capacitor.webDir.trim() : "";
+if (!mobileWebDir || !existsSync(`${mobileWebDir}/index.html`)) {
+  failures.push("Capacitor webDir must resolve to a directory containing a root index.html entry point.");
+}
 if (capacitor.appId !== "com.zikr.app") failures.push("Capacitor appId must be com.zikr.app");
 if (capacitor.appName !== "ZIKR | ذِكرٌ") failures.push("Capacitor appName must be ZIKR | ذِكرٌ");
 if (capacitor.server?.url !== "https://zikrmediaofficial.vercel.app") failures.push("Capacitor server.url must point at the production SSR origin");
@@ -62,6 +68,23 @@ for (const dependency of ["@capacitor/core", "@capacitor/android", "@capacitor/i
   if (!packageDependencies[dependency]) failures.push(`package.json is missing installed mobile dependency ${dependency}`);
 }
 if (!packageDependencies["@capacitor/cli"]) failures.push("package.json is missing @capacitor/cli; native sync cannot run from the repository");
+
+const mobileDependencies = { ...(capacitorDeps.dependencies || {}), ...(capacitorDeps.devDependencies || {}) };
+const nativeDependencyNames = Object.keys(packageDependencies).filter(name =>
+  /^(?:@capacitor|@capawesome|@capgo)\//.test(name),
+);
+for (const dependency of nativeDependencyNames) {
+  if (!mobileDependencies[dependency]) {
+    failures.push(`Mobile dependency manifest missing ${dependency}`);
+  } else if (mobileDependencies[dependency] !== packageDependencies[dependency]) {
+    failures.push(`Mobile dependency manifest version for ${dependency} does not match package.json`);
+  }
+}
+for (const dependency of Object.keys(mobileDependencies)) {
+  if (!nativeDependencyNames.includes(dependency)) {
+    failures.push(`Mobile dependency manifest contains uninstalled native package ${dependency}`);
+  }
+}
 if (capacitorDeps.dependencies?.["@capacitor-community/biometric-auth"]) failures.push("Mobile dependency manifest references the nonexistent @capacitor-community/biometric-auth package");
 
 for (const host of ["*.supabase.co", "accounts.google.com", "api.alquran.cloud", "hadithapi.com"]) {
@@ -75,30 +98,138 @@ for (const token of [
   "android.permission.RECORD_AUDIO",
   'android:autoVerify="true"',
   'android:host="zikrmediaofficial.vercel.app"',
-  'android:pathPrefix="/auth/callback"',
+  'android:pathPrefix="/kids"',
   'android:scheme="com.zikr.app"',
   'android:supportsRtl="true"',
 ]) {
   if (!androidManifest.includes(token)) failures.push(`Android manifest missing ${token}`);
 }
+if (/android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel.app"[\s\S]*?android:pathPrefix="\/auth\/callback"/.test(androidManifest)) {
+  failures.push("Android must leave the HTTPS OAuth callback in the browser for the server-side code exchange.");
+}
+for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {
+  if (!androidManifest.includes('android:pathPrefix="' + routePrefix + '"')) {
+    failures.push("Android App Links missing public route prefix " + routePrefix);
+  }
+}
+
+for (const permission of ["android.permission.READ_MEDIA_AUDIO", "android.permission.WRITE_EXTERNAL_STORAGE"]) {
+  if (androidManifest.includes(permission)) failures.push(`Android manifest must not request unused broad storage permission ${permission}`);
+}
+
+
+const fileProviderPaths = read("android/app/src/main/res/xml/file_paths.xml");
+if (fileProviderPaths.includes("<external-path")) {
+  failures.push("Android FileProvider must not expose the shared external-storage root; keep files app-private.");
+}
+for (const token of [
+  '<files-path name="my_app_files" path="." />',
+  '<cache-path name="my_cache_images" path="." />',
+]) {
+  if (!fileProviderPaths.includes(token)) failures.push("Android FileProvider must retain the app-private path " + token);
+}
+
+const gradleProperties = read("android/gradle.properties");
+const circleCiConfig = read(".circleci/config.yml");
+const configuredMetaspace = Number(gradleProperties.match(/MaxMetaspaceSize=([0-9]+)m/)?.[1] ?? 0);
+const circleCiMetaspaceCaps = [...circleCiConfig.matchAll(/MaxMetaspaceSize=([0-9]+)m/g)].map(match => Number(match[1]));
+if (configuredMetaspace <= 0) failures.push("Android Gradle project must declare an explicit MaxMetaspaceSize.");
+if (circleCiMetaspaceCaps.some(cap => cap < configuredMetaspace)) {
+  failures.push("CircleCI Android release overrides must not lower MaxMetaspaceSize below android/gradle.properties.");
+}
 
 const plist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = plist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
+const appBoundDomains = new Set(
+  appBoundDomainBlock.split("<string>").slice(1).map(value => value.split("</string>")[0]).filter(Boolean),
+);
+if (appBoundDomains.size > 10) failures.push("iOS WKAppBoundDomains must stay within Apple’s 10-domain limit");
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  if (capacitor.server?.allowNavigation?.includes(host) && !appBoundDomains.has(host)) {
+    failures.push(`iOS WKAppBoundDomains missing ${host} required by embedded video routes`);
+  }
+}
+if (plist.includes("<key>NSFaceIDUsageDescription</key>")) {
+  failures.push("Do not request Face ID permission until a supported native biometric feature is implemented.");
+}
+const mobileReadme = read("mobile/README.md");
+if (!mobileReadme.includes("does not request Face ID permission")) {
+  failures.push("The mobile runtime guide must state that no Face ID permission is requested while biometric UI is unavailable.");
+}
+const biometricDependencies = Object.keys(capacitorDeps.dependencies ?? {}).filter(name => /biometric/i.test(name));
+if (biometricDependencies.length > 0) {
+  failures.push("Do not add a biometric plugin until the native biometric feature is implemented and reviewed.");
+}
 for (const token of [
   "<string>com.zikr.app</string>",
   "<key>NSCameraUsageDescription</key>",
+  "<key>NSLocationWhenInUseUsageDescription</key>",
+  "<key>NSPhotoLibraryUsageDescription</key>",
+  "<key>NSPhotoLibraryAddUsageDescription</key>",
   "<key>NSMicrophoneUsageDescription</key>",
-  "<key>NSFaceIDUsageDescription</key>",
   "<string>audio</string>",
   "<string>remote-notification</string>",
   "<key>WKAppBoundDomains</key>",
 ]) {
   if (!plist.includes(token)) failures.push(`iOS Info.plist missing ${token}`);
 }
+for (const token of ["<key>NSPhotoLibraryUsageDescription</key>", "<key>NSPhotoLibraryAddUsageDescription</key>"]) {
+  const occurrences = plist.split(token).length - 1;
+  if (occurrences !== 1) failures.push(`Info.plist must declare ${token} exactly once`);
+}
 
 const entitlements = read("ios/App/App/App.entitlements");
 if (!entitlements.includes("applinks:zikrmediaofficial.vercel.app")) failures.push("iOS entitlements missing production associated domain");
 
 const pbxproj = read("ios/App/App.xcodeproj/project.pbxproj");
+const iosPodfile = read("ios/App/Podfile");
+const iosPodPackages = {
+  Capacitor: "@capacitor/ios",
+  CapacitorCordova: "@capacitor/ios",
+  CapacitorApp: "@capacitor/app",
+  CapacitorBrowser: "@capacitor/browser",
+  CapacitorCamera: "@capacitor/camera",
+  CapacitorFilesystem: "@capacitor/filesystem",
+  CapacitorGeolocation: "@capacitor/geolocation",
+  CapacitorHaptics: "@capacitor/haptics",
+  CapacitorKeyboard: "@capacitor/keyboard",
+  CapacitorLocalNotifications: "@capacitor/local-notifications",
+  CapacitorNetwork: "@capacitor/network",
+  CapacitorPreferences: "@capacitor/preferences",
+  CapacitorPushNotifications: "@capacitor/push-notifications",
+  CapacitorShare: "@capacitor/share",
+  CapacitorSplashScreen: "@capacitor/splash-screen",
+  CapacitorStatusBar: "@capacitor/status-bar",
+  CapawesomeCapacitorBackgroundTask: "@capawesome/capacitor-background-task",
+};
+if (!iosPodfile.includes("require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'")) {
+  failures.push("iOS CocoaPods helpers must resolve through the stable node_modules symlink.");
+}
+if (iosPodfile.includes("node_modules/.pnpm/")) {
+  failures.push("iOS Podfile must not pin transient pnpm store paths that change when Capacitor packages are upgraded.");
+}
+for (const [pod, packageName] of Object.entries(iosPodPackages)) {
+  if (!packageDependencies[packageName]) failures.push(`iOS CocoaPods dependency is missing from package.json: ${packageName}`);
+  if (!iosPodfile.includes(`pod '${pod}', :path => '../../node_modules/${packageName}'`)) {
+    failures.push(`iOS CocoaPods path for ${pod} must resolve through ../../node_modules/${packageName}.`);
+  }
+}
+const configuredIosScheme = capacitor.ios?.scheme ?? "App";
+if (configuredIosScheme !== "App") {
+  failures.push(`Capacitor iOS scheme must match the Xcode App target; received "${configuredIosScheme}".`);
+}
+if (!pbxproj.includes("name = App;") || !iosPodfile.includes("target 'App' do")) {
+  failures.push("The iOS Xcode target and CocoaPods target must remain aligned on App.");
+}
+const iosDeploymentTargets = [...pbxproj.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);/g)]
+  .map(match => match[1]);
+if (
+  !iosPodfile.includes("platform :ios, '15.0'") ||
+  iosDeploymentTargets.length === 0 ||
+  iosDeploymentTargets.some(target => target !== "15.0")
+) {
+  failures.push("Capacitor 7 iOS deployment must be consistently set to iOS 15.0 in CocoaPods and every Xcode build configuration.");
+}
 for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE_SIGN_ENTITLEMENTS = App/App.entitlements;"]) {
   if (!pbxproj.includes(token)) failures.push(`iOS Xcode project missing ${token}`);
 }
@@ -106,6 +237,27 @@ for (const token of ["adhan.wav in Resources", "salawat.wav in Resources", "CODE
 const bridge = read("src/components/layout/native-capacitor-bridge.tsx");
 for (const token of ["zikrNative", "networkStatusChange", "Share", "Camera", "Filesystem", "Haptics", "scheduleLocalNotification", "cancelLocalNotifications"]) {
   if (!bridge.includes(token)) failures.push(`Native bridge missing ${token}`);
+}
+const nativePluginImports = [
+  ["App", "@capacitor/app"],
+  ["Browser", "@capacitor/browser"],
+  ["Camera", "@capacitor/camera"],
+  ["Filesystem", "@capacitor/filesystem"],
+  ["Geolocation", "@capacitor/geolocation"],
+  ["Haptics", "@capacitor/haptics"],
+  ["LocalNotifications", "@capacitor/local-notifications"],
+  ["Network", "@capacitor/network"],
+  ["Share", "@capacitor/share"],
+  ["SplashScreen", "@capacitor/splash-screen"],
+  ["StatusBar", "@capacitor/status-bar"],
+];
+for (const [plugin, packageName] of nativePluginImports) {
+  if (!packageDependencies[packageName]) failures.push(`package.json is missing native plugin ${packageName}`);
+  if (!bridge.includes(`import { ${plugin} } from "${packageName}";`)) failures.push(`Native bridge must import ${plugin} directly from ${packageName}`);
+  if (!bridge.includes(`${plugin}: ${plugin} as unknown as CapacitorPlugin`)) failures.push(`Native bridge must register the direct ${plugin} export`);
+}
+if (bridge.includes("capacitor.Plugins") || bridge.includes("Capacitor.Plugins")) {
+  failures.push("Native bridge must not depend on the deprecated Capacitor.Plugins registry");
 }
 if (bridge.includes('parsed.protocol === "com.zikr.app:"') && bridge.includes("exchangeCodeForSession")) {
   failures.push("Native bridge must not exchange the Google OAuth session; NativeGoogleOAuthHandler is the single callback owner");
@@ -140,8 +292,9 @@ for (const token of [
 }
 for (const token of [
   "Capacitor.isNativePlatform()",
-  'new URL("/auth/callback", getCanonicalBrowserOrigin())',
+  'new URL("/auth/callback", PRODUCTION_URL)',
   'url.searchParams.set("native", "1")',
+  'url.searchParams.set("next", nextPath)',
   "Browser.open({ url: data.url })",
 ]) {
   if (!googleButton.includes(token)) failures.push(`Google OAuth button missing HTTPS native callback bridge behavior: ${token}`);
@@ -207,6 +360,7 @@ if (serviceWorker.match(/const CORE_INSTALL_ASSETS = \[([\s\S]*?)\];/)) {
   if (coreAssets.includes('"/"')) failures.push("Service worker must not pre-cache the root HTML route");
 }
 
+if (releaseCheck && releaseChannel === "store" && ["all", "android"].includes(releasePlatform) && !process.env.NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID?.trim()) failures.push("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for Android native Google sign-in in store builds.");
 if (releaseCheck && releaseChannel === "store" && ["all", "android"].includes(releasePlatform) && !process.env.ANDROID_APP_LINKS_SHA256) failures.push("ANDROID_APP_LINKS_SHA256 is required for a Play Store release; provide the real release signing certificate SHA-256 fingerprint.");
 if (releaseCheck && releaseChannel === "store" && ["all", "ios"].includes(releasePlatform) && !process.env.IOS_ASSOCIATED_DOMAIN_APP_ID) failures.push("IOS_ASSOCIATED_DOMAIN_APP_ID is required for an App Store release; provide the real Apple Team ID and bundle ID.");
 if (releaseCheck && !["all", "android", "ios"].includes(releasePlatform)) failures.push("MOBILE_RELEASE_PLATFORM must be one of: all, android, ios.");

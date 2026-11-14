@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const smoke = readFileSync("scripts/verify-production-smoke.mjs", "utf8");
+const supabaseProductionGate = readFileSync("scripts/verify-supabase-production.mjs", "utf8");
 const articleService = readFileSync("src/features/articles/services/articles.ts", "utf8");
 const articlePage = readFileSync("src/app/articles/[slug]/page.tsx", "utf8");
 const duaService = readFileSync("src/features/dua/services/dua.ts", "utf8");
@@ -37,5 +38,21 @@ for (const [source, token, description] of contentFallbackContracts) {
   assert.ok(source.includes(token), description);
 }
 assert.ok(!duaLayout.includes("generateMetadata"), "Dua layout must not issue a duplicate metadata database request");
+assert.ok(
+  !supabaseProductionGate.includes('method: "POST"'),
+  "production Supabase health checks must not mutate rate-limit state",
+);
+assert.ok(
+  supabaseProductionGate.includes('method: "GET"'),
+  "production Supabase health checks must use explicit read-only GET requests",
+);
+assert.ok(
+  !supabaseProductionGate.includes("/rest/v1/rpc/consume_admin_rate_limit"),
+  "the mutating rate-limit RPC must be tested locally, never invoked by production smoke",
+);
+assert.ok(
+  supabaseProductionGate.includes("/rest/v1/admin_rate_limits?select=actor_id&limit=0"),
+  "the production gate may verify the admin rate-limit schema using a read-only GET",
+);
 
 console.log(`Production smoke contract passed: ${requiredContracts.length + contentFallbackContracts.length + 1} assertions.`);

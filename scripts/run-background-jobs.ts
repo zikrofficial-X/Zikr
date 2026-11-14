@@ -4,11 +4,13 @@ import { processTemplateVideoQueue, seedAutomatedVideoRequests } from "./jobs/te
 import { processScheduledContent } from "./jobs/content-publishing";
 import { processSocialPublishQueue, syncSocialInsights } from "./jobs/social-publishing";
 import { getVideoEngineConfig } from "../src/features/videos/providers/types";
-import { evaluateBackgroundJobOutcome, shouldClearRunNowRequest } from "../src/features/videos/services/background-job-outcome";
+import { buildRunNowRequestDeleteFilter, evaluateBackgroundJobOutcome, isSameRunNowRequest, shouldClearRunNowRequest, shouldRunScheduledContentPublishing } from "../src/features/videos/services/background-job-outcome";
+import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../src/features/videos/services/background-job-settings";
 import { supabaseServerAdminRequest } from "../src/lib/supabase/admin-rest";
 import { notifyNewQueueFailures } from "./jobs/admin-queue-alerts";
 type VideoAutomationRunNow = {
   requestedAt: string;
+  requestId?: string | null;
   requestedBy?: string | null;
   dispatchedAt?: string | null;
 };
@@ -46,10 +48,12 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
   if (!value || typeof value !== "object") return null;
   const requestedAt = (value as { requestedAt?: unknown }).requestedAt;
   if (typeof requestedAt !== "string" || !requestedAt.trim()) return null;
+  const requestId = (value as { requestId?: unknown }).requestId;
   const requestedBy = (value as { requestedBy?: unknown }).requestedBy;
   const dispatchedAt = (value as { dispatchedAt?: unknown }).dispatchedAt;
   return {
     requestedAt: requestedAt.trim(),
+    requestId: typeof requestId === "string" ? requestId : null,
     requestedBy: typeof requestedBy === "string" ? requestedBy : null,
     dispatchedAt: typeof dispatchedAt === "string" ? dispatchedAt : null,
   };
@@ -58,7 +62,10 @@ function parseRunNowRequest(value: unknown): VideoAutomationRunNow | null {
 async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
     "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_automation_batch_size,video_automation_ai_enabled,video_automation_auto_publish,video_automation_daily_target,video_automation_ai_attempts_per_run,video_automation_video_seconds,video_automation_run_now,video_custom_spaces)&select=key,value",
-  ).catch(() => []);
+  ).catch((error) => {
+    console.error("[background-jobs] Could not read Admin video settings; video automation will remain disabled:", error);
+    return [];
+  });
 
   const values = Object.fromEntries((rows ?? []).map((row) => [row.key, row.value]));
   if (Array.isArray(values.video_custom_spaces)) {
@@ -67,7 +74,7 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
     process.env.HF_VIDEO_CUSTOM_SPACES = values.video_custom_spaces;
   }
   return {
-    enabled: parseBoolSetting(values.video_automation_enabled, true),
+    enabled: isVideoAutomationEnabled(values.video_automation_enabled),
     batchSize: parseBoundedNumberSetting(
       values.video_automation_batch_size,
       Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? 3) || 3),
@@ -98,19 +105,30 @@ async function getVideoAutomationSettings(): Promise<VideoAutomationSettings> {
   };
 }
 
-async function clearRunNowRequest(requestedAt: string) {
-  const current = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value&limit=1",
+async function clearRunNowRequest(request: VideoAutomationRunNow) {
+  const current = await supabaseServerAdminRequest<Array<{
+    key: string;
+    value: unknown;
+    updated_at: string | null;
+  }>>(
+    "/rest/v1/admin_settings?key=eq.video_automation_run_now&select=key,value,updated_at&limit=1",
   ).catch(() => []);
 
-  const parsed = parseRunNowRequest(current?.[0]?.value);
-  if (!parsed || parsed.requestedAt !== requestedAt) return;
+  const row = current?.[0];
+  const parsed = parseRunNowRequest(row?.value);
+  if (!row?.updated_at || !parsed || !isSameRunNowRequest(parsed, request)) return;
+
+  // Compare both updated_at and the complete JSONB value in the DELETE itself.
+  // A replacement request can arrive after the read above, even with the same
+  // millisecond timestamp; the value predicate makes the consumption atomic.
+  const deleteFilter = buildRunNowRequestDeleteFilter(row.updated_at, row.value);
+  if (!deleteFilter) return;
 
   await supabaseServerAdminRequest(
-    "/rest/v1/admin_settings?key=eq.video_automation_run_now",
+    `/rest/v1/admin_settings?${deleteFilter}`,
     {
       method: "DELETE",
-      headers: { Prefer: "return=minimal" },
+      headers: { Prefer: "return=representation" },
     },
   );
 }
@@ -132,7 +150,7 @@ async function isVideoGenerationPaused(): Promise<boolean> {
       "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
     );
     const values = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
-    return values.video_purge_in_progress === true || values.video_automation_enabled === false;
+    return isVideoPurgeInProgress(values.video_purge_in_progress) || !isVideoAutomationEnabled(values.video_automation_enabled);
   } catch (error) {
     console.error("[background-jobs] Could not verify the live video-generation lock; failing closed:", error);
     return true;
@@ -344,7 +362,8 @@ async function main() {
   validateRequiredEnv();
   const target = process.env.BACKGROUND_JOB_TARGET ?? "videos";
   const videoSettings = await getVideoAutomationSettings();
-  const runNowRequestedAt = videoSettings.runNowRequest?.requestedAt ?? null;
+  const runNowRequest = videoSettings.runNowRequest;
+  const runNowRequestedAt = runNowRequest?.requestedAt ?? null;
   applyVideoAutomationSettings(videoSettings);
   console.log("[background-jobs] Admin video settings:", JSON.stringify(videoSettings));
   if (!["all", "videos", "social", "insights"].includes(target)) {
@@ -357,17 +376,24 @@ async function main() {
     ? await processVideos(videoSettings)
     : { processed: 0, succeeded: 0, authBlocked: 0, failed: 0, skipped: 0, seeded: 0 };
 
-  if (runNowRequestedAt && shouldClearRunNowRequest({
+  if (runNowRequest && shouldClearRunNowRequest({
     hasRequest: true,
     target,
     automationEnabled: videoSettings.enabled,
     videosProcessed: videos.processed,
   })) {
-    await clearRunNowRequest(runNowRequestedAt);
+    await clearRunNowRequest(runNowRequest);
     console.log(`[background-jobs] Cleared completed urgent video run request ${runNowRequestedAt}.`);
   }
 
-  const sitePublishing = target === "all" || target === "videos"
+  const shouldPublishScheduledContent = shouldRunScheduledContentPublishing({
+    target,
+    videoDryRun: VIDEO_DRY_RUN,
+  });
+  if (!shouldPublishScheduledContent && VIDEO_DRY_RUN && (target === "all" || target === "videos")) {
+    console.log("[background-jobs] VIDEO_AUTOMATION_DRY_RUN=true; scheduled internal site publication is skipped.");
+  }
+  const sitePublishing = shouldPublishScheduledContent
     ? await processScheduledContent(20).catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
         console.error("[background-jobs] Internal site publishing queue failed:", message);

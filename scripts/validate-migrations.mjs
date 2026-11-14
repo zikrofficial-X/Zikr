@@ -75,7 +75,9 @@ DO $do$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN CREATE ROLE supabase_admin; END IF;
 END $do$;
+GRANT CREATE ON SCHEMA public TO supabase_admin;
 
 -- Production still contains these runtime tables from the archived 20260929
 -- kids/video migration family. They are intentionally kept outside the active
@@ -214,6 +216,69 @@ GROUP BY to_char(now(), 'YYYY-MM');
 await db.exec(stubs);
 console.log('Supabase stubs installed');
 
+// Recreate the production non-DML ACL baseline before replaying migrations.
+// The live project currently has these browser-role grants on existing public
+// tables and in both owners' public-schema default ACLs. The final hardening
+// migration must remove them without relying on an empty PGlite starting state.
+await db.exec(`
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES
+    TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES
+    TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO PUBLIC, anon, authenticated;
+  ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+    GRANT EXECUTE ON FUNCTIONS TO PUBLIC, anon, authenticated;
+
+  CREATE TABLE public.__audit_existing_non_dml_privilege_probe (
+    id integer PRIMARY KEY
+  );
+  GRANT TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+    ON TABLE public.__audit_existing_non_dml_privilege_probe
+    TO PUBLIC, anon, authenticated;
+
+  SET ROLE supabase_admin;
+  CREATE TABLE public.__audit_supabase_admin_non_dml_privilege_probe (
+    id integer PRIMARY KEY
+  );
+  RESET ROLE;
+`);
+
+const seededNonDmlPrivileges = await db.query(`
+  SELECT count(*) AS grant_count
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+  CROSS JOIN unnest(ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN']::text[]) AS p(privilege)
+  WHERE n.nspname = 'public'
+    AND c.relname IN (
+      '__audit_existing_non_dml_privilege_probe',
+      '__audit_supabase_admin_non_dml_privilege_probe'
+    )
+    AND has_table_privilege(r.role_name, c.oid, p.privilege)
+`);
+if (Number(seededNonDmlPrivileges.rows[0]?.grant_count ?? 0) !== 16) {
+  throw new Error(
+    "CLIENT_NON_DML_BASELINE_SETUP_FAILED: expected 16 browser-role table grants before migration replay.",
+  );
+}
+
+const seededDefaultAclOwners = await db.query(`
+  SELECT count(DISTINCT d.defaclrole) AS owner_count
+  FROM pg_default_acl d
+  JOIN pg_namespace n ON n.oid = d.defaclnamespace
+  WHERE n.nspname = 'public'
+    AND d.defaclobjtype = 'r'
+`);
+if (Number(seededDefaultAclOwners.rows[0]?.owner_count ?? 0) < 2) {
+  throw new Error(
+    "CLIENT_NON_DML_DEFAULT_ACL_BASELINE_SETUP_FAILED: expected postgres and supabase_admin public defaults.",
+  );
+}
+console.log("CLIENT_NON_DML_BASELINE_SEEDED: existing tables and both owner default ACLs contain browser-role grants.");
+
 const versions = new Map();
 const duplicateVersions = new Set();
 const activePolicies = new Map();
@@ -330,6 +395,339 @@ for (const f of migrationsToApply.slice(startIndex)) {
     failed++;
     console.log('FAIL', f);
     console.log('     ', e.message.split('\n')[0]);
+  }
+}
+
+if (failed === 0) {
+  const safeRetentionContract = await db.query(
+    "SELECT public.video_storage_retention_contract_ready() AS ready",
+  );
+  if (safeRetentionContract.rows[0]?.ready !== true) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_FAILED: the current RPC did not satisfy the playback-preservation preflight.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_SAFE_PASSED");
+  }
+
+  // Prove that the live preflight rejects a function that clears playback URLs.
+  // This replacement is isolated to the in-memory PGlite transaction and is
+  // rolled back before any later migration checks or process exit.
+  await db.exec("BEGIN");
+  let unsafeRetentionRejected = false;
+  try {
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
+        p_queue_id uuid,
+        p_request_id uuid,
+        p_expected_url text,
+        p_retention jsonb,
+        p_finalize boolean DEFAULT false
+      )
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY INVOKER
+      SET search_path = ''
+      AS $unsafe$
+      BEGIN
+        UPDATE public.social_publish_queue
+        SET video_url = NULL
+        WHERE id = p_queue_id;
+
+        UPDATE public.video_generation_requests
+        SET video_url = NULL
+        WHERE id = p_request_id;
+      END;
+      $unsafe$;
+    `);
+    const unsafeRetentionContract = await db.query(
+      "SELECT public.video_storage_retention_contract_ready() AS ready",
+    );
+    unsafeRetentionRejected = unsafeRetentionContract.rows[0]?.ready === false;
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+
+  if (!unsafeRetentionRejected) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an RPC that clears Cloudinary playback URLs.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_URL_CLEARING");
+  }
+}
+
+
+ 
+if (failed === 0) {
+// Keep the two required playback-preserving UPDATEs but inject an additional
+// INSERT. The contract must reject the unreviewed side effect without executing it.
+await db.exec("BEGIN");
+let extraWriteRejected = false;
+try {
+  await db.exec(`
+    CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
+      p_queue_id uuid,
+      p_request_id uuid,
+      p_expected_url text,
+      p_retention jsonb,
+      p_finalize boolean DEFAULT false
+    )
+    RETURNS void
+    LANGUAGE plpgsql
+    SECURITY INVOKER
+    SET search_path = ''
+    AS $unsafe$
+    BEGIN
+      IF p_finalize IS DISTINCT FROM (p_retention->>'state' = 'purged') THEN
+        RAISE EXCEPTION 'Invalid retention finalization state';
+      END IF;
+      IF p_retention->>'bucket' IS DISTINCT FROM 'videos' THEN
+        RAISE EXCEPTION 'Invalid retention bucket';
+      END IF;
+
+      UPDATE public.social_publish_queue
+      SET metadata = coalesce(metadata, '{}'::jsonb)
+        || jsonb_build_object('storageRetention', p_retention)
+      WHERE id = p_queue_id
+        AND content_id = p_request_id::text
+        AND status = 'published'
+        AND video_url = p_expected_url
+        AND metadata->'storageRetention'->>'path' = p_retention->>'path';
+
+      UPDATE public.video_generation_requests
+      SET content = coalesce(content, '{}'::jsonb)
+        || jsonb_build_object('storageRetention', p_retention)
+      WHERE id = p_request_id
+        AND status = 'completed'
+        AND video_url = p_expected_url
+        AND content->'storageRetention'->>'path' = p_retention->>'path';
+
+      INSERT INTO public.admin_settings (key, value)
+      VALUES ('retention-contract-probe', 'true');
+    END;
+    $unsafe$;
+  `);
+  const extraWriteContract = await db.query(
+    "SELECT public.video_storage_retention_contract_ready() AS ready",
+  );
+  extraWriteRejected = extraWriteContract.rows[0]?.ready === false;
+} finally {
+  await db.exec("ROLLBACK");
+}
+
+if (!extraWriteRejected) {
+  failed++;
+  console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an extra INSERT side effect.");
+} else {
+  console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_EXTRA_INSERT");
+}
+}
+
+
+if (failed === 0) {
+  // A playback-preserving RPC can still be unsafe if it changes queue/request
+  // state while recording retention metadata. The preflight must allow only
+  // metadata/content plus updated_at in the two UPDATE SET clauses.
+  await db.exec("BEGIN");
+  let extraColumnRejected = false;
+  try {
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.update_video_storage_retention(
+        p_queue_id uuid,
+        p_request_id uuid,
+        p_expected_url text,
+        p_retention jsonb,
+        p_finalize boolean DEFAULT false
+      )
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY INVOKER
+      SET search_path = ''
+      AS $unsafe$
+      BEGIN
+        IF p_finalize IS DISTINCT FROM (p_retention->>'state' = 'purged') THEN
+          RAISE EXCEPTION 'Invalid retention finalization state';
+        END IF;
+        IF p_retention->>'bucket' IS DISTINCT FROM 'videos' THEN
+          RAISE EXCEPTION 'Invalid retention bucket';
+        END IF;
+
+        UPDATE public.social_publish_queue
+        SET metadata = coalesce(metadata, '{}'::jsonb)
+              || jsonb_build_object('storageRetention', p_retention),
+            status = 'failed',
+            updated_at = now()
+        WHERE id = p_queue_id
+          AND content_id = p_request_id::text
+          AND status = 'published'
+          AND video_url = p_expected_url
+          AND metadata->'storageRetention'->>'path' = p_retention->>'path';
+
+        UPDATE public.video_generation_requests
+        SET content = coalesce(content, '{}'::jsonb)
+              || jsonb_build_object('storageRetention', p_retention),
+            status = 'failed',
+            updated_at = now()
+        WHERE id = p_request_id
+          AND status = 'completed'
+          AND video_url = p_expected_url
+          AND content->'storageRetention'->>'path' = p_retention->>'path';
+      END;
+      $unsafe$;
+    `);
+    const extraColumnContract = await db.query(
+      "SELECT public.video_storage_retention_contract_ready() AS ready",
+    );
+    extraColumnRejected = extraColumnContract.rows[0]?.ready === false;
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+
+  if (!extraColumnRejected) {
+    failed++;
+    console.error("VIDEO_STORAGE_RETENTION_CONTRACT_REGRESSION: the preflight accepted an unexpected status assignment.");
+  } else {
+    console.log("VIDEO_STORAGE_RETENTION_CONTRACT_REJECTS_EXTRA_COLUMN_ASSIGNMENT");
+  }
+}
+
+
+if (failed === 0) {
+  const clientTablePrivileges = await db.query(`
+    SELECT n.nspname AS schema_name, c.relname AS table_name,
+           r.role_name, p.privilege
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    CROSS JOIN (VALUES ('anon'), ('authenticated')) AS r(role_name)
+    CROSS JOIN unnest(ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN']::text[]) AS p(privilege)
+    WHERE n.nspname = 'public'
+      AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
+      AND has_table_privilege(r.role_name, c.oid, p.privilege)
+    ORDER BY c.relname, r.role_name, p.privilege
+  `);
+  const clientDefaultPrivilegesSql = `
+    SELECT owner.rolname AS owner,
+           COALESCE(n.nspname, '<global>') AS schema_name,
+           COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+           acl.privilege_type
+    FROM pg_default_acl d
+    JOIN pg_roles owner ON owner.oid = d.defaclrole
+    LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE d.defaclobjtype = 'r'
+      AND (d.defaclnamespace = 0 OR n.nspname = 'public')
+      AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
+      AND acl.privilege_type IN ('TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN')
+    ORDER BY owner.rolname, schema_name, grantee, acl.privilege_type
+  `;
+  const clientDefaultPrivileges = await db.query(clientDefaultPrivilegesSql);
+
+  const clientDefaultFunctionPrivilegesSql = `
+    SELECT owner.rolname AS owner,
+           COALESCE(n.nspname, '<global>') AS schema_name,
+           COALESCE(grantee.rolname, 'PUBLIC') AS grantee,
+           acl.privilege_type
+    FROM pg_default_acl d
+    JOIN pg_roles owner ON owner.oid = d.defaclrole
+    LEFT JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid = acl.grantee
+    WHERE d.defaclobjtype = 'f'
+      AND (d.defaclnamespace = 0 OR n.nspname = 'public')
+      AND (acl.grantee = 0 OR grantee.rolname IN ('anon', 'authenticated'))
+      AND acl.privilege_type = 'EXECUTE'
+    ORDER BY owner.rolname, schema_name, grantee
+  `;
+  const clientDefaultFunctionPrivileges = await db.query(clientDefaultFunctionPrivilegesSql);
+
+  // Prove the effective privileges of functions created after the migration.
+  // Inspecting pg_default_acl alone misses PostgreSQL's implicit global PUBLIC
+  // EXECUTE default, which a schema-only REVOKE cannot override.
+  async function verifyNewPublicFunctionIsNotBrowserCallable(ownerRole, suffix) {
+    const functionName = `default_function_execute_probe_${suffix}`;
+    await db.exec(`SET ROLE ${ownerRole}`);
+    try {
+      await db.exec(`CREATE FUNCTION public.${functionName}() RETURNS integer LANGUAGE sql SECURITY DEFINER AS 'SELECT 1'`);
+    } finally {
+      await db.exec("RESET ROLE");
+    }
+    const probe = await db.query(`SELECT
+      has_function_privilege('anon', 'public.${functionName}()', 'EXECUTE') AS anon_execute,
+      has_function_privilege('authenticated', 'public.${functionName}()', 'EXECUTE') AS authenticated_execute
+    `);
+    await db.exec(`DROP FUNCTION public.${functionName}()`);
+    const row = probe.rows[0] ?? {};
+    if (row.anon_execute || row.authenticated_execute) {
+      failed++;
+      console.error(`CLIENT_DEFAULT_FUNCTION_EXECUTE_REGRESSION: ${ownerRole} created ${functionName} with browser EXECUTE privileges.`);
+    } else {
+      console.log(`CLIENT_DEFAULT_FUNCTION_EXECUTE_PROBE_PASSED: ${ownerRole}`);
+    }
+  }
+  await verifyNewPublicFunctionIsNotBrowserCallable("postgres", "postgres");
+  await verifyNewPublicFunctionIsNotBrowserCallable("supabase_admin", "supabase_admin");
+
+  await db.exec("BEGIN");
+  let globalDefaultFunctionPrivilegeDetected = false;
+  try {
+    await db.exec("ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT EXECUTE ON FUNCTIONS TO anon");
+    const globalProbe = await db.query(clientDefaultFunctionPrivilegesSql);
+    globalDefaultFunctionPrivilegeDetected = globalProbe.rows.some((row) =>
+      row.owner === "postgres" &&
+      row.schema_name === "<global>" &&
+      row.grantee === "anon" &&
+      row.privilege_type === "EXECUTE"
+    );
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+  if (!globalDefaultFunctionPrivilegeDetected) {
+    failed++;
+    console.error("CLIENT_DEFAULT_FUNCTION_EXECUTE_AUDIT_FAILED: the audit query did not detect a global browser-role EXECUTE grant.");
+  } else {
+    console.log("CLIENT_DEFAULT_FUNCTION_EXECUTE_AUDIT_PASSED");
+  }
+
+  // Global default privileges are additive to per-schema defaults. Prove that
+  // the audit query detects a global grant as well as the public-schema grants
+  // removed by the migration chain; the probe is rolled back in this PGlite DB.
+  await db.exec("BEGIN");
+  let globalDefaultPrivilegeDetected = false;
+  try {
+    await db.exec("ALTER DEFAULT PRIVILEGES FOR ROLE postgres GRANT TRUNCATE ON TABLES TO anon");
+    const globalProbe = await db.query(clientDefaultPrivilegesSql);
+    globalDefaultPrivilegeDetected = globalProbe.rows.some((row) =>
+      row.owner === "postgres" &&
+      row.schema_name === "<global>" &&
+      row.grantee === "anon" &&
+      row.privilege_type === "TRUNCATE"
+    );
+  } finally {
+    await db.exec("ROLLBACK");
+  }
+  if (!globalDefaultPrivilegeDetected) {
+    failed++;
+    console.error("CLIENT_NON_DML_GLOBAL_DEFAULT_PRIVILEGE_AUDIT_FAILED: the audit query did not detect a global browser-role grant.");
+  } else {
+    console.log("CLIENT_NON_DML_GLOBAL_DEFAULT_PRIVILEGE_AUDIT_PASSED");
+  }
+
+  if (
+    clientTablePrivileges.rows.length > 0 ||
+    clientDefaultPrivileges.rows.length > 0 ||
+    clientDefaultFunctionPrivileges.rows.length > 0
+  ) {
+    failed++;
+    console.error(
+      "CLIENT_NON_DML_OR_DEFAULT_FUNCTION_PRIVILEGES_REGRESSION: browser roles retain non-RLS table privileges or default function EXECUTE.",
+      JSON.stringify({
+        existing: clientTablePrivileges.rows,
+        defaults: clientDefaultPrivileges.rows,
+        functionDefaults: clientDefaultFunctionPrivileges.rows,
+      }),
+    );
+  } else {
+    console.log("CLIENT_NON_DML_TABLE_AND_DEFAULT_FUNCTION_PRIVILEGES_REVOKED");
   }
 }
 

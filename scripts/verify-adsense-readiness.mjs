@@ -6,6 +6,8 @@ const requiredFiles = [
   'src/lib/site.ts',
   'src/app/robots.ts',
   'src/app/sitemap.ts',
+  'src/app/sitemap-index.xml/route.ts',
+  'src/app/sitemap-content/[id]/route.ts',
   'src/app/about/page.tsx',
   'src/app/contact/page.tsx',
   'src/app/privacy/page.tsx',
@@ -72,13 +74,19 @@ const adsenseSlot = read('src/components/layout/adsense-slot.tsx');
 const articlePage = read('src/app/articles/[slug]/page.tsx');
 const envExample = read('.env.example');
 
-if (!/google-adsense-account/.test(layout)) fail('AdSense publisher meta tag is missing from app/layout.tsx.');
-const layoutPublisher = layout.match(/ca-pub-\d{8,}/)?.[0] ?? null;
+if (!/google-adsense-account/.test(webAdvertisingRuntime)) fail('AdSense publisher meta tag is missing from the web-only advertising runtime.');
+if (
+  layout.includes('google-adsense-account') ||
+  layout.includes('google-consent-mode-default') ||
+  layout.includes('window.adsbygoogle') ||
+  layout.includes('requestNonPersonalizedAds = 1')
+) fail('AdSense publisher metadata and Consent Mode globals must not be emitted in the server-rendered native layout.');
+const runtimePublisher = webAdvertisingRuntime.match(/ca-pub-\d{8,}/)?.[0] ?? null;
 const adsTxtPublisher = adsTxt.match(/google\.com,\s*(pub-\d{8,})\s*,\s*DIRECT\s*,\s*f08c47fec0942fa0/i)?.[1] ?? null;
 if (!adsTxtPublisher) fail('public/ads.txt does not contain a valid Google direct-seller entry.');
 const normalizedAdsTxtPublisher = adsTxtPublisher?.replace(/^pub-/, 'ca-pub-') ?? null;
-if (layoutPublisher && normalizedAdsTxtPublisher && layoutPublisher !== normalizedAdsTxtPublisher) {
-  fail(`Publisher mismatch: layout=${layoutPublisher}, ads.txt=${adsTxtPublisher}.`);
+if (runtimePublisher && normalizedAdsTxtPublisher && runtimePublisher !== normalizedAdsTxtPublisher) {
+  fail(`Publisher mismatch: runtime=${runtimePublisher}, ads.txt=${adsTxtPublisher}.`);
 }
 if (!adsense.includes('NEXT_PUBLIC_ADSENSE_ENABLED === "true"') || !envExample.includes('NEXT_PUBLIC_ADSENSE_ENABLED=false')) {
   fail('AdSense must remain explicitly disabled by default until account review and consent settings are confirmed.');
@@ -92,11 +100,46 @@ if (!adsenseSlot.includes('data-ad-slot') || !adsenseSlot.includes('requestNonPe
 if (!adsenseSlot.includes('Capacitor.isNativePlatform()') || !articlePage.includes('<AdSenseSlot')) {
   fail('AdSense must be limited to web editorial articles and excluded from native app builds.');
 }
-if (!layout.includes('requestNonPersonalizedAds = 1')) {
-  fail('AdSense requests must default to non-personalized before the Google tag is loaded.');
+if (
+  !adsenseSlot.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !adsenseSlot.includes("isCanonicalProductionOrigin") ||
+  !adsenseSlot.includes("setIsWebRuntime(!Capacitor.isNativePlatform() && isCanonicalProductionOrigin())")
+) {
+  fail('The AdSense slot markup and queue must be excluded from Preview aliases and non-canonical hosts.');
+}
+if (
+  !webAdvertisingRuntime.includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !webAdvertisingRuntime.includes("isCanonicalProductionOrigin") ||
+  !webAdvertisingRuntime.includes("if (!isCanonicalProductionOrigin())") ||
+  !read('src/components/layout/runtime-effects.tsx').includes('import { PRODUCTION_URL } from "@/lib/site";') ||
+  !read('src/components/layout/runtime-effects.tsx').includes("window.location.origin === new URL(PRODUCTION_URL).origin") ||
+  read('src/components/layout/runtime-effects.tsx').includes("window.location.hostname")
+) {
+  fail('Monetization scripts must load only on the canonical production host, never on Vercel Preview aliases.');
+}
+const nativeGuardIndex = webAdvertisingRuntime.indexOf('if (Capacitor.isNativePlatform())');
+const canonicalOriginGuardIndex = webAdvertisingRuntime.indexOf('if (!isCanonicalProductionOrigin())');
+const consentDefaultsIndex = webAdvertisingRuntime.indexOf('installConsentModeDefaults();');
+const adsenseMetaCreateIndex = webAdvertisingRuntime.indexOf('meta.name = "google-adsense-account"');
+if (
+  !webAdvertisingRuntime.includes('requestNonPersonalizedAds = 1') ||
+  !webAdvertisingRuntime.includes('installConsentModeDefaults') ||
+  nativeGuardIndex < 0 ||
+  canonicalOriginGuardIndex < nativeGuardIndex ||
+  consentDefaultsIndex < canonicalOriginGuardIndex ||
+  adsenseMetaCreateIndex < consentDefaultsIndex
+) {
+  fail('Consent Mode and AdSense publisher metadata must be installed only after native/canonical-origin guards, with non-personalized defaults before publisher scripts.');
 }
 
-if (!/sitemap\.xml/.test(read('src/app/robots.ts'))) fail('robots.ts does not advertise sitemap.xml.');
+const robotsSource = read('src/app/robots.ts');
+const sitemapIndexRoute = read('src/app/sitemap-index.xml/route.ts');
+if (!robotsSource.includes('sitemap: `${baseUrl}/sitemap-index.xml`')) {
+  fail('robots.ts must advertise the sitemap index so every generated content shard is discoverable.');
+}
+if (!sitemapIndexRoute.includes('getSitemapShardCount') || !sitemapIndexRoute.includes('/sitemap-content/${id}.xml')) {
+  fail('The advertised sitemap index must enumerate every generated content shard.');
+}
 if (!/alternates:\s*\{\s*canonical:\s*["']\/["']/.test(layout)) warn('Root canonical is not declared in the expected metadata shape.');
 if (/languages\s*:\s*\{[\s\S]*?en\s*:/.test(layout)) fail('English alternate metadata is present although the site is currently Arabic-only.');
 if (/inLanguage:\s*\[\s*["']ar["']\s*,\s*["']en["']\s*\]/.test(layout)) fail('WebSite JSON-LD incorrectly advertises English content.');

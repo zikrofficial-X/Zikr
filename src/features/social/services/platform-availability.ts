@@ -11,9 +11,37 @@ export type SocialPlatformMetadata = {
   permanentFailurePlatforms?: unknown;
   approvalDeferredPlatforms?: unknown;
   unavailablePlatforms?: unknown;
+  manualReconciliationPlatforms?: unknown;
   sourceMediaMissing?: unknown;
+  writtenArticlePublicationBlocked?: unknown;
+  writtenArticlePublicationPending?: unknown;
+  kidsSourceApprovalBlocked?: unknown;
+  kidsSourceApprovalPending?: unknown;
   attempts?: unknown;
 } | null | undefined;
+
+export type RequestedSocialPlatformsResult =
+  | { ok: true; platforms: SocialPlatform[] }
+  | { ok: false; error: string };
+
+/**
+ * Omitted/empty platform lists intentionally mean "all eligible targets".
+ * A malformed or unsupported non-empty list must never silently widen a
+ * destructive or publishing action to every platform.
+ */
+export function parseRequestedSocialPlatforms(value: unknown): RequestedSocialPlatformsResult {
+  if (value === undefined || (Array.isArray(value) && value.length === 0)) {
+    return { ok: true, platforms: [] };
+  }
+  if (!Array.isArray(value)) {
+    return { ok: false, error: "A platform list must be an array." };
+  }
+  const supported = new Set<SocialPlatform>(["facebook", "facebook_reels", "youtube"]);
+  if (value.some(platform => typeof platform !== "string" || !supported.has(platform as SocialPlatform))) {
+    return { ok: false, error: "The platform list contains an unsupported target." };
+  }
+  return { ok: true, platforms: [...new Set(value as SocialPlatform[])] };
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -34,6 +62,34 @@ export function normalizeSocialPlatformResults(value: unknown): Record<string, u
     return Object.fromEntries(entries);
   }
   return asRecord(value) ?? {};
+}
+
+function isValidSocialPlatformResult(value: unknown): boolean {
+  if (value === null) return true;
+  const result = asRecord(value);
+  if (!result || typeof result.ok !== "boolean") return false;
+  if (result.ok === true) {
+    return typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+  }
+  return typeof result.error === "string" && result.error.trim().length > 0;
+}
+
+export function hasMalformedSocialPlatformResults(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (Array.isArray(value)) {
+    const seenPlatforms = new Set<string>();
+    return value.some((item) => {
+      const row = asRecord(item);
+      if (!row || typeof row.platform !== "string" || !row.platform.trim()) return true;
+      const platform = row.platform.trim();
+      if (seenPlatforms.has(platform)) return true;
+      seenPlatforms.add(platform);
+      return !isValidSocialPlatformResult(row);
+    });
+  }
+  const record = asRecord(value);
+  if (!record) return true;
+  return Object.values(record).some((result) => !isValidSocialPlatformResult(result));
 }
 
 function metadataPlatforms(value: unknown): SocialPlatform[] {
@@ -58,31 +114,98 @@ function hasSuccessfulDelivery(value: unknown): boolean {
   return result?.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
 }
 
-function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
-  if (!platform.startsWith("facebook") || typeof error !== "string") return false;
+export function isAuthBlocked(platform: SocialPlatform, error: unknown): boolean {
+  if (typeof error !== "string") return false;
   const value = error.toLowerCase();
-  return value.includes("access token") || value.includes("session has expired") ||
-    value.includes("oauth") || value.includes("reauthorization_required") ||
-    value.includes("reconnect the page");
+  if (platform.startsWith("facebook")) {
+    return value.includes("access token") || value.includes("session has expired") ||
+      value.includes("oauth") || value.includes("reauthorization_required") ||
+      value.includes("reconnect the page");
+  }
+  if (platform === "youtube") {
+    return value.includes("oauth") || value.includes("invalid_grant") ||
+      value.includes("invalid_token") || value.includes("access token") ||
+      value.includes("unauthorized") || /http\s+401\b/.test(value) ||
+      value.includes("missing the required upload/read scopes") ||
+      value.includes("insufficientpermissions") || value.includes("insufficient permissions");
+  }
+  return false;
+}
+
+export function mergeAuthBlockedPlatforms(
+  previousMetadata: SocialPlatformMetadata,
+  targetPlatforms: readonly string[],
+  attemptedPlatforms: readonly string[],
+  currentFailures: readonly { platform: string; error?: unknown }[],
+): SocialPlatform[] {
+  const supported = new Set<SocialPlatform>(["facebook", "facebook_reels", "youtube"]);
+  const targets = targetPlatforms.filter((platform): platform is SocialPlatform =>
+    supported.has(platform as SocialPlatform),
+  );
+  const attempted = new Set<SocialPlatform>(
+    attemptedPlatforms.filter((platform): platform is SocialPlatform =>
+      supported.has(platform as SocialPlatform),
+    ),
+  );
+  const previous = metadataPlatforms(previousMetadata?.authBlockedPlatforms);
+  const retained = previous.filter((platform) => !attempted.has(platform));
+
+  // Older rows stored only a global Facebook auth flag. Convert it to explicit
+  // Facebook targets before a different platform's attempt can overwrite it.
+  if (previousMetadata?.authBlocked === true && previous.length === 0) {
+    for (const platform of targets) {
+      if (platform.startsWith("facebook") && !attempted.has(platform)) {
+        retained.push(platform);
+      }
+    }
+  }
+
+  const current = currentFailures
+    .filter((failure) =>
+      supported.has(failure.platform as SocialPlatform) &&
+      isAuthBlocked(failure.platform as SocialPlatform, failure.error),
+    )
+    .map((failure) => failure.platform as SocialPlatform);
+
+  return [...new Set([...retained, ...current])];
 }
 
 export function isPermanentSocialFailure(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|oauth|access token|publishing is disabled|not configured|human qa approval/i.test(error);
+  return /http\s+422|unprocessable entity|source media unavailable|no supported target|requires video_url|requires an absolute video media url|requires an http\(s\) video media url|youtube watch\/embed|publishing is disabled|not configured|human qa approval/i.test(error);
 }
 
 export function isAmbiguousProviderOutcome(error: unknown): boolean {
   if (typeof error !== "string") return false;
-  return /http\s+(?:408|425|500|502|503|504)\b|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
+  return /http\s+(?:408|425|500|502|503|504)\b|completed without returning a remote post\/video id|\b(?:aborterror|fetch failed|und_err_socket|socket hang up|econnreset|etimedout|econnaborted|network error|timeout|timed out)\b/i.test(error);
 }
 
 export function getManualReconciliationPlatforms(metadata: SocialPlatformMetadata): SocialPlatform[] {
   if (metadata?.sourceMediaMissing === true) return [];
-  const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
-  return supported.filter(
-    (platform) => asRecord(results[platform])?.requiresReconciliation === true,
-  );
+  if (hasMalformedSocialPlatformResults(metadata?.platformResults)) return [...supported];
+  const results = normalizeSocialPlatformResults(metadata?.platformResults);
+  const declaredManualPlatforms = new Set(metadataPlatforms(metadata?.manualReconciliationPlatforms));
+  return supported.filter((platform) => {
+    const result = asRecord(results[platform]);
+    return declaredManualPlatforms.has(platform) ||
+      result?.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result?.error);
+  });
+}
+
+/**
+ * Parse persisted retry counters without allowing malformed JSON metadata to
+ * become NaN and poison retry scheduling. Null means the counter is corrupt;
+ * callers must fail closed rather than silently resetting the retry budget.
+ */
+export function normalizeSocialAttemptCount(value: unknown): number | null {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim().length > 0
+      ? Number(value)
+      : Number.NaN;
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : null;
 }
 
 export function canAttemptSocialPlatform(input: {
@@ -93,6 +216,10 @@ export function canAttemptSocialPlatform(input: {
 }): boolean {
   const { platform, enabledPlatforms, metadata, maxAttempts } = input;
   if (metadata?.sourceMediaMissing === true) return false;
+  if (
+    metadata?.kidsSourceApprovalBlocked === true ||
+    metadata?.writtenArticlePublicationBlocked === true
+  ) return false;
   if (!enabledPlatforms.includes(platform)) return false;
   const rawResults = metadata?.platformResults;
   const hasPlatformResults = rawResults !== null && typeof rawResults === "object";
@@ -115,10 +242,10 @@ export function canAttemptSocialPlatform(input: {
   if (isAuthBlocked(platform, previous?.error) || isPermanentSocialFailure(previous?.error)) return false;
 
   const attempts = asRecord(metadata?.platformAttempts);
-  const legacyAttempts = Number(metadata?.attempts ?? 0);
+  const legacyAttempts = normalizeSocialAttemptCount(metadata?.attempts ?? 0);
   const fallbackAttempts = !hasPlatformResults && !(metadata?.authBlocked === true && platform === "youtube") ? legacyAttempts : 0;
-  const currentAttempts = Number(attempts?.[platform] ?? fallbackAttempts);
-  return Number.isFinite(currentAttempts) && currentAttempts < Math.max(1, maxAttempts);
+  const currentAttempts = normalizeSocialAttemptCount(attempts?.[platform] ?? fallbackAttempts);
+  return currentAttempts !== null && currentAttempts < Math.max(1, maxAttempts);
 }
 
 export function getUnavailableSocialPlatforms(
@@ -139,7 +266,14 @@ export function getRetryableSocialPlatforms(
   metadata: SocialPlatformMetadata,
   allowAmbiguous = false,
 ): SocialPlatform[] {
-  if (metadata?.sourceMediaMissing === true) return [];
+  if (
+    metadata?.sourceMediaMissing === true ||
+    metadata?.kidsSourceApprovalBlocked === true ||
+    metadata?.writtenArticlePublicationBlocked === true
+  ) return [];
+  // The explicit no-remote-publication override is only for a well-formed
+  // ambiguous provider result, never for a corrupt or unparseable ledger.
+  if (hasMalformedSocialPlatformResults(metadata?.platformResults)) return [];
   const results = normalizeSocialPlatformResults(metadata?.platformResults);
   const authBlockedPlatforms = metadataPlatforms(metadata?.authBlockedPlatforms);
   const permanentFailurePlatforms = metadataPlatforms(metadata?.permanentFailurePlatforms);
@@ -261,4 +395,101 @@ export function buildMissingMediaQueueRecoveryPatch(input: {
     updated_at: now,
     metadata: nextMetadata,
   };
+}
+
+export const LOCAL_SOCIAL_QUEUE_DELETE_BATCH_LIMIT = 50;
+
+export type LocalSocialQueueDeletionCandidate = {
+  status: string;
+  target_platforms: readonly string[] | null | undefined;
+  metadata?: SocialPlatformMetadata;
+  error_message?: unknown;
+};
+
+/**
+ * A local queue row may be removed only when every target has an explicit,
+ * non-ambiguous failure (or was explicitly unavailable) and the row is wholly
+ * failed. Partial, successful, legacy-without-ledger, and ambiguous outcomes
+ * retain their audit IDs so remote posts cannot become orphaned.
+ */
+export function getLocalSocialQueueDeletionBlockers(
+  item: LocalSocialQueueDeletionCandidate,
+): string[] {
+  const blockers = new Set<string>();
+  if (item.status !== "failed") blockers.add("status_not_fully_failed");
+
+  const targets = Array.isArray(item.target_platforms) ? item.target_platforms : [];
+  if (targets.length === 0) blockers.add("missing_targets");
+
+  const results = normalizeSocialPlatformResults(item.metadata?.platformResults);
+  const unavailable = new Set(metadataPlatforms(item.metadata?.unavailablePlatforms));
+  const supported: readonly SocialPlatform[] = ["facebook", "facebook_reels", "youtube"];
+
+  for (const target of targets) {
+    if (!supported.includes(target as SocialPlatform)) {
+      blockers.add(target || "unsupported_target");
+      continue;
+    }
+
+    const result = asRecord(results[target]);
+    if (!result) {
+      if (!unavailable.has(target as SocialPlatform)) blockers.add(target);
+      continue;
+    }
+
+    const remoteId = result.remoteId;
+    const hasRemoteId =
+      typeof remoteId === "string" ? remoteId.trim().length > 0 : remoteId !== null && remoteId !== undefined;
+    if (
+      result.ok !== false ||
+      typeof result.error !== "string" ||
+      !result.error.trim() ||
+      hasRemoteId ||
+      result.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result.error)
+    ) {
+      blockers.add(target);
+    }
+  }
+
+  // Protect unexpected/legacy result entries too, not only declared targets.
+  // A remote ID is evidence of a provider-side object even when the provider
+  // response was marked failed or the platform is no longer in target_platforms.
+  for (const [platform, raw] of Object.entries(results)) {
+    const result = asRecord(raw);
+    if (!supported.includes(platform as SocialPlatform)) {
+      blockers.add(platform || "unsupported_result_platform");
+      continue;
+    }
+    const remoteId = result?.remoteId;
+    const hasRemoteId =
+      typeof remoteId === "string"
+        ? remoteId.trim().length > 0
+        : remoteId !== null && remoteId !== undefined;
+    if (
+      !result ||
+      result.ok !== false ||
+      typeof result.error !== "string" ||
+      !result.error.trim() ||
+      hasRemoteId ||
+      result.requiresReconciliation === true ||
+      isAmbiguousProviderOutcome(result.error)
+    ) {
+      blockers.add(platform);
+    }
+  }
+
+  for (const platform of getManualReconciliationPlatforms(item.metadata)) {
+    blockers.add(platform);
+  }
+  if (item.metadata?.sourceMediaMissing === true) blockers.add("source_media_missing");
+  if (isAmbiguousProviderOutcome(item.error_message)) blockers.add("unknown_provider_outcome");
+
+  return [...blockers];
+}
+
+export function canDeleteLocalSocialQueueItem(
+  item: LocalSocialQueueDeletionCandidate,
+): boolean {
+  return getLocalSocialQueueDeletionBlockers(item).length === 0;
 }

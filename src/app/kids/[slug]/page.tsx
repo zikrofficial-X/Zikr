@@ -13,21 +13,14 @@ import { KidsWorldGameShell } from "@/features/kids/components/games/game-shell"
 import { GAME_REGISTRY, parseGameContentMetadata } from "@/lib/games/registry";
 import { useLanguage } from "@/components/layout/language-provider";
 import {
-  getKidsItemBySlug,
   normalizeKidsContentRow,
 } from "@/features/kids/data/content";
-
-type QuizQuestion = {
-  text: string;
-  options: string[];
-  correctAnswer: number;
-  textEn?: string;
-  optionsEn?: string[];
-};
-
-type QuizData = {
-  questions: QuizQuestion[];
-};
+import { getKidsQuizQuestions, normalizeKidsVideoEmbedUrl } from "@/features/kids/services/kids-content-validation";
+import {
+  getOfflineKidsContentBySlug,
+  shouldUseOfflineKidsContentForNetworkError,
+  shouldUseOfflineKidsContentForStatus,
+} from "@/features/kids/services/kids-offline-content";
 
 interface KidsContent {
   id: string;
@@ -73,28 +66,6 @@ const typeLabels: Record<string, string> = {
   matching: "توصيل",
 };
 
-function isQuizQuestion(value: unknown): value is QuizQuestion {
-  if (!value || typeof value !== "object") return false;
-  const q = value as Partial<QuizQuestion>;
-  return (
-    typeof q.text === "string" &&
-    Array.isArray(q.options) &&
-    q.options.every(o => typeof o === "string") &&
-    typeof q.correctAnswer === "number"
-  );
-}
-
-function getQuizQuestions(quizData: unknown, isEnglish: boolean): QuizQuestion[] {
-  if (!quizData || typeof quizData !== "object") return [];
-  const d = quizData as Partial<QuizData>;
-  if (!Array.isArray(d.questions)) return [];
-  if (!isEnglish) return d.questions.filter(isQuizQuestion);
-  return d.questions
-    .filter(isQuizQuestion)
-    .filter((q) => typeof q.textEn === "string" && Array.isArray(q.optionsEn) && q.optionsEn.every((option) => typeof option === "string"))
-    .map((q) => ({ ...q, text: q.textEn as string, options: q.optionsEn as string[] }));
-}
-
 function toDetailContent(row: unknown): KidsContent | null {
   const item = normalizeKidsContentRow(row as Parameters<typeof normalizeKidsContentRow>[0]);
   return item
@@ -125,15 +96,16 @@ export default function KidsDetailPage() {
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const quizQuestions = useMemo(
-    () => getQuizQuestions(content?.quiz_data, isEnglish),
+    () => getKidsQuizQuestions(content?.quiz_data, isEnglish),
     [content?.quiz_data, isEnglish]
   );
   const gameConfig = content?.type === "game" ? parseGameContentMetadata(content.metadata) : null;
   const isLegacyGameActivity = content?.type === "game" && !gameConfig;
   const registeredGameCount = Object.keys(GAME_REGISTRY).length;
+  const safeVideoUrl = normalizeKidsVideoEmbedUrl(content?.video_url);
 
   useEffect(() => {
-    if (!slug) {
+    if (!contentSlug) {
       setLoading(false);
       return;
     }
@@ -148,30 +120,61 @@ export default function KidsDetailPage() {
         setQuizAnswers({});
         setQuizSubmitted(false);
 
-        const response = await fetch(
-          `/api/kids/content/${encodeURIComponent(slug)}`,
-          {
-            signal: controller.signal,
-            headers: { Accept: "application/json" },
-            cache: "no-store",
-          },
-        );
+        let response: Response;
+        try {
+          response = await fetch(
+            `/api/kids/content/${encodeURIComponent(contentSlug)}`,
+            {
+              signal: controller.signal,
+              headers: { Accept: "application/json" },
+              cache: "no-store",
+            },
+          );
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+          if (shouldUseOfflineKidsContentForNetworkError(error)) {
+            const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+            if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+            return;
+          }
+          throw error;
+        }
 
         if (response.ok) {
-          const payload = await response.json();
+          let payload: unknown;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            if (shouldUseOfflineKidsContentForNetworkError(error)) {
+              const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+              if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+              return;
+            }
+            throw error;
+          }
+
           const normalized = toDetailContent(payload);
           if (normalized && active) {
             setContent(normalized);
             return;
           }
+          if (active) setContent(null);
+          return;
         }
 
-        const staticItem = getKidsItemBySlug(slug);
-        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
+        if (shouldUseOfflineKidsContentForStatus(response.status)) {
+          const offlineItem = await getOfflineKidsContentBySlug(contentSlug, isEnglish ? "en" : "ar");
+          if (active) setContent(offlineItem ? toDetailContent(offlineItem) : null);
+          return;
+        }
+
+        // A 404/authorization response is authoritative: do not resurrect
+        // unpublished or removed content from an older offline snapshot.
+        if (active) setContent(null);
       } catch (error) {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        const staticItem = getKidsItemBySlug(slug);
-        if (active) setContent(staticItem ? toDetailContent(staticItem) : null);
+        console.error("[kids] Failed to load content detail:", error);
+        if (active) setContent(null);
       } finally {
         if (active) setLoading(false);
       }
@@ -183,7 +186,7 @@ export default function KidsDetailPage() {
       active = false;
       controller.abort();
     };
-  }, [slug, isEnglish]);
+  }, [contentSlug, isEnglish]);
 
   const handleQuizAnswer = (questionIndex: number, answerIndex: number) => {
     if (!quizSubmitted) {
@@ -332,13 +335,16 @@ export default function KidsDetailPage() {
         </div>
       )}
 
-      {content.type === "video" && content.video_url && (
+      {content.type === "video" && safeVideoUrl && (
         <div className="w-full aspect-video rounded-lg overflow-hidden">
           <iframe
             width="100%"
             height="100%"
-            src={content.video_url}
+            src={safeVideoUrl}
             title={isEnglish ? content.title_en : content.title_ar}
+            loading="lazy"
+            referrerPolicy="strict-origin-when-cross-origin"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

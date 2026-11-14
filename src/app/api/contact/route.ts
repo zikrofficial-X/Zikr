@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { submitContactMessage } from "@/features/contact/services/contact";
 import { consumePublicContactRateLimit } from "@/features/contact/services/rate-limit";
-
-function getClientIdentifier(request: NextRequest) {
-  return (
-    request.headers.get("x-real-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    "unknown"
-  );
-}
+import { getTrustedClientAddress } from "@/lib/request/client-address";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 export async function POST(req: NextRequest) {
   try {
-    const allowed = await consumePublicContactRateLimit(getClientIdentifier(req));
+    const allowed = await consumePublicContactRateLimit(
+      getTrustedClientAddress(
+        req.headers.get("x-real-ip"),
+        req.headers.get("x-forwarded-for"),
+      ),
+    );
     if (!allowed) {
       return NextResponse.json(
         { error: "تم تجاوز الحد المسموح. حاول مرة أخرى لاحقاً." },
@@ -31,17 +30,15 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    let body: unknown;
-    try {
-      body = await req.json();
-    } catch {
+    const parsedBody = await readBoundedJsonBody(req, 8 * 1024);
+    if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: "صيغة JSON غير صالحة." },
-        { status: 400 },
+        { error: parsedBody.error },
+        { status: parsedBody.status, headers: { "Cache-Control": "no-store" } },
       );
     }
 
-    const result = await submitContactMessage(body);
+    const result = await submitContactMessage(parsedBody.value);
     if (!result.ok) {
       const status =
         result.error === "صيغة الطلب غير صالحة." ||

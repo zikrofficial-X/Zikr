@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { getConfirmedPublicKidsVideoSocialPlatforms, resolveKidsVideoSocialPublication } from "../../src/features/social/services/kids-video-social-visibility";
 import {
   buildKidsSeriesEpisode,
   KIDS_SERIES_EPISODES_PER_SEASON,
@@ -57,4 +59,186 @@ for (const [hour, expected] of [[3, 3], [9, 6], [15, 9], [21, 12]] as const) {
   const window = Math.min(4, Math.max(1, Math.floor(hour / 6) + 1));
   assert.equal(Math.ceil((12 * window) / 4), expected, "the six-hour schedule must release its expected quota at " + hour + " UTC");
 }
-console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota checks passed.");
+const automationSource = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+const genericStoryStart = automationSource.indexOf('key = `story:${day}:${slot}`');
+const kidsSeriesStart = automationSource.indexOf('key = `kids-series:${day}:${slot}`');
+assert.ok(genericStoryStart >= 0 && kidsSeriesStart > genericStoryStart, "generic story and Kids series automation branches must remain distinct");
+const genericStoryBranch = automationSource.slice(genericStoryStart, kidsSeriesStart);
+assert.match(genericStoryBranch, /audience:\s*"general"/, "verified public story sources must not be misclassified as Kids series episodes");
+const kidsSeriesEnd = automationSource.indexOf("const reminders =", kidsSeriesStart);
+assert.ok(kidsSeriesEnd > kidsSeriesStart, "Kids series branch must end before general reminder seeding");
+const kidsSeriesBranch = automationSource.slice(kidsSeriesStart, kidsSeriesEnd);
+assert.match(kidsSeriesBranch, /audience:\s*"kids"/, "only the canonical Kids series factory may seed Kids-audience video requests");
+assert.match(kidsSeriesBranch, /generationMode:\s*episode\.generationMode/, "Kids series requests must retain their deterministic factory provenance");
+
+// Social deletion state belongs to the exact remote post on its queue row.
+ // Deleting an older Facebook post must not hide a newer live post for the same
+ // generated Kids video, even when the old deletion timestamp is later.
+const kidsVideoQueueRow = (
+  id: string,
+  publishedAt: string,
+  remoteId: string,
+  extraMetadata: Record<string, unknown> = {},
+) => ({
+  id,
+  content_id: "60000000-0000-4000-8000-000000000001",
+  content_type: "kids_story_video",
+  body: null,
+  target_platforms: ["facebook"],
+  status: "published",
+  published_at: publishedAt,
+  created_at: publishedAt,
+  metadata: {
+    audience: "kids",
+    platformResults: { facebook: { ok: true, remoteId } },
+    ...extraMetadata,
+  },
+});
+
+const newerKidsPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000002",
+  "2026-11-10T12:00:00.000Z",
+  "new-facebook-post",
+);
+const olderDeletedKidsPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000001",
+  "2026-11-09T10:00:00.000Z",
+  "old-facebook-post",
+  {
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-11T10:00:00.000Z",
+      },
+    },
+  },
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication(
+    [newerKidsPublication, olderDeletedKidsPublication],
+    null,
+    true,
+  ),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-10T12:00:00.000Z",
+  },
+  "deleting an older remote post must not tombstone a newer live post on the same platform",
+);
+
+const failedQueueRowWithHistoricalSuccess = {
+  ...newerKidsPublication,
+  status: "failed",
+};
+assert.deepEqual(
+  getConfirmedPublicKidsVideoSocialPlatforms(failedQueueRowWithHistoricalSuccess),
+  [],
+  "a failed queue row must not expose an old successful provider result as a current publication",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([failedQueueRowWithHistoricalSuccess], null, true),
+  null,
+  "a failed queue row with a stale published_at and prior success must not create a public social badge",
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([newerKidsPublication, failedQueueRowWithHistoricalSuccess], null, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-10T12:00:00.000Z",
+  },
+  "a newer failed retry must not hide the older confirmed publication",
+);
+
+const olderFacebookPublication = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000003",
+  "2026-11-09T10:00:00.000Z",
+  "old-facebook-post",
+);
+const supplementalFacebookDeletion = {
+  id: "50000000-0000-4000-8000-000000000005",
+  content_id: "60000000-0000-4000-8000-000000000001",
+  content_type: "kids_story_video",
+  body: null,
+  target_platforms: ["facebook"],
+  status: "partial",
+  published_at: null,
+  created_at: "2026-11-11T10:00:00.000Z",
+  metadata: {
+    audience: "kids",
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-11T10:00:00.000Z",
+      },
+    },
+  },
+};
+assert.equal(
+  resolveKidsVideoSocialPublication([olderFacebookPublication, supplementalFacebookDeletion], null, true),
+  null,
+  "a supplemental deletion must suppress the exact older remote post even when its result is stored on another queue row",
+);
+
+const republishedOnSameQueueRow = kidsVideoQueueRow(
+  "50000000-0000-4000-8000-000000000004",
+  "2026-11-12T12:00:00.000Z",
+  "replacement-facebook-post",
+  {
+    platformDeletions: {
+      facebook: {
+        status: "deleted",
+        remoteId: "old-facebook-post",
+        deletedAt: "2026-11-13T10:00:00.000Z",
+      },
+    },
+  },
+);
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([republishedOnSameQueueRow], null, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-12T12:00:00.000Z",
+  },
+  "a new remote ID on the same queue row must remain visible after the old remote post is deleted",
+);
+
+
+const legacyStoredSocialPublication = {
+  status: "published",
+  platforms: ["facebook"],
+  publishedAt: "2026-11-12T12:00:00.000Z",
+};
+assert.deepEqual(
+  resolveKidsVideoSocialPublication([], legacyStoredSocialPublication, true),
+  {
+    status: "published",
+    platforms: ["facebook"],
+    publishedAt: "2026-11-12T12:00:00.000Z",
+  },
+  "legacy Kids videos without a generation-request ID must retain their stored confirmed social publication",
+);
+assert.equal(
+  resolveKidsVideoSocialPublication([], legacyStoredSocialPublication, false),
+  null,
+  "stored publication metadata must not be used when a required queue read failed",
+);
+const kidsVideosRouteSource = readFileSync("src/app/api/kids/videos/route.ts", "utf8");
+assert.ok(
+  kidsVideosRouteSource.includes("let socialQueueReadSucceeded = requestIds.length === 0;"),
+  "the list feed must treat an empty request-ID set as a successful no-op queue read",
+);
+const kidsVideoServiceSource = readFileSync("src/features/videos/services/videos.ts", "utf8");
+const detailResolverStart = kidsVideoServiceSource.indexOf("async function resolveKidsVideoSocialPublicationForDetail");
+const detailResolverEnd = kidsVideoServiceSource.indexOf("export async function getKidsGeneratedVideoBySlug", detailResolverStart);
+const detailResolverSource = detailResolverStart >= 0 && detailResolverEnd > detailResolverStart
+  ? kidsVideoServiceSource.slice(detailResolverStart, detailResolverEnd)
+  : "";
+assert.ok(detailResolverSource.includes("return resolveKidsVideoSocialPublication([], stored, true);"),
+  "the detail feed must use stored legacy publication metadata when there is no valid request ID to query");
+
+console.log("✅ Kids video series: four series, 24 first-season episodes, 1,000 validated episode variants, and scheduled quota and social publication checks passed.");

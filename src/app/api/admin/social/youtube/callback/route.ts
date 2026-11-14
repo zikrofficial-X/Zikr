@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { getServerEnv } from "@/lib/env";
-import { saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
+import { findYouTubeChannelAcrossPages, hasYouTubeUploadScopes, saveYouTubeOAuthCredential } from "@/features/social/services/youtube-oauth-credentials";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,7 +11,6 @@ export const runtime = "nodejs";
 const STATE_COOKIE = "zikr-youtube-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const YOUTUBE_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/youtube/callback";
-const YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload";
 const YOUTUBE_READ_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
 const ANALYTICS_SCOPE = "https://www.googleapis.com/auth/yt-analytics.readonly";
 
@@ -33,6 +32,7 @@ type YouTubeChannelResponse = {
     snippet?: { title?: string };
     statistics?: { subscriberCount?: string; viewCount?: string; videoCount?: string };
   }>;
+  nextPageToken?: string;
   error?: {
     code?: number;
     message?: string;
@@ -71,7 +71,7 @@ function matchesState(expected: string, actual: string) {
 function scopeFlags(scopes: string[]) {
   const set = new Set(scopes);
   return {
-    canUpload: set.has(YOUTUBE_UPLOAD_SCOPE),
+    canUpload: hasYouTubeUploadScopes(scopes),
     canReadChannel: set.has(YOUTUBE_READ_SCOPE),
     canReadAnalytics: set.has(ANALYTICS_SCOPE),
   };
@@ -154,39 +154,65 @@ export async function GET(request: NextRequest) {
       return redirectResult("refresh_token_missing");
     }
 
-    const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
-    channelUrl.searchParams.set("part", "id,snippet,statistics");
-    channelUrl.searchParams.set("mine", "true");
-    const channelResponse = await fetch(channelUrl, {
-      headers: { Authorization: "Bearer " + token.access_token },
-      cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
-    });
-    const channelPayload = await channelResponse.json().catch(() => ({})) as YouTubeChannelResponse;
-    const channel = channelPayload.items?.find((item) => typeof item.id === "string");
-    if (!channelResponse.ok || !channel?.id) {
-      const reason = channelPayload.error?.errors?.[0]?.reason;
-      return redirectResult(reason === "insufficientPermissions" ? "permission_missing" : "channel_read_failed");
-    }
+    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim() ?? "";
+    const channelLookup = await findYouTubeChannelAcrossPages(async (pageToken) => {
+      const channelUrl = new URL("https://www.googleapis.com/youtube/v3/channels");
+      channelUrl.searchParams.set("part", "id,snippet,statistics");
+      channelUrl.searchParams.set("mine", "true");
+      channelUrl.searchParams.set("maxResults", "50");
+      if (pageToken) channelUrl.searchParams.set("pageToken", pageToken);
+      const channelResponse = await fetch(channelUrl, {
+        headers: { Authorization: "Bearer " + token.access_token },
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      const channelPayload = await channelResponse.json().catch(() => ({})) as YouTubeChannelResponse;
+      if (!channelResponse.ok || channelPayload.error) {
+        return {
+          items: [],
+          error: {
+            status: channelResponse.status,
+            reason: channelPayload.error?.errors?.[0]?.reason ?? null,
+          },
+        };
+      }
+      return {
+        items: Array.isArray(channelPayload.items) ? channelPayload.items : [],
+        nextPageToken: channelPayload.nextPageToken,
+      };
+    }, configuredChannelId, 3);
 
-    const configuredChannelId = env.YOUTUBE_CHANNEL_ID?.trim();
-    if (configuredChannelId && configuredChannelId !== channel.id) {
-      return redirectResult("channel_mismatch");
+    if (channelLookup.error) {
+      return redirectResult(
+        channelLookup.error.reason === "insufficientPermissions"
+          ? "permission_missing"
+          : "channel_read_failed",
+      );
     }
+    const channel = channelLookup.channel;
+    if (!channel || typeof channel.id !== "string" || !channel.id.trim()) {
+      if (!channelLookup.complete) return redirectResult("channel_lookup_incomplete");
+      if (!configuredChannelId && channelLookup.multipleChannels) {
+        return redirectResult("channel_selection_required");
+      }
+      if (configuredChannelId) return redirectResult("channel_mismatch");
+      return redirectResult("channel_read_failed");
+    }
+    const channelId = channel.id.trim();
 
     await saveYouTubeOAuthCredential({
       refreshToken: token.refresh_token,
       grantedScopes,
-      channelId: channel.id,
+      channelId,
       channelName: channel.snippet?.title ?? null,
-    });
+    }, auth.profile.id);
 
     try {
       await recordAdminAuditEvent({
         action: "social.youtube.oauth.connect",
         permission: "social.manage",
         resourceType: "youtube_channel",
-        resourceId: channel.id,
+        resourceId: channelId,
         metadata: {
           channelName: channel.snippet?.title ?? null,
           grantedScopes: grantedScopes.map((scope) => scope.split("/").at(-1)),

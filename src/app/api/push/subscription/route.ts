@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedPushEndpoint } from "@/features/notifications/services/push-endpoint";
+import {
+  normalizePushSubscriptionRequestBody,
+  parsePushCoordinate,
+} from "@/features/notifications/services/push-subscription-request";
+import { mergePrayerReminderPreferences } from "@/features/prayer/services/prayer-reminder-preferences";
 import {
   createAdminClient,
   getSupabaseUser,
   isSupabaseConfigured,
 } from "@/lib/supabase/server";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 
 export const dynamic = "force-dynamic";
 
@@ -48,14 +55,7 @@ function parseSubscription(body: SubscriptionBody) {
   const endpoint = asBoundedString(body.endpoint, 4096);
   const p256dh = asBoundedString(body.keys?.p256dh, 1024);
   const auth = asBoundedString(body.keys?.auth, 1024);
-  if (!endpoint || !p256dh || !auth) return null;
-
-  try {
-    const url = new URL(endpoint);
-    if (url.protocol !== "https:") return null;
-  } catch {
-    return null;
-  }
+  if (!endpoint || !p256dh || !auth || !isAllowedPushEndpoint(endpoint)) return null;
 
   return {
     endpoint,
@@ -71,18 +71,14 @@ function parsePrayerContext(body: SubscriptionBody) {
   const location = body.prayerContext?.location;
   const city = asBoundedString(location?.city, 256);
   const timezone = asBoundedString(location?.timezone, 128);
-  const latitude = Number(location?.latitude);
-  const longitude = Number(location?.longitude);
+  const latitude = parsePushCoordinate(location?.latitude, -90, 90);
+  const longitude = parsePushCoordinate(location?.longitude, -180, 180);
   if (
     !city ||
     !timezone ||
     !validTimezone(timezone) ||
-    !Number.isFinite(latitude) ||
-    !Number.isFinite(longitude) ||
-    latitude < -90 ||
-    latitude > 90 ||
-    longitude < -180 ||
-    longitude > 180
+    latitude === null ||
+    longitude === null
   ) {
     return null;
   }
@@ -130,6 +126,18 @@ async function upsertPrayerContext(
   userId: string,
   context: NonNullable<ReturnType<typeof parsePrayerContext>>
 ) {
+  const { data: existingPreferences, error: preferenceLookupError } = await admin
+    .from("prayer_preferences")
+    .select("prayer_reminders")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (preferenceLookupError) throw preferenceLookupError;
+
+  const mergedPrayerReminders = mergePrayerReminderPreferences(
+    existingPreferences?.prayer_reminders,
+    context.prayerReminders
+  );
+
   const { data: existingLocation, error: locationLookupError } = await admin
     .from("prayer_locations")
     .select("id")
@@ -157,7 +165,7 @@ async function upsertPrayerContext(
     .upsert(
       {
         user_id: userId,
-        prayer_reminders: context.prayerReminders,
+        prayer_reminders: mergedPrayerReminders,
         notifications_enabled: true,
         updated_at: new Date().toISOString(),
       },
@@ -171,7 +179,14 @@ export async function POST(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = (await request.json().catch(() => ({}))) as SubscriptionBody;
+  const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  const body = normalizePushSubscriptionRequestBody(parsedBody.value) as SubscriptionBody;
   const parsed = parseSubscription(body);
   const prayerContext = parsePrayerContext(body);
   if (!parsed || !prayerContext) {
@@ -229,11 +244,15 @@ export async function DELETE(request: NextRequest) {
   if (!user)
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const endpoint = asBoundedString(
-    ((await request.json().catch(() => ({}))) as { endpoint?: unknown })
-      .endpoint,
-    4096
-  );
+  const parsedBody = await readBoundedJsonBody(request, 16 * 1024);
+  if (!parsedBody.ok) {
+    return NextResponse.json(
+      { error: parsedBody.error },
+      { status: parsedBody.status, headers: { "Cache-Control": "private, no-store" } },
+    );
+  }
+  const body = normalizePushSubscriptionRequestBody(parsedBody.value);
+  const endpoint = asBoundedString(body.endpoint, 4096);
   if (!endpoint)
     return NextResponse.json(
       { error: "Invalid subscription." },

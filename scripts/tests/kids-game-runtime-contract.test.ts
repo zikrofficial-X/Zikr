@@ -2,6 +2,17 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 const queue = readFileSync("src/lib/games/offline-queue.ts", "utf8");
+const validationRoute = readFileSync("src/app/api/kids/games/validate/route.ts", "utf8");
+assert.ok(validationRoute.includes("Object.values(GAME_REGISTRY)"), "the validation endpoint must inspect the live runtime registry");
+assert.ok(validationRoute.includes("runtimeRegistry:") && validationRoute.includes("total: runtimeGames.length"), "the endpoint must report the actual runtime inventory");
+assert.ok(validationRoute.includes("Object.values(qualityChecks).every(Boolean)"), "overall readiness must derive from all catalog and runtime checks");
+assert.ok(validationRoute.includes("status: allQualityChecksPassed ? 'success' : 'warning'"), "the API status must not be hard-coded to success");
+assert.ok(validationRoute.includes("ALL CATALOG AND RUNTIME GAMES VALIDATED AND READY") && validationRoute.includes("GAMES REQUIRE ATTENTION"), "the overall status must reflect failed checks");
+assert.ok(validationRoute.includes("status: allQualityChecksPassed ? 200 : 503"), "failed validation must not return HTTP 200");
+assert.ok(validationRoute.includes("status: g.isEnabled ? 'enabled' : 'disabled'"), "disabled catalog games must not display a ready status");
+assert.ok(validationRoute.includes("titleAr: g.titleAr"), "runtime API must expose the Arabic title from the registry titleAr field");
+assert.ok(!validationRoute.includes("g.maxEnemies"), "runtime scoring checks must only use fields defined by the GameDefinition contract");
+
 const registry = readFileSync("src/lib/games/registry.ts", "utf8");
 const stage = readFileSync("src/features/kids/components/games/world-game-stage.tsx", "utf8");
 const shell = readFileSync("src/features/kids/components/games/game-shell.tsx", "utf8");

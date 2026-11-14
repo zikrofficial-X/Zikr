@@ -1,6 +1,9 @@
 import { getServerEnv } from "@/lib/env";
 import { supabaseServerAdminRequest } from "@/lib/supabase/admin-rest";
-import { buildFacebookQueueRecoveryPatch } from "@/features/social/services/facebook-queue-recovery-policy";
+import { buildNextRowVersionUpdatedAt } from "@/lib/supabase/row-version";
+import { buildFacebookQueueRecoveryFilter, buildFacebookQueueRecoveryPatch, resolveSocialPublishCutoff } from "@/features/social/services/facebook-queue-recovery-policy";
+import { buildFacebookPublicProfileIdentityUpsert } from "./facebook-profile-contract";
+import { FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS } from "./facebook-oauth-policy";
 
 export type FacebookCredentialSource = "database" | "environment" | "missing";
 export type FacebookConnectionStatus =
@@ -67,26 +70,52 @@ function siteGraphVersion() {
  * app identity, expiry, required scopes, and target Page are verified server-side.
  * Merely changing an environment variable never silently changes the active credential.
  */
-export async function readStoredFacebookCredential(): Promise<StoredFacebookCredential | null> {
+type FacebookCredentialRequest = <T>(path: string) => Promise<T>;
+type FacebookCredentialReader = () => Promise<StoredFacebookCredential | null>;
+
+export function isMissingFacebookReelsCooldownColumnError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error)).toLowerCase();
+  return message.includes("facebook_reels_next_allowed_at") && (
+    message.includes("42703") ||
+    message.includes("pgrst204") ||
+    /column[\s\S]*(does not exist|schema cache)/.test(message)
+  );
+}
+
+export function buildFacebookCredentialValidationFilter(
+  credential: Pick<StoredFacebookCredential, "page_id" | "updated_at">,
+): string | null {
+  const pageId = credential.page_id.trim();
+  const updatedAt = credential.updated_at?.trim() ?? "";
+  if (!pageId || !updatedAt || !Number.isFinite(Date.parse(updatedAt))) return null;
+  return `platform=eq.facebook&page_id=eq.${encodeURIComponent(pageId)}&updated_at=eq.${encodeURIComponent(updatedAt)}`;
+}
+
+export async function readStoredFacebookCredential(
+  request: FacebookCredentialRequest = supabaseServerAdminRequest,
+): Promise<StoredFacebookCredential | null> {
+  let rows: StoredFacebookCredential[];
   try {
-    const rows = await supabaseServerAdminRequest<StoredFacebookCredential[]>(
+    rows = await request<StoredFacebookCredential[]>(
       `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${CREDENTIAL_FIELDS}&limit=1`,
     );
-    return Array.isArray(rows) ? rows[0] ?? null : null;
-  } catch {
-    // Preview projects can temporarily lack the additive cooldown migration. Fall
-    // back to established columns so OAuth connectivity still works.
-    try {
-      const rows = await supabaseServerAdminRequest<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
-        `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
-      );
-      const row = Array.isArray(rows) ? rows[0] : null;
-      return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
-    } catch {
-      // Never log exceptions because provider responses can contain sensitive context.
-      return null;
+  } catch (error) {
+    // Only a missing additive cooldown column justifies the legacy projection.
+    // Network, permission, and server errors must not erase cooldown state.
+    if (!isMissingFacebookReelsCooldownColumnError(error)) throw error;
+    const legacyRows = await request<Omit<StoredFacebookCredential, "facebook_reels_next_allowed_at">[]>(
+      `/rest/v1/social_platform_credentials?platform=eq.facebook&select=${LEGACY_CREDENTIAL_FIELDS}&limit=1`,
+    );
+    if (!Array.isArray(legacyRows)) {
+      throw new Error("Legacy Facebook credential query returned an invalid row set.");
     }
+    const row = legacyRows[0] ?? null;
+    return row ? { ...row, facebook_reels_next_allowed_at: null } : null;
   }
+  if (!Array.isArray(rows)) {
+    throw new Error("Facebook credential query returned an invalid row set.");
+  }
+  return rows[0] ?? null;
 }
 
 export async function getFacebookReelsNextAllowedAt(): Promise<string | null> {
@@ -108,15 +137,22 @@ export async function setFacebookReelsNextAllowedAt(until: string): Promise<void
   );
 }
 
-export async function getFacebookPageCredentials(): Promise<FacebookPageCredentials> {
+export class FacebookPageNotConnectedError extends Error {
+  constructor() {
+    super("Facebook Page is not connected through the OAuth-managed publishing center. Reconnect the Page from the admin publishing center.");
+    this.name = "FacebookPageNotConnectedError";
+  }
+}
+
+export async function getFacebookPageCredentials(
+  readCredential: FacebookCredentialReader = readStoredFacebookCredential,
+): Promise<FacebookPageCredentials> {
   // Outbound publishing uses only the validated Supabase credential. A server-side
   // environment token is never used directly; the admin must explicitly validate and
   // import it through adoptServerConfiguredFacebookPageToken first.
-  const stored = await readStoredFacebookCredential();
+  const stored = await readCredential();
   if (!stored) {
-    throw new Error(
-      "Facebook Page is not connected through the OAuth-managed publishing center. Reconnect the Page from the admin publishing center.",
-    );
+    throw new FacebookPageNotConnectedError();
   }
 
   if (stored.expires_at && Number.isFinite(Date.parse(stored.expires_at)) && Date.parse(stored.expires_at) <= Date.now()) {
@@ -141,6 +177,17 @@ export async function getFacebookPageCredentials(): Promise<FacebookPageCredenti
   };
 }
 
+export async function getOptionalFacebookPageCredentials(
+  readCredential: FacebookCredentialReader = readStoredFacebookCredential,
+): Promise<FacebookPageCredentials | null> {
+  try {
+    return await getFacebookPageCredentials(readCredential);
+  } catch (error) {
+    if (error instanceof FacebookPageNotConnectedError) return null;
+    throw error;
+  }
+}
+
 function classifyGraphFailure(code: string | null, message: string): {
   status: "reauthorization_required" | "permission_error" | "error";
   safeMessage: string;
@@ -161,7 +208,7 @@ function classifyGraphFailure(code: string | null, message: string): {
   if (code === "10" || code === "200" || normalized.includes("permission")) {
     return {
       status: "permission_error",
-      safeMessage: "اتصال Facebook موجود لكن الصلاحيات المطلوبة للنشر والإحصاءات غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts وread_insights.",
+      safeMessage: "اتصال Facebook موجود لكن صلاحيات النشر الأساسية غير مكتملة. أعد الربط ووافق على pages_show_list وpages_read_engagement وpages_manage_posts؛ read_insights اختيارية لإحصاءات Reels ولا توقف النشر.",
     };
   }
   return {
@@ -177,8 +224,11 @@ async function persistValidation(
   code: string | null,
 ) {
   try {
+    const updatedAt = credential.updated_at?.trim() ?? "";
+    const filter = buildFacebookCredentialValidationFilter(credential);
+    if (!filter || !updatedAt) return;
     await supabaseServerAdminRequest(
-      "/rest/v1/social_platform_credentials?platform=eq.facebook",
+      `/rest/v1/social_platform_credentials?${filter}`,
       {
         method: "PATCH",
         headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
@@ -187,7 +237,7 @@ async function persistValidation(
           last_validated_at: status === "connected" || status === "disabled" ? new Date().toISOString() : credential.last_validated_at,
           last_error_code: code,
           last_error_message: message,
-          updated_at: new Date().toISOString(),
+          updated_at: buildNextRowVersionUpdatedAt(updatedAt),
         }),
       },
     );
@@ -198,10 +248,26 @@ async function persistValidation(
 
 export async function getFacebookPageConnectionHealth(): Promise<FacebookConnectionHealth> {
   const env = getServerEnv();
-  const stored = await readStoredFacebookCredential();
   const envPageId = env.FACEBOOK_PAGE_ID?.trim() ?? "";
   const envToken = env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() ?? "";
   const hasEnvironmentToken = Boolean(envPageId && envToken);
+  let stored: StoredFacebookCredential | null;
+  try {
+    stored = await readStoredFacebookCredential();
+  } catch {
+    return {
+      facebookEnabled: false,
+      facebookCredentialsConfigured: false,
+      facebookEnvironmentTokenConfigured: hasEnvironmentToken,
+      facebookConnectionStatus: "error",
+      facebookPageName: null,
+      facebookTokenSource: hasEnvironmentToken ? "environment" : "missing",
+      facebookLastCheckedAt: null,
+      facebookTokenExpiresAt: null,
+      facebookInsightsPermissionGranted: false,
+      facebookConnectionMessage: "تعذر قراءة اعتماد Facebook من قاعدة البيانات. أعد الاختبار لاحقًا؛ لم يتم تغيير حالة النشر.",
+    };
+  }
 
   // A token configured in Vercel is not the active publishing credential until
   // an administrator validates and imports it into the server-only credentials table.
@@ -319,6 +385,15 @@ export async function saveFacebookPublicProfile(input: {
   pageName: string;
 }): Promise<void> {
   const now = new Date().toISOString();
+  const existingRows = await supabaseServerAdminRequest<Array<{ external_id: string | null }>>(
+    "/rest/v1/social_platform_profiles?platform=eq.facebook&select=external_id&limit=1",
+  );
+  if (!Array.isArray(existingRows)) {
+    throw new Error("Facebook public profile identity query returned an invalid row set.");
+  }
+  const previousPageId = existingRows.length > 0
+    ? existingRows[0]?.external_id ?? null
+    : undefined;
   await supabaseServerAdminRequest(
     "/rest/v1/social_platform_profiles?on_conflict=platform",
     {
@@ -327,28 +402,14 @@ export async function saveFacebookPublicProfile(input: {
         "Content-Type": "application/json",
         Prefer: "resolution=merge-duplicates,return=minimal",
       },
-      body: JSON.stringify({
-        platform: "facebook",
-        external_id: input.pageId,
-        handle: null,
-        name: input.pageName,
-        description: "",
-        category: "media",
-        website: null,
-        avatar_url: null,
-        cover_url: null,
-        page_url: "https://www.facebook.com/" + encodeURIComponent(input.pageId),
-        subscribers_count: null,
-        followers_count: null,
-        likes_count: null,
-        following_count: null,
-        view_count: null,
-        video_count: null,
-        synced_at: now,
-        status: "ok",
-        last_error: null,
-        updated_at: now,
-      }),
+      // Identity-only upsert: omit metrics, media, and descriptive fields that this
+      // OAuth callback does not fetch so merge-duplicates preserves existing data.
+      body: JSON.stringify(buildFacebookPublicProfileIdentityUpsert({
+        pageId: input.pageId,
+        pageName: input.pageName,
+        updatedAt: now,
+        previousPageId,
+      })),
     },
   );
 }
@@ -478,10 +539,9 @@ export async function adoptServerConfiguredFacebookPageToken(): Promise<{
   const permissions = Array.isArray(data.scopes)
     ? data.scopes.filter((value): value is string => typeof value === "string")
     : [];
-  const required = ["pages_show_list", "pages_read_engagement", "pages_manage_posts", "read_insights"];
-  const missing = required.filter((permission) => !permissions.includes(permission));
+  const missing = FACEBOOK_REQUIRED_PUBLISH_PERMISSIONS.filter((permission) => !permissions.includes(permission));
   if (missing.length) {
-    throw new Error("توكن الخادم صالح، لكن صلاحيات النشر ناقصة: " + missing.join("، ") + ". أعد تفويض التطبيق مع هذه الصلاحيات.");
+    throw new Error("توكن الخادم صالح، لكن صلاحيات النشر الأساسية ناقصة: " + missing.join("، ") + ". صلاحية read_insights اختيارية لإحصاءات Reels ولا توقف النشر.");
   }
 
   const expirySeconds = Number(data.expires_at ?? 0);
@@ -543,6 +603,8 @@ type FacebookAuthBlockedQueueRow = {
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
   status: string;
+  updated_at: string | null;
+  created_at: string | null;
 };
 
 export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
@@ -554,8 +616,11 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
   // a row removes it from this query, so offset pagination would skip later rows.
   while (true) {
     const cursorFilter: string = cursor === null ? "" : "&id=gt." + encodeURIComponent(cursor);
+    const publishAfter = resolveSocialPublishCutoff(process.env.SOCIAL_PUBLISH_AFTER);
     const rows: FacebookAuthBlockedQueueRow[] = await supabaseServerAdminRequest<FacebookAuthBlockedQueueRow[]>(
-      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&select=id,target_platforms,metadata,status&order=id.asc&limit=" +
+      "/rest/v1/social_publish_queue?status=in.(failed,partial)&metadata->>authBlocked=eq.true&created_at=gte." +
+        encodeURIComponent(publishAfter) +
+        "&select=id,target_platforms,metadata,status,updated_at,created_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
@@ -564,10 +629,10 @@ export async function unblockFacebookAuthBlockedQueue(): Promise<number> {
       cursor = item.id;
       const now = new Date().toISOString();
       const patch = buildFacebookQueueRecoveryPatch(item.metadata, item.target_platforms ?? [], now);
-      if (!patch) continue;
+      const filter = buildFacebookQueueRecoveryFilter(item, publishAfter);
+      if (!patch || !filter) continue;
       const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-        "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
-          "&status=eq." + encodeURIComponent(item.status),
+        "/rest/v1/social_publish_queue?" + filter,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json", Prefer: "return=representation" },

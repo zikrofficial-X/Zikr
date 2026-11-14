@@ -13,16 +13,23 @@ const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 export async function GET() {
   // Preview and Development intentionally omit the production service-role key.
-  // This is an optional public feed: return an empty list instead of a 503 or noisy error.
+  // Keep those environments quiet, but surface a production misconfiguration instead of
+  // presenting a broken Kids feed as a legitimate empty result.
   if (!getServerEnv().SUPABASE_SERVICE_ROLE_KEY) {
+    if (process.env.VERCEL_ENV === "production") {
+      return NextResponse.json(
+        { error: "Kids written-post feed is not configured." },
+        { status: 503, headers: { "Cache-Control": "private, no-store" } },
+      );
+    }
     return NextResponse.json([], {
-      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   }
 
   try {
     const rows = await supabaseServerAdminRequest<KidsWrittenQueueRow[]>(
-      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=eq.published&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=12",
+      "/rest/v1/social_publish_queue?content_type=eq.written_post&status=in.%28published%2Cpartial%29&published_at=not.is.null&metadata->>audience=eq.kids&select=id,content_type,content_id,title,body,target_platforms,status,published_at,metadata&order=published_at.desc&limit=60",
     );
     const candidateIds = [...new Set(
       (rows ?? [])
@@ -31,7 +38,7 @@ export async function GET() {
     )];
     if (candidateIds.length === 0) {
       return NextResponse.json([], {
-        headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+        headers: { "Cache-Control": "private, no-store" },
       });
     }
 
@@ -49,8 +56,8 @@ export async function GET() {
       return item ? [item] : [];
     });
 
-    return NextResponse.json(items, {
-      headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30" },
+    return NextResponse.json(items.slice(0, 12), {
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
     console.error("[api/kids/social-posts] GET error:", error);

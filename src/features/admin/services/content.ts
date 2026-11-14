@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cancelActiveContentSchedules } from "./content-schedule-cancellation";
+
 import {
   createClient,
   supabaseServerAdminRequest,
@@ -22,12 +24,13 @@ export type ScheduledContentItem = {
   content_id: string;
   scheduled_at: string;
   status: "queued" | "processing" | "published" | "cancelled" | "failed";
+  updated_at: string;
 };
 
 export async function getScheduledContent(): Promise<ScheduledContentItem[]> {
   try {
     return await supabaseServerAdminRequest<ScheduledContentItem[]>(
-      "/rest/v1/content_publish_queue?status=eq.queued&select=id,content_table,content_id,scheduled_at,status&order=scheduled_at.asc&limit=20",
+      "/rest/v1/content_publish_queue?status=in.(queued,processing)&select=id,content_table,content_id,scheduled_at,status,updated_at&order=scheduled_at.asc&limit=100",
       { method: "GET" },
     );
   } catch (error) {
@@ -238,22 +241,79 @@ export async function toggleManagedContent(
   optimisticUpdatedAt?: string | null,
 ): Promise<void> {
   assertManagedContentTarget(table, id);
-  const filter = `/rest/v1/${table}?id=eq.${encodeURIComponent(id)}${optimisticUpdatedAt ? `&updated_at=eq.${encodeURIComponent(optimisticUpdatedAt)}` : ""}`;
+  const encodedId = encodeURIComponent(id);
+  const select = table === "stories"
+    ? "id,updated_at,is_approved,user_id"
+    : table === "articles"
+      ? "id,updated_at,metadata"
+      : "id,updated_at";
+  const current = await supabaseServerAdminRequest<Array<{
+    id: string;
+    updated_at: string;
+    is_approved?: boolean | null;
+    user_id?: string | null;
+    metadata?: unknown;
+  }>>(
+    `/rest/v1/${table}?select=${select}&id=eq.${encodedId}&limit=1`,
+    { method: "GET" },
+  );
+  const target = current?.[0];
+  if (!target) throw new Error("العنصر غير موجود.");
+  if (optimisticUpdatedAt && String(target.updated_at) !== optimisticUpdatedAt) {
+    throw new Error("تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
+  }
+  if (published && table === "stories" && (target.is_approved !== true || target.user_id !== null)) {
+    throw new Error("لا يمكن نشر قصة غير معتمدة أو مرتبطة بحساب مستخدم؛ اعتمد قصة عامة أولاً.");
+  }
+
+  // An explicit unpublish must revoke queued and in-flight schedules. Advance
+  // each queue row's exact lease version so a same-millisecond worker cannot
+  // retain a valid claim after cancellation.
+  if (!published) {
+    try {
+      await cancelActiveContentSchedules(
+        supabaseServerAdminRequest,
+        table,
+        id,
+        "Cancelled because the content was explicitly unpublished.",
+      );
+    } catch (error) {
+      console.error("[admin/content] failed to cancel scheduled publication:", error);
+      throw new Error("تعذر إلغاء موعد النشر المجدول؛ لم يتم تغيير حالة المحتوى. أعد المحاولة.");
+    }
+  }
+
+  const updatedAt = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    published,
+    updated_at: updatedAt,
+  };
+  if (table === "articles") {
+    const articleMetadata = target.metadata && typeof target.metadata === "object" && !Array.isArray(target.metadata)
+      ? { ...(target.metadata as Record<string, unknown>) }
+      : {};
+    if (published) {
+      delete articleMetadata.automationPublicationHold;
+      delete articleMetadata.automationPublicationHoldAt;
+    } else {
+      articleMetadata.automationPublicationHold = true;
+      articleMetadata.automationPublicationHoldAt = updatedAt;
+    }
+    updatePayload.metadata = articleMetadata;
+  }
+
   const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    filter,
+    `/rest/v1/${table}?id=eq.${encodedId}&updated_at=eq.${encodeURIComponent(String(target.updated_at))}`,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Prefer: "return=representation",
       },
-      body: JSON.stringify({
-        published,
-        updated_at: new Date().toISOString(),
-      }),
+      body: JSON.stringify(updatePayload),
     },
   );
-  if (!updated.length) {
+  if (!updated?.length) {
     throw new Error(
       "تم تعديل هذا العنصر أو حذفه بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
     );
@@ -288,6 +348,20 @@ export async function deleteManagedContent(
     throw new Error(
       "تم تعديل هذا العنصر بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.",
     );
+  }
+
+  // A draft may still have a queued or in-flight publication. Cancel it
+  // with an exact, monotonic queue-version compare-and-set before deletion.
+  try {
+    await cancelActiveContentSchedules(
+      supabaseServerAdminRequest,
+      table,
+      id,
+      "Cancelled because the scheduled content was deleted by an administrator.",
+    );
+  } catch (error) {
+    console.error("[admin/content] failed to cancel schedule before deletion:", error);
+    throw new Error("تعذر إلغاء موعد النشر المجدول؛ لم يتم حذف المحتوى. أعد المحاولة.");
   }
 
   const deleted = await supabaseServerAdminRequest<Array<{ id: string }>>(

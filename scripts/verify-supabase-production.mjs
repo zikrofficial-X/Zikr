@@ -104,11 +104,11 @@ for (const check of checks) {
 
 if (!failed) {
   try {
-    await runAdminContractChecks();
+    await runAdminSchemaContractCheck();
   } catch (error) {
     failed = true;
     console.error(
-      "FAIL: Admin rate-limit contract: " +
+      "FAIL: Admin rate-limit schema contract: " +
         (error instanceof Error ? error.message : String(error))
     );
   }
@@ -122,46 +122,58 @@ if (failed) {
 console.log("Production Supabase health gate passed.");
 
 
-async function runAdminContractChecks() {
+async function runAdminSchemaContractCheck() {
   if (!adminHeaders) {
-    console.log("SKIP: Admin rate-limit contract checks (SUPABASE_SERVICE_ROLE_KEY not provided).");
+    console.log("SKIP: Admin rate-limit schema contract (SUPABASE_SERVICE_ROLE_KEY not provided).");
     return;
   }
 
-  const tableResponse = await fetch(
-    baseUrl + "/rest/v1/admin_rate_limits?select=actor_id&limit=0",
-    { headers: adminHeaders }
-  );
-  if (!tableResponse.ok) {
-    throw new Error(
-      "admin_rate_limits contract returned HTTP " +
-        tableResponse.status +
-        ": " +
-        (await tableResponse.text()).replace(/\s+/g, " ").slice(0, 300)
+  // Read-only schema probe. The mutating consume_admin_rate_limit RPC is
+  // covered by local PostgreSQL integration tests and must never be called
+  // by a production health check.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const tableResponse = await fetch(
+      baseUrl + "/rest/v1/admin_rate_limits?select=actor_id&limit=0",
+      { headers: adminHeaders, signal: controller.signal, redirect: "error" }
     );
-  }
-  console.log("PASS: admin_rate_limits contract (HTTP " + tableResponse.status + ")");
-
-  const rpcResponse = await fetch(
-    baseUrl + "/rest/v1/rpc/consume_admin_rate_limit",
-    {
-      method: "POST",
-      headers: adminHeaders,
-      body: JSON.stringify({
-        p_actor: null,
-        p_bucket: "production-health-check",
-        p_limit: 1,
-        p_window_seconds: 60,
-      }),
+    if (!tableResponse.ok) {
+      throw new Error(
+        "admin_rate_limits schema contract returned HTTP " +
+          tableResponse.status +
+          ": " +
+          (await tableResponse.text()).replace(/\s+/g, " ").slice(0, 300)
+      );
     }
-  );
-  if (!rpcResponse.ok) {
-    throw new Error(
-      "consume_admin_rate_limit RPC returned HTTP " +
-        rpcResponse.status +
-        ": " +
-        (await rpcResponse.text()).replace(/\s+/g, " ").slice(0, 300)
-    );
+    console.log("PASS: admin_rate_limits schema contract (read-only HTTP " + tableResponse.status + ")");
+
+    const requiredContracts = [
+      { name: "site_audio_upload_intents table", path: "/rest/v1/site_audio_upload_intents?select=id&limit=0" },
+      { name: "background_reminder_preferences.timezone", path: "/rest/v1/background_reminder_preferences?select=timezone&limit=0" },
+      { name: "youtube_sync_state.playlists", path: "/rest/v1/youtube_sync_state?select=playlists&limit=0" },
+      { name: "social_publish_queue.target_platforms", path: "/rest/v1/social_publish_queue?select=target_platforms&limit=0" },
+    ];
+
+    for (const contract of requiredContracts) {
+      const response = await fetch(baseUrl + contract.path, {
+        method: "GET",
+        headers: adminHeaders,
+        signal: controller.signal,
+        redirect: "error",
+      });
+      if (!response.ok) {
+        throw new Error(
+          contract.name + " schema contract returned HTTP " +
+            response.status + ": " +
+            (await response.text()).replace(/\\s+/g, " ").slice(0, 300)
+        );
+      }
+      console.log("PASS: " + contract.name + " (read-only HTTP " + response.status + ")");
+    }
+
+    console.log("INFO: SQL-only RLS, default-ACL, CHECK-constraint, and partial-index contracts still require the owner SQL preflight.");
+  } finally {
+    clearTimeout(timeout);
   }
-  console.log("PASS: consume_admin_rate_limit RPC (HTTP " + rpcResponse.status + ")");
 }

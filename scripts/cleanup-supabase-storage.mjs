@@ -15,6 +15,9 @@ const REQUIRED_ANDROID_ASSETS = [
 ];
 const GITHUB_RELEASES_API =
   "https://api.github.com/repos/zikrofficial-X/Zikr/releases/tags";
+const SUPPORTED_RETENTION_PLATFORMS = new Set(["facebook", "facebook_reels", "youtube"]);
+const MAX_CLOUDINARY_PROBES = 1000;
+const MAX_VIDEO_REFERENCE_ENCODING_DEPTH = 5;
 
 function asObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -24,11 +27,86 @@ function asString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function assertExpectedSupabaseProject(supabaseUrl, expectedProjectRef) {
+  const expected = asString(expectedProjectRef).toLowerCase();
+  if (!/^[a-z0-9]{20}$/.test(expected)) {
+    throw new Error("EXPECTED_PROJECT_REF must be the canonical 20-character Supabase project ref.");
+  }
+  const parsed = new URL(supabaseUrl);
+  if (parsed.protocol !== "https:" || parsed.hostname.toLowerCase() !== `${expected}.supabase.co`) {
+    throw new Error(`Refusing Storage retention for an unexpected Supabase project; expected https://${expected}.supabase.co.`);
+  }
+  return expected;
+}
+
+export function assertRetentionApplyConfirmation(apply, confirmation, referenceWritesPaused = false) {
+  if (!apply) return;
+  if (referenceWritesPaused !== true) {
+    throw new Error("Refusing destructive Storage retention unless RETENTION_REFERENCE_WRITES_PAUSED=true; pause video generation, social publishing, and admin/media-reference writes for the entire apply window.");
+  }
+  if (asString(confirmation) !== "DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE") {
+    throw new Error("Refusing destructive Storage retention without RETENTION_CONFIRMATION=DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE.");
+  }
+}
+
+export async function collectPaginatedRows(
+  fetchPage,
+  label,
+  pageSize = 1000,
+  maxRows = 5000,
+) {
+  if (!Number.isInteger(pageSize) || pageSize < 1 ||
+      !Number.isInteger(maxRows) || maxRows < pageSize) {
+    throw new Error("Invalid pagination safety limits.");
+  }
+
+  const rows = [];
+  const maxPages = Math.ceil(maxRows / pageSize);
+  for (let page = 0; page <= maxPages; page += 1) {
+    const offset = page * pageSize;
+    const pageRows = await fetchPage(offset, offset + pageSize - 1);
+    if (!Array.isArray(pageRows)) {
+      throw new Error(`Pagination returned invalid data for ${label}; refusing cleanup.`);
+    }
+    if (rows.length + pageRows.length > maxRows) {
+      throw new Error(`${label} exceeded the safe scan limit; refusing cleanup.`);
+    }
+    rows.push(...pageRows);
+    if (pageRows.length < pageSize) return rows;
+  }
+
+  throw new Error(`${label} exceeded the safe scan limit; refusing cleanup.`);
+}
+
+export function matchesSha256Digest(bytes, expectedDigest) {
+  const expected = asString(expectedDigest).toLowerCase();
+  if (!/^sha256:[a-f0-9]{64}$/.test(expected)) return false;
+  const actual = "sha256:" + createHash("sha256").update(bytes).digest("hex");
+  return actual === expected;
+}
+
 export function hasConfirmedPlatformResults(targetPlatforms, metadata) {
-  if (!Array.isArray(targetPlatforms) || targetPlatforms.length === 0) return false;
+  if (
+    !Array.isArray(targetPlatforms) ||
+    targetPlatforms.length === 0 ||
+    targetPlatforms.length > SUPPORTED_RETENTION_PLATFORMS.size
+  ) {
+    return false;
+  }
+  const seen = new Set();
+  for (const platform of targetPlatforms) {
+    if (
+      typeof platform !== "string" ||
+      !SUPPORTED_RETENTION_PLATFORMS.has(platform) ||
+      seen.has(platform)
+    ) {
+      return false;
+    }
+    seen.add(platform);
+  }
+
   const results = asObject(asObject(metadata).platformResults);
-  return targetPlatforms.every((platform) => {
-    if (typeof platform !== "string" || !platform.trim()) return false;
+  return [...seen].every((platform) => {
     const result = asObject(results[platform]);
     return result.ok === true && Boolean(asString(result.remoteId));
   });
@@ -42,12 +120,92 @@ export function extractManagedVideoPath(value, supabaseUrl) {
     const prefix = "/storage/v1/object/public/videos/";
     if (!parsed.pathname.startsWith(prefix)) return null;
     const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
-    if (!path.startsWith("automated/") || path.includes("\\0")) return null;
+    if (!path.startsWith("automated/") || path.includes("\0")) return null;
     if (path.split("/").some((part) => part === "." || part === "..")) return null;
     return path;
   } catch {
     return null;
   }
+}
+
+export function findManagedVideoReferences(value, candidatePaths, supabaseUrl) {
+  const candidates = candidatePaths instanceof Set ? candidatePaths : new Set(candidatePaths);
+  const references = new Set();
+
+  const visit = (entry) => {
+    if (entry === null || entry === undefined) return;
+    if (Array.isArray(entry)) {
+      for (const item of entry) visit(item);
+      return;
+    }
+    if (typeof entry === "object") {
+      // Media references can be stored as either JSON values or map keys.
+      // Inspect both so a URL-keyed metadata object cannot hide a live asset.
+      for (const [key, item] of Object.entries(entry)) {
+        visit(key);
+        visit(item);
+      }
+      return;
+    }
+
+    const clean = asString(entry);
+    if (!clean) return;
+
+    // Storage URLs can be percent-encoded by clients before being embedded in
+    // content/JSON, and then encoded again by an outer serializer. Decode a
+    // bounded number of layers so the database prefilter and exact matcher
+    // protect the same candidate references.
+    const variants = new Set([clean]);
+    let decoded = clean;
+    for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1) {
+      try {
+        const next = decodeURIComponent(decoded);
+        if (next === decoded) break;
+        variants.add(next);
+        decoded = next;
+      } catch {
+        break;
+      }
+    }
+
+    for (const candidateValue of variants) {
+      if (candidates.has(candidateValue)) {
+        references.add(candidateValue);
+        continue;
+      }
+
+      const managedPath = extractManagedVideoPath(candidateValue, supabaseUrl);
+      if (managedPath && candidates.has(managedPath)) {
+        references.add(managedPath);
+        continue;
+      }
+
+      for (const path of candidates) {
+        const segmentEncodedPath = path.split("/").map(encodeURIComponent).join("/");
+        const fullyEncodedPath = encodeURIComponent(path);
+        if (
+          candidateValue.includes(path) ||
+          candidateValue.includes(segmentEncodedPath) ||
+          candidateValue.includes(fullyEncodedPath)
+        ) {
+          references.add(path);
+        }
+      }
+    }
+
+    // A remaining valid percent escape after the bounded decode may still hide
+    // a managed segment whose letters were themselves percent-encoded (for
+    // example %61%75%74%6f%6d%61%74%65%64). The SQL prefilter deliberately
+    // selects those rows, so never treat an undecoded value as unreferenced.
+    // Malformed outer encodings also fail closed when any valid encoded bytes
+    // remain in the value.
+    if (/%[0-9a-f]{2}/i.test(decoded)) {
+      throw new Error("Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.");
+    }
+  };
+
+  visit(value);
+  return references;
 }
 
 export function extractCloudinaryVideoPublicId(value, cloudName) {
@@ -75,14 +233,81 @@ export function extractCloudinaryVideoPublicId(value, cloudName) {
   }
 }
 
+export async function probeCloudinaryPlayback(value, cloudName, fetchImpl = fetch) {
+  if (!extractCloudinaryVideoPublicId(value, cloudName)) {
+    return { status: "unknown", httpStatus: null, contentType: null, reason: "unverified_cloudinary_url" };
+  }
+  const probe = (method) => fetchImpl(value, {
+    method,
+    ...(method === "GET" ? { headers: { Range: "bytes=0-0" } } : {}),
+    redirect: "error",
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  try {
+    let response = await probe("HEAD");
+    if (response.status === 405 || response.status === 501) {
+      response = await probe("GET");
+      await response.body?.cancel();
+    }
+    const contentType = response.headers.get("content-type")?.toLowerCase() ?? null;
+    const isVideo = Boolean(contentType && (
+      contentType.startsWith("video/") || contentType.includes("application/octet-stream")
+    ));
+    if ((response.ok || response.status === 206) && isVideo) {
+      return { status: "available", httpStatus: response.status, contentType };
+    }
+    if (response.status === 404 || response.status === 410) {
+      return { status: "missing", httpStatus: response.status, contentType, reason: "asset_not_found" };
+    }
+    if (response.ok || response.status === 206) {
+      return { status: "unknown", httpStatus: response.status, contentType, reason: "unexpected_content_type" };
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { status: "unknown", httpStatus: response.status, contentType, reason: "asset_access_restricted" };
+    }
+    return { status: "unknown", httpStatus: response.status, contentType, reason: "transient_or_unclassified_http_status" };
+  } catch (error) {
+    return {
+      status: "unknown",
+      httpStatus: null,
+      contentType: null,
+      reason: error instanceof Error ? error.name : "network_error",
+    };
+  }
+}
+
 function getSupabaseBackupUrl(queue, request, supabaseUrl) {
   return asString(asObject(queue?.metadata).supabaseOriginalVideoUrl)
     || asString(asObject(request?.content).supabaseOriginalVideoUrl)
     || (extractManagedVideoPath(queue?.video_url, supabaseUrl) ? asString(queue?.video_url) : "");
 }
 
-export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME)) {
-  if (!item || item.status !== "published") return false;
+export function indexManagedBackupReferences(rows, candidatePaths, getValue, getId, supabaseUrl) {
+  const references = new Map();
+  const candidates = new Set(candidatePaths);
+  const addReference = (path, id) => {
+    if (!candidates.has(path)) return;
+    const ids = references.get(path) ?? new Set();
+    ids.add(id);
+    references.set(path, ids);
+  };
+
+  for (const row of rows ?? []) {
+    const value = getValue(row) ?? {};
+    const id = String(getId(row) ?? "");
+    // Use the same recursive raw/URL-encoded matcher as the wider reference
+    // inventory. Missing an encoded nested pointer could delete a live asset.
+    for (const path of findManagedVideoReferences(value, candidates, supabaseUrl)) {
+      addReference(path, id);
+    }
+  }
+
+  return references;
+}
+
+export function isEligiblePublishedQueueItem(item, cutoffIso, supabaseUrl, cloudName = asString(process.env.CLOUDINARY_CLOUD_NAME), cloudinaryProbeStatus = "unknown") {
+  if (!item || item.status !== "published" || cloudinaryProbeStatus !== "available") return false;
   if (!item.published_at || !(Date.parse(item.published_at) < Date.parse(cutoffIso))) return false;
   if (!hasConfirmedPlatformResults(item.target_platforms, item.metadata)) return false;
   const backupUrl = asString(asObject(item.metadata).supabaseOriginalVideoUrl);
@@ -127,31 +352,98 @@ function assertEnv() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
   }
-  const parsedUrl = new URL(supabaseUrl);
-  if (parsedUrl.protocol !== "https:") throw new Error("SUPABASE_URL must use HTTPS.");
+  assertExpectedSupabaseProject(supabaseUrl, process.env.EXPECTED_PROJECT_REF);
   return { supabaseUrl: supabaseUrl.endsWith("/") ? supabaseUrl.slice(0, -1) : supabaseUrl, serviceRoleKey };
 }
 
-async function listDirectory(client, bucket, prefix) {
-  const rows = [];
-  for (let offset = 0; offset < 5000; offset += 1000) {
+const MAX_STORAGE_INVENTORY_OBJECTS = 5000;
+
+export function createStorageInventoryBudget(maxObjects = MAX_STORAGE_INVENTORY_OBJECTS) {
+  if (!Number.isInteger(maxObjects) || maxObjects < 1) {
+    throw new Error("Storage inventory budget must be a positive integer.");
+  }
+  const paths = new Set();
+  return {
+    record(bucket, prefix, entries) {
+      if (!Array.isArray(entries)) {
+        throw new Error("Storage inventory returned malformed entries; refusing cleanup.");
+      }
+      const bucketName = asString(bucket);
+      const directory = asString(prefix);
+      if (!bucketName) throw new Error("Storage inventory bucket is required.");
+      for (const entry of entries) {
+        const name = asString(entry?.name);
+        if (!name || name.includes("\0")) {
+          throw new Error("Storage inventory contains an invalid object name; refusing cleanup.");
+        }
+        const path = [bucketName, directory, name].filter(Boolean).join("/");
+        paths.add(path);
+        if (paths.size > maxObjects) {
+          throw new Error(`Storage inventory exceeded the global safety cap of ${maxObjects} objects; refusing cleanup.`);
+        }
+      }
+      return entries;
+    },
+    get count() { return paths.size; },
+  };
+}
+async function listDirectory(client, bucket, prefix, inventoryBudget = null) {
+  const rows = await collectPaginatedRows(async (offset, end) => {
     const { data, error } = await client.storage.from(bucket).list(prefix, {
-      limit: 1000,
+      limit: end - offset + 1,
       offset,
       sortBy: { column: "name", order: "asc" },
     });
     if (error) throw new Error(`Storage list failed for ${bucket}/${prefix}: ${error.message}`);
-    rows.push(...(data ?? []));
-    if (!data || data.length < 1000) break;
-  }
-  return rows;
+    if (!Array.isArray(data)) throw new Error(`Storage list returned an incomplete inventory for ${bucket}/${prefix}; refusing cleanup.`);
+    return data;
+  }, `Storage inventory ${bucket}/${prefix}`);
+  return inventoryBudget ? inventoryBudget.record(bucket, prefix, rows) : rows;
 }
 
-async function readSmallStorageText(client, bucket, path, maxBytes = 128 * 1024) {
+export async function verifyStoragePathsAbsent(paths, listDirectoryForPrefix) {
+  const uniquePaths = [...new Set(paths.map(asString).filter(Boolean))];
+  const grouped = new Map();
+
+  for (const path of uniquePaths) {
+    const separator = path.lastIndexOf("/");
+    const prefix = separator >= 0 ? path.slice(0, separator) : "";
+    const name = separator >= 0 ? path.slice(separator + 1) : path;
+    if (!name) throw new Error(`Invalid Storage object path: ${path}`);
+    if (!grouped.has(prefix)) grouped.set(prefix, []);
+    grouped.get(prefix).push({ path, name });
+  }
+
+  const remaining = [];
+  for (const [prefix, expected] of grouped) {
+    const entries = await listDirectoryForPrefix(prefix);
+    if (!Array.isArray(entries)) {
+      throw new Error(`Storage post-delete inventory was incomplete for prefix ${prefix || "<root>"}; refusing to finalize retention.`);
+    }
+    const presentNames = new Set(
+      entries
+        .filter((entry) => entry && typeof entry === "object" && entry.id)
+        .map((entry) => asString(entry.name))
+        .filter(Boolean),
+    );
+    for (const item of expected) {
+      if (presentNames.has(item.name)) remaining.push(item.path);
+    }
+  }
+
+  if (remaining.length > 0) {
+    throw new Error(
+      `Storage objects remain after removal; refusing to finalize retention: ${remaining.join(", ")}`,
+    );
+  }
+  return uniquePaths.length;
+}
+
+async function readSmallStorageBytes(client, bucket, path, maxBytes = 128 * 1024) {
   const { data, error } = await client.storage.from(bucket).download(path);
   if (error || !data) throw new Error(`Cannot read required backup file ${bucket}/${path}: ${error?.message ?? "empty response"}`);
   if (data.size > maxBytes) throw new Error(`Refusing unexpectedly large metadata file: ${bucket}/${path}`);
-  return await data.text();
+  return Buffer.from(await data.arrayBuffer());
 }
 
 async function githubRelease(tag) {
@@ -188,16 +480,24 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
     }
   }
 
-  const metadataText = await readSmallStorageText(
+  const metadataBytes = await readSmallStorageBytes(
     client,
     ANDROID_BUCKET,
     `android/${version}/release-metadata.json`,
   );
-  const checksumText = await readSmallStorageText(
+  const checksumBytes = await readSmallStorageBytes(
     client,
     ANDROID_BUCKET,
     `android/${version}/SHA256SUMS`,
   );
+  const metadataText = metadataBytes.toString("utf8");
+  const checksumText = checksumBytes.toString("utf8");
+  if (!matchesSha256Digest(metadataBytes, assets.get("release-metadata.json")?.digest)) {
+    return { ok: false, reason: "Stored release-metadata.json does not match the GitHub Release asset digest." };
+  }
+  if (!matchesSha256Digest(checksumBytes, assets.get("SHA256SUMS")?.digest)) {
+    return { ok: false, reason: "Stored SHA256SUMS does not match the GitHub Release asset digest." };
+  }
   let metadata;
   try {
     metadata = JSON.parse(metadataText);
@@ -234,257 +534,293 @@ async function verifyAndroidReleaseCopy(client, version, storageFiles) {
     if (binaryError || !binary) {
       return { ok: false, reason: `Cannot download Supabase backup ${name}: ${binaryError?.message ?? "empty response"}.` };
     }
-    const actualDigest = `sha256:${createHash("sha256").update(Buffer.from(await binary.arrayBuffer())).digest("hex")}`;
-    if (actualDigest !== expectedDigest) {
+    const actualBytes = Buffer.from(await binary.arrayBuffer());
+    if (!matchesSha256Digest(actualBytes, expectedDigest)) {
       return { ok: false, reason: `Actual Supabase binary SHA256 does not match the published GitHub ${name}.` };
     }
   }
   return { ok: true, reason: "GitHub Release assets, stored checksums, and actual Supabase APK/AAB bytes match." };
 }
 
+const REFERENCE_ORDER_COLUMNS = Object.freeze({
+  kids_content: "id",
+  pinned_messages: "id",
+  content_agent_runs: "id",
+  kids_achievements: "id",
+  video_template_versions: "id",
+  media_assets: "id",
+  social_sync_jobs: "id",
+  quran_audio: "id",
+  site_audio_assets: "id",
+  site_settings: "key",
+  video_generation_requests: "id",
+  videos: "id",
+  youtube_feed_cache: "video_id",
+  content_agent_queue: "id",
+  content_sources: "id",
+  social_publish_queue: "id",
+  content_library: "id",
+  content_revisions: "id",
+  articles: "id",
+  battles: "id",
+  companions: "id",
+  conquests: "id",
+  prophets: "id",
+  kids_games: "id",
+  kids_game_levels: "id",
+  kids_game_questions: "id",
+  profiles: "id",
+  push_runtime_settings: "key",
+  quran_ayahs: "id",
+  quran_reciters: "id",
+  scholars: "id",
+  social_platform_profiles: "platform",
+  admin_audit_events: "id",
+  admin_queue_alert_deliveries: "alert_key",
+  admin_settings: "key",
+  battle_events: "id",
+  companion_stories: "id",
+  competitions: "id",
+  conquest_events: "id",
+  content_agent_sources: "id",
+  content_translation_queue: "id",
+  duas: "id",
+  hadith_books: "id",
+  kids_game_results: "id",
+  notifications: "id",
+  prophet_sections: "id",
+  quran_tafsir: "id",
+  stories: "id",
+  user_behavior: "id",
+  video_automation_runs: "id",
+  tawasheeh: "id",
+});
+
+// Keep the SQL prefilter broad enough to find both canonical paths and
+// percent-encoded unreserved characters in the managed "automated" segment.
+// The hexadecimal pairs deliberately over-select; exact recursive decoding
+// below removes false positives before any retention decision. The encoded
+// bytes remain visible at every nested percent-encoding depth, so the
+// prefilter and bounded decoder cover the same supported URL encodings.
+const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([
+  "%automated%",
+  "%61%",
+  "%75%",
+  "%74%",
+  "%6f%",
+  "%6d%",
+  "%65%",
+  "%64%",
+]);
+
+function videoStorageReferenceFilter(query, column) {
+  return query.or(
+    VIDEO_STORAGE_REFERENCE_PATTERNS
+      .map((pattern) => `${column}.ilike.${pattern}`)
+      .join(","),
+  );
+}
+
+export function textReferencePatterns(table, column) {
+  return [{
+    table,
+    column,
+    filter: (query) => videoStorageReferenceFilter(query, column),
+  }];
+}
+
+export function storagePathReferencePatterns(table, column) {
+  return [{
+    table,
+    column,
+    filter: (query) => videoStorageReferenceFilter(query, column),
+  }];
+}
+
+export function jsonReferencePattern(table, column) {
+  return [{
+    table,
+    column,
+    filter: (query) => query.not(column, "is", null),
+  }];
+}
+
+export function getReferenceOrderColumn(table) {
+  if (!Object.hasOwn(REFERENCE_ORDER_COLUMNS, table)) {
+    throw new Error(`No deterministic primary-key order is configured for Storage reference table ${table}.`);
+  }
+  return REFERENCE_ORDER_COLUMNS[table];
+}
+
 async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl) {
   const patterns = [
-    {
-      table: "kids_content",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_content",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "media_assets",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "media_assets",
-      column: "url",
-      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_sync_jobs",
-      column: "source_media_path",
-      filter: (query) => query.like("source_media_path", "automated/%"),
-    },
-    {
-      table: "social_sync_jobs",
-      column: "source_media_url",
-      filter: (query) => query.ilike("source_media_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "site_audio_assets",
-      column: "storage_path",
-      filter: (query) => query.like("storage_path", "automated/%"),
-    },
-    {
-      table: "video_generation_requests",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
+    ...textReferencePatterns("kids_content", "video_url"),
+    ...textReferencePatterns("kids_content", "featured_image_url"),
+    ...storagePathReferencePatterns("media_assets", "storage_path"),
+    ...textReferencePatterns("media_assets", "url"),
+    ...storagePathReferencePatterns("social_sync_jobs", "source_media_path"),
+    ...textReferencePatterns("social_sync_jobs", "source_media_url"),
+    ...storagePathReferencePatterns("quran_audio", "storage_path"),
+    ...storagePathReferencePatterns("site_audio_assets", "storage_path"),
+    ...textReferencePatterns("video_generation_requests", "video_url"),
+    ...textReferencePatterns("video_generation_requests", "thumbnail_url"),
+    ...textReferencePatterns("video_generation_requests", "description"),
+    ...textReferencePatterns("video_generation_requests", "error_details"),
+    ...textReferencePatterns("video_generation_requests", "error_message"),
+    ...textReferencePatterns("video_generation_requests", "scene"),
+    ...textReferencePatterns("videos", "thumbnail_url"),
+    ...textReferencePatterns("videos", "description"),
     {
       table: "videos",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
+      column: "metadata",
+      filter: (query) => query.not("metadata", "is", null),
     },
-    {
-      table: "social_sync_jobs",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "youtube_feed_cache",
-      column: "video_url",
-      filter: (query) => query.ilike("video_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "youtube_feed_cache",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_agent_queue",
-      column: "source_url",
-      filter: (query) => query.ilike("source_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_sources",
-      column: "url",
-      filter: (query) => query.ilike("url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_publish_queue",
-      column: "image_url",
-      filter: (query) => query.ilike("image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "content_library",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "articles",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "battles",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "battles",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "companions",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "companions",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "conquests",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "conquests",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "prophets",
-      column: "featured_image_url",
-      filter: (query) => query.ilike("featured_image_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "prophets",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_games",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "kids_games",
-      column: "icon_url",
-      filter: (query) => query.ilike("icon_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "profiles",
-      column: "avatar_url",
-      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_audio",
-      column: "storage_url",
-      filter: (query) => query.ilike("storage_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_ayahs",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_reciters",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "quran_reciters",
-      column: "base_url_template",
-      filter: (query) => query.ilike("base_url_template", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "website_url",
-      filter: (query) => query.ilike("website_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "scholars",
-      column: "youtube_url",
-      filter: (query) => query.ilike("youtube_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "avatar_url",
-      filter: (query) => query.ilike("avatar_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "cover_url",
-      filter: (query) => query.ilike("cover_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "social_platform_profiles",
-      column: "page_url",
-      filter: (query) => query.ilike("page_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "tawasheeh",
-      column: "audio_url",
-      filter: (query) => query.ilike("audio_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
-    {
-      table: "tawasheeh",
-      column: "thumbnail_url",
-      filter: (query) => query.ilike("thumbnail_url", "%/storage/v1/object/public/videos/automated/%"),
-    },
+    ...textReferencePatterns("social_sync_jobs", "thumbnail_url"),
+    ...textReferencePatterns("youtube_feed_cache", "video_url"),
+    ...textReferencePatterns("youtube_feed_cache", "thumbnail_url"),
+    ...textReferencePatterns("youtube_feed_cache", "description"),
+    ...textReferencePatterns("content_agent_queue", "source_url"),
+    ...textReferencePatterns("content_agent_queue", "body"),
+    ...textReferencePatterns("content_agent_queue", "error_message"),
+    ...textReferencePatterns("content_sources", "url"),
+    ...textReferencePatterns("social_publish_queue", "video_url"),
+    ...textReferencePatterns("social_publish_queue", "image_url"),
+    ...textReferencePatterns("social_publish_queue", "body"),
+    ...textReferencePatterns("social_publish_queue", "error_message"),
+    ...textReferencePatterns("content_library", "cover_url"),
+    ...textReferencePatterns("content_library", "body_ar"),
+    ...textReferencePatterns("content_library", "body_en"),
+    ...textReferencePatterns("content_library", "summary_ar"),
+    ...textReferencePatterns("content_library", "summary_en"),
+    ...textReferencePatterns("kids_games", "description_ar"),
+    ...textReferencePatterns("kids_games", "description_en"),
+    ...textReferencePatterns("kids_games", "short_description_ar"),
+    ...textReferencePatterns("kids_game_levels", "description_ar"),
+    ...textReferencePatterns("kids_game_levels", "objective_ar"),
+    ...textReferencePatterns("kids_game_levels", "objective_en"),
+    ...textReferencePatterns("kids_game_questions", "prompt_ar"),
+    ...textReferencePatterns("kids_game_questions", "question_ar"),
+    ...textReferencePatterns("kids_game_questions", "question_en"),
+    ...textReferencePatterns("kids_game_questions", "explanation_ar"),
+    ...textReferencePatterns("kids_game_questions", "explanation_en"),
+    ...textReferencePatterns("articles", "featured_image_url"),
+    ...textReferencePatterns("articles", "summary"),
+    ...textReferencePatterns("articles", "summary_ar"),
+    ...textReferencePatterns("articles", "summary_en"),
+    ...textReferencePatterns("battles", "featured_image_url"),
+    ...textReferencePatterns("battles", "thumbnail_url"),
+    ...textReferencePatterns("companions", "featured_image_url"),
+    ...textReferencePatterns("companions", "thumbnail_url"),
+    ...textReferencePatterns("conquests", "featured_image_url"),
+    ...textReferencePatterns("conquests", "thumbnail_url"),
+    ...textReferencePatterns("prophets", "featured_image_url"),
+    ...textReferencePatterns("prophets", "thumbnail_url"),
+    ...textReferencePatterns("kids_games", "cover_url"),
+    ...textReferencePatterns("kids_games", "icon_url"),
+    ...textReferencePatterns("profiles", "avatar_url"),
+    ...textReferencePatterns("profiles", "bio"),
+    ...textReferencePatterns("quran_audio", "audio_url"),
+    ...textReferencePatterns("quran_audio", "storage_url"),
+    ...textReferencePatterns("quran_ayahs", "audio_url"),
+    ...textReferencePatterns("quran_reciters", "thumbnail_url"),
+    ...textReferencePatterns("quran_reciters", "base_url_template"),
+    ...textReferencePatterns("scholars", "thumbnail_url"),
+    ...textReferencePatterns("scholars", "website_url"),
+    ...textReferencePatterns("scholars", "youtube_url"),
+    ...textReferencePatterns("social_platform_profiles", "avatar_url"),
+    ...textReferencePatterns("social_platform_profiles", "cover_url"),
+    ...textReferencePatterns("social_platform_profiles", "page_url"),
+    ...textReferencePatterns("social_platform_profiles", "description"),
+    ...textReferencePatterns("social_platform_profiles", "website"),
+    ...textReferencePatterns("tawasheeh", "audio_url"),
+    ...textReferencePatterns("tawasheeh", "thumbnail_url"),
+    ...textReferencePatterns("tawasheeh", "description_ar"),
+    ...textReferencePatterns("tawasheeh", "description_en"),
+    ...jsonReferencePattern("admin_audit_events", "metadata"),
+    ...jsonReferencePattern("admin_queue_alert_deliveries", "payload"),
+    ...textReferencePatterns("notifications", "body"),
+    ...textReferencePatterns("pinned_messages", "body"),
+    ...textReferencePatterns("pinned_messages", "cta_href"),
+    ...jsonReferencePattern("admin_settings", "value"),
+    ...textReferencePatterns("articles", "content"),
+    ...textReferencePatterns("articles", "content_ar"),
+    ...textReferencePatterns("articles", "content_en"),
+    ...jsonReferencePattern("articles", "metadata"),
+    ...textReferencePatterns("battle_events", "content_ar"),
+    ...textReferencePatterns("battle_events", "content_en"),
+    ...jsonReferencePattern("battles", "metadata"),
+    ...textReferencePatterns("companion_stories", "content_ar"),
+    ...textReferencePatterns("companion_stories", "content_en"),
+    ...jsonReferencePattern("companions", "metadata"),
+    ...jsonReferencePattern("competitions", "metadata"),
+    ...textReferencePatterns("conquest_events", "content_ar"),
+    ...textReferencePatterns("conquest_events", "content_en"),
+    ...jsonReferencePattern("conquests", "metadata"),
+    ...jsonReferencePattern("content_agent_queue", "metadata"),
+    ...textReferencePatterns("content_agent_sources", "base_url"),
+    ...textReferencePatterns("content_agent_sources", "fetch_url"),
+    ...jsonReferencePattern("content_library", "metadata"),
+    ...jsonReferencePattern("content_library", "seo"),
+    ...jsonReferencePattern("content_revisions", "snapshot"),
+    ...jsonReferencePattern("kids_games", "config"),
+    ...jsonReferencePattern("kids_game_levels", "config"),
+    ...jsonReferencePattern("kids_game_questions", "options"),
+    ...jsonReferencePattern("kids_game_questions", "options_ar"),
+    ...jsonReferencePattern("kids_game_questions", "options_en"),
+    ...jsonReferencePattern("content_translation_queue", "source_payload"),
+    ...jsonReferencePattern("content_translation_queue", "draft_payload"),
+    ...jsonReferencePattern("duas", "metadata"),
+    ...textReferencePatterns("hadith_books", "source"),
+    ...textReferencePatterns("kids_content", "content_ar"),
+    ...textReferencePatterns("kids_content", "content_en"),
+    ...textReferencePatterns("kids_content", "summary_ar"),
+    ...textReferencePatterns("kids_content", "summary_en"),
+    ...jsonReferencePattern("kids_content", "quiz_data"),
+    ...jsonReferencePattern("kids_content", "metadata"),
+    ...jsonReferencePattern("kids_games", "metadata"),
+    ...jsonReferencePattern("kids_game_results", "metadata"),
+    ...jsonReferencePattern("media_assets", "metadata"),
+    ...jsonReferencePattern("notifications", "metadata"),
+    ...textReferencePatterns("prophet_sections", "content_ar"),
+    ...textReferencePatterns("prophet_sections", "content_en"),
+    ...jsonReferencePattern("prophets", "metadata"),
+    ...jsonReferencePattern("push_runtime_settings", "value"),
+    ...jsonReferencePattern("quran_audio", "metadata"),
+    ...textReferencePatterns("quran_audio", "source_url"),
+    ...jsonReferencePattern("quran_reciters", "metadata"),
+    ...textReferencePatterns("quran_tafsir", "source_url"),
+    ...jsonReferencePattern("scholars", "metadata"),
+    ...textReferencePatterns("scholars", "bio_ar"),
+    ...textReferencePatterns("scholars", "bio_en"),
+    ...jsonReferencePattern("site_settings", "value"),
+    ...textReferencePatterns("social_sync_jobs", "source_url"),
+    ...textReferencePatterns("social_sync_jobs", "description"),
+    ...textReferencePatterns("social_sync_jobs", "last_error"),
+    ...textReferencePatterns("stories", "content"),
+    ...textReferencePatterns("stories", "summary"),
+    ...jsonReferencePattern("stories", "metadata"),
+    ...jsonReferencePattern("tawasheeh", "metadata"),
+    ...jsonReferencePattern("user_behavior", "metadata"),
+    ...jsonReferencePattern("video_automation_runs", "metadata"),
+    ...jsonReferencePattern("content_agent_runs", "details"),
+    ...jsonReferencePattern("kids_achievements", "criteria"),
+    ...jsonReferencePattern("video_template_versions", "config"),
   ];
 
   const referenceSet = new Set();
   const candidateSet = new Set(candidatePaths);
-  const canonicalUrlPrefix = `${supabaseUrl}/storage/v1/object/public/videos/`;
-
   function recordReference(value) {
-    const clean = asString(value);
-    if (!clean) return;
-    if (candidateSet.has(clean)) {
-      referenceSet.add(clean);
-      return;
-    }
-
-    if (clean.startsWith(canonicalUrlPrefix)) {
-      try {
-        const parsed = new URL(clean);
-        const prefix = "/storage/v1/object/public/videos/";
-        const path = decodeURIComponent(parsed.pathname.slice(prefix.length));
-        if (candidateSet.has(path)) referenceSet.add(path);
-      } catch {
-        // Malformed references are ignored here; exact matching has already failed.
-      }
+    for (const path of findManagedVideoReferences(value, candidateSet, supabaseUrl)) {
+      referenceSet.add(path);
     }
   }
 
   const results = await Promise.all(patterns.map(async (pattern) => {
     const rows = [];
     for (let offset = 0; offset < 5000; offset += 1000) {
+      const orderColumn = getReferenceOrderColumn(pattern.table);
       let query = client.from(pattern.table).select(pattern.column);
-      query = pattern.filter(query);
+      query = pattern.filter(query).order(orderColumn, { ascending: true });
       const { data, error } = await query.range(offset, offset + 999);
       if (error) {
         throw new Error(`Reference inventory failed for ${pattern.table}.${pattern.column}: ${error.message}`);
@@ -505,6 +841,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
       .from("content_library")
       .select("media")
       .not("media", "is", null)
+      .order("id", { ascending: true })
       .range(offset, offset + 999);
     if (error) throw new Error(`Reference inventory failed for content_library.media: ${error.message}`);
     libraryRows.push(...(data ?? []));
@@ -514,10 +851,7 @@ async function loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl
     throw new Error("content_library.media exceeded the safe scan limit; refusing cleanup.");
   }
   for (const row of libraryRows) {
-    const serialized = JSON.stringify(row.media ?? {});
-    for (const path of candidatePaths) {
-      if (serialized.includes(path)) referenceSet.add(path);
-    }
+    recordReference(row.media ?? {});
   }
   return referenceSet;
 }
@@ -526,6 +860,7 @@ async function getAndroidReleaseReferences(client) {
   const { data, error } = await client
     .from("site_settings")
     .select("key,value")
+    .order("key", { ascending: true })
     .range(0, 999);
   if (error) throw new Error(`Cannot read Android release settings: ${error.message}`);
   const rows = data ?? [];
@@ -564,14 +899,38 @@ async function updateAndroidBucketRows(client, paths) {
   if (!paths.length) return;
   const { error } = await client.storage.from(ANDROID_BUCKET).remove(paths);
   if (error) throw new Error(`Android Storage remove failed: ${error.message}`);
+  const verifiedCount = await verifyStoragePathsAbsent(
+    paths,
+    (prefix) => listDirectory(client, ANDROID_BUCKET, prefix),
+  );
+  console.log(`Verified ${verifiedCount} Android release Storage paths are absent.`);
+}
+
+async function assertRetentionRpcContractReady(client) {
+  const { data, error } = await client.rpc("video_storage_retention_contract_ready");
+  if (error) {
+    throw new Error(
+      `Refusing destructive Storage retention because the safe RPC contract is not installed: ${error.message}. Apply migration 20261111153000 before retrying.`,
+    );
+  }
+  if (data !== true) {
+    throw new Error("Refusing destructive Storage retention because the active RPC does not preserve Cloudinary playback URLs.");
+  }
 }
 
 async function main() {
+  const apply = process.argv.includes("--apply");
+  assertRetentionApplyConfirmation(
+    apply,
+    process.env.RETENTION_CONFIRMATION,
+    process.env.RETENTION_REFERENCE_WRITES_PAUSED === "true",
+  );
   const { supabaseUrl, serviceRoleKey } = assertEnv();
   const client = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const apply = process.argv.includes("--apply");
+  // Fail closed before any inventory mutation unless the safe RPC migration is live.
+  if (apply) await assertRetentionRpcContractReady(client);
   const videosOnly = process.argv.includes("--videos-only");
   const now = new Date();
   const cutoff = new Date(now.getTime() - VIDEO_RETENTION_HOURS * 60 * 60 * 1000);
@@ -580,49 +939,73 @@ async function main() {
   console.log(`ZIKR Storage retention: ${apply ? "APPLY" : "DRY RUN"}`);
   console.log(`Video retention cutoff: ${cutoffIso}`);
 
-  const [queueResult, requestResult, videoFiles, androidRoot] = await Promise.all([
-    client.from("social_publish_queue")
-      .select("id,content_id,video_url,target_platforms,status,published_at,metadata")
-      .not("video_url", "is", null)
-      .range(0, 999),
-    client.from("video_generation_requests")
-      .select("id,status,video_url,content")
-      .not("video_url", "is", null)
-      .range(0, 999),
-    listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX),
-    listDirectory(client, ANDROID_BUCKET, "android"),
+  const storageInventoryBudget = createStorageInventoryBudget();
+  const [queueRows, requestRows, videoFiles, androidRoot] = await Promise.all([
+    collectPaginatedRows(async (offset, end) => {
+      const { data, error } = await client.from("social_publish_queue")
+        .select("id,content_id,video_url,target_platforms,status,published_at,metadata")
+        .order("id", { ascending: true })
+        .range(offset, end);
+      if (error) throw new Error(`Cannot read social publish queue: ${error.message}`);
+      return data ?? [];
+    }, "social_publish_queue.video_url"),
+    collectPaginatedRows(async (offset, end) => {
+      const { data, error } = await client.from("video_generation_requests")
+        .select("id,status,video_url,content")
+        .order("id", { ascending: true })
+        .range(offset, end);
+      if (error) throw new Error(`Cannot read video generation requests: ${error.message}`);
+      return data ?? [];
+    }, "video_generation_requests.video_url"),
+    listDirectory(client, VIDEO_BUCKET, VIDEO_PREFIX, storageInventoryBudget),
+    listDirectory(client, ANDROID_BUCKET, "android", storageInventoryBudget),
   ]);
-  if (queueResult.error) throw new Error(`Cannot read social publish queue: ${queueResult.error.message}`);
-  if (requestResult.error) throw new Error(`Cannot read video generation requests: ${requestResult.error.message}`);
-
-  const queueRows = queueResult.data ?? [];
-  const requestRows = requestResult.data ?? [];
   const requestById = new Map(requestRows.map((row) => [row.id, row]));
+  console.log(`Storage preflight inventory: ${storageInventoryBudget.count} entries across the inspected prefixes.`);
   const filesByPath = new Map(
     videoFiles
       .filter((file) => file.id && file.name?.endsWith(".mp4"))
       .map((file) => [`${VIDEO_PREFIX}/${file.name}`, file]),
   );
-  const unexpectedReferences = await loadUnexpectedVideoReferences(client, [...filesByPath.keys()], supabaseUrl);
   const queueByUrl = new Map();
   for (const row of queueRows) {
     if (!row.video_url) continue;
     queueByUrl.set(row.video_url, (queueByUrl.get(row.video_url) ?? 0) + 1);
   }
 
-  const sourcePathCounts = new Map();
+  const candidateBackupPaths = new Set(filesByPath.keys());
   for (const row of queueRows) {
     const request = requestById.get(row.content_id);
+    if (!request || row.status !== "published" || !row.published_at ||
+        !(Date.parse(row.published_at) < Date.parse(cutoffIso)) ||
+        !hasConfirmedPlatformResults(row.target_platforms, row.metadata)) continue;
     const backupUrl = getSupabaseBackupUrl(row, request, supabaseUrl);
     const path = extractManagedVideoPath(backupUrl, supabaseUrl);
-    if (path) sourcePathCounts.set(path, (sourcePathCounts.get(path) ?? 0) + 1);
+    if (path) candidateBackupPaths.add(path);
   }
 
+  const candidatePaths = [...candidateBackupPaths];
+  const unexpectedReferences = await loadUnexpectedVideoReferences(client, candidatePaths, supabaseUrl);
+  const queueBackupReferences = indexManagedBackupReferences(
+    queueRows,
+    candidatePaths,
+    (row) => ({ metadata: row.metadata, video_url: row.video_url }),
+    (row) => row.id,
+    supabaseUrl,
+  );
+  const requestBackupReferences = indexManagedBackupReferences(
+    requestRows,
+    candidatePaths,
+    (row) => ({ content: row.content, video_url: row.video_url }),
+    (row) => row.id,
+    supabaseUrl,
+  );
+
   const cloudinaryCloudName = asString(process.env.CLOUDINARY_CLOUD_NAME);
-  const candidates = [];
+  const candidateQueue = [];
   const skipped = [];
   for (const row of queueRows) {
-    if (row.status !== "published" || !row.published_at ||
+    if (!row.video_url || row.status !== "published" || !row.published_at ||
         !(Date.parse(row.published_at) < Date.parse(cutoffIso)) ||
         !hasConfirmedPlatformResults(row.target_platforms, row.metadata)) continue;
 
@@ -654,8 +1037,14 @@ async function main() {
         : "No verified Cloudinary playback master; refusing to purge the only known video asset." });
       continue;
     }
-    if (sourcePathCounts.get(path) !== 1) {
-      skipped.push({ id: row.id, reason: "Supabase backup path is shared by multiple queue rows." });
+    const queueReferences = queueBackupReferences.get(path);
+    const requestReferences = requestBackupReferences.get(path);
+    if (
+      (!queueReferences && !requestReferences) ||
+      (queueReferences && (queueReferences.size !== 1 || !queueReferences.has(row.id))) ||
+      (requestReferences && (requestReferences.size !== 1 || !requestReferences.has(request.id)))
+    ) {
+      skipped.push({ id: row.id, reason: "Supabase backup path is shared or its queue/request ownership cannot be proven." });
       continue;
     }
 
@@ -673,7 +1062,7 @@ async function main() {
       skipped.push({ id: row.id, reason: "Another public content table still references this video path." });
       continue;
     }
-    candidates.push({
+    candidateQueue.push({
       queue: row,
       request,
       path,
@@ -684,6 +1073,29 @@ async function main() {
       publishedAt: row.published_at,
     });
   }
+
+  if (candidateQueue.length > MAX_CLOUDINARY_PROBES) {
+    throw new Error(`Cloudinary playback verification exceeded the safe limit of ${MAX_CLOUDINARY_PROBES}; refusing cleanup.`);
+  }
+  const candidates = [];
+  let probeCursor = 0;
+  const probeConcurrency = Math.min(10, candidateQueue.length);
+  await Promise.all(Array.from({ length: probeConcurrency }, async () => {
+    while (true) {
+      const index = probeCursor++;
+      if (index >= candidateQueue.length) return;
+      const candidate = candidateQueue[index];
+      const probe = await probeCloudinaryPlayback(candidate.queue.video_url, cloudinaryCloudName);
+      if (probe.status !== "available") {
+        skipped.push({
+          id: candidate.queue.id,
+          reason: `Cloudinary playback master is not confirmed available (${probe.status}${probe.reason ? `: ${probe.reason}` : ""}).`,
+        });
+        continue;
+      }
+      candidates.push(candidate);
+    }
+  }));
 
   const totalVideoBytes = candidates.reduce((sum, item) => sum + item.bytes, 0);
   console.log(
@@ -707,7 +1119,7 @@ async function main() {
 
   for (const version of (videosOnly ? [] : androidVersions)) {
     if (protectedTags.has(version)) continue;
-    const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`);
+    const versionFiles = await listDirectory(client, ANDROID_BUCKET, `android/${version}`, storageInventoryBudget);
     androidVersionFiles.set(version, versionFiles);
     const verification = await verifyAndroidReleaseCopy(client, version, versionFiles);
     if (!verification.ok) {
@@ -766,6 +1178,11 @@ async function main() {
     if (pathsToRemove.length > 0) {
       const { error } = await client.storage.from(VIDEO_BUCKET).remove(pathsToRemove);
       if (error) throw new Error(`Video Storage remove failed for batch ${offset / 100 + 1}: ${error.message}`);
+      const verifiedCount = await verifyStoragePathsAbsent(
+        pathsToRemove,
+        (prefix) => listDirectory(client, VIDEO_BUCKET, prefix),
+      );
+      console.log(`Verified ${verifiedCount} video staging Storage paths are absent before database finalization.`);
     }
 
     // The Cloudinary URL is the permanent playback master referenced by public.videos.

@@ -4,23 +4,33 @@ import { useEffect } from "react";
 import { App } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
+import { PRODUCTION_URL } from "@/lib/site";
 import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { sanitizeInternalPath } from "@/lib/safe-redirect";
 
 function getSafeNextPath(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/profile";
+  return sanitizeInternalPath(next);
 }
 
 function isNativeGoogleCallback(rawUrl: string): boolean {
   try {
     const url = new URL(rawUrl);
+    const hasNativeFlowMarker = url.searchParams.get("native") === "1";
     const isAppDeepLink =
       url.protocol === "com.zikr.app:" &&
       url.hostname === "auth" &&
-      url.pathname === "/callback";
+      url.pathname === "/callback" &&
+      hasNativeFlowMarker &&
+      url.username === "" &&
+      url.password === "" &&
+      url.port === "";
     const isHttpsBridge =
       url.protocol === "https:" &&
-      url.hostname === "zikrmediaofficial.vercel.app" &&
-      url.pathname === "/auth/callback";
+      url.origin === new URL(PRODUCTION_URL).origin &&
+      url.pathname === "/auth/callback" &&
+      hasNativeFlowMarker &&
+      url.username === "" &&
+      url.password === "";
     return isAppDeepLink || isHttpsBridge;
   } catch {
     return false;
@@ -49,11 +59,12 @@ export function NativeGoogleOAuthHandler() {
 
     const supabase = createBrowserSupabaseClient();
     const handledCallbacks = new Set<string>();
+    let disposed = false;
     let urlListener: { remove: () => Promise<void> } | undefined;
     let stateListener: { remove: () => Promise<void> } | undefined;
 
     const handleCallback = async (rawUrl: string) => {
-      if (!rawUrl || !isNativeGoogleCallback(rawUrl) || handledCallbacks.has(rawUrl)) {
+      if (disposed || !rawUrl || !isNativeGoogleCallback(rawUrl) || handledCallbacks.has(rawUrl)) {
         return;
       }
       handledCallbacks.add(rawUrl);
@@ -121,26 +132,45 @@ export function NativeGoogleOAuthHandler() {
     };
 
     const subscribe = async () => {
-      urlListener = await App.addListener("appUrlOpen", ({ url }) => {
+      const nextUrlListener = await App.addListener("appUrlOpen", ({ url }) => {
         void handleCallback(url);
       });
+      if (disposed) {
+        await nextUrlListener.remove();
+        return;
+      }
+      urlListener = nextUrlListener;
 
-      stateListener = await App.addListener("appStateChange", ({ isActive }) => {
-        if (!isActive) return;
+      const nextStateListener = await App.addListener("appStateChange", ({ isActive }) => {
+        if (disposed || !isActive) return;
         void App.getLaunchUrl().then((launch) => {
-          if (launch?.url) void handleCallback(launch.url);
+          if (!disposed && launch?.url) void handleCallback(launch.url);
         });
       });
+      if (disposed) {
+        await nextStateListener.remove();
+        return;
+      }
+      stateListener = nextStateListener;
 
       const launch = await App.getLaunchUrl();
-      if (launch?.url) void handleCallback(launch.url);
+      if (!disposed && launch?.url) void handleCallback(launch.url);
     };
 
-    void subscribe();
+    void subscribe().catch((error: unknown) => {
+      if (!disposed) {
+        console.warn("[native-google-oauth] Listener registration failed", error);
+      }
+    });
 
     return () => {
-      void urlListener?.remove();
-      void stateListener?.remove();
+      disposed = true;
+      void urlListener?.remove().catch((error: unknown) => {
+        console.warn("[native-google-oauth] URL listener cleanup failed", error);
+      });
+      void stateListener?.remove().catch((error: unknown) => {
+        console.warn("[native-google-oauth] App-state listener cleanup failed", error);
+      });
     };
   }, []);
 

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import "./globals.css";
 import { SiteShell } from "@/components/layout/site-shell";
 
@@ -20,11 +19,6 @@ const notoNaskhArabic = Noto_Naskh_Arabic({
   variable: "--font-noto-arabic-loaded",
 });
 
-// These are public identifiers, not secrets. Environment variables remain the
-// canonical deployment configuration; the verified production IDs are safe
-// fallbacks so a missing Vercel build variable cannot silently disable tags.
-const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-W30Z9JW0VF";
-const isValidGoogleAnalyticsId = /^G-[A-Z0-9]+$/i.test(googleAnalyticsId ?? "");
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -82,13 +76,13 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description,
     ...(keywords?.length ? { keywords } : {}),
-    alternates: { canonical: "/" },
+    // Canonicals and og:url are route-specific; setting either here would be
+    // inherited by child pages and incorrectly point them at the homepage.
     openGraph: {
       title: ogTitle,
       description: ogDescription,
       type: "website",
       locale: htmlLocale.replace("-", "_"),
-      url: siteConfig.url,
       siteName: siteConfig.shortName,
       images: [{ url: ogImage, width: 1200, height: 630, alt: ogTitle }],
     },
@@ -150,42 +144,8 @@ export default async function RootLayout({
       suppressHydrationWarning={true}
     >
       <head>
-        <Script id="google-consent-mode-default" strategy="beforeInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-window.adsbygoogle = window.adsbygoogle || [];
-window.adsbygoogle.requestNonPersonalizedAds = 1;
-gtag('consent', 'default', {
-  ad_storage: 'denied',
-  analytics_storage: 'denied',
-  ad_user_data: 'denied',
-  ad_personalization: 'denied',
-  personalization_storage: 'denied',
-  functionality_storage: 'granted',
-  security_storage: 'granted',
-  wait_for_update: 500
-});
-gtag('set', 'ads_data_redaction', true);`}
-        </Script>
-        {process.env.NODE_ENV === "production" && isValidGoogleAnalyticsId && (
-          <>
-            <Script
-              id="google-analytics-src"
-              src={`https://www.googletagmanager.com/gtag/js?id=${googleAnalyticsId}`}
-              strategy="lazyOnload"
-            />
-            <Script id="google-analytics-config" strategy="lazyOnload">
-              {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', '${googleAnalyticsId}', { send_page_view: true });`}
-            </Script>
-          </>
-        )}
-        <meta
-          name="google-adsense-account"
-          content={process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "ca-pub-2457467624248791"}
-        />
+        
+        
         <meta name="theme-color" content="#061322" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

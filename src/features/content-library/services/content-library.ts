@@ -95,12 +95,12 @@ export async function getPublicContentLibrary(
   limit = 60,
   locale: "ar" | "en" = "ar",
 ): Promise<PublicContentLibraryItem[]> {
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
 
   try {
     const rows = await supabaseServerAnonRequest<RawItem[]>(
       `/rest/v1/content_library?select=${SELECT_LIST}&published=eq.true&review_status=eq.approved&order=published_at.desc&limit=${safeLimit}`,
-      { cache: "force-cache", next: { revalidate: 1800 } },
+      { cache: "force-cache", next: { revalidate: 1800, tags: ["public-content-library"] } },
     );
 
     return rows
@@ -128,7 +128,7 @@ export async function getPublicContentBySlug(
   try {
     const rows = await supabaseServerAnonRequest<RawItem[]>(
       `/rest/v1/content_library?select=${SELECT_LIST}&slug=eq.${encodeURIComponent(cleanSlug)}&published=eq.true&review_status=eq.approved&limit=1`,
-      { cache: "force-cache", next: { revalidate: 1800 } },
+      { cache: "force-cache", next: { revalidate: 1800, tags: ["public-content-library"] } },
     );
 
     if (!rows[0]) return null;

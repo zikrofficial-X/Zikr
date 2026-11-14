@@ -78,3 +78,48 @@ if (/DISABLE\s+ROW\s+LEVEL\s+SECURITY|TRUNCATE\s+TABLE|DELETE\s+FROM/i.test(sql)
 }
 
 console.log("Private-table anonymous-grant hardening contract passed.");
+
+
+const defaultFunctionMigration = readFileSync("supabase/migrations/20261114020000_revoke_client_default_function_execute.sql", "utf8");
+assert.ok(
+  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE postgres\n  REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;"),
+  "future functions created by postgres must revoke the global PUBLIC/browser EXECUTE default",
+);
+assert.ok(
+  defaultFunctionMigration.includes("ARRAY['public', 'storage', 'graphql_public', 'graphql']"),
+  "future API functions created by postgres and supabase_admin must cover every exposed/GraphQL schema",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future public functions created by postgres must remove schema-specific browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin[\s\S]*?REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future functions created by supabase_admin must revoke global and schema-specific browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future public functions created by supabase_admin must remove schema-specific browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future Storage functions created by the live Storage function owner must revoke global browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "the Storage function owner must preserve explicit service_role execution",
+);
+assert.match(
+  defaultFunctionMigration,
+  /GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "service_role must remain the explicit server-side execution path",
+);
+assert.ok(
+  defaultFunctionMigration.includes("BEGIN;") && defaultFunctionMigration.includes("COMMIT;"),
+  "default function privilege hardening must be transactional",
+);

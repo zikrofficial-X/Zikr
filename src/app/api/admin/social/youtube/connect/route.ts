@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { buildCanonicalOAuthStartRedirect } from "@/features/social/services/oauth-canonical-origin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { getServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -25,15 +27,34 @@ function adminStatusRedirect(status: string) {
   );
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const canonicalRedirect = buildCanonicalOAuthStartRedirect(request.url, CANONICAL_SITE_ORIGIN);
+  if (canonicalRedirect) {
+    const response = NextResponse.redirect(canonicalRedirect, 307);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
+  }
+
   const auth = await requireAdminApi("social.manage");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const publishStepUp = await requireAdminStepUpApi("social.publish", "/admin/social");
+  if (!publishStepUp.ok) {
+    const nextPath = "nextPath" in publishStepUp ? publishStepUp.nextPath : undefined;
+    const destination = nextPath
+      ? new URL(nextPath, CANONICAL_SITE_ORIGIN)
+      : new URL("/admin/social?youtube=step_up_unavailable", CANONICAL_SITE_ORIGIN);
+    return NextResponse.redirect(destination, { headers: { "Cache-Control": "no-store" } });
+  }
+
   const env = getServerEnv();
   const clientId = env.YOUTUBE_CLIENT_ID?.trim();
-  if (!clientId) return adminStatusRedirect("configuration_missing");
+  const clientSecret = env.YOUTUBE_CLIENT_SECRET?.trim();
+  // Google requires the client secret during the authorization-code exchange.
+  // Fail before redirecting to consent when the server configuration is incomplete.
+  if (!clientId || !clientSecret) return adminStatusRedirect("configuration_missing");
 
   const state = randomBytes(32).toString("hex");
   const redirectUri = YOUTUBE_REDIRECT_URI;

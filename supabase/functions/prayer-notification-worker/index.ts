@@ -1,5 +1,20 @@
 import { createClient } from "@supabase/supabase-js";
 import type { ExportedVapidKeys } from "webpush";
+import { forEachIdPage } from "./pagination.ts";
+import { canSchedulePrayerSubscription, isDeliverySubscriptionOwnerValid, isDeliveryWithinGraceWindow } from "./eligibility.ts";
+import {
+  buildNotificationTag,
+  buildNotificationTopic,
+  isCurrentIntervalReminderSlot,
+  matchesAnyCurrentPrayerReminderSchedule,
+  nextLocalDate,
+  previousLocalDate,
+  zonedDateTime,
+} from "./time-zone.ts";
+import { fetchScheduleOrSkip, normalizePrayerTimings } from "./schedule-fetch.ts";
+import { isAllowedPushEndpoint } from "../../../src/features/notifications/services/push-endpoint.ts";
+import { createAsyncSerialQueue } from "../../../src/lib/async-serial-queue.ts";
+import { getDeliveryLeaseHeartbeatIntervalMs, startDeliveryLeaseHeartbeat } from "./delivery-lease.ts";
 import {
   ApplicationServer,
   exportApplicationServerKey,
@@ -57,18 +72,37 @@ type Delivery = {
   notification_text: string | null;
   scheduled_at: string;
   attempt_count: number;
+  processing_at: string;
+  updated_at: string;
+};
+
+type DueDeliveryCandidate = Omit<Delivery, "processing_at"> & {
+  retry_after: string | null;
 };
 
 type VapidBundle = {
   publicKey: string;
   keys: ExportedVapidKeys;
 };
+type BackgroundReminderPreference = {
+  user_id: string;
+  dhikr_enabled: boolean;
+  dhikr_interval_minutes: number;
+  salawat_enabled: boolean;
+  salawat_interval_minutes: number;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  timezone: string | null;
+};
+
 
 const PROJECT_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const CONTACT =
   Deno.env.get("PUSH_CONTACT") ?? "mailto:admin@zikrmediaofficial.vercel.app";
 const BATCH_SIZE = 100;
+// Never emit a backlog of stale reminders after a worker outage.
+const MAX_DELIVERY_DELAY_MS = 30 * 60_000;
 const PRAYERS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"] as const;
 const PRAYER_NAMES_AR: Record<string, string> = {
   Fajr: "الفجر",
@@ -115,13 +149,6 @@ function formatLocalDate(date: Date, timeZone: string): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function nextLocalDate(date: Date, timeZone: string): string {
-  const { year, month, day } = localDateParts(date, timeZone);
-  return formatLocalDate(
-    new Date(Date.UTC(year, month - 1, day + 1, 12)),
-    timeZone
-  );
-}
 
 function dateForProvider(value: string): string {
   const [year, month, day] = value.split("-");
@@ -137,46 +164,6 @@ function minutesFromTime(value: string): number | null {
   return hour * 60 + minute;
 }
 
-function zonedDateTime(
-  dateString: string,
-  timeZone: string,
-  time: string
-): Date | null {
-  const minutes = minutesFromTime(time);
-  if (minutes === null) return null;
-  const [year, month, day] = dateString.split("-").map(Number);
-  const hour = Math.floor(minutes / 60);
-  const minute = minutes % 60;
-  const desiredUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
-  let guess = desiredUtc;
-
-  // Resolve a wall-clock time in an IANA zone without relying on the runtime
-  // timezone; a second pass accounts for daylight-saving offset transitions.
-  for (let i = 0; i < 2; i += 1) {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    }).formatToParts(new Date(guess));
-    const value = (type: string) =>
-      Number(parts.find(part => part.type === type)?.value ?? 0);
-    const renderedUtc = Date.UTC(
-      value("year"),
-      value("month") - 1,
-      value("day"),
-      value("hour"),
-      value("minute")
-    );
-    guess += desiredUtc - renderedUtc;
-  }
-
-  return new Date(guess);
-}
-
 function localMinute(date: Date, timeZone: string): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone,
@@ -187,6 +174,16 @@ function localMinute(date: Date, timeZone: string): number {
   const value = (type: string) =>
     Number(parts.find(part => part.type === type)?.value ?? 0);
   return value("hour") * 60 + value("minute");
+}
+
+function safeTimeZone(value: string | null | undefined): string {
+  const candidate = value?.trim() || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: candidate }).format(new Date(0));
+    return candidate;
+  } catch {
+    return "UTC";
+  }
 }
 
 function inQuietHours(
@@ -247,7 +244,8 @@ function scheduleCacheMatches(
     Number(cache.longitude) === Number(location.longitude) &&
     cache.timezone === timeZone &&
     cache.calculation_method === method &&
-    cache.madhab === madhab
+    cache.madhab === madhab &&
+    normalizePrayerTimings(cache.timings, PRAYERS) !== null
   );
 }
 
@@ -265,17 +263,18 @@ async function fetchTimings(
   });
   const response = await fetch(
     `https://api.aladhan.com/v1/timings/${dateForProvider(date)}?${params.toString()}`,
-    { headers: { "User-Agent": "ZIKR-Prayer-Notification-Worker/1.0" } }
+    { headers: { "User-Agent": "ZIKR-Prayer-Notification-Worker/1.0" }, signal: AbortSignal.timeout(10_000) }
   );
   if (!response.ok)
     throw new Error(`Prayer-time provider returned HTTP ${response.status}`);
 
   const payload = (await response.json()) as {
-    data?: { timings?: Record<string, string> };
+    data?: { timings?: unknown };
   };
-  if (!payload.data?.timings)
-    throw new Error("Prayer-time provider returned no timings");
-  return payload.data.timings;
+  const timings = normalizePrayerTimings(payload.data?.timings, PRAYERS);
+  if (!timings)
+    throw new Error("Prayer-time provider returned incomplete or malformed timings");
+  return timings;
 }
 
 async function loadVapidBundle(): Promise<VapidBundle> {
@@ -298,17 +297,11 @@ async function loadVapidBundle(): Promise<VapidBundle> {
   return stored as VapidBundle;
 }
 
-async function ensureSchedules(now: Date): Promise<number> {
-  // The database function plans opt-in dhikr/salawat rows for every active device.
-  const { error: backgroundError } = await supabase.rpc('plan_background_reminder_deliveries', { now_at: now.toISOString() });
-  if (backgroundError) throw backgroundError;
-  const { data: subscriptions, error: subscriptionsError } = await supabase
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth")
-    .eq("is_active", true)
-    .limit(BATCH_SIZE);
-  if (subscriptionsError) throw subscriptionsError;
-  if (!subscriptions?.length) return 0;
+async function ensureSubscriptionBatchSchedules(
+  subscriptions: readonly PushSubscriptionRow[],
+  now: Date,
+): Promise<number> {
+  if (!subscriptions.length) return 0;
 
   const userIds = [
     ...new Set(subscriptions.map(subscription => subscription.user_id)),
@@ -347,12 +340,12 @@ async function ensureSchedules(now: Date): Promise<number> {
     preferenceByUser.set(preference.user_id, preference);
   }
 
-  const eligible = (subscriptions as PushSubscriptionRow[]).filter(
+  const eligible = subscriptions.filter(
     subscription => {
       const preference = preferenceByUser.get(subscription.user_id);
-      return Boolean(
-        locationByUser.get(subscription.user_id) &&
-        preference?.notifications_enabled !== false
+      return canSchedulePrayerSubscription(
+        Boolean(locationByUser.get(subscription.user_id)),
+        preference,
       );
     }
   );
@@ -361,9 +354,10 @@ async function ensureSchedules(now: Date): Promise<number> {
   const dateByUser = new Map<string, string[]>();
   for (const subscription of eligible) {
     const location = locationByUser.get(subscription.user_id)!;
+    const timeZone = safeTimeZone(location.timezone);
     dateByUser.set(subscription.user_id, [
-      formatLocalDate(now, location.timezone!),
-      nextLocalDate(now, location.timezone!),
+      formatLocalDate(now, timeZone),
+      nextLocalDate(now, timeZone),
     ]);
   }
   const allDates = [...new Set([...dateByUser.values()].flat())];
@@ -379,28 +373,50 @@ async function ensureSchedules(now: Date): Promise<number> {
     .in("prayer_date", allDates);
   if (cacheError) throw cacheError;
   const caches = (cachedRows ?? []) as CachedSchedule[];
+  const failedScheduleKeys = new Set<string>();
 
   const inserts: Array<Record<string, unknown>> = [];
   for (const subscription of eligible) {
     const location = locationByUser.get(subscription.user_id)!;
-    const preference = preferenceByUser.get(subscription.user_id)!;
+    const timeZone = safeTimeZone(location.timezone);
+    const preference = preferenceByUser.get(subscription.user_id);
+    if (!preference) continue;
     const method = preference.calculation_method ?? "umm-al-qura";
     const madhab = preference.madhab ?? "shafi";
     const reminders = preference.prayer_reminders ?? {};
 
     for (const date of dateByUser.get(subscription.user_id) ?? []) {
+      const scheduleKey = [
+        location.id,
+        date,
+        Number(location.latitude),
+        Number(location.longitude),
+        timeZone,
+        method,
+        madhab,
+      ].join("|");
       let cache = caches.find(row =>
         scheduleCacheMatches(
           row,
           location,
           date,
-          location.timezone!,
+          timeZone,
           method,
           madhab
         )
       );
       if (!cache) {
-        const timings = await fetchTimings(location, date, method, madhab);
+        const timings = await fetchScheduleOrSkip(
+          scheduleKey,
+          failedScheduleKeys,
+          () => fetchTimings(location, date, method, madhab),
+          (failedKey, error) => console.error(
+            "[prayer-notification-worker] prayer-time fetch failed; skipping only this location/date for the current batch:",
+            failedKey,
+            error instanceof Error ? error.message : String(error),
+          ),
+        );
+        if (!timings) continue;
         const { data: stored, error: cacheInsertError } = await supabase
           .from("prayer_schedule_cache")
           .upsert(
@@ -409,7 +425,7 @@ async function ensureSchedules(now: Date): Promise<number> {
               prayer_date: date,
               latitude: location.latitude,
               longitude: location.longitude,
-              timezone: location.timezone,
+              timezone: timeZone,
               calculation_method: method,
               madhab,
               timings,
@@ -434,7 +450,7 @@ async function ensureSchedules(now: Date): Promise<number> {
         if (!Number.isInteger(offset)) continue;
         const prayerAt = zonedDateTime(
           date,
-          location.timezone!,
+          timeZone,
           cache.timings[prayer] ?? ""
         );
         if (!prayerAt) continue;
@@ -445,7 +461,7 @@ async function ensureSchedules(now: Date): Promise<number> {
         if (
           inQuietHours(
             scheduledAt,
-            location.timezone!,
+            timeZone,
             preference.quiet_hours_start,
             preference.quiet_hours_end
           )
@@ -464,37 +480,92 @@ async function ensureSchedules(now: Date): Promise<number> {
   }
 
   if (!inserts.length) return 0;
-  const { error: deliveryError } = await supabase
-    .from("prayer_notification_deliveries")
-    .upsert(inserts, {
-      onConflict: "push_subscription_id,prayer_name,scheduled_at",
-      ignoreDuplicates: true,
-    });
-  if (deliveryError) throw deliveryError;
+  for (let offset = 0; offset < inserts.length; offset += BATCH_SIZE) {
+    const { error: deliveryError } = await supabase
+      .from("prayer_notification_deliveries")
+      .upsert(inserts.slice(offset, offset + BATCH_SIZE), {
+        onConflict: "push_subscription_id,prayer_name,scheduled_at",
+        ignoreDuplicates: true,
+      });
+    if (deliveryError) throw deliveryError;
+  }
   return inserts.length;
+}
+
+async function ensureSchedules(now: Date): Promise<number> {
+  // The database function plans opt-in dhikr/salawat rows for every active device.
+  const { error: backgroundError } = await supabase.rpc(
+    "plan_background_reminder_deliveries",
+    { now_at: now.toISOString() },
+  );
+  if (backgroundError) throw backgroundError;
+
+  let scheduled = 0;
+  // Stream one bounded page at a time. The location/preference/cache .in()
+  // queries therefore never receive an unbounded list of user or location IDs.
+  await forEachIdPage(
+    async (afterId, pageSize) => {
+      let query = supabase
+        .from("push_subscriptions")
+        .select("id, user_id, endpoint, p256dh, auth")
+        .eq("is_active", true)
+        .order("id", { ascending: true })
+        .limit(pageSize);
+      if (afterId) query = query.gt("id", afterId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as PushSubscriptionRow[];
+    },
+    BATCH_SIZE,
+    async page => {
+      scheduled += await ensureSubscriptionBatchSchedules(page, now);
+    },
+  );
+  return scheduled;
 }
 
 async function recoverStaleClaims(now: Date) {
   const staleBefore = new Date(now.getTime() - 10 * 60_000).toISOString();
-  const { error } = await supabase
+  const retryAfter = new Date(now.getTime() + 60_000).toISOString();
+
+  // Match the normal delivery retry budget. A repeatedly interrupted claim
+  // must not cycle forever through processing -> failed -> processing.
+  const { error: retryError } = await supabase
     .from("prayer_notification_deliveries")
     .update({
       status: "failed",
       failed_at: now.toISOString(),
-      retry_after: new Date(now.getTime() + 60_000).toISOString(),
-      error_message: "Recovered stale worker claim",
+      processed_at: now.toISOString(),
+      retry_after: retryAfter,
+      error_message: "Recovered stale worker claim; retry scheduled",
       updated_at: now.toISOString(),
     })
     .eq("status", "processing")
-    .lt("processing_at", staleBefore);
-  if (error) throw error;
+    .lt("processing_at", staleBefore)
+    .lt("attempt_count", 3);
+  if (retryError) throw retryError;
+
+  const { error: exhaustedError } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      status: "cancelled",
+      failed_at: now.toISOString(),
+      processed_at: now.toISOString(),
+      retry_after: null,
+      error_message: "Stale worker claim exhausted retry budget; manual review required",
+      updated_at: now.toISOString(),
+    })
+    .eq("status", "processing")
+    .lt("processing_at", staleBefore)
+    .gte("attempt_count", 3);
+  if (exhaustedError) throw exhaustedError;
 }
 
-async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
+async function getDueDeliveryCandidates(now: Date): Promise<DueDeliveryCandidate[]> {
   const { data: rows, error } = await supabase
     .from("prayer_notification_deliveries")
     .select(
-      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count"
+      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, retry_after, updated_at, attempt_count"
     )
     .in("status", ["pending", "failed"])
     .lte("scheduled_at", now.toISOString())
@@ -502,29 +573,120 @@ async function claimDueDeliveries(now: Date): Promise<Delivery[]> {
     .order("scheduled_at", { ascending: true })
     .limit(BATCH_SIZE);
   if (error) throw error;
+  return (rows ?? []) as DueDeliveryCandidate[];
+}
 
-  const claimed: Delivery[] = [];
-  for (const row of (rows ?? []) as Delivery[]) {
-    const { data: updated, error: claimError } = await supabase
-      .from("prayer_notification_deliveries")
-      .update({
-        status: "processing",
-        processing_at: now.toISOString(),
-        processed_at: now.toISOString(),
-        attempt_count: row.attempt_count + 1,
-        error_message: null,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", row.id)
-      .in("status", ["pending", "failed"])
-      .select(
-        "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count"
-      )
-      .maybeSingle();
-    if (claimError) throw claimError;
-    if (updated) claimed.push(updated as Delivery);
+/**
+ * Claim one delivery immediately before processing it. The previous worker
+ * claimed an entire 100-row batch, then sent sequentially; later rows could
+ * become stale while waiting behind a slow push request and be sent twice.
+ */
+async function claimDueDelivery(
+  candidate: DueDeliveryCandidate,
+  now: Date,
+): Promise<Delivery | null> {
+  const claimAt = now.toISOString();
+  const { data: updated, error } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      status: "processing",
+      processing_at: claimAt,
+      attempt_count: candidate.attempt_count + 1,
+      error_message: null,
+      updated_at: claimAt,
+    })
+    .eq("id", candidate.id)
+    .in("status", ["pending", "failed"])
+    .lte("scheduled_at", claimAt)
+    .or(`retry_after.is.null,retry_after.lte.${claimAt}`)
+    .eq("updated_at", candidate.updated_at)
+    .select(
+      "id, user_id, push_subscription_id, prayer_name, notification_kind, notification_text, scheduled_at, attempt_count, processing_at, updated_at"
+    )
+    .maybeSingle();
+  if (error) throw error;
+  return (updated as Delivery | null) ?? null;
+}
+
+async function getActiveSubscriptionForDelivery(
+  delivery: Delivery,
+): Promise<PushSubscriptionRow | null> {
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id, user_id, endpoint, p256dh, auth")
+    .eq("id", delivery.push_subscription_id)
+    .eq("user_id", delivery.user_id)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as PushSubscriptionRow | null) ?? null;
+}
+
+/** Finalize only while this exact worker still owns the processing lease. */
+async function updateDeliveryIfLease(
+  delivery: Delivery,
+  patch: Record<string, unknown>,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("prayer_notification_deliveries")
+    .update({
+      ...patch,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", delivery.id)
+    .eq("status", "processing")
+    .eq("processing_at", delivery.processing_at)
+    .eq("updated_at", delivery.updated_at)
+    .select("id, processing_at, updated_at")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data?.id) return false;
+  if (typeof data.processing_at === "string") delivery.processing_at = data.processing_at;
+  if (typeof data.updated_at === "string") delivery.updated_at = data.updated_at;
+  return true;
+}
+
+async function getCurrentDeliveryPreferences(delivery: Delivery): Promise<{
+  prayerPreference: Pick<PrayerPreference, "calculation_method" | "madhab" | "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null;
+  prayerLocation: Pick<PrayerLocation, "id" | "latitude" | "longitude" | "timezone"> | null;
+  backgroundPreference: BackgroundReminderPreference | null;
+}> {
+  if (delivery.notification_kind === "prayer") {
+    const [preferenceResult, locationResult] = await Promise.all([
+      supabase
+        .from("prayer_preferences")
+        .select("calculation_method, madhab, notifications_enabled, prayer_reminders, quiet_hours_start, quiet_hours_end")
+        .eq("user_id", delivery.user_id)
+        .maybeSingle(),
+      supabase
+        .from("prayer_locations")
+        .select("id, latitude, longitude, timezone")
+        .eq("user_id", delivery.user_id)
+        .eq("is_default", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    if (preferenceResult.error) throw preferenceResult.error;
+    if (locationResult.error) throw locationResult.error;
+    return {
+      prayerPreference: (preferenceResult.data ?? null) as Pick<PrayerPreference, "calculation_method" | "madhab" | "notifications_enabled" | "prayer_reminders" | "quiet_hours_start" | "quiet_hours_end"> | null,
+      prayerLocation: (locationResult.data ?? null) as Pick<PrayerLocation, "id" | "latitude" | "longitude" | "timezone"> | null,
+      backgroundPreference: null,
+    };
   }
-  return claimed;
+
+  const { data, error } = await supabase
+    .from("background_reminder_preferences")
+    .select("user_id, dhikr_enabled, dhikr_interval_minutes, salawat_enabled, salawat_interval_minutes, quiet_hours_start, quiet_hours_end, timezone")
+    .eq("user_id", delivery.user_id)
+    .maybeSingle();
+  if (error) throw error;
+  return {
+    prayerPreference: null,
+    prayerLocation: null,
+    backgroundPreference: (data ?? null) as BackgroundReminderPreference | null,
+  };
 }
 
 async function deliverDue(
@@ -532,21 +694,8 @@ async function deliverDue(
   now: Date
 ): Promise<{ sent: number; failed: number; deactivated: number }> {
   await recoverStaleClaims(now);
-  const deliveries = await claimDueDeliveries(now);
-  if (!deliveries.length) return { sent: 0, failed: 0, deactivated: 0 };
-
-  const subscriptionIds = [
-    ...new Set(deliveries.map(delivery => delivery.push_subscription_id)),
-  ];
-  const { data: rows, error } = await supabase
-    .from("push_subscriptions")
-    .select("id, user_id, endpoint, p256dh, auth")
-    .in("id", subscriptionIds)
-    .eq("is_active", true);
-  if (error) throw error;
-  const subscriptions = new Map(
-    (rows ?? []).map(row => [row.id, row as PushSubscriptionRow])
-  );
+  const candidates = await getDueDeliveryCandidates(now);
+  if (!candidates.length) return { sent: 0, failed: 0, deactivated: 0 };
 
   const vapidKeys = await importVapidKeys(bundle.keys);
   const applicationServer = await ApplicationServer.new({
@@ -557,24 +706,221 @@ async function deliverDue(
   let sent = 0;
   let failed = 0;
   let deactivated = 0;
-  for (const delivery of deliveries) {
-    const subscription = subscriptions.get(delivery.push_subscription_id);
-    if (!subscription) {
-      await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: "cancelled",
-          processed_at: now.toISOString(),
-          error_message: "Subscription is no longer active",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
-      continue;
-    }
+  for (const candidate of candidates) {
+    // Do not hold a whole batch in "processing" while earlier pushes are sent.
+    let deliveryNow = new Date();
+    const delivery = await claimDueDelivery(candidate, deliveryNow);
+    if (!delivery) continue;
 
+    // Keep the exact processing row version fresh while a provider request is in flight.
+    // All heartbeat and terminal writes share one serial queue so they cannot race on updated_at.
+    const leaseWriteQueue = createAsyncSerialQueue();
+    const updateLease = (patch: Record<string, unknown>) =>
+      leaseWriteQueue(() => updateDeliveryIfLease(delivery, patch));
+    const heartbeat = startDeliveryLeaseHeartbeat({
+      intervalMs: getDeliveryLeaseHeartbeatIntervalMs(10 * 60_000),
+      renew: () => updateLease({ processing_at: new Date().toISOString() }),
+      onRenewalError: (error) => console.warn(
+        "[prayer-notification-worker] Delivery lease heartbeat failed; treating ownership as lost and skipping further sends:",
+        delivery.id,
+        error,
+      ),
+    });
+    const finalizeDelivery = async (patch: Record<string, unknown>) => {
+      const finalized = await updateLease(patch);
+      await heartbeat.stop();
+      return finalized;
+    };
+
+    const scheduledAt = new Date(delivery.scheduled_at);
+    let subscription: PushSubscriptionRow | null = null;
     try {
-      const topic = `zikr-${delivery.notification_kind}-${delivery.scheduled_at.slice(0, 10)}`.slice(0, 32);
+      // Preferences and locations are intentionally re-read after this row is
+      // claimed. A batch snapshot can become stale while earlier pushes are sent,
+      // which could deliver after a user opts out or changes quiet hours.
+      const currentPreferences = await getCurrentDeliveryPreferences(delivery);
+      deliveryNow = new Date();
+      let skipReason: string | null = null;
+
+      if (delivery.notification_kind === "prayer") {
+        const preference = currentPreferences.prayerPreference;
+        const location = currentPreferences.prayerLocation;
+        if (
+          !preference ||
+          preference.notifications_enabled !== true ||
+          !Number.isInteger(preference.prayer_reminders?.[delivery.prayer_name]) ||
+          !location?.timezone ||
+          location.latitude === null ||
+          location.longitude === null
+        ) {
+          skipReason = "Prayer reminder is no longer enabled or configured";
+        } else if (
+          !isDeliveryWithinGraceWindow(delivery.scheduled_at, deliveryNow, MAX_DELIVERY_DELAY_MS)
+        ) {
+          skipReason = "Prayer reminder expired; stale delivery cancelled";
+        } else if (
+          inQuietHours(
+            scheduledAt,
+            safeTimeZone(location.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ) ||
+          inQuietHours(
+            deliveryNow,
+            safeTimeZone(location.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          )
+        ) {
+          skipReason = "Skipped during quiet hours";
+        } else {
+          const timeZone = safeTimeZone(location.timezone);
+          const prayerDates = [
+            ...new Set([
+              formatLocalDate(scheduledAt, timeZone),
+              previousLocalDate(scheduledAt, timeZone),
+              nextLocalDate(scheduledAt, timeZone),
+            ]),
+          ];
+          const method = preference.calculation_method ?? "umm-al-qura";
+          const madhab = preference.madhab ?? "shafi";
+          const { data: cacheRows, error: cacheError } = await supabase
+            .from("prayer_schedule_cache")
+            .select("location_id, prayer_date, latitude, longitude, timezone, calculation_method, madhab, timings")
+            .eq("location_id", location.id)
+            .in("prayer_date", prayerDates);
+          if (cacheError) throw cacheError;
+          const currentCaches = (cacheRows ?? []).map(row => row as CachedSchedule).filter(cache =>
+            Number(cache.latitude) === Number(location.latitude) &&
+            Number(cache.longitude) === Number(location.longitude) &&
+            cache.timezone === timeZone &&
+            cache.calculation_method === method &&
+            cache.madhab === madhab
+          );
+          const currentScheduleMatches = matchesAnyCurrentPrayerReminderSchedule({
+            scheduledAt: delivery.scheduled_at,
+            timeZone,
+            prayerName: delivery.prayer_name,
+            offsetMinutes: preference.prayer_reminders?.[delivery.prayer_name],
+            candidates: currentCaches.map(cache => ({
+              prayer_date: cache.prayer_date,
+              timings: cache.timings,
+            })),
+          });
+          if (!currentScheduleMatches) {
+            skipReason = "Prayer reminder schedule changed; stale delivery cancelled";
+          }
+        }
+      } else {
+        const preference = currentPreferences.backgroundPreference;
+        const enabled =
+          delivery.notification_kind === "dhikr"
+            ? preference?.dhikr_enabled
+            : preference?.salawat_enabled;
+        const intervalMinutes =
+          delivery.notification_kind === "dhikr"
+            ? preference?.dhikr_interval_minutes
+            : preference?.salawat_interval_minutes;
+        if (!preference || enabled !== true) {
+          skipReason = "Background reminder is no longer enabled";
+        } else if (!isCurrentIntervalReminderSlot(delivery.scheduled_at, intervalMinutes)) {
+          skipReason = "Background reminder interval changed; stale delivery cancelled";
+        } else if (
+          !isDeliveryWithinGraceWindow(
+            delivery.scheduled_at,
+            deliveryNow,
+            Math.min(MAX_DELIVERY_DELAY_MS, Number(intervalMinutes) * 60_000),
+          )
+        ) {
+          skipReason = "Background reminder expired; stale delivery cancelled";
+        } else if (
+          inQuietHours(
+            scheduledAt,
+            safeTimeZone(preference.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          ) ||
+          inQuietHours(
+            deliveryNow,
+            safeTimeZone(preference.timezone),
+            preference.quiet_hours_start,
+            preference.quiet_hours_end,
+          )
+        ) {
+          skipReason = "Skipped during quiet hours";
+        }
+      }
+
+      if (skipReason) {
+        const finalized = await finalizeDelivery({
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: skipReason,
+        });
+        if (!finalized) {
+          console.warn("[prayer-notification-worker] Preference skip arrived after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        }
+        continue;
+      }
+      // Re-read after claiming each delivery. A batch snapshot can become stale
+      // while earlier pushes are sent, allowing an opted-out device or replaced
+      // endpoint to receive a later notification from the same batch.
+      subscription = await getActiveSubscriptionForDelivery(delivery);
+      if (!subscription || !isDeliverySubscriptionOwnerValid(delivery.user_id, subscription.user_id)) {
+        await finalizeDelivery({
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: subscription
+            ? "Subscription owner does not match delivery owner"
+            : "Subscription is no longer active",
+        });
+        continue;
+      }
+
+      if (!isAllowedPushEndpoint(subscription.endpoint)) {
+        const { data: deactivatedRow, error: deactivateError } = await supabase
+          .from("push_subscriptions")
+          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+          .eq("id", subscription.id)
+          .eq("user_id", delivery.user_id)
+          .eq("endpoint", subscription.endpoint)
+          .eq("p256dh", subscription.p256dh)
+          .eq("auth", subscription.auth)
+          .eq("is_active", true)
+          .select("id")
+          .maybeSingle();
+        if (deactivateError) {
+          console.error("[prayer-notification-worker] invalid endpoint deactivation failed:", deactivateError.message);
+        } else if (deactivatedRow?.id) {
+          deactivated += 1;
+        }
+        await finalizeDelivery({
+          status: "cancelled",
+          processed_at: deliveryNow.toISOString(),
+          retry_after: null,
+          error_message: "Unsupported push service endpoint host",
+        });
+        continue;
+      }
+
+      const topic = buildNotificationTopic({
+        notificationKind: delivery.notification_kind,
+        prayerName: delivery.prayer_name,
+        scheduledAt: delivery.scheduled_at,
+      });
       const isPrayer = delivery.notification_kind === 'prayer';
+      // Keep browser notification tags aligned with local reminders. The Web
+      // Push Topic remains unique per delivery to avoid provider-side collapsing.
+      const notificationTag = buildNotificationTag({
+        notificationKind: delivery.notification_kind,
+        prayerName: delivery.prayer_name,
+      });
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Delivery lease was recovered before the push provider call; skipping:", delivery.id);
+        continue;
+      }
       await applicationServer
         .subscribe({
           endpoint: subscription.endpoint,
@@ -585,62 +931,91 @@ async function deliverDue(
             title: isPrayer ? `حان وقت صلاة ${PRAYER_NAMES_AR[delivery.prayer_name] ?? delivery.prayer_name}` : delivery.notification_kind === 'dhikr' ? 'تذكير بالذكر' : 'تذكير بالصلاة على النبي',
             body: isPrayer ? 'حافظ على صلاتك' : delivery.notification_text ?? (delivery.notification_kind === 'dhikr' ? 'سبحان الله وبحمده' : 'اللهم صل وسلم على نبينا محمد'),
             url: isPrayer ? '/prayer-times' : '/adhkar',
-            tag: topic,
+            tag: notificationTag,
           }),
           { urgency: Urgency.High, ttl: 300, topic }
         );
 
-      await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: "sent",
-          sent_at: now.toISOString(),
-          processed_at: now.toISOString(),
-          retry_after: null,
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
-      await supabase
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Push completed after its delivery lease was recovered; preserving the newer state:", delivery.id);
+        continue;
+      }
+
+      const finalized = await finalizeDelivery({
+        status: "sent",
+        sent_at: deliveryNow.toISOString(),
+        processed_at: deliveryNow.toISOString(),
+        retry_after: null,
+      });
+      if (!finalized) {
+        console.warn("[prayer-notification-worker] Push succeeded after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        continue;
+      }
+      const { error: lastUsedError } = await supabase
         .from("push_subscriptions")
         .update({
-          last_used_at: now.toISOString(),
-          updated_at: now.toISOString(),
+          last_used_at: deliveryNow.toISOString(),
+          updated_at: deliveryNow.toISOString(),
         })
-        .eq("id", subscription.id);
+        .eq("id", subscription.id)
+        .eq("user_id", delivery.user_id)
+        .eq("endpoint", subscription.endpoint)
+        .eq("p256dh", subscription.p256dh)
+        .eq("auth", subscription.auth)
+        .eq("is_active", true);
+      if (lastUsedError) console.error("[prayer-notification-worker] subscription last-used update failed:", lastUsedError.message);
       sent += 1;
     } catch (error) {
+      if (heartbeat.leaseLost) {
+        console.warn("[prayer-notification-worker] Delivery lease was recovered while this attempt was active; preserving the newer state:", delivery.id);
+        continue;
+      }
       const status =
         error instanceof PushMessageError ? error.response.status : null;
       const invalid = status === 404 || status === 410;
-      if (invalid) {
-        await supabase
-          .from("push_subscriptions")
-          .update({ is_active: false, updated_at: now.toISOString() })
-          .eq("id", subscription.id);
-        deactivated += 1;
-      }
-
       const retryable = !invalid && delivery.attempt_count < 3;
       const retryAfter = retryable
         ? new Date(
-            now.getTime() +
+            deliveryNow.getTime() +
               Math.min(15 * 60_000, 60_000 * 2 ** delivery.attempt_count)
           ).toISOString()
         : null;
-      await supabase
-        .from("prayer_notification_deliveries")
-        .update({
-          status: retryable ? "failed" : "cancelled",
-          failed_at: now.toISOString(),
-          processed_at: now.toISOString(),
-          retry_after: retryAfter,
-          error_message: status
-            ? `Push service returned HTTP ${status}`
-            : "Push delivery failed",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", delivery.id);
+      if (invalid && subscription) {
+        // A 404/410 is definitive only for the exact endpoint/key snapshot sent.
+        // Never deactivate a replacement subscription that arrived concurrently.
+        const { data: deactivatedRow, error: deactivateError } = await supabase
+          .from("push_subscriptions")
+          .update({ is_active: false, updated_at: deliveryNow.toISOString() })
+          .eq("id", subscription.id)
+          .eq("user_id", delivery.user_id)
+          .eq("endpoint", subscription.endpoint)
+          .eq("p256dh", subscription.p256dh)
+          .eq("auth", subscription.auth)
+          .eq("is_active", true)
+          .select("id")
+          .maybeSingle();
+        if (deactivateError) {
+          console.error("[prayer-notification-worker] subscription deactivation failed:", deactivateError.message);
+        } else if (deactivatedRow?.id) {
+          deactivated += 1;
+        }
+      }
+      const finalized = await finalizeDelivery({
+        status: retryable ? "failed" : "cancelled",
+        failed_at: deliveryNow.toISOString(),
+        processed_at: deliveryNow.toISOString(),
+        retry_after: retryAfter,
+        error_message: status
+          ? `Push service returned HTTP ${status}`
+          : "Push delivery failed",
+      });
+      if (!finalized) {
+        console.warn("[prayer-notification-worker] Failed push result arrived after its delivery lease was recovered; preserving the newer delivery state:", delivery.id);
+        continue;
+      }
       failed += 1;
+    } finally {
+      await heartbeat.stop();
     }
   }
 

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
+import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { createPresignedUploadUrl } from '@/lib/services/storage';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,15 +16,25 @@ const ALLOWED_VIDEO_TYPES = new Set([
 ]);
 
 function jsonError(message: string, status: number) {
-  return NextResponse.json({ error: message }, { status });
+  return NextResponse.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: NextRequest) {
-  const guard = await requireAdminApi('video.manage');
-  if (!guard.ok) return jsonError(guard.error, guard.status);
+  const guard = await requireAdminStepUpApi('video.manage', '/admin/videos');
+  if (!guard.ok) {
+    return NextResponse.json(
+      { error: guard.error, nextPath: 'nextPath' in guard ? guard.nextPath : undefined },
+      { status: guard.status, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
   try {
-    const body = await request.json().catch(() => null);
+    const parsedBody = await readBoundedJsonBody(request);
+    if (!parsedBody.ok) return jsonError(parsedBody.error, parsedBody.status);
+    const body =
+      parsedBody.value && typeof parsedBody.value === "object" && !Array.isArray(parsedBody.value)
+        ? (parsedBody.value as Record<string, unknown>)
+        : null;
     const filename = typeof body?.filename === 'string' ? body.filename.trim() : '';
     const contentType = typeof body?.contentType === 'string' ? body.contentType.trim().toLowerCase() : '';
     const contentLength = Number(body?.contentLength ?? 0);
@@ -44,15 +56,24 @@ export async function POST(request: NextRequest) {
       contentType,
       contentLength,
     });
-    await recordAdminAuditEvent({
-      action: "video.upload_url.create",
-      permission: "video.manage",
-      resourceType: "video_uploads",
-      resourceId: upload.path,
-      metadata: { filename, contentType, contentLength },
-    });
+    const auditRecorded = await runPostCommitAudit(
+      () => recordAdminAuditEvent({
+        action: "video.upload_url.create",
+        permission: "video.manage",
+        resourceType: "video_uploads",
+        resourceId: upload.path,
+        metadata: { filename, contentType, contentLength },
+      }),
+      (auditError) => console.error("[api/admin/videos/upload] audit event failed after committed mutation:", auditError),
+    );
 
-    return NextResponse.json(upload, { headers: { 'Cache-Control': 'no-store' } });
+    // Do not disclose a short-lived storage capability when the required audit
+    // event could not be persisted.
+    if (!auditRecorded) {
+      return jsonError("تعذر تسجيل عملية الرفع؛ لم يتم إصدار رابط الرفع.", 503);
+    }
+
+    return NextResponse.json(upload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error('[api/admin/videos/upload] POST error:', error);
     return jsonError(error instanceof Error ? error.message : 'تعذر تجهيز رفع الفيديو.', 500);

@@ -1,0 +1,42 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+const read = (path) => readFileSync(resolve(process.cwd(), path), "utf8");
+const docs = read("docs/api/README.md");
+const authActions = read("src/features/auth/actions.ts");
+const authCallback = read("src/app/auth/callback/route.ts");
+const supabaseServer = read("src/lib/supabase/server.ts");
+const middleware = read("src/lib/supabase/middleware.ts");
+const poetryRoute = read("src/app/api/poetry-insight/route.ts");
+const profileRoute = read("src/app/api/user/profile/route.ts");
+const favoritesRoute = read("src/app/api/user/favorites/route.ts");
+
+assert.match(docs, /not a complete route inventory/i);
+assert.match(docs, /Server Action is a framework-managed function call/i);
+assert.match(docs, /does not define fixed `?sb_access_token`? or `?sb_refresh_token`? cookie names/i);
+assert.match(docs, /browser session is not set by a custom `?setSessionAction`?/i);
+assert.doesNotMatch(docs, /password \(min 6 chars\)/i);
+assert.doesNotMatch(docs, /POST \/auth\/login|POST \/auth\/set-session/i);
+assert.match(docs, /12–128 character password/i);
+assert.match(authActions, /MIN_PASSWORD_LENGTH = 12/);
+assert.match(authActions, /MAX_PASSWORD_LENGTH = 128/);
+assert.match(authActions, /exchangeCodeForSession|signInWithPassword/);
+assert.match(authCallback, /exchangeCodeForSession/);
+assert.match(docs, /exchangeCodeForSession/);
+assert.match(supabaseServer, /createServerClient/);
+assert.match(middleware, /request\.cookies\.getAll\(\)/);
+assert.match(middleware, /response\.cookies\.set\(name, value, options\)/);
+assert.match(docs, /cookie names, chunking, and token lifetimes are managed/i);
+assert.match(poetryRoute, /getSupabaseUser\(\)/);
+assert.ok(docs.includes("| POST | `/api/poetry-insight` | Supabase user | Required |"));
+assert.match(profileRoute, /requireSupabaseAuth\(\)/);
+assert.ok(docs.includes("| GET | `/api/user/profile` | Supabase user | Required |"));
+assert.match(favoritesRoute, /requireSupabaseAuth\(\)/);
+assert.ok(docs.includes("| GET | `/api/user/favorites` | Supabase user | Required |"));
+assert.match(docs, /docs\/admin\/ADMIN_API_PERMISSION_MATRIX_2026-11-06\.md/);
+assert.ok(docs.includes("Five evaluations per authenticated user per 10 minutes"));
+assert.ok(docs.includes("3 evaluations per 10 minutes"));
+assert.ok(docs.includes("maximum 3 MiB"));
+
+console.log("API documentation contract tests passed.");

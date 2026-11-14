@@ -8,15 +8,29 @@ import {
   supabaseServerAdminCount,
   supabaseServerAdminRequest,
 } from "../../src/lib/supabase/admin-rest";
-import { getFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
+import { getOptionalFacebookPageCredentials } from "../../src/features/social/services/facebook-credentials";
 import { getYouTubeUploadRefreshToken } from "../../src/features/social/services/youtube-oauth-credentials";
 import { listVideoSources, resolveVideoSource } from "../../src/features/videos/services/video-sources";
 import { listCuratedVideoSources, resolveCuratedVideoSource } from "../../src/features/videos/data/curated-content";
 import { buildKidsSeriesEpisode, validateCanonicalKidsEpisodeSnapshot, validateGeneratedKidsEpisode } from "../../src/features/videos/data/kids-story-factory";
 import { videoContentHash, sourceHash } from "../../src/features/videos/providers/content-hash";
-import { buildDuplicateVideoOwnerVideoUrlFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
+import { buildDuplicateVideoOwnerRecoveryFilter, canRecoverDuplicateVideoRender } from "../../src/features/videos/services/duplicate-video-recovery";
 import { buildMissingMediaQueueRecoveryPatch } from "../../src/features/social/services/platform-availability";
-import { getVideoEngineConfig } from "../../src/features/videos/providers/types";
+import { buildVideoSocialQueueUpdateFilter } from "../../src/features/social/services/social-queue-selection";
+import { calculateDailyVideoQuotaState } from "../../src/features/videos/services/video-automation-quota";
+import {
+  buildContentPublishQueueRecoveryFilter,
+  buildProcessingVideoRequestLeaseFilter,
+  buildUnpublishedVideoCatalogUpdateFilter,
+  buildStaleVideoRequestRecoveryFilter,
+  buildVideoRequestClaimFilter,
+  buildVideoSocialQueueRecoveryClaimFilter,
+  buildVideoSocialQueueRecoveryLeaseFilter,
+} from "../../src/features/videos/services/video-queue-claim";
+import { createSerializedLeaseMutation, getVideoRequestLeaseHeartbeatIntervalMs, withVideoRequestLeaseHeartbeat } from "../../src/features/videos/services/video-lease-heartbeat";
+import { getVideoEngineConfig, isVideoAiPlanningEnabled } from "../../src/features/videos/providers/types";
+import { isVideoAutomationEnabled, isVideoPurgeInProgress } from "../../src/features/videos/services/background-job-settings";
 import { getServerEnv } from "../../src/lib/env";
 import { isVideoTemplateAssetAllowedForAudience, parseVideoTemplateConfig, videoTemplateAssetPath, videoTemplateScene, type VideoTemplateAudience } from "../../src/features/videos/services/template-config";
 import { CURRENT_VIDEO_RENDERER_VERSION, versionedTemplateLabel } from "../../src/features/videos/services/video-template-version";
@@ -27,7 +41,7 @@ import { evaluateArabicNarrationText } from "../../src/features/videos/services/
 import { resolveDeterministicVideoHook, resolveDeterministicVideoMotion, resolveDeterministicVideoScene } from "../../src/features/videos/services/video-creative-variation";
 import { paginateCaptionText, planCaptionTimings, resolveVideoComposition, type VideoCompositionProfile } from "../../src/features/videos/services/video-composition";
 import { resolveRenderDuration } from "../../src/features/videos/services/render-duration";
-import { AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, REQUIRED_VIDEO_APPROVAL_CHECKS, createAutomatedVideoQaApproval, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
+import { hasCompleteKidsVideoSeriesMetadata, AUTOMATED_VIDEO_QA_ENGINE, AUTOMATED_VIDEO_QA_VERSION, REQUIRED_VIDEO_APPROVAL_CHECKS, createAutomatedVideoQaApproval, type VideoApprovalChecklist } from "../../src/features/videos/services/video-publish-approval";
 
 const execFileAsync = promisify(execFile);
 const BATCH_SIZE = Math.max(1, Number(process.env.AUTO_VIDEO_BATCH_SIZE ?? process.env.DAILY_VIDEO_TARGET ?? 10));
@@ -40,14 +54,28 @@ const VIDEO_OUTPUT_CRF = Math.min(23, Math.max(16, Number(process.env.VIDEO_OUTP
 const VIDEO_AUDIO_BITRATE = process.env.VIDEO_AUDIO_BITRATE?.trim() || "192k";
 const engineConfig = () => getVideoEngineConfig();
 
-async function isVideoGenerationPaused(): Promise<boolean> {
+function throwIfVideoLeaseAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  const reason = signal.reason;
+  if (reason instanceof Error) throw reason;
+  throw new Error("Video processing lease was lost; operation aborted.");
+}
+
+function videoOperationSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+}
+
+async function isVideoGenerationPaused(signal?: AbortSignal): Promise<boolean> {
   try {
     const rows = await supabaseServerAdminRequest<Array<{ key: string; value: unknown }>>(
       "/rest/v1/admin_settings?key=in.(video_automation_enabled,video_purge_in_progress)&select=key,value",
+      signal ? { signal } : undefined,
     );
     const settings = Object.fromEntries((rows ?? []).map(row => [row.key, row.value]));
-    return settings.video_purge_in_progress === true || settings.video_automation_enabled === false;
+    return isVideoPurgeInProgress(settings.video_purge_in_progress) || !isVideoAutomationEnabled(settings.video_automation_enabled);
   } catch (error) {
+    throwIfVideoLeaseAborted(signal);
     console.error("[video-worker] Could not verify the production video-generation lock:", error);
     return true;
   }
@@ -58,8 +86,9 @@ async function isVideoGenerationPaused(): Promise<boolean> {
  * Supabase remains the database/queue only; generated public videos are never
  * staged in Supabase Storage where Cloudinary and Meta reads consume Egress.
  */
-async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string) {
-  if (await isVideoGenerationPaused()) throw new Error("Video generation is paused by the administrator; upload was blocked before storage.");
+async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: string, signal?: AbortSignal) {
+  if (await isVideoGenerationPaused(signal)) throw new Error("Video generation is paused by the administrator; upload was blocked before storage.");
+  throwIfVideoLeaseAborted(signal);
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
   const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
   const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -84,7 +113,7 @@ async function uploadGeneratedVideoToCloudinary(bytes: Uint8Array, storageKey: s
     method: "POST",
     headers: { Authorization: authorization },
     body: form,
-    signal: AbortSignal.timeout(120_000),
+    signal: videoOperationSignal(signal, 120_000),
   });
   const payload = await response.json().catch(() => ({})) as {
     secure_url?: string;
@@ -158,8 +187,10 @@ type SocialQueueRow = {
   status: string;
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
+  updated_at: string | null;
 };
-export type GeneratedRequest = {
+export 
+type GeneratedRequest = {
   id: string;
   title: string;
   description: string | null;
@@ -167,9 +198,12 @@ export type GeneratedRequest = {
   content: Record<string, unknown>;
   status: string;
   automation_key: string | null;
+  error_message?: string | null;
+  error_details?: string | null;
   video_url?: string | null;
   generation_attempts?: number | null;
   next_retry_at?: string | null;
+  updated_at?: string | null;
   duration?: number | null;
   source_hash?: string | null;
   content_hash?: string | null;
@@ -292,21 +326,21 @@ function backgroundAsset(scene: AiVideoPlan["scene"], content?: Record<string, u
   return map[scene] || map.calm;
 }
 
-async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>) {
+async function renderBackground(temp: string, scene: AiVideoPlan["scene"], width: number, height: number, content?: Record<string, unknown>, signal?: AbortSignal) {
   const source = path.join(process.cwd(), backgroundAsset(scene, content));
   const output = path.join(temp, "background.png");
-  await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024 });
+  await execFileAsync("rsvg-convert", ["-w", String(width), "-h", String(height), source, "-o", output], { maxBuffer: 2 * 1024 * 1024, signal });
   return output;
 }
 
-async function probeMedia(pathname: string) {
+async function probeMedia(pathname: string, signal?: AbortSignal) {
   const { stdout } = await execFileAsync("ffprobe", [
     "-v", "error",
     "-show_entries",
     "format=duration:stream=codec_type,codec_name,width,height,bit_rate,sample_rate,channels",
     "-of", "json",
     pathname,
-  ], { maxBuffer: 2 * 1024 * 1024 });
+  ], { maxBuffer: 2 * 1024 * 1024, signal });
   return JSON.parse(stdout) as {
     streams?: Array<{ codec_type?: string; codec_name?: string; width?: number; height?: number; bit_rate?: string; sample_rate?: string; channels?: number }>;
     format?: { duration?: string };
@@ -538,6 +572,13 @@ function isContentHashConflict(error: unknown): boolean {
     message.includes("duplicate key value violates unique constraint") && message.includes("content_hash");
 }
 
+class VideoRequestLeaseLostError extends Error {
+  constructor(requestId: string) {
+    super(`Video request ${requestId} no longer owns the processing lease.`);
+    this.name = "VideoRequestLeaseLostError";
+  }
+}
+
 export const KIDS_SERIES_START_DAY_INDEX = dayIndex(new Date("2026-10-21T00:00:00.000Z"));
 
 export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
@@ -550,10 +591,16 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
   // Daily quota: keys are unique per UTC day (kind:day:counter) so every run can create new
   // videos, and the DAILY_VIDEO_TARGET is spread evenly across the day instead of bursting.
   // Urgent admin "Run Now" requests bypass the pacing and use the requested batch size.
-  const todaysRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-    `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id&limit=1000`,
+  const todaysRows = await supabaseServerAdminRequest<Array<{ id: string; status: string; automation_key: string | null }>>(
+    `/rest/v1/video_generation_requests?automation_key=like.*:${day}:*&select=id,status,automation_key&limit=1000`,
   );
-  const alreadySeededToday = todaysRows?.length ?? 0;
+  if ((todaysRows ?? []).length >= 1000) {
+    throw new Error(
+      "Daily video quota inventory reached 1,000 rows; refusing to seed requests from a truncated slot history.",
+    );
+  }
+  const dailyQuota = calculateDailyVideoQuotaState(todaysRows ?? []);
+  const alreadySeededToday = dailyQuota.reservedCount;
   const dailyTarget = Math.max(1, Math.min(24, Number(process.env.DAILY_VIDEO_TARGET ?? 12) || 12));
   // The workflow runs in four six-hour UTC windows; release a quarter of the daily target per window.
   const scheduleWindow = Math.min(4, Math.max(1, Math.floor(now.getUTCHours() / 6) + 1));
@@ -563,7 +610,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
 
   for (let i = 0; i < allowed; i += 1) {
     if (await isVideoGenerationPaused()) break;
-    const slot = alreadySeededToday + i;
+    const slot = dailyQuota.nextSlot + i;
     const mode = slot % 7;
 
     let payload: Record<string, unknown>;
@@ -706,6 +753,7 @@ export async function seedAutomatedVideoRequests(batchSize = BATCH_SIZE) {
         content: {
           renderer: "template",
           type: "story",
+          audience: "general",
           sourceType: "story",
           ...(typeof row.id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(row.id)
             ? { sourceId: row.id }
@@ -854,7 +902,7 @@ export function contentSourceUrl(request: GeneratedRequest) {
   return typeof value === "string" && /^https?:\/\//i.test(value) ? value : siteUrl();
 }
 function aiPlanEnabled() {
-  return process.env.VIDEO_FREE_ONLY?.toLowerCase() === "false" && Boolean(process.env.GEMINI_API_KEY?.trim());
+  return isVideoAiPlanningEnabled();
 }
 
 function normalizeAiVideoPlan(value: unknown): AiVideoPlan {
@@ -929,7 +977,7 @@ function parseGeminiJson(raw: string): unknown {
   }
 }
 
-async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPlan> {
+async function generateAiVideoPlan(request: GeneratedRequest, signal?: AbortSignal): Promise<AiVideoPlan> {
   if (request.category === "other" && request.content?.audience !== "kids") return { ...DEFAULT_AI_VIDEO_PLAN };
   if (!aiPlanEnabled()) return { ...DEFAULT_AI_VIDEO_PLAN };
   const sourceText = contentText(request).slice(0, 5000);
@@ -963,7 +1011,7 @@ async function generateAiVideoPlan(request: GeneratedRequest): Promise<AiVideoPl
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.12, maxOutputTokens: 260 },
     }),
-    signal: AbortSignal.timeout(30_000),
+    signal: videoOperationSignal(signal, 30_000),
   });
   if (!response.ok) throw new Error(`Gemini HTTP ${response.status} for ${model}`);
 
@@ -1093,21 +1141,23 @@ export async function validateSourceContent(request: GeneratedRequest) {
   }
 }
 
-async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number) {
+async function getVerifiedQuranAyahAudioUrl(surahId: number, ayahNumber: number, signal?: AbortSignal) {
   const url = QURAN_AYAH_AUDIO_BASE_URL.replace(/\/$/, "") + "/" + String(surahId).padStart(3, "0") + String(ayahNumber).padStart(3, "0") + ".mp3";
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: { Range: "bytes=0-1023", Accept: "audio/mpeg" },
-      signal: AbortSignal.timeout(15_000),
+      signal: videoOperationSignal(signal, 15_000),
     });
     if (response.ok || response.status === 206) return url;
-  } catch {}
+  } catch {
+    throwIfVideoLeaseAborted(signal);
+  }
   return null;
 }
 
-async function assertPlayableOutput(outputPath: string, expectedWidth: number, expectedHeight: number) {
-  const probe = await probeMedia(outputPath);
+async function assertPlayableOutput(outputPath: string, expectedWidth: number, expectedHeight: number, signal?: AbortSignal) {
+  const probe = await probeMedia(outputPath, signal);
   const streams = probe.streams ?? [];
   const video = streams.find((stream) => stream.codec_type === "video");
   const audio = streams.find((stream) => stream.codec_type === "audio");
@@ -1124,10 +1174,10 @@ async function assertPlayableOutput(outputPath: string, expectedWidth: number, e
   if (Number.isFinite(bitrate) && bitrate > 0 && bitrate < 350_000) throw new Error("Rendered output video bitrate is too low: " + bitrate + "bps.");
 }
 
-async function assertAudibleAudio(pathname: string) {
+async function assertAudibleAudio(pathname: string, signal?: AbortSignal) {
   const { stderr } = await execFileAsync("ffmpeg", [
     "-hide_banner", "-i", pathname, "-vn", "-af", "volumedetect", "-f", "null", "-",
-  ], { maxBuffer: 4 * 1024 * 1024 });
+  ], { maxBuffer: 4 * 1024 * 1024, signal });
   const maximum = stderr.match(/max_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/i);
   const peakDb = maximum ? Number(maximum[1]) : Number.NEGATIVE_INFINITY;
   if (!Number.isFinite(peakDb) || peakDb < -50) {
@@ -1135,8 +1185,8 @@ async function assertAudibleAudio(pathname: string) {
   }
 }
 
-async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown) {
-  const probe = await probeMedia(pathname);
+async function assertNarrationQuality(pathname: string, text: string, category: string, audience?: unknown, signal?: AbortSignal) {
+  const probe = await probeMedia(pathname, signal);
   const duration = Number(probe.format?.duration ?? 0);
   if (!Number.isFinite(duration) || duration < 0.8) {
     throw new Error("Narration audio duration is invalid.");
@@ -1171,7 +1221,7 @@ async function assertNarrationQuality(pathname: string, text: string, category: 
     "-af", "silencedetect=noise=-42dB:d=2.5",
     "-f", "null",
     "-",
-  ], { maxBuffer: 4 * 1024 * 1024 });
+  ], { maxBuffer: 4 * 1024 * 1024, signal });
   const longSilences = [...stderr.matchAll(/silence_duration:\s*([0-9.]+)/g)]
     .map((match) => Number(match[1]))
     .filter((value) => Number.isFinite(value) && value >= 2.5);
@@ -1186,10 +1236,13 @@ function requestedVideoShape(request: GeneratedRequest) {
   return request.content?.videoFormat === "horizontal" ? "1920x1080" : "1080x1920";
 }
 
-async function renderVideo(request: GeneratedRequest) {
+async function renderVideo(request: GeneratedRequest, signal?: AbortSignal) {
+  throwIfVideoLeaseAborted(signal);
   const renderStartedAt = Date.now();
   await validateSourceContent(request);
+  throwIfVideoLeaseAborted(signal);
   const boundTemplate = await bindTemplateVersion(request);
+  throwIfVideoLeaseAborted(signal);
   assertKidsStoryContract(request);
   const text = contentText(request);
   const sourceUrl = contentSourceUrl(request);
@@ -1231,7 +1284,8 @@ async function renderVideo(request: GeneratedRequest) {
     const isTemplatePreview = request.content.templatePreview === true;
     let aiPlan: AiVideoPlan = { ...DEFAULT_AI_VIDEO_PLAN };
     try {
-      if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request);
+      if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request, signal);
+      throwIfVideoLeaseAborted(signal);
       request.content = {
         ...request.content,
         ai: {
@@ -1247,6 +1301,7 @@ async function renderVideo(request: GeneratedRequest) {
         },
       };
     } catch (error) {
+      throwIfVideoLeaseAborted(signal);
       console.warn("[template-video] Gemini plan skipped for " + request.id + ": " + (error instanceof Error ? error.message : String(error)));
     }
 
@@ -1284,7 +1339,9 @@ async function renderVideo(request: GeneratedRequest) {
       const verifiedAyahAudio = await getVerifiedQuranAyahAudioUrl(
         Number(request.content?.surahId),
         Number(request.content?.ayahNumber),
+        signal,
       );
+      throwIfVideoLeaseAborted(signal);
       if (verifiedAyahAudio) {
         audioUrl = verifiedAyahAudio;
         request.content = { ...request.content, audioUrl: verifiedAyahAudio, audioSource: "quran-ayah-cdn" };
@@ -1343,11 +1400,12 @@ async function renderVideo(request: GeneratedRequest) {
         style: scene,
         preferredProvider,
       });
+      throwIfVideoLeaseAborted(signal);
       if (aiResult.ok && aiResult.localPath) {
         aiVideoPath = aiResult.localPath;
       } else if (aiResult.ok && aiResult.videoUrl) {
         const response = await fetch(aiResult.videoUrl, {
-          signal: AbortSignal.timeout(60_000),
+          signal: videoOperationSignal(signal, 60_000),
         });
         if (!response.ok) {
           throw new Error("AI provider returned a video URL that could not be downloaded.");
@@ -1370,10 +1428,11 @@ async function renderVideo(request: GeneratedRequest) {
         aiFallbackReason: "AI per-run budget exhausted; deterministic template fallback used.",
       };
     }
-    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content);
+    const backgroundPath = aiVideoPath || await renderBackground(temp, scene, width, height, request.content, signal);
+    throwIfVideoLeaseAborted(signal);
     let audioKind = contentAudioKind(request, audioUrl);
     if (audioUrl) {
-      const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch(audioUrl, { headers: { Accept: "audio/*" }, signal: videoOperationSignal(signal, 60_000) });
       if (!response.ok) throw new Error("Audio download failed (HTTP " + response.status + ").");
       const bytes = new Uint8Array(await response.arrayBuffer());
       if (bytes.length < 1024) throw new Error("Audio download was empty or invalid.");
@@ -1393,7 +1452,7 @@ async function renderVideo(request: GeneratedRequest) {
             `--rate=${process.env.ARABIC_TTS_RATE?.trim() || narrationProfile.rate}`,
             `--pitch=${process.env.ARABIC_TTS_PITCH?.trim() || narrationProfile.pitch}`,
           ],
-          { maxBuffer: 4 * 1024 * 1024 },
+          { maxBuffer: 4 * 1024 * 1024, signal },
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -1404,8 +1463,9 @@ async function renderVideo(request: GeneratedRequest) {
       audioKind = "arabic_tts_narration";
     }
 
-    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience);
-    const audioProbe = await probeMedia(audioPath);
+    await assertNarrationQuality(audioPath, narrationText, request.category, request.content?.audience, signal);
+    throwIfVideoLeaseAborted(signal);
+    const audioProbe = await probeMedia(audioPath, signal);
     const audioDuration = Number(audioProbe.format?.duration ?? 0);
     const duration = resolveRenderDuration(audioDuration, TARGET_VIDEO_SECONDS);
     const composition = resolveVideoComposition({
@@ -1492,14 +1552,16 @@ async function renderVideo(request: GeneratedRequest) {
       "-metadata", "comment=ZIKR template " + VIDEO_TEMPLATE_VERSION,
       outputPath,
     ];
-    await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024 });
-    await assertPlayableOutput(outputPath, width, height);
-    await assertAudibleAudio(outputPath);
+    await execFileAsync("ffmpeg", args, { maxBuffer: 4 * 1024 * 1024, signal });
+    await assertPlayableOutput(outputPath, width, height, signal);
+    await assertAudibleAudio(outputPath, signal);
+    throwIfVideoLeaseAborted(signal);
     const renderDurationMs = Date.now() - renderStartedAt;
 
     const bytes = await readFile(outputPath);
     const storageKey = request.automation_key || request.id;
-    const uploadedMedia = await uploadGeneratedVideoToCloudinary(bytes, storageKey);
+    const uploadedMedia = await uploadGeneratedVideoToCloudinary(bytes, storageKey, signal);
+    throwIfVideoLeaseAborted(signal);
     request.content = {
       ...request.content,
       audio: {
@@ -1732,38 +1794,54 @@ async function registerGeneratedVideoOnSite(
     templateVersion: string;
   },
   options: { recoverPurgedRecord?: boolean } = {},
+  signal?: AbortSignal,
 ) {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
   const slug = "zikr-" + request.id.toLowerCase().replace(/[^a-z0-9-]/g, "");
-  const existingRows = await supabaseServerAdminRequest<Array<{
+  const existingRows = await adminRequest<Array<{
     id: string;
     published: boolean | null;
+    updated_at: string | null;
+    metadata: Record<string, unknown> | null;
   }>>(
-    "/rest/v1/videos?slug=eq." + encodeURIComponent(slug) + "&select=id,published&limit=1",
+    "/rest/v1/videos?slug=eq." + encodeURIComponent(slug) + "&select=id,published,updated_at,metadata&limit=1",
   );
-  let videoId = existingRows?.[0]?.id ?? "";
-  const existingPublished = existingRows?.[0]?.published === true;
+  const existingVideo = existingRows?.[0] ?? null;
+  let videoId = existingVideo?.id ?? "";
+  const existingPublished = existingVideo?.published === true;
   if (existingPublished) {
     console.log("[video-worker] Internal video already published; preserving existing site record:", videoId);
     return { videoId, published: true, queued: false };
   }
+  if (options.recoverPurgedRecord === true && existingVideo) {
+    const metadata = existingVideo.metadata ?? {};
+    const hasCurrentMediaUrl = [metadata.generatedVideoUrl, metadata.videoUrl].some(
+      (value) => typeof value === "string" && value.trim().length > 0,
+    );
+    if (
+      metadata.mediaState !== "purged" ||
+      metadata.mediaPurgedFromPublished !== true ||
+      hasCurrentMediaUrl
+    ) {
+      throw new Error(
+        `Canonical video catalog record ${videoId} is no longer eligible for purged-media recovery; preserving its current media.`,
+      );
+    }
+  }
 
   const isKidsVideo = request.content.audience === "kids";
   const categorySlug = isKidsVideo ? "kids-stories" : (INTERNAL_VIDEO_CATEGORY_SLUG[request.category] ?? "general-reminders");
-  const categoryRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
+  const categoryRows = await adminRequest<Array<{ id: string }>>(
     "/rest/v1/video_categories?slug=eq." + encodeURIComponent(categorySlug) + "&published=eq.true&select=id&limit=1",
   );
   const now = new Date().toISOString();
   const qaSnapshot = request.content.automatedVideoQa && typeof request.content.automatedVideoQa === "object" && !Array.isArray(request.content.automatedVideoQa)
     ? request.content.automatedVideoQa as Record<string, unknown>
     : {};
-  const kidsSeriesMetadataComplete = isKidsVideo &&
-    request.content.aiMode === "original_kids_story" &&
-    request.content.sourceType === "original_kids_fiction" &&
-    typeof request.content.seriesId === "string" && Boolean(request.content.seriesId.trim()) &&
-    typeof request.content.seriesTitle === "string" && Boolean(request.content.seriesTitle.trim()) &&
-    typeof request.content.learningObjective === "string" && Boolean(request.content.learningObjective.trim()) &&
-    Number.isInteger(Number(request.content.seasonNumber)) && Number(request.content.seasonNumber) > 0 &&
-    Number.isInteger(Number(request.content.episodeNumber)) && Number(request.content.episodeNumber) > 0;
+  const kidsSeriesMetadataComplete = isKidsVideo && hasCompleteKidsVideoSeriesMetadata(request.content);
   const kidsVideoQaStatus = !isKidsVideo
     ? null
     : kidsSeriesMetadataComplete && qaSnapshot.status === "passed"
@@ -1842,7 +1920,7 @@ async function registerGeneratedVideoOnSite(
   };
 
   if (!videoId) {
-    const inserted = await supabaseServerAdminRequest<Array<{ id: string }>>(
+    const inserted = await adminRequest<Array<{ id: string }>>(
       "/rest/v1/videos",
       {
         method: "POST",
@@ -1853,26 +1931,34 @@ async function registerGeneratedVideoOnSite(
     videoId = inserted?.[0]?.id ?? "";
     if (!videoId) throw new Error("Generated video was uploaded but its ZIKR video record was not returned.");
   } else {
-    await supabaseServerAdminRequest(
-      "/rest/v1/videos?id=eq." + encodeURIComponent(videoId) + "&published=eq.false",
+    const videoUpdateFilter = buildUnpublishedVideoCatalogUpdateFilter(videoId, existingVideo?.updated_at);
+    if (!videoUpdateFilter) {
+      throw new Error(`Generated video catalog record ${videoId} has no valid row revision; refusing an unfenced update.`);
+    }
+    const updatedVideoRows = await adminRequest<Array<{ id: string }>>(
+      `/rest/v1/videos?${videoUpdateFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           ...record,
           created_at: undefined,
+          updated_at: buildNextRowVersionUpdatedAt(existingVideo?.updated_at ?? null),
         }),
       },
     );
+    if (!updatedVideoRows?.[0]?.id) {
+      throw new Error(`Generated video catalog record ${videoId} changed during registration; preserving the newer row.`);
+    }
   }
 
-  const queueRows = await supabaseServerAdminRequest<Array<{ id: string; status: string }>>(
+  const queueRows = await adminRequest<Array<{ id: string; status: string; updated_at: string | null }>>(
     "/rest/v1/content_publish_queue?content_table=eq.videos&content_id=eq." +
-      encodeURIComponent(videoId) + "&select=id,status&order=created_at.desc&limit=1",
+      encodeURIComponent(videoId) + "&select=id,status,updated_at&order=created_at.desc&limit=1",
   );
   const existingQueue = queueRows?.[0];
   if (!existingQueue) {
-    await supabaseServerAdminRequest("/rest/v1/content_publish_queue", {
+    await adminRequest("/rest/v1/content_publish_queue", {
       method: "POST",
       headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({
@@ -1888,12 +1974,15 @@ async function registerGeneratedVideoOnSite(
     existingQueue.status === "failed" ||
     (options.recoverPurgedRecord === true && existingQueue.status === "published")
   ) {
-    await supabaseServerAdminRequest(
-      "/rest/v1/content_publish_queue?id=eq." + encodeURIComponent(existingQueue.id) +
-        "&status=eq." + encodeURIComponent(existingQueue.status),
+    const recoveryFilter = buildContentPublishQueueRecoveryFilter(existingQueue);
+    if (!recoveryFilter) {
+      throw new Error(`Content publication queue row ${existingQueue.id} has no valid revision; refusing an unfenced recovery.`);
+    }
+    const recoveredQueue = await adminRequest<Array<{ id: string }>>(
+      `/rest/v1/content_publish_queue?${recoveryFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           status: "queued",
           scheduled_at: now,
@@ -1902,6 +1991,9 @@ async function registerGeneratedVideoOnSite(
         }),
       },
     );
+    if (!recoveredQueue?.[0]?.id) {
+      throw new Error(`Content publication queue row ${existingQueue.id} changed during recovery; preserving the newer queue state.`);
+    }
   }
 
   return { videoId, published: false, queued: true };
@@ -1912,23 +2004,30 @@ type MissingMediaSocialQueueRow = {
   status: string;
   target_platforms: string[] | null;
   metadata: Record<string, unknown> | null;
+  updated_at: string | null;
 };
 
 async function restoreMissingMediaSocialQueueItems(
   requestId: string,
   videoUrl: string,
   now: string,
+  signal?: AbortSignal,
 ): Promise<{ recovered: number; failedUpdates: number }> {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
   const pageSize = 100;
   let lastSeenId: string | null = null;
   let recovered = 0;
   let failedUpdates = 0;
 
   while (true) {
+    throwIfVideoLeaseAborted(signal);
     const cursorFilter: string = lastSeenId === null ? "" : "&id=gt." + encodeURIComponent(lastSeenId);
-    const rows: MissingMediaSocialQueueRow[] = await supabaseServerAdminRequest<MissingMediaSocialQueueRow[]>(
+    const rows: MissingMediaSocialQueueRow[] = await adminRequest<MissingMediaSocialQueueRow[]>(
       "/rest/v1/social_publish_queue?content_id=eq." + encodeURIComponent(requestId) +
-        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata&order=id.asc&limit=" +
+        "&metadata->>sourceMediaMissing=eq.true&status=in.(failed,partial)&select=id,status,target_platforms,metadata,updated_at&order=id.asc&limit=" +
         pageSize + cursorFilter,
     );
     if (!Array.isArray(rows) || rows.length === 0) break;
@@ -1938,9 +2037,10 @@ async function restoreMissingMediaSocialQueueItems(
       const patch = buildMissingMediaQueueRecoveryPatch({ item, videoUrl, now });
       if (!patch) continue;
       try {
-        const updated = await supabaseServerAdminRequest<Array<{ id: string }>>(
-          "/rest/v1/social_publish_queue?id=eq." + encodeURIComponent(item.id) +
-            "&status=eq." + encodeURIComponent(item.status) +
+        const updateFilter = buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at);
+        if (!updateFilter) continue;
+        const updated = await adminRequest<Array<{ id: string }>>(
+          "/rest/v1/social_publish_queue?" + updateFilter +
             "&metadata->>sourceMediaMissing=eq.true",
           {
             method: "PATCH",
@@ -1950,6 +2050,7 @@ async function restoreMissingMediaSocialQueueItems(
         );
         if (updated?.[0]?.id) recovered += 1;
       } catch (error) {
+        throwIfVideoLeaseAborted(signal);
         failedUpdates += 1;
         console.error("[template-video] Could not release a source-media-held social queue row after verified recovery:", item.id, error);
       }
@@ -1961,21 +2062,28 @@ async function restoreMissingMediaSocialQueueItems(
   return { recovered, failedUpdates };
 }
 
-async function findSocialQueueByAutomationKey(key: string): Promise<SocialQueueRow | null> {
+async function findSocialQueueByAutomationKey(key: string, signal?: AbortSignal): Promise<SocialQueueRow | null> {
+  throwIfVideoLeaseAborted(signal);
   const rows = await supabaseServerAdminRequest<SocialQueueRow[]>(
-    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata&limit=1`,
+    `/rest/v1/social_publish_queue?automation_key=eq.${encodeURIComponent(key)}&select=id,status,target_platforms,metadata,updated_at&limit=1`,
+    signal ? { signal } : undefined,
   );
   return rows?.[0] ?? null;
 }
 
-async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
+async function queueSocialItems(request: GeneratedRequest, videoUrl: string, signal?: AbortSignal): Promise<"queued" | "not_required"> {
+  const adminRequest = <T>(path: string, init?: RequestInit) => {
+    throwIfVideoLeaseAborted(signal);
+    return supabaseServerAdminRequest<T>(path, { ...(init ?? {}), ...(signal ? { signal } : {}) });
+  };
+  throwIfVideoLeaseAborted(signal);
   if (!engineConfig().autoPublishEnabled) {
     console.log(`[template-video] External publishing is disabled for ${request.id}; internal video remains available.`);
-    return;
+    return "not_required";
   }
   if (engineConfig().requiresApproval) {
     console.log(`[template-video] External publishing remains held by the explicit approval setting for ${request.id}.`);
-    return;
+    return "not_required";
   }
   const content = request.content;
   const automatedQa = content.automatedVideoQa && typeof content.automatedVideoQa === "object"
@@ -1983,26 +2091,17 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     : {};
   if (automatedQa.status !== "passed" || content.approvalStatus !== "approved") {
     console.log(`[template-video] Automated QA did not pass for ${request.id}; no external queue item was created.`);
-    return;
+    return "not_required";
   }
   const isKidsVideo = content.audience === "kids";
-  const kidsSocialStoryContractPassed = !isKidsVideo || (
-    content.aiMode === "original_kids_story" &&
-    content.sourceType === "original_kids_fiction" &&
-    content.contentFormat === "series_episode" &&
-    typeof content.seriesId === "string" && Boolean(content.seriesId.trim()) &&
-    typeof content.seriesTitle === "string" && Boolean(content.seriesTitle.trim()) &&
-    typeof content.learningObjective === "string" && Boolean(content.learningObjective.trim()) &&
-    Number.isInteger(Number(content.seasonNumber)) && Number(content.seasonNumber) > 0 &&
-    Number.isInteger(Number(content.episodeNumber)) && Number(content.episodeNumber) > 0
-  );
+  const kidsSocialStoryContractPassed = !isKidsVideo || hasCompleteKidsVideoSeriesMetadata(content);
   if (!kidsSocialStoryContractPassed) {
     console.warn(`[template-video] Kids story contract did not pass for ${request.id}; no Kids social post was queued.`);
-    return;
+    return "not_required";
   }
   if (content.skipSocialPublish === true) {
     console.log(`[template-video] Social publishing skipped for test request ${request.id}`);
-    return;
+    return "not_required";
   }
   const key = request.automation_key || request.id;
   const publicPath =
@@ -2019,51 +2118,55 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
     targets.push("youtube");
   }
   // Only an OAuth-managed Page credential in Supabase may create Facebook publishing targets.
-  const facebookCredentials = await getFacebookPageCredentials().catch(() => null);
-  if (process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false" && facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
+  const facebookCredentials = process.env.FACEBOOK_PUBLISHING_REQUESTED !== "false"
+    ? await getOptionalFacebookPageCredentials()
+    : null;
+  throwIfVideoLeaseAborted(signal);
+  if (facebookCredentials?.isEnabled && facebookCredentials.pageId && facebookCredentials.accessToken) {
     targets.push(content.videoFormat === "horizontal" ? "facebook" : "facebook_reels");
   }
-  if (!targets.length) return;
+  if (!targets.length) return "not_required";
 
   const socialKey = `${key}:social-video`;
-  const existing = await findSocialQueueByAutomationKey(socialKey);
+  const buildQueuePayload = (queueTargets: string[], queueAutomationKey: string) => ({
+    content_type: `${request.category || "content"}_video`,
+    content_id: request.id,
+    title: request.title,
+    body: [
+      buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
+      content.audience === "kids" && typeof content.seriesTitle === "string"
+        ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
+        : "",
+    ].filter(Boolean).join("\n\n"),
+    video_url: videoUrl,
+    target_platforms: queueTargets,
+    status: "queued",
+    metadata: {
+      automationKey: queueAutomationKey,
+      publicPath,
+      videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
+      sourceUrl: contentSourceUrl(request),
+      authBlocked: false,
+      attempts: 0,
+      maxAttempts: 5,
+      nextRetryAt: null,
+      ai: content.ai && typeof content.ai === "object" ? content.ai : null,
+      audience: content.audience === "kids" ? "kids" : "general",
+      kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
+      automatedVideoQa: content.automatedVideoQa,
+      automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
+    },
+    automation_key: queueAutomationKey,
+  });
+  const existing = await findSocialQueueByAutomationKey(socialKey, signal);
 
   if (!existing) {
-    await supabaseServerAdminRequest("/rest/v1/social_publish_queue", {
+    await adminRequest("/rest/v1/social_publish_queue", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        content_type: `${request.category || "content"}_video`,
-        content_id: request.id,
-        title: request.title,
-        body: [
-          buildAutomatedSocialCaption(request, `${siteUrl()}${publicPath}`),
-          content.audience === "kids" && typeof content.seriesTitle === "string"
-            ? `سلسلة أطفال: ${content.seriesTitle} — الموسم ${Number(content.seasonNumber) || 1}، الحلقة ${Number(content.episodeNumber) || 1}. الهدف: ${String(content.learningObjective || "قيمة تربوية")}`
-            : "",
-        ].filter(Boolean).join("\n\n"),
-        video_url: videoUrl,
-        target_platforms: targets,
-        status: "queued",
-        metadata: {
-          automationKey: socialKey,
-          publicPath,
-          videoFormat: content.videoFormat === "horizontal" ? "horizontal" : "vertical",
-          sourceUrl: contentSourceUrl(request),
-          authBlocked: false,
-          attempts: 0,
-          maxAttempts: 5,
-          nextRetryAt: null,
-          ai: content.ai && typeof content.ai === "object" ? content.ai : null,
-          audience: content.audience === "kids" ? "kids" : "general",
-          kidsContentQaStatus: content.audience === "kids" ? "passed" : null,
-          automatedVideoQa: content.automatedVideoQa,
-          automatedVideoQaVersion: AUTOMATED_VIDEO_QA_VERSION,
-        },
-        automation_key: socialKey,
-      }),
+      body: JSON.stringify(buildQueuePayload(targets, socialKey)),
     });
-    return;
+    return "queued";
   }
 
   const existingTargets = Array.isArray(existing.target_platforms)
@@ -2086,19 +2189,44 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
       ),
   );
 
+  const queueSupplementalTargets = async (lateTargets: string[]) => {
+    for (const target of lateTargets) {
+      throwIfVideoLeaseAborted(signal);
+      const supplementalKey = `${socialKey}:late:${target}`;
+      const supplemental = await findSocialQueueByAutomationKey(supplementalKey, signal);
+      if (supplemental) continue;
+      await adminRequest("/rest/v1/social_publish_queue", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(buildQueuePayload([target], supplementalKey)),
+      });
+    }
+  };
+
+  if (existing.status === "processing") {
+    // Do not reset a live publisher lease. Queue only newly enabled targets
+    // in separate idempotent rows so the active worker can finish its snapshot.
+    if (newlyEnabledTargets.length > 0) await queueSupplementalTargets(newlyEnabledTargets);
+    return "queued";
+  }
+
   if (desiredTargets.length !== existingTargets.length || newlyEnabledTargets.length > 0) {
-    await supabaseServerAdminRequest(
-      `/rest/v1/social_publish_queue?id=eq.${encodeURIComponent(existing.id)}`,
+    const updateFilter = buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at);
+    if (!updateFilter) {
+      throw new Error(`Social queue target expansion could not be safely persisted for ${existing.id} (${existing.status}).`);
+    }
+    const updated = await adminRequest<Array<{ id: string }>>(
+      `/rest/v1/social_publish_queue?${updateFilter}`,
       {
         method: "PATCH",
-        headers: { Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           video_url: videoUrl,
           target_platforms: desiredTargets,
           status: "queued",
           scheduled_at: new Date().toISOString(),
           error_message: null,
-          updated_at: new Date().toISOString(),
+          updated_at: buildNextRowVersionUpdatedAt(existing.updated_at),
           metadata: {
             ...(existing.metadata ?? {}),
             authBlocked: false,
@@ -2107,41 +2235,272 @@ async function queueSocialItems(request: GeneratedRequest, videoUrl: string) {
         }),
       },
     );
+    if (!updated?.[0]?.id) {
+      // The publisher may have claimed the row between our read and PATCH.
+      // Re-read once and prove that every requested target is already durable
+      // or can be added without invalidating the active publisher lease.
+      const latest = await findSocialQueueByAutomationKey(socialKey, signal);
+      if (!latest) {
+        throw new Error(`Social queue row disappeared during target expansion for ${request.id}.`);
+      }
+      const latestTargets = Array.isArray(latest.target_platforms)
+        ? latest.target_platforms.filter(Boolean)
+        : [];
+      const latestPlatformResults =
+        latest.metadata?.platformResults && typeof latest.metadata.platformResults === "object"
+          ? (latest.metadata.platformResults as Record<string, unknown>)
+          : {};
+      const latestNewTargets = targets.filter(
+        target =>
+          !latestTargets.includes(target) &&
+          !(
+            latestPlatformResults[target] &&
+            typeof latestPlatformResults[target] === "object" &&
+            (latestPlatformResults[target] as { ok?: unknown }).ok === true
+          ),
+      );
+      if (latest.status === "processing" && latestNewTargets.length > 0) {
+        await queueSupplementalTargets(latestNewTargets);
+      } else if (latestNewTargets.length > 0) {
+        const latestFilter = buildVideoSocialQueueUpdateFilter(
+          latest.id,
+          latest.status,
+          latest.updated_at,
+        );
+        if (!latestFilter) {
+          throw new Error(`Social queue target expansion lost its compare-and-set for ${latest.id}.`);
+        }
+        const latestDesiredTargets = [...new Set([...latestTargets, ...targets])];
+        const retried = await adminRequest<Array<{ id: string }>>(
+          `/rest/v1/social_publish_queue?${latestFilter}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+            body: JSON.stringify({
+              video_url: videoUrl,
+              target_platforms: latestDesiredTargets,
+              status: "queued",
+              scheduled_at: new Date().toISOString(),
+              error_message: null,
+              updated_at: buildNextRowVersionUpdatedAt(latest.updated_at),
+              metadata: {
+                ...(latest.metadata ?? {}),
+                authBlocked: false,
+                nextRetryAt: null,
+              },
+            }),
+          },
+        );
+        if (!retried?.[0]?.id) {
+          throw new Error(`Social queue target expansion changed again during reconciliation for ${latest.id}.`);
+        }
+      }
+      console.warn("[template-video] Social queue row changed during target expansion; reconciled once against the latest lease state:", existing.id);
+    }
+  }
+  return "queued";
+}
+
+
+class VideoSocialQueueLeaseLostError extends Error {
+  constructor(requestId: string) {
+    super(`Social queue recovery lease was lost for video request ${requestId}.`);
+    this.name = "VideoSocialQueueLeaseLostError";
   }
 }
 
+export async function recoverPendingVideoSocialQueueEnqueues(
+  limit = 10,
+  staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString(),
+): Promise<{ recovered: number; deferred: number }> {
+  // queueSocialItems classifies disabled or approval-held publishing as
+  // not_required, allowing the processing row to close without creating a
+  // social queue item or invoking an external provider.
+  const candidateLimit = Math.max(1, Math.min(10, Math.floor(limit) || 1));
+  const selectFields = "id,title,description,category,content,status,automation_key,error_message,error_details,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms";
+  const [pendingRows, staleRows, retryWaitRows] = await Promise.all([
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=in.(processing,retry_wait)&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.pending&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=eq.processing&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
+    supabaseServerAdminRequest<GeneratedRequest[]>(
+      `/rest/v1/video_generation_requests?status=eq.retry_wait&video_url=not.is.null&content->>socialQueueEnqueueStatus=eq.processing&select=${selectFields}&order=updated_at.asc&limit=${candidateLimit}`,
+    ),
+  ]);
+  const candidates = [...new Map(
+    [...(pendingRows ?? []), ...(staleRows ?? []), ...(retryWaitRows ?? [])]
+      .filter((request) => request && typeof request.id === "string")
+      .map((request) => [request.id, request] as const),
+  ).values()].slice(0, candidateLimit);
+
+  let recovered = 0;
+  let deferred = 0;
+  for (const request of candidates) {
+    const videoUrl = request.video_url?.trim() ?? "";
+    const claimFilter = buildVideoSocialQueueRecoveryClaimFilter(request, staleBefore);
+    if (!claimFilter || !videoUrl) continue;
+    const claimNow = new Date().toISOString();
+    const claimContent = {
+      ...(request.content ?? {}),
+      socialQueueEnqueueStatus: "processing",
+      socialQueueEnqueueAttemptedAt: claimNow,
+      socialQueueEnqueueLastError: null,
+    };
+    const claimedRows = await supabaseServerAdminRequest<Array<{
+      id: string;
+      updated_at: string | null;
+      content: Record<string, unknown> | null;
+    }>>(
+      `/rest/v1/video_generation_requests?${claimFilter}&select=id,updated_at,content`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ status: "processing", content: claimContent, updated_at: buildNextRowVersionUpdatedAt(request.updated_at ?? null) }),
+      },
+    );
+    const claimed = claimedRows?.[0];
+    if (!claimed?.id) continue;
+    let leaseUpdatedAt = claimed.updated_at?.trim();
+    if (!leaseUpdatedAt) throw new VideoSocialQueueLeaseLostError(request.id);
+    let leaseContent = claimed.content ?? claimContent;
+
+    const patchWithLease = async (patch: Record<string, unknown>) => {
+      const leaseFilter = buildVideoSocialQueueRecoveryLeaseFilter(
+        request.id,
+        videoUrl,
+        leaseUpdatedAt,
+      );
+      if (!leaseFilter) throw new VideoSocialQueueLeaseLostError(request.id);
+      const updated = await supabaseServerAdminRequest<Array<{
+        id: string;
+        updated_at: string | null;
+        content: Record<string, unknown> | null;
+      }>>(
+        `/rest/v1/video_generation_requests?${leaseFilter}&select=id,updated_at,content`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt ?? null) }),
+        },
+      );
+      const row = updated?.[0];
+      if (!row?.id) throw new VideoSocialQueueLeaseLostError(request.id);
+      const nextLeaseAt = row.updated_at?.trim();
+      if (!nextLeaseAt) throw new Error(`Social queue recovery for ${request.id} did not return an updated_at lease.`);
+      leaseUpdatedAt = nextLeaseAt;
+      if (patch.content && typeof patch.content === "object" && !Array.isArray(patch.content)) {
+        leaseContent = patch.content as Record<string, unknown>;
+      } else if (row.content) {
+        leaseContent = row.content;
+      }
+      return row;
+    };
+
+    try {
+      const queueResult = await withVideoRequestLeaseHeartbeat(
+        {
+          intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
+          renew: () => patchWithLease({}),
+          onRenewalError: (error) => console.warn(
+            `[template-video] Social queue recovery heartbeat failed for ${request.id}; ownership is uncertain and recovery is aborting:`,
+            error,
+          ),
+        },
+        (signal) => queueSocialItems(request, videoUrl, signal),
+      );
+      await patchWithLease({
+        status: "completed",
+        content: {
+          ...leaseContent,
+          socialQueueEnqueueStatus: queueResult,
+          socialQueueEnqueueLastError: null,
+        },
+        error_message: null,
+        error_details: null,
+        next_retry_at: null,
+      });
+      recovered += 1;
+      console.info(`[template-video] Recovered durable social queue handoff for video request ${request.id} (${queueResult}).`);
+    } catch (error) {
+      if (error instanceof VideoSocialQueueLeaseLostError) {
+        deferred += 1;
+        console.warn(`[template-video] Social queue recovery lease changed for ${request.id}; the newer owner was left untouched.`);
+        continue;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      try {
+        await patchWithLease({
+          content: {
+            ...leaseContent,
+            socialQueueEnqueueStatus: "pending",
+            socialQueueEnqueueLastError: message.slice(0, 500),
+          },
+          error_message: "Social queue enqueue pending",
+          error_details: message.slice(0, 2000),
+        });
+      } catch (leaseError) {
+        if (leaseError instanceof VideoSocialQueueLeaseLostError) {
+          deferred += 1;
+          console.warn(`[template-video] Did not reset a newer social queue recovery lease for ${request.id}.`);
+          continue;
+        }
+        throw leaseError;
+      }
+      deferred += 1;
+      console.error(`[template-video] Social queue handoff remains pending for ${request.id}:`, message);
+    }
+  }
+  return { recovered, deferred };
+}
 
 export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?: number) {
   if (engineConfig().dryRun) {
     console.log(`[template-video] dry-run enabled; no video generation, upload, or publishing will occur (limit=${limit}).`);
     return { processed: 0, succeeded: 0, failed: 0 };
   }
+  if (await isVideoGenerationPaused()) {
+    console.log("[template-video] generation lock is active; no queue rows will be claimed.");
+    return { processed: 0, succeeded: 0, failed: 0, skipped: 0 };
+  }
   const staleBefore = new Date(Date.now() - engineConfig().staleAfterMinutes * 60_000).toISOString();
-  const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null }>>(
-    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts&limit=50`,
+  const socialQueueRecovery = await recoverPendingVideoSocialQueueEnqueues(
+    Math.max(1, Math.min(10, limit)),
+    staleBefore,
+  );
+  if (socialQueueRecovery.recovered > 0 || socialQueueRecovery.deferred > 0) {
+    console.info("[template-video] Social queue handoff recovery:", JSON.stringify(socialQueueRecovery));
+  }
+  const stale = await supabaseServerAdminRequest<Array<{ id: string; generation_attempts?: number | null; updated_at?: string | null }>>(
+    `/rest/v1/video_generation_requests?status=eq.processing&updated_at=lt.${encodeURIComponent(staleBefore)}&video_url=is.null&select=id,generation_attempts,updated_at&limit=50`,
   );
   for (const request of stale ?? []) {
+    const recoveryFilter = buildStaleVideoRequestRecoveryFilter(request.id, request.updated_at, staleBefore);
+    if (!recoveryFilter) continue;
     const attempts = (request.generation_attempts ?? 0) + 1;
     const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
-    await supabaseServerAdminRequest(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=eq.processing&video_url=is.null`,
+    const recoveredAt = new Date().toISOString();
+    const recovered = await supabaseServerAdminRequest<Array<{ id: string }>>(
+      `/rest/v1/video_generation_requests?${recoveryFilter}`,
       {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({
           status: terminalStatus,
           generation_attempts: attempts,
           next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null,
-          last_attempt_at: new Date().toISOString(),
+          last_attempt_at: recoveredAt,
           error_message: terminalStatus === "failed" ? "تجاوزت عملية الفيديو حد المحاولات بعد الاستعادة." : "تمت استعادة عملية فيديو عالقة تلقائيًا.",
           error_details: "The worker reclaimed a stale processing item and counted the recovery as an attempt.",
-          updated_at: new Date().toISOString(),
+          updated_at: recoveredAt,
         }),
       },
     );
+    if (!recovered?.[0]) continue;
   }
   const candidateLimit = Math.max(1, Math.min(10, limit));
-  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,generation_attempts,next_retry_at,duration&order=created_at.asc&limit=${candidateLimit}`;
+  const eligibleFilter = `status=in.(pending,retry_wait)&or=(status.eq.pending,next_retry_at.lte.${encodeURIComponent(new Date().toISOString())})&select=id,title,description,category,content,status,automation_key,error_message,error_details,generation_attempts,next_retry_at,updated_at,duration&order=created_at.asc&limit=${candidateLimit}`;
   let rows: GeneratedRequest[] = [];
 
   if (Number.isInteger(priorityDay)) {
@@ -2173,15 +2532,97 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
   let failed = 0;
   let skipped = 0;
   for (const request of rows || []) {
-    const claimed = await supabaseServerAdminRequest<GeneratedRequest[]>(
-      `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}&status=in.(pending,retry_wait)`,
-      { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "processing", error_message: null, error_details: null, updated_at: new Date().toISOString() }) },
+    if (await isVideoGenerationPaused()) {
+      console.log("[template-video] generation lock activated before the next queue claim; stopping this batch.");
+      break;
+    }
+    const claimNow = new Date().toISOString();
+    const claimFilter = buildVideoRequestClaimFilter(request, claimNow);
+    if (!claimFilter) continue;
+    const claimed = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
+      `/rest/v1/video_generation_requests?${claimFilter}&select=id,updated_at`,
+      {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({
+          status: "processing",
+          error_message: null,
+          error_details: null,
+          updated_at: buildNextRowVersionUpdatedAt(request.updated_at ?? null),
+        }),
+      },
     );
     if (!claimed?.[0]) continue;
+    const claimUpdatedAt = claimed[0].updated_at?.trim();
+    if (!claimUpdatedAt) throw new Error(`Claimed video request ${request.id} did not return an updated_at lease.`);
+    if (await isVideoGenerationPaused()) {
+      const releaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, claimUpdatedAt);
+      if (!releaseFilter) throw new Error(`Could not build the release lease for video request ${request.id}.`);
+      const restored = await supabaseServerAdminRequest<Array<{ id: string }>>(
+        `/rest/v1/video_generation_requests?${releaseFilter}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({
+            status: request.status,
+            error_message: request.error_message ?? null,
+            error_details: request.error_details ?? null,
+            updated_at: buildNextRowVersionUpdatedAt(claimUpdatedAt),
+          }),
+        },
+      );
+      if (!restored?.[0]) {
+        skipped += 1;
+        console.warn(`[template-video] pause-lock release lost ownership for ${request.id}; another worker changed the row.`);
+        continue;
+      }
+      skipped += 1;
+      console.log(`[template-video] released unstarted queue claim ${request.id} because the generation lock activated.`);
+      continue;
+    }
     processed += 1;
     const attemptStartedAt = Date.now();
+    let leaseUpdatedAt = claimUpdatedAt;
+    let leaseVideoUrl: string | null = null;
+    const patchProcessingRequestWithLease = createSerializedLeaseMutation(async (patch: Record<string, unknown>) => {
+      const leaseFilter = buildProcessingVideoRequestLeaseFilter(request.id, leaseUpdatedAt, leaseVideoUrl);
+      if (!leaseFilter) throw new VideoRequestLeaseLostError(request.id);
+      const rows = await supabaseServerAdminRequest<Array<{ id: string; updated_at: string | null }>>(
+        `/rest/v1/video_generation_requests?${leaseFilter}&select=id,updated_at`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ ...patch, updated_at: buildNextRowVersionUpdatedAt(leaseUpdatedAt) }),
+        },
+      );
+      const row = rows?.[0];
+      if (!row?.id) throw new VideoRequestLeaseLostError(request.id);
+      const nextLeaseAt = row.updated_at?.trim();
+      if (!nextLeaseAt) {
+        throw new Error(`Lease update for video request ${request.id} did not return an updated_at value.`);
+      }
+      leaseUpdatedAt = nextLeaseAt;
+      if (Object.prototype.hasOwnProperty.call(patch, "video_url")) {
+        leaseVideoUrl = typeof patch.video_url === "string" && patch.video_url.trim()
+          ? patch.video_url.trim()
+          : null;
+      }
+      return row;
+    });
     try {
-      const rendered = await renderVideo(request);
+      const withLeaseHeartbeat = <T>(operation: (signal: AbortSignal) => Promise<T>) =>
+        withVideoRequestLeaseHeartbeat(
+          {
+            intervalMs: getVideoRequestLeaseHeartbeatIntervalMs(engineConfig().staleAfterMinutes),
+            renew: () => patchProcessingRequestWithLease({}),
+            onRenewalError: (error) => console.warn(
+              `[template-video] Processing lease heartbeat failed for ${request.id}; ownership is uncertain and active work is aborting:`,
+              error,
+            ),
+          },
+          operation,
+        );
+      const rendered = await withLeaseHeartbeat((signal) => renderVideo(request, signal));
       const qaChecks = buildAutomatedVideoQaChecklist(request, rendered);
       const qaReviewedAt = new Date().toISOString();
       const qaApproval = createAutomatedVideoQaApproval({
@@ -2242,24 +2683,11 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
       // A unique conflict means equivalent content already exists; retain this render on
       // its request row for review, but never publish or retry the duplicate.
       try {
-        const hashClaimRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-          {
-            method: "PATCH",
-            headers: { Prefer: "return=representation" },
-            body: JSON.stringify({
-              content_hash: rendered.contentHash,
-              updated_at: new Date().toISOString(),
-            }),
-          },
-        );
-        if (!hashClaimRows?.[0]?.id) {
-          throw new Error(`Could not claim the rendered content hash for ${request.id}.`);
-        }
+        await patchProcessingRequestWithLease({ content_hash: rendered.contentHash });
       } catch (hashError) {
         if (!isContentHashConflict(hashError)) throw hashError;
         const duplicateRows = await supabaseServerAdminRequest<GeneratedRequest[]>(
-          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
+          `/rest/v1/video_generation_requests?content_hash=eq.${encodeURIComponent(rendered.contentHash)}&id=neq.${encodeURIComponent(request.id)}&select=id,title,description,category,content,status,automation_key,video_url,generation_attempts,next_retry_at,updated_at,duration,source_hash,content_hash,template_version,scene,render_duration_ms&limit=1`,
         );
         const duplicate = duplicateRows?.[0];
         if (!duplicate) throw hashError;
@@ -2287,6 +2715,13 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         const attempts = (request.generation_attempts ?? 0) + 1;
 
         if (canRecover && qaApproval) {
+          const duplicateRecoveryFilter = buildDuplicateVideoOwnerRecoveryFilter(
+            duplicate.video_url,
+            duplicate.updated_at,
+          );
+          if (!duplicateRecoveryFilter) {
+            throw new Error(`Canonical duplicate request ${duplicate.id} has no valid row revision; refusing media recovery.`);
+          }
           const recoveredContent = {
             ...(duplicate.content ?? {}),
             ...qaApproval,
@@ -2299,15 +2734,17 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
             ...duplicate,
             content: recoveredContent,
           };
-          const recoveryResult = await registerGeneratedVideoOnSite(
+          await patchProcessingRequestWithLease({});
+          const recoveryResult = await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(
             recoveredRequest,
             rendered,
             { recoverPurgedRecord: true },
-          );
+            signal,
+          ));
 
           if (!recoveryResult.published) {
             const restoredOwnerRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&status=eq.completed&${buildDuplicateVideoOwnerVideoUrlFilter(duplicate.video_url)}`,
+              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(duplicate.id)}&${duplicateRecoveryFilter}`,
               {
                 method: "PATCH",
                 headers: { Prefer: "return=representation" },
@@ -2324,7 +2761,7 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
                   last_attempt_at: duplicateAt,
                   error_message: null,
                   error_details: null,
-                  updated_at: duplicateAt,
+                  updated_at: buildNextRowVersionUpdatedAt(duplicate.updated_at ?? null),
                 }),
               },
             );
@@ -2332,32 +2769,26 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               throw new Error(`Canonical duplicate request ${duplicate.id} changed during media recovery; the render remains unapproved for distribution.`);
             }
 
-            const cancelledDuplicateRows = await supabaseServerAdminRequest<Array<{ id: string }>>(
-              `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-              {
-                method: "PATCH",
-                headers: { Prefer: "return=representation" },
-                body: JSON.stringify({
-                  status: "cancelled",
-                  video_url: null,
-                  scene: null,
-                  render_duration_ms: null,
-                  generation_attempts: attempts,
-                  next_retry_at: null,
-                  last_attempt_at: duplicateAt,
-                  error_message: "Duplicate render recovered into the canonical request",
-                  error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
-                  updated_at: duplicateAt,
-                }),
-              },
-            );
-            if (!cancelledDuplicateRows?.[0]?.id) {
-              throw new Error(`Duplicate request ${request.id} could not be cancelled after canonical media recovery; social publishing remains held.`);
-            }
 
+
+            await patchProcessingRequestWithLease({
+              status: "cancelled",
+              video_url: null,
+              scene: null,
+              render_duration_ms: null,
+              generation_attempts: attempts,
+              next_retry_at: null,
+              last_attempt_at: duplicateAt,
+              error_message: "Duplicate render recovered into the canonical request",
+              error_details: `Verified media was restored to canonical request ${duplicate.id}; no second video or social queue item was created.`,
+            });
             let socialQueueRecovery = { recovered: 0, failedUpdates: 0 };
             try {
-              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(duplicate.id, rendered.videoUrl, duplicateAt);
+              socialQueueRecovery = await restoreMissingMediaSocialQueueItems(
+                duplicate.id,
+                rendered.videoUrl,
+                duplicateAt,
+              );
             } catch (queueRecoveryError) {
               console.error(`[template-video] Canonical media was restored, but held social queue rows need reconciliation for ${duplicate.id}:`, queueRecoveryError);
             }
@@ -2365,31 +2796,25 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
               console.info(`[template-video] Recovered ${socialQueueRecovery.recovered} held social queue row(s); ${socialQueueRecovery.failedUpdates} update(s) need reconciliation for ${duplicate.id}.`);
             }
 
+
+
             succeeded += 1;
             console.info(`[template-video] Recovered purged media for canonical request ${duplicate.id} from duplicate render ${request.id}.`);
             continue;
           }
         }
 
-        await supabaseServerAdminRequest(
-          `/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`,
-          {
-            method: "PATCH",
-            headers: { Prefer: "return=minimal" },
-            body: JSON.stringify({
-              status: "cancelled",
-              video_url: rendered.videoUrl,
-              scene: rendered.scene,
-              render_duration_ms: rendered.renderDurationMs,
-              generation_attempts: attempts,
-              next_retry_at: null,
-              last_attempt_at: duplicateAt,
-              error_message: "Duplicate generated content; publication skipped",
-              error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
-              updated_at: duplicateAt,
-            }),
-          },
-        );
+        await patchProcessingRequestWithLease({
+          status: "cancelled",
+          video_url: rendered.videoUrl,
+          scene: rendered.scene,
+          render_duration_ms: rendered.renderDurationMs,
+          generation_attempts: attempts,
+          next_retry_at: null,
+          last_attempt_at: duplicateAt,
+          error_message: "Duplicate generated content; publication skipped",
+          error_details: `Rendered content hash already belongs to request ${duplicate.id} (${duplicate.status}); this render was retained for review.`,
+        });
         skipped += 1;
         console.warn(`[template-video] Skipped duplicate rendered content for ${request.id}; existing request ${duplicate.id}.`);
         continue;
@@ -2399,57 +2824,144 @@ export async function processTemplateVideoQueue(limit = BATCH_SIZE, priorityDay?
         console.warn(`[template-video] Automated QA blocked external distribution for ${request.id}: ${missingQaChecks.join(", ")}`);
       }
       if (qaApproval) {
-        await registerGeneratedVideoOnSite(request, rendered);
+        await patchProcessingRequestWithLease({});
+        await withLeaseHeartbeat((signal) => registerGeneratedVideoOnSite(request, rendered, {}, signal));
       } else {
         console.warn(`[template-video] Render retained in the generation audit only; automated QA blocked site and social publication for ${request.id}.`);
       }
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({
-          status: "completed",
-          video_url: rendered.videoUrl,
-          scene: rendered.scene,
-          render_duration_ms: rendered.renderDurationMs,
-          source_hash: rendered.sourceHash,
-          template_version: rendered.templateVersion,
-          provider:
-            typeof request.content.aiProvider === "string"
-              ? request.content.aiProvider
-              : "template",
-          provider_job_id:
-            typeof request.content.aiProviderJobId === "string"
-              ? request.content.aiProviderJobId
-              : null,
+      // Persist the generated media pointer and a handoff marker before the
+      // optional social enqueue. The processing row protects the asset from
+      // purge until the queue reference is durable or the handoff is recovered.
+      request.content = {
+        ...request.content,
+        socialQueueEnqueueStatus: "processing",
+        socialQueueEnqueueLastError: null,
+      };
+      const completedMediaFields = {
+        video_url: rendered.videoUrl,
+        scene: rendered.scene,
+        render_duration_ms: rendered.renderDurationMs,
+        source_hash: rendered.sourceHash,
+        template_version: rendered.templateVersion,
+        provider:
+          typeof request.content.aiProvider === "string"
+            ? request.content.aiProvider
+            : "template",
+        provider_job_id:
+          typeof request.content.aiProviderJobId === "string"
+            ? request.content.aiProviderJobId
+            : null,
+      };
+      try {
+        await patchProcessingRequestWithLease({
+          ...completedMediaFields,
           content: request.content,
-          updated_at: new Date().toISOString(),
           error_message: null,
           error_details: null,
-        }),
-      });
+        });
+      } catch (persistError) {
+        skipped += 1;
+        if (persistError instanceof VideoRequestLeaseLostError) {
+          console.warn(`[template-video] Media handoff lease changed before social enqueue for ${request.id}; the newer owner was left untouched.`);
+        } else {
+          console.error(`[template-video] Could not persist the generated media handoff for ${request.id}; stale recovery will reconcile it:`, persistError);
+        }
+        continue;
+      }
+
+      let socialQueueResult: "queued" | "not_required";
       try {
-        await queueSocialItems(request, rendered.videoUrl);
-      } catch (socialError) {
-        console.error(
-          `[template-video] Internal video succeeded but social queue enqueue failed for ${request.id}:`,
-          socialError instanceof Error ? socialError.message : String(socialError),
+        socialQueueResult = await withLeaseHeartbeat(
+          (signal) => queueSocialItems(request, rendered.videoUrl, signal),
         );
+      } catch (socialError) {
+        const message = socialError instanceof Error ? socialError.message : String(socialError);
+        request.content = {
+          ...request.content,
+          socialQueueEnqueueStatus: "pending",
+          socialQueueEnqueueLastError: message.slice(0, 500),
+        };
+        try {
+          await patchProcessingRequestWithLease({
+            content: request.content,
+            error_message: "Social queue enqueue pending",
+            error_details: message.slice(0, 2000),
+          });
+        } catch (handoffPersistError) {
+          if (handoffPersistError instanceof VideoRequestLeaseLostError) {
+            skipped += 1;
+            console.warn(`[template-video] Did not overwrite a newer media handoff owner for ${request.id}.`);
+            continue;
+          }
+          console.error(
+            `[template-video] Could not persist the pending social handoff for ${request.id}; the stale processing marker will be recovered:`,
+            handoffPersistError,
+          );
+        }
+        skipped += 1;
+        console.error(
+          `[template-video] Internal video succeeded; social queue handoff remains pending for ${request.id}:`,
+          message,
+        );
+        continue;
+      }
+
+      request.content = {
+        ...request.content,
+        socialQueueEnqueueStatus: socialQueueResult,
+        socialQueueEnqueueLastError: null,
+      };
+      try {
+        await patchProcessingRequestWithLease({
+          status: "completed",
+          ...completedMediaFields,
+          content: request.content,
+          error_message: null,
+          error_details: null,
+        });
+      } catch (completionError) {
+        skipped += 1;
+        if (completionError instanceof VideoRequestLeaseLostError) {
+          console.warn(`[template-video] Completion lease changed after durable social enqueue for ${request.id}; the newer owner was left untouched.`);
+        } else {
+          console.error(`[template-video] Social queue is durable but completion state could not be persisted for ${request.id}; stale recovery will finalize it:`, completionError);
+        }
+        continue;
       }
       succeeded += 1;
       console.log(`[template-video] Completed ${request.id}`);
     } catch (error) {
-      failed += 1;
+      if (error instanceof VideoRequestLeaseLostError) {
+        skipped += 1;
+        console.warn(`[template-video] Abandoned stale worker for ${request.id}; another worker owns the current queue lease.`);
+        continue;
+      }
       const message = error instanceof Error ? error.message : String(error);
       const failedScene = request.content?.ai && typeof request.content.ai === "object" && ["calm", "dawn", "night", "gold", "emerald", "paper", "rose"].includes(String((request.content.ai as { scene?: unknown }).scene))
         ? String((request.content.ai as { scene?: unknown }).scene)
         : deterministicScene(request);
       const attempts = (request.generation_attempts ?? 0) + 1;
       const terminalStatus = attempts >= engineConfig().maxRetries ? "failed" : "retry_wait";
-      await supabaseServerAdminRequest(`/rest/v1/video_generation_requests?id=eq.${encodeURIComponent(request.id)}`, {
-        method: "PATCH",
-        headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ status: terminalStatus, scene: failedScene, render_duration_ms: Date.now() - attemptStartedAt, generation_attempts: attempts, next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null, last_attempt_at: new Date().toISOString(), error_message: "Template generation failed", error_details: message.slice(0, 2000), updated_at: new Date().toISOString() }),
-      });
+      try {
+        await patchProcessingRequestWithLease({
+          status: terminalStatus,
+          scene: failedScene,
+          render_duration_ms: Date.now() - attemptStartedAt,
+          generation_attempts: attempts,
+          next_retry_at: terminalStatus === "retry_wait" ? new Date(Date.now() + videoRetryDelayMinutes(attempts, request.id) * 60_000).toISOString() : null,
+          last_attempt_at: new Date().toISOString(),
+          error_message: "Template generation failed",
+          error_details: message.slice(0, 2000),
+        });
+        failed += 1;
+      } catch (leaseError) {
+        if (leaseError instanceof VideoRequestLeaseLostError) {
+          skipped += 1;
+          console.warn(`[template-video] Did not overwrite a newer queue owner after failure for ${request.id}.`);
+          continue;
+        }
+        throw leaseError;
+      }
       console.error(`[template-video] Failed ${request.id}: ${message}`);
     }
   }

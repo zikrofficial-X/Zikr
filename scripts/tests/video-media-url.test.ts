@@ -1,0 +1,280 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { test } from "node:test";
+import {
+  assertCloudinaryVideoUrl,
+  isGeneratedCloudinaryVideoUrl,
+} from "../../src/features/videos/services/video-media-url";
+import { isUnlinkedInternalVideoMedia, resolveLatestConfirmedYoutubeQueueState, resolveVideoMediaUrl, resolveVideoThumbnail, resolveVideoYoutubeId } from "../../src/features/videos/services/video-media-contract";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
+
+const assertForZikrCloudinaryVideoUrl = (url: string, target: string) =>
+  assertCloudinaryVideoUrl(url, target, "zikr");
+
+test("accepts HTTPS Cloudinary video delivery URLs", () => {
+  const url = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
+  assert.equal(assertForZikrCloudinaryVideoUrl(url, "YouTube"), url);
+});
+
+test("rejects Cloudinary assets from a different tenant or missing configured cloud", () => {
+  const url = "https://res.cloudinary.com/other-cloud/video/upload/v123/auto-episode.mp4";
+  assert.throws(() => assertCloudinaryVideoUrl(url, "YouTube", "zikr"), /configured Cloudinary cloud/);
+  assert.throws(
+    () => assertCloudinaryVideoUrl("https://res.cloudinary.com/zikr/video/upload/v123/auto-episode.mp4", "YouTube", ""),
+    /configured Cloudinary cloud/,
+  );
+});
+
+test("rejects non-HTTPS Cloudinary media URLs", () => {
+  assert.throws(
+    () => assertForZikrCloudinaryVideoUrl("http://res.cloudinary.com/zikr/video/upload/v123/episode.mp4", "YouTube"),
+    /requires HTTPS/,
+  );
+});
+
+test("rejects arbitrary external hosts and SSRF targets", () => {
+  for (const url of [
+    "https://not-cloudinary.test/video.mp4",
+    "https://localhost/video.mp4",
+    "http://127.0.0.1/video.mp4",
+    "https://127.0.0.1/zikr/video/upload/episode.mp4",
+    "http://169.254.169.254/latest/meta-data",
+    "https://res.cloudinary.com.evil.test/zikr/video/upload/episode.mp4",
+    "https://user:pass@res.cloudinary.com/zikr/video/upload/episode.mp4",
+  ]) {
+    assert.throws(() => assertForZikrCloudinaryVideoUrl(url, "Facebook"), /Cloudinary|HTTPS/);
+  }
+});
+
+test("rejects Cloudinary images and non-video delivery paths", () => {
+  assert.throws(
+    () => assertForZikrCloudinaryVideoUrl("https://res.cloudinary.com/zikr/image/upload/cover.jpg", "Facebook"),
+    /video\/upload/,
+  );
+});
+
+test("rejects YouTube watch and embed URLs as upload sources", () => {
+  assert.throws(
+    () => assertForZikrCloudinaryVideoUrl("https://www.youtube.com/watch?v=abc123", "YouTube"),
+    /trusted Cloudinary/,
+  );
+});
+
+
+test("protects generated Cloudinary MP4 references with transformation segments", () => {
+  const direct = "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4";
+  const transformed = "https://res.cloudinary.com/zikr/video/upload/f_auto,q_auto/v123456/auto-episode.mp4";
+  const transformedWithoutVersion = "https://res.cloudinary.com/zikr/video/upload/q_auto/auto-episode.mp4";
+
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(transformed, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(transformedWithoutVersion, "zikr"), true);
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct, "another-cloud"), false);
+  assert.equal(isGeneratedCloudinaryVideoUrl(direct.replace(".mp4", ".jpg"), "zikr"), false);
+  assert.equal(isGeneratedCloudinaryVideoUrl("https://evil.example/video/upload/auto-episode.mp4", "zikr"), false);
+});
+
+test("scheduled media audit avoids checkedAt-only database writes and reports unavailable published videos", () => {
+  const auditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+  assert.match(auditScript, /function comparableMediaAudit\(value: unknown\)/);
+  assert.match(auditScript, /JSON\.stringify\(comparableMediaAudit\(nextMetadata\.mediaAudit\)\)/);
+  assert.match(auditScript, /const needsUpdate = mediaStateChanged \|\| mediaAuditChanged/);
+  const auditOutcome = readFileSync("src/features/videos/services/video-media-audit-outcome.ts", "utf8");
+  assert.match(auditScript, /supabaseServerAdminExactCount\("videos"\)/);
+  assert.match(auditScript, /supabaseServerAdminExactCount\("social_publish_queue"\)/);
+  assert.match(auditScript, /assertCompleteVideoMediaAuditInventory\(videoTableCount, socialQueueTableCount\)/);
+  assert.match(auditScript, /social_publish_queue[^\n]*limit=1000/);
+  assert.match(auditScript, /const blockingResults = results\.filter\(isBlockingVideoMediaAuditOutcome\)/);
+  assert.match(auditScript, /process\.exitCode = 1/);
+  assert.match(auditOutcome, /result\.state === "unavailable"/);
+  assert.match(auditOutcome, /result\.state === "conflict"/);
+  assert.match(auditScript, /published_at: string \| null/);
+  assert.match(auditScript, /youtubePublishedVideoId: queueYouTubeId/);
+  assert.match(auditScript, /youtubePublishedUrl: "https:\/\/www\.youtube\.com\/watch\?v="/);
+  assert.match(auditScript, /mediaFallbackAvailable: true/);
+  assert.match(auditScript, /getConfirmedYoutubeFallbackId\(\{/);
+  assert.match(auditScript, /youtubeFallback: hasConfirmedYoutubeFallback/);
+  assert.doesNotMatch(auditScript, /youtubeFallback: Boolean\(youtubeId\)/);
+  assert.match(auditScript, /catalog_row_missing_updated_at_for_compare_and_set/);
+  assert.match(auditScript, /catalog_row_changed_during_media_audit/);
+  assert.match(auditScript, /const updatedAt = row\.updated_at/);
+  assert.match(auditScript, /youtubePublicationsByRequest/);
+  assert.match(auditScript, /status=in\.\(published,partial\)/);
+  assert.match(auditScript, /else if \(!assetUrl && hasConfirmedYoutubeFallback\) mediaState = "youtube_only"/);
+  assert.match(auditScript, /else if \(!assetUrl\) mediaState = "unavailable"/);
+  assert.match(auditScript, /thumbnailFor\(metadata, confirmedYoutubeFallbackId, row\.thumbnail_url, !explicitlyPurged\)/);
+  assert.match(auditScript, /isUnlinkedInternalVideoMedia\(row\)/);
+  assert.match(auditScript, /state: "skipped"/);
+
+});
+
+
+test("scheduled media audit advances the row-version CAS token within the same millisecond", () => {
+  const previousUpdatedAt = "2026-11-13T01:30:00.123Z";
+  assert.equal(
+    buildNextRowVersionUpdatedAt(previousUpdatedAt, new Date(previousUpdatedAt)),
+    "2026-11-13T01:30:00.124Z",
+    "a media-audit write in the same millisecond must still advance updated_at",
+  );
+  const auditScript = readFileSync("scripts/jobs/audit-video-media.ts", "utf8");
+  assert.match(auditScript, /updated_at: buildNextRowVersionUpdatedAt\(updatedAt\)/);
+  assert.doesNotMatch(auditScript, /updated_at: new Date\(\)\.toISOString\(\)/);
+});
+
+test("YouTube media fallback requires a confirmed published or partial queue row", () => {
+  const publishedAt = "2026-11-12T12:00:00.000Z";
+  const platformResults = { youtube: { ok: true, remoteId: "abc123xyz_1" } };
+  const pendingRow = {
+    status: "pending",
+    published_at: publishedAt,
+    metadata: { platformResults },
+  };
+
+  assert.equal(
+    resolveLatestConfirmedYoutubeQueueState([pendingRow]),
+    null,
+    "a stale platform result on a pending queue row must not be treated as a confirmed publication",
+  );
+
+  for (const status of ["published", "partial"] as const) {
+    assert.deepEqual(
+      resolveLatestConfirmedYoutubeQueueState([{
+        status,
+        published_at: publishedAt,
+        metadata: { platformResults },
+      }]),
+      { status: "published", id: "abc123xyz_1", publishedAt },
+      status + " queue rows may supply only their confirmed YouTube publication",
+    );
+  }
+});
+
+test("internal video catalog IDs are never trusted without publisher confirmation", () => {
+  const internal = {
+    youtube_id: "abc123xyz_1",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "cloudinary_ready",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-ready.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(internal), "https://res.cloudinary.com/zikr/video/upload/auto-ready.mp4");
+  assert.equal(resolveVideoThumbnail(internal, "/branding/og-image.jpg"), "https://res.cloudinary.com/zikr/video/upload/so_0/auto-ready.jpg");
+});
+
+test("missing internal masters use only publisher-confirmed YouTube fallbacks", () => {
+  const unconfirmed = {
+    youtube_id: "unverified123",
+    thumbnail_url: "https://res.cloudinary.com/zikr/video/upload/so_0/auto-missing.jpg",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "cloudinary_missing",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-missing.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(unconfirmed), null);
+  assert.equal(resolveVideoThumbnail(unconfirmed, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+
+  const confirmed = {
+    ...unconfirmed,
+    youtube_id: "abc123xyz_1",
+    metadata: {
+      ...unconfirmed.metadata,
+      mediaFallbackAvailable: true,
+      youtubePublishedVideoId: "abc123xyz_1",
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=abc123xyz_1",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(confirmed), "https://www.youtube.com/watch?v=abc123xyz_1");
+  assert.equal(resolveVideoThumbnail(confirmed, "/branding/og-image.jpg"), "https://i.ytimg.com/vi/abc123xyz_1/hqdefault.jpg");
+  const youtubeOnlyWithoutConfirmation = {
+    ...unconfirmed,
+    metadata: {
+      ...unconfirmed.metadata,
+      mediaState: "youtube_only",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(youtubeOnlyWithoutConfirmation), null);
+  assert.equal(resolveVideoThumbnail(youtubeOnlyWithoutConfirmation, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+});
+
+test("confirmed YouTube fallback covers every unavailable internal-media state", () => {
+  const youtubeId = "abc123xyz_1";
+  const youtubeUrl = "https://www.youtube.com/watch?v=" + youtubeId;
+  for (const mediaState of ["cloudinary_missing", "unavailable", "youtube_only", "purged"]) {
+    const row = {
+      youtube_id: null,
+      metadata: {
+        generator: "zikr_internal_video_factory",
+        mediaState,
+        generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-stale.mp4",
+        sourceVideoUrl: "https://res.cloudinary.com/zikr/video/upload/auto-stale-source.mp4",
+        mediaFallbackAvailable: true,
+        youtubePublishedVideoId: youtubeId,
+        youtubePublishedUrl: youtubeUrl,
+      },
+    };
+    assert.equal(resolveVideoMediaUrl(row), youtubeUrl, `confirmed YouTube fallback for ${mediaState}`);
+  }
+});
+
+test("explicitly unlinked internal videos remain hidden and are skipped by the media audit", () => {
+  const youtubeId = "abc123xyz_1";
+  const unlinkedVideo = {
+    youtube_id: youtubeId,
+    thumbnail_url: "https://res.cloudinary.com/zikr/video/upload/so_0/unlinked.jpg",
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "unlinked",
+      generatedVideoUrl: "https://res.cloudinary.com/zikr/video/upload/unlinked.mp4",
+      mediaFallbackAvailable: true,
+      youtubePublishedVideoId: youtubeId,
+      youtubePublishedUrl: "https://www.youtube.com/watch?v=" + youtubeId,
+    },
+  };
+  assert.equal(isUnlinkedInternalVideoMedia(unlinkedVideo), true);
+  assert.equal(resolveVideoMediaUrl(unlinkedVideo), null);
+  assert.equal(resolveVideoYoutubeId(unlinkedVideo), null);
+  assert.equal(resolveVideoThumbnail(unlinkedVideo, "/branding/og-image.jpg"), "/branding/og-image.jpg");
+});
+
+test("purged internal Kids videos never fall back to stale Cloudinary source URLs", () => {
+  const purgedVideo = {
+    youtube_id: null,
+    metadata: {
+      generator: "zikr_internal_video_factory",
+      mediaState: "purged",
+      generatedVideoUrl: null,
+      videoUrl: null,
+      sourceVideoUrl: "https://res.cloudinary.com/zikr/video/upload/v123456/auto-episode.mp4",
+    },
+  };
+  assert.equal(resolveVideoMediaUrl(purgedVideo), null);
+
+  const kidsDetailPage = readFileSync("src/app/kids/videos/[slug]/page.tsx", "utf8");
+  assert.match(kidsDetailPage, /resolveVideoMediaUrl\(/);
+  assert.doesNotMatch(
+    kidsDetailPage,
+    /const candidate = \[metadata\.generatedVideoUrl, metadata\.videoUrl, metadata\.video_url, metadata\.sourceVideoUrl\]/,
+    "Kids detail playback must use the canonical media-state resolver instead of stale metadata candidates",
+  );
+});
+
+test("video upload requests are bounded and signed capabilities require a persisted audit event", () => {
+  const videoUploadRouteSource = readFileSync("src/app/api/admin/videos/upload/route.ts", "utf8");
+  assert.match(videoUploadRouteSource, /from ["']@\/lib\/request\/bounded-json-body["']/);
+  assert.match(videoUploadRouteSource, /readBoundedJsonBody\(request\)/);
+  assert.doesNotMatch(videoUploadRouteSource, /request\.json\(\)/);
+  assert.match(videoUploadRouteSource, /if \(!auditRecorded\)[\s\S]*return jsonError\([\s\S]*?, 503\)/);
+  assert.ok(
+    videoUploadRouteSource.indexOf("if (!auditRecorded)") < videoUploadRouteSource.indexOf("return NextResponse.json(upload"),
+    "the signed upload response must occur only after audit persistence succeeds",
+  );
+  assert.doesNotMatch(videoUploadRouteSource, /\.{3}upload, auditRecorded/);
+
+  const narrationUploadRouteSource = readFileSync("src/app/api/admin/video-generation/narration-upload/route.ts", "utf8");
+  assert.match(narrationUploadRouteSource, /readBoundedRequestBytes\(request, MAX_AUDIO_BYTES\)/);
+  assert.doesNotMatch(narrationUploadRouteSource, /request\.arrayBuffer\(\)/);
+  assert.match(narrationUploadRouteSource, /runPostCommitAudit/);
+  assert.match(narrationUploadRouteSource, /recordAdminAuditEvent/);
+});

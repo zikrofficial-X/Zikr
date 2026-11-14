@@ -216,7 +216,13 @@ export async function getAdminOverview() {
 
 const GITHUB_WORKFLOW_PATHS = new Set([
   ".github/workflows/supabase-production-health.yml",
+  ".github/workflows/quality-gate.yml",
   ".github/workflows/generate-ai-video.yml",
+  ".github/workflows/generate-written-content.yml",
+  ".github/workflows/english-content-sync.yml",
+  ".github/workflows/sync-social-insights.yml",
+  ".github/workflows/audit-video-media.yml",
+  ".github/workflows/refresh-offline-content.yml",
   ".github/workflows/publish-social.yml",
   ".github/workflows/storage-retention.yml",
   ".github/workflows/dispatch-android-release-recovery.yml",
@@ -246,7 +252,7 @@ async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
     }),
-    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=30", {
+    fetch("https://api.github.com/repos/zikrofficial-X/Zikr/actions/runs?branch=main&per_page=100", {
       headers,
       cache: "no-store",
       signal: AbortSignal.timeout(5000),
@@ -288,8 +294,16 @@ async function getAdminGitHubHealth(): Promise<AdminGitHubHealth> {
         workflow_runs?: Array<{ path?: string; name?: string; status?: string; conclusion?: string | null; created_at?: string; html_url?: string }>;
       };
       workflowsAvailable = true;
-      workflows = (payload.workflow_runs ?? [])
-        .filter((run) => GITHUB_WORKFLOW_PATHS.has(run.path ?? ""))
+      const workflowRuns = payload.workflow_runs ?? [];
+      const latestRunByWorkflow = new Map<string, (typeof workflowRuns)[number]>();
+      for (const run of workflowRuns) {
+        const path = run.path ?? "";
+        if (GITHUB_WORKFLOW_PATHS.has(path) && !latestRunByWorkflow.has(path)) {
+          latestRunByWorkflow.set(path, run);
+        }
+      }
+      workflows = Array.from(latestRunByWorkflow.values())
+        .sort((a, b) => Date.parse(b.created_at ?? "") - Date.parse(a.created_at ?? ""))
         .map((run) => ({
           name: run.name ?? run.path ?? "Workflow",
           status: run.status ?? "unknown",

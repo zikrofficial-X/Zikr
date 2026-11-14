@@ -39,7 +39,7 @@ export default async function AdminSeoPage({
 }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdminPermission("settings.manage");
+  await requireAdminPermission("site.metadata.manage");
 
   const [settingsRes, articlesRes, storiesRes, libraryRes] = await Promise.all([
     read<Setting>("/rest/v1/site_settings?select=key,value&key=in.(homepage,seo,branding,social)&limit=20"),
@@ -214,7 +214,7 @@ export default async function AdminSeoPage({
         <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5">
           <h3 className="font-semibold text-brand-gold">الأصول العامة</h3>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link href="/sitemap.xml" className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold">Sitemap</Link>
+            <Link href="/sitemap-index.xml" className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold">Sitemap</Link>
             <Link href="/robots.txt" className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold">Robots</Link>
             <Link href="/" className="rounded-lg border border-brand-gold/15 px-3 py-2 text-xs text-brand-gold">الموقع</Link>
           </div>

@@ -50,6 +50,15 @@ if (JSON.stringify(configuredRedirects) !== JSON.stringify(expectedRedirects)) {
 
 requireText(".env.example", env, "AUTH_CALLBACK_URL=" + production + "/auth/callback");
 requireText("auth-enhanced", enhanced, 'new URL("/auth/callback"');
+const trustedOriginStart = enhanced.indexOf("export function getTrustedAuthOrigin(request: Request): string {");
+const trustedOriginEnd = enhanced.indexOf("\n}", trustedOriginStart);
+const trustedOriginBody = trustedOriginStart >= 0 && trustedOriginEnd > trustedOriginStart
+  ? enhanced.slice(trustedOriginStart, trustedOriginEnd)
+  : "";
+if (!trustedOriginBody.includes("new URL(request.url).origin") || /x-forwarded-(?:host|proto)/.test(trustedOriginBody)) {
+  failures.push("auth-enhanced: OAuth error redirects must derive their origin from the trusted request URL, not forwarded headers");
+}
+
 requireText("browser Google button", button, "provider: \"google\"");
 requireText("browser Google button", button, "redirectTo");
 requireText("native Google handler", native, 'url.pathname === "/callback"');
@@ -64,6 +73,9 @@ requireText("Android Google button", button, 'Capacitor.isPluginAvailable("Socia
 requireText("Android Google button", button, "startBrowserGoogleOAuth(");
 requireText("Android Google button", button, "browserFallbackAvailable");
 requireText("Android Google button", button, "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID");
+if (/host\.endsWith\("\.vercel\.app"\)/.test(button)) {
+  failures.push("browser Google button: untrusted Vercel preview aliases must not bypass the exact Supabase redirect allowlist");
+}
 requireText("Google route", googleRoute, "The PKCE verifier is written to the response origin");
 requireText("proxy", proxy, "getCanonicalAuthBaseUrl");
 

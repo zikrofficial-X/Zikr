@@ -22,6 +22,7 @@ assert.ok(videos.includes("getFacebookPublishedPosts(6)"), "Video hub must read 
 assert.ok(!videos.includes("facebook.com/plugins/page.php"), "Video hub must not depend on the broken Facebook Page Plugin iframe");
 assert.ok(facebookPosts.includes('delivery?.ok === true'), "Only successful Facebook delivery ledger rows may be shown");
 assert.ok(facebookPosts.includes("remoteId"), "Published Facebook cards must link to a confirmed remote post ID");
+assert.ok(facebookPosts.includes("isSocialPlatformDeletionCurrent(deletion, remoteId, row.published_at)"), "The public video hub must hide Facebook posts only when the matching remote delivery is confirmed deleted");
 assert.match(migration, /add column if not exists chapter text/i);
 
 console.log("Admin screen and Facebook feed regression contracts passed.");

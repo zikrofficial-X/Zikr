@@ -14,6 +14,114 @@ export function matchesConfiguredYouTubeChannel(
   return Boolean(stored) && (!configured || stored === configured);
 }
 
+export function selectYouTubeChannel<T extends { id?: string }>(
+  channels: readonly T[],
+  configuredChannelId?: string,
+): T | null {
+  const validChannels = channels.filter(
+    (channel) => typeof channel.id === "string" && channel.id.trim().length > 0,
+  );
+  const configured = configuredChannelId?.trim() ?? "";
+  if (configured) {
+    return validChannels.find((channel) => channel.id === configured) ?? null;
+  }
+  // Never silently bind the first channel when a Google account manages several.
+  return validChannels.length === 1 ? validChannels[0] : null;
+}
+
+export type YouTubeChannelPageError = {
+  status: number;
+  reason?: string | null;
+};
+
+export type YouTubeChannelPage<T> = {
+  items?: readonly T[] | null;
+  nextPageToken?: string | null;
+  error?: YouTubeChannelPageError | null;
+};
+
+export type YouTubeChannelLookup<T> = {
+  channel: T | null;
+  multipleChannels: boolean;
+  complete: boolean;
+  pagesFetched: number;
+  error?: YouTubeChannelPageError;
+};
+
+/**
+ * Search the authenticated account's paginated channel list without guessing
+ * the first channel. The bounded page count prevents OAuth callbacks and
+ * read-only health checks from spending unbounded time or API quota.
+ */
+export async function findYouTubeChannelAcrossPages<T extends { id?: string }>(
+  fetchPage: (pageToken?: string) => Promise<YouTubeChannelPage<T>>,
+  configuredChannelId?: string,
+  maxPages = 3,
+): Promise<YouTubeChannelLookup<T>> {
+  const configured = configuredChannelId?.trim() ?? "";
+  const pageLimit = Number.isFinite(maxPages)
+    ? Math.max(1, Math.min(5, Math.floor(maxPages)))
+    : 3;
+  const channels = new Map<string, T>();
+  let pageToken: string | undefined;
+
+  for (let pageIndex = 0; pageIndex < pageLimit; pageIndex += 1) {
+    const page = await fetchPage(pageToken);
+    if (page.error) {
+      return {
+        channel: null,
+        multipleChannels: false,
+        complete: false,
+        pagesFetched: pageIndex + 1,
+        error: page.error,
+      };
+    }
+
+    for (const channel of Array.isArray(page.items) ? page.items : []) {
+      const id = typeof channel.id === "string" ? channel.id.trim() : "";
+      if (!id) continue;
+      channels.set(id, channel);
+      if (configured && id === configured) {
+        return {
+          channel,
+          multipleChannels: false,
+          complete: true,
+          pagesFetched: pageIndex + 1,
+        };
+      }
+    }
+
+    if (!configured && channels.size > 1) {
+      return {
+        channel: null,
+        multipleChannels: true,
+        complete: true,
+        pagesFetched: pageIndex + 1,
+      };
+    }
+
+    const nextPageToken = typeof page.nextPageToken === "string"
+      ? page.nextPageToken.trim()
+      : "";
+    if (!nextPageToken) {
+      return {
+        channel: !configured && channels.size === 1 ? [...channels.values()][0] : null,
+        multipleChannels: channels.size > 1,
+        complete: true,
+        pagesFetched: pageIndex + 1,
+      };
+    }
+    pageToken = nextPageToken;
+  }
+
+  return {
+    channel: null,
+    multipleChannels: !configured && channels.size > 1,
+    complete: false,
+    pagesFetched: pageLimit,
+  };
+}
+
 export type YouTubeOAuthCredentialInput = {
   refreshToken: string;
   grantedScopes: string[];
@@ -29,16 +137,12 @@ export async function readStoredYouTubeRefreshToken(): Promise<string | null> {
     const row = Array.isArray(rows) ? rows[0] : null;
     if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
     const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
-    const readScopes = [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/yt-analytics.readonly",
-    ];
-    if (!readScopes.every((scope) => scopes.includes(scope))) return null;
+    if (!hasYouTubeReadScopes(scopes)) return null;
     const token = row?.refresh_token;
     return typeof token === "string" && token.trim() ? token.trim() : null;
   } catch {
-    // A missing table during deployment or a temporary REST error must not
-    // break the currently configured environment credential.
+    // Fail closed. Environment refresh tokens are not used because their
+    // granted scopes cannot be verified before analytics or publishing calls.
     return null;
   }
 }
@@ -61,42 +165,75 @@ export async function getYouTubeRefreshToken(
  * youtube.upload as well as channel/analytics read scopes. Analytics continues
  * using the read-only getter above; no video-delete scope is ever accepted.
  */
-const YOUTUBE_UPLOAD_SCOPES = [
-  "https://www.googleapis.com/auth/youtube.upload",
+const YOUTUBE_READ_SCOPES = [
   "https://www.googleapis.com/auth/youtube.readonly",
   "https://www.googleapis.com/auth/yt-analytics.readonly",
 ] as const;
 
-export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
-  return YOUTUBE_UPLOAD_SCOPES.every((scope) => scopes.includes(scope));
+const YOUTUBE_UPLOAD_SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  ...YOUTUBE_READ_SCOPES,
+] as const;
+
+const YOUTUBE_DELETE_CAPABLE_SCOPES = new Set([
+  "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+  "https://www.googleapis.com/auth/youtubepartner",
+]);
+
+export function hasYouTubeReadScopes(scopes: readonly string[]): boolean {
+  return YOUTUBE_READ_SCOPES.every((scope) => scopes.includes(scope)) &&
+    !scopes.some((scope) => YOUTUBE_DELETE_CAPABLE_SCOPES.has(scope));
 }
 
-async function readStoredYouTubeUploadRefreshToken(): Promise<string | null> {
-  try {
-    const rows = await supabaseServerAdminRequest<StoredYouTubeOAuthCredential[]>(
-      "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
-    );
-    const row = Array.isArray(rows) ? rows[0] : null;
-    if (!matchesConfiguredYouTubeChannel(row?.channel_id)) return null;
-    const scopes = Array.isArray(row?.granted_scopes) ? row.granted_scopes : [];
-    if (!hasYouTubeUploadScopes(scopes)) return null;
-    const token = row?.refresh_token;
-    return typeof token === "string" && token.trim() ? token.trim() : null;
-  } catch {
-    return null;
+export function hasYouTubeUploadScopes(scopes: readonly string[]): boolean {
+  return YOUTUBE_UPLOAD_SCOPES.every((scope) => scopes.includes(scope)) &&
+    !scopes.some((scope) => YOUTUBE_DELETE_CAPABLE_SCOPES.has(scope));
+}
+
+type YouTubeCredentialRequest = <T>(path: string) => Promise<T>;
+
+export async function readStoredYouTubeUploadRefreshToken(
+  request: YouTubeCredentialRequest = supabaseServerAdminRequest,
+  configuredChannelId: string | undefined = process.env.YOUTUBE_CHANNEL_ID,
+): Promise<string | null> {
+  const rows = await request<StoredYouTubeOAuthCredential[]>(
+    "/rest/v1/youtube_oauth_credentials?provider=eq.youtube&select=refresh_token,granted_scopes,channel_id&limit=1",
+  );
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (!row) return null;
+  if (!matchesConfiguredYouTubeChannel(row.channel_id, configuredChannelId)) {
+    throw new Error("Stored YouTube OAuth credential does not match the configured channel.");
   }
+  const scopes = Array.isArray(row.granted_scopes) ? row.granted_scopes : [];
+  if (!hasYouTubeUploadScopes(scopes)) {
+    throw new Error("Stored YouTube OAuth credential is missing the required upload/read scopes or includes a delete-capable scope.");
+  }
+  const token = row.refresh_token;
+  if (typeof token !== "string" || !token.trim()) {
+    throw new Error("Stored YouTube OAuth credential is missing its refresh token.");
+  }
+  return token.trim();
 }
 
 export async function getYouTubeUploadRefreshToken(
   readStored: () => Promise<string | null> = readStoredYouTubeUploadRefreshToken,
 ): Promise<string | null> {
-  return readStored().catch(() => null);
+  // A missing credential is a normal unconfigured state; a failed read or invalid
+  // stored credential must propagate so publishing can retry instead of skipping.
+  return readStored();
 }
 
 export async function saveYouTubeOAuthCredential(
   credential: YouTubeOAuthCredentialInput,
-  connectedBy?: string | null,
+  connectedBy: string,
 ): Promise<void> {
+  if (!connectedBy.trim()) {
+    throw new Error("YouTube OAuth credentials require the authenticated admin ID.");
+  }
+  if (!hasYouTubeUploadScopes(credential.grantedScopes)) {
+    throw new Error("YouTube OAuth credential must include upload/read scopes and exclude delete-capable scopes.");
+  }
   const now = new Date().toISOString();
   await supabaseServerAdminRequest(
     "/rest/v1/youtube_oauth_credentials?on_conflict=provider",
@@ -112,7 +249,7 @@ export async function saveYouTubeOAuthCredential(
         granted_scopes: credential.grantedScopes,
         channel_id: credential.channelId,
         channel_name: credential.channelName,
-        connected_by: connectedBy ?? null,
+        connected_by: connectedBy,
         connected_at: now,
         updated_at: now,
       }),

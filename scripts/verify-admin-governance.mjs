@@ -38,9 +38,11 @@ const groups = [...navigation.matchAll(/key:\s*"([^"]+)",\s*label:\s*"([^"]+)"[\
     items: [...group[3].matchAll(/href:\s*"([^"]+)",\s*label:\s*"([^"]+)",\s*permission:\s*"([^"]+)"/g)]
       .map((item) => ({ href: item[1], label: item[2], permission: item[3] })),
   }));
-const knowledgeAuditCalls = [...knowledgeActions.matchAll(/recordAdminAuditEvent\s*\(/g)];
+const knowledgeAuditCalls = [...knowledgeActions.matchAll(/await recordAdminAuditEventSafely\s*\(/g)];
 if (
   !knowledgeActions.includes('import { recordAdminAuditEvent }') ||
+  !knowledgeActions.includes('import { runPostCommitAudit }') ||
+  !knowledgeActions.includes('() => recordAdminAuditEvent(event)') ||
   knowledgeAuditCalls.length !== 4 ||
   !knowledgeActions.includes('"knowledge.companion.save"') ||
   !knowledgeActions.includes('"knowledge.scholar.save"') ||
@@ -51,6 +53,8 @@ if (
 }
 if (
   !androidActions.includes('import { recordAdminAuditEvent }') ||
+  !androidActions.includes('import { runPostCommitAudit }') ||
+  !androidActions.includes('await recordAdminAuditEventSafely({') ||
   !androidActions.includes('"android.release_setting.update"') ||
   !androidActions.includes('permission: "android.manage"')
 ) {
@@ -265,9 +269,17 @@ if (!managedContentService.includes('.select("id, title, published, created_at, 
     managedContentService.includes('table === "pinned_messages" ? "is_active"')) {
   failures.push("admin content manager must read and mutate pinned_messages through published");
 }
-if (!contentPublisher.includes("body: JSON.stringify({ published: true, updated_at: now })") ||
-    contentPublisher.includes('item.content_table === "pinned_messages" ? "is_active"')) {
-  failures.push("scheduled content publisher must publish pinned_messages through published");
+const publisherTables = contentPublisher.match(/const CONTENT_TABLES = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? "";
+const scheduledPublicationPatch = contentPublisher.match(
+  /body:\s*JSON\.stringify\(\{\s*published:\s*true,\s*updated_at:\s*[A-Za-z_$][\w$]*\s*\}\)/,
+);
+if (
+  !publisherTables.includes('"pinned_messages"') ||
+  !contentPublisher.includes("`/rest/v1/${item.content_table}?") ||
+  !scheduledPublicationPatch ||
+  contentPublisher.includes('item.content_table === "pinned_messages" ? "is_active"')
+) {
+  failures.push("scheduled content publisher must publish pinned_messages through the canonical published column");
 }
 
 if (failures.length) {

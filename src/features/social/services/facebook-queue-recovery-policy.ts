@@ -11,6 +11,53 @@ export type FacebookQueueRecoveryPatch = {
   updated_at: string;
 };
 
+export const DEFAULT_SOCIAL_PUBLISH_AFTER = "2026-11-06T20:00:00Z";
+
+export function resolveSocialPublishCutoff(value?: string): string {
+  const cutoff = new Date(value ?? DEFAULT_SOCIAL_PUBLISH_AFTER);
+  if (!Number.isFinite(cutoff.getTime())) {
+    throw new Error("Invalid SOCIAL_PUBLISH_AFTER cutoff; refusing queue recovery.");
+  }
+  return cutoff.toISOString();
+}
+
+export type FacebookQueueRecoveryCandidate = {
+  id: string;
+  status: string;
+  updated_at: string | null;
+  created_at: string | null;
+};
+
+export function buildFacebookQueueRecoveryFilter(
+  candidate: FacebookQueueRecoveryCandidate,
+  publishAfter = DEFAULT_SOCIAL_PUBLISH_AFTER,
+): string | null {
+  const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+  const status = candidate.status;
+  const updatedAt = typeof candidate.updated_at === "string" ? candidate.updated_at.trim() : "";
+  const createdAt = typeof candidate.created_at === "string" ? candidate.created_at.trim() : "";
+  const cutoff = resolveSocialPublishCutoff(publishAfter);
+  if (
+    !id ||
+    (status !== "failed" && status !== "partial") ||
+    !updatedAt ||
+    !Number.isFinite(Date.parse(updatedAt)) ||
+    !createdAt ||
+    !Number.isFinite(Date.parse(createdAt)) ||
+    Date.parse(createdAt) < Date.parse(cutoff)
+  ) {
+    return null;
+  }
+
+  // Recovery must never overwrite a newer publisher/admin state read after this snapshot.
+  // The exact creation timestamp also keeps pre-cutoff historical rows outside automatic recovery.
+  return "id=eq." + encodeURIComponent(id) +
+    "&status=eq." + encodeURIComponent(status) +
+    "&updated_at=eq." + encodeURIComponent(updatedAt) +
+    "&created_at=eq." + encodeURIComponent(createdAt) +
+    "&metadata->>authBlocked=eq.true";
+}
+
 export function buildFacebookQueueRecoveryPatch(
   metadataInput: Record<string, unknown> | null | undefined,
   targetsInput: readonly string[],

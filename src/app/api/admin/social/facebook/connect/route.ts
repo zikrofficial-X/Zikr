@@ -1,7 +1,10 @@
 import { randomBytes } from "node:crypto";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { buildCanonicalOAuthStartRedirect } from "@/features/social/services/oauth-canonical-origin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { getServerEnv } from "@/lib/env";
+import { FACEBOOK_REQUESTED_PERMISSIONS } from "@/features/social/services/facebook-oauth-policy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,17 +12,26 @@ export const runtime = "nodejs";
 const STATE_COOKIE = "zikr-facebook-oauth-state";
 const CANONICAL_SITE_ORIGIN = "https://zikrmediaofficial.vercel.app";
 const FACEBOOK_REDIRECT_URI = CANONICAL_SITE_ORIGIN + "/api/admin/social/facebook/callback";
-const REQUIRED_PERMISSIONS = [
-  "pages_show_list",
-  "pages_read_engagement",
-  "pages_manage_posts",
-  "read_insights",
-] as const;
+export async function GET(request: NextRequest) {
+  const canonicalRedirect = buildCanonicalOAuthStartRedirect(request.url, CANONICAL_SITE_ORIGIN);
+  if (canonicalRedirect) {
+    const response = NextResponse.redirect(canonicalRedirect, 307);
+    response.headers.set("Cache-Control", "private, no-store, max-age=0");
+    return response;
+  }
 
-export async function GET() {
   const auth = await requireAdminApi("social.manage");
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  const publishStepUp = await requireAdminStepUpApi("social.publish", "/admin/social");
+  if (!publishStepUp.ok) {
+    const nextPath = "nextPath" in publishStepUp ? publishStepUp.nextPath : undefined;
+    const destination = nextPath
+      ? new URL(nextPath, CANONICAL_SITE_ORIGIN)
+      : new URL("/admin/social?facebook=step_up_unavailable", CANONICAL_SITE_ORIGIN);
+    return NextResponse.redirect(destination, { headers: { "Cache-Control": "no-store" } });
   }
 
   const env = getServerEnv();
@@ -37,7 +49,7 @@ export async function GET() {
   authorizeUrl.searchParams.set("client_id", appId);
   authorizeUrl.searchParams.set("redirect_uri", FACEBOOK_REDIRECT_URI);
   authorizeUrl.searchParams.set("response_type", "code");
-  authorizeUrl.searchParams.set("scope", REQUIRED_PERMISSIONS.join(","));
+  authorizeUrl.searchParams.set("scope", FACEBOOK_REQUESTED_PERMISSIONS.join(","));
   authorizeUrl.searchParams.set("state", state);
   authorizeUrl.searchParams.set("auth_type", "rerequest");
 

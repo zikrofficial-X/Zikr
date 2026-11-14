@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdminStepUp } from "@/features/admin/services/security";
 import { enforceAdminRateLimit } from "@/features/admin/services/rate-limit";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
+import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { supabaseServerAdminRequest } from "@/lib/supabase/server";
 
 const REVIEW_STATES = new Set(["draft", "editorial_review", "scholarly_review", "approved", "rejected"]);
@@ -56,6 +57,15 @@ async function enforceEditorialRateLimit(
   }
 }
 
+
+type AdminAuditEvent = Parameters<typeof recordAdminAuditEvent>[0];
+async function recordAdminAuditEventSafely(event: AdminAuditEvent): Promise<boolean> {
+  return runPostCommitAudit(
+    () => recordAdminAuditEvent(event),
+    (error) => console.error("[admin/editorial] audit event failed after committed mutation:", error),
+  );
+}
+
 export async function changeEditorialReviewStatusAction(formData: FormData) {
   const admin = await requireAdminStepUp("knowledge.manage", "/admin/editorial");
   await enforceEditorialRateLimit(admin, "editorial.review", 30, 60);
@@ -87,7 +97,7 @@ export async function changeEditorialReviewStatusAction(formData: FormData) {
     editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "editorial.review_status.update",
     permission: "knowledge.manage",
     resourceType: "content_library",
@@ -129,7 +139,7 @@ export async function publishApprovedContentAction(formData: FormData) {
     editorialError("تم تعديل المحتوى بواسطة مستخدم آخر. حدّث الصفحة ثم أعد المحاولة.");
   }
 
-  await recordAdminAuditEvent({
+  await recordAdminAuditEventSafely({
     action: "editorial.publish",
     permission: "content.publish",
     resourceType: "content_library",

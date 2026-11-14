@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
 
 type WrittenPost = {
   id: string;
@@ -119,6 +120,7 @@ export default function WrittenStudioClient() {
         body: JSON.stringify({ category, batchSize: Number(batch) }),
       });
       const data = await response.json();
+      if (!response.ok && data.error === "step_up_required" && redirectToAdminStepUp(data.nextPath)) return;
       if (!response.ok) throw new Error(data.error || "تعذر تشغيل مولّد المنشورات.");
 
       setNotice(data.message || "تم إرسال طلب التوليد. ستظهر المنشورات في الطابور بعد اكتمال التحقق.");

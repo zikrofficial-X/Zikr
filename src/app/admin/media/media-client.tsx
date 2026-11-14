@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { PurgeGeneratedVideosControl } from "@/features/admin/components/purge-generated-videos-control";
+import { redirectToAdminStepUp } from "@/features/admin/utils/step-up-client";
+import { isAllowedMediaImageType, MAX_MEDIA_IMAGE_BYTES, MEDIA_IMAGE_ACCEPT } from "@/features/media/services/media-asset-limits";
 
 type Asset = {
   id: string;
@@ -26,6 +28,7 @@ const folders = ["media", "homepage", "stories", "articles", "videos", "competit
 
 export default function AdminMediaPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -42,9 +45,10 @@ export default function AdminMediaPage() {
     setError("");
     try {
       const response = await fetch("/api/admin/media", { cache: "no-store" });
-      const payload = (await response.json().catch(() => ({}))) as { assets?: Asset[]; error?: string };
+      const payload = (await response.json().catch(() => ({}))) as { assets?: Asset[]; totalCount?: number | null; error?: string };
       if (!response.ok) throw new Error(payload.error || "تعذر تحميل مكتبة الوسائط.");
       setAssets(Array.isArray(payload.assets) ? payload.assets : []);
+      setTotalCount(typeof payload.totalCount === "number" && Number.isSafeInteger(payload.totalCount) ? payload.totalCount : null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "تعذر تحميل مكتبة الوسائط.");
     } finally {
@@ -56,6 +60,27 @@ export default function AdminMediaPage() {
 
   const pendingRights = useMemo(() => assets.filter((a) => !(a.rights_verified && a.verified_rights)).length, [assets]);
   const published = useMemo(() => assets.filter((a) => a.published).length, [assets]);
+
+  function selectFile(nextFile: File | null, input: HTMLInputElement) {
+    setError("");
+    if (!nextFile) {
+      setFile(null);
+      return;
+    }
+    if (!isAllowedMediaImageType(nextFile.type)) {
+      input.value = "";
+      setFile(null);
+      setError("الصيغ المدعومة: JPG وPNG وWEBP وGIF.");
+      return;
+    }
+    if (nextFile.size <= 0 || nextFile.size > MAX_MEDIA_IMAGE_BYTES) {
+      input.value = "";
+      setFile(null);
+      setError("حجم الصورة يجب ألا يتجاوز 3 ميجابايت.");
+      return;
+    }
+    setFile(nextFile);
+  }
 
   async function upload() {
     setError(""); setMessage("");
@@ -92,6 +117,7 @@ export default function AdminMediaPage() {
         body: JSON.stringify({ id, action }),
       });
       const payload = await response.json().catch(() => ({}));
+      if (!response.ok && payload.error === "step_up_required" && redirectToAdminStepUp(payload.nextPath)) return;
       if (!response.ok) throw new Error(payload.error || "تعذر تنفيذ الإجراء.");
       setMessage("تم تنفيذ الإجراء.");
       await load();
@@ -114,23 +140,25 @@ export default function AdminMediaPage() {
       <PurgeGeneratedVideosControl onCompleted={load} />
 
       <section className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">إجمالي الأصول</p><p className="mt-2 text-3xl font-bold text-brand-cream">{assets.length}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">حقوق تحتاج مراجعة</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingRights}</p></div>
-        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">منشور</p><p className="mt-2 text-3xl font-bold text-emerald-200">{published}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">إجمالي الأصول</p><p className="mt-2 text-3xl font-bold text-brand-cream">{totalCount ?? "غير متاح"}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">حقوق تحتاج مراجعة ضمن أحدث 300 أصل</p><p className="mt-2 text-3xl font-bold text-amber-200">{pendingRights}</p></div>
+        <div className="rounded-2xl border border-brand-gold/10 bg-black/15 p-5"><p className="text-xs text-brand-cream/35">منشور ضمن أحدث 300 أصل</p><p className="mt-2 text-3xl font-bold text-emerald-200">{published}</p></div>
       </section>
 
       <section className="rounded-2xl border border-brand-gold/15 bg-black/20 p-5 space-y-4">
         <h2 className="text-lg font-bold text-brand-gold">رفع أصل جديد</h2>
         <div className="grid gap-3 md:grid-cols-2">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان الأصل" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={altText} onChange={(e) => setAltText(e.target.value)} placeholder="النص البديل بالعربية" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={license} onChange={(e) => setLicense(e.target.value)} placeholder="الترخيص" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
-          <input value={attribution} onChange={(e) => setAttribution(e.target.value)} placeholder="النسب / صاحب الحقوق" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان الأصل" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={altText} maxLength={500} onChange={(e) => setAltText(e.target.value)} placeholder="النص البديل بالعربية" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={license} maxLength={200} onChange={(e) => setLicense(e.target.value)} placeholder="الترخيص" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
+          <input value={attribution} maxLength={300} onChange={(e) => setAttribution(e.target.value)} placeholder="النسب / صاحب الحقوق" className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream" />
           <select value={folder} onChange={(e) => setFolder(e.target.value)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-3 text-brand-cream">{folders.map((value) => <option key={value} value={value}>{value}</option>)}</select>
-          <input id="media-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-2 text-xs text-brand-cream" />
+          <input id="media-file" type="file" accept={MEDIA_IMAGE_ACCEPT} onChange={(e) => selectFile(e.target.files?.[0] ?? null, e.currentTarget)} className="rounded-xl border border-brand-gold/15 bg-black/30 p-2 text-xs text-brand-cream" />
         </div>
         <Button variant="primary" disabled={busy || !file} onClick={() => void upload()}>{busy ? "جاري التنفيذ..." : "رفع وتسجيل الأصل"}</Button>
       </section>
+
+      <p className="text-xs text-brand-cream/35">يعرض الجدول أحدث 300 أصل؛ إجمالي العدد أعلاه محسوب من قاعدة البيانات. مؤشرا الحقوق وحالة النشر محسوبان على هذه الـ300 فقط.</p>
 
       <section className="rounded-2xl border border-brand-gold/10 bg-black/15 overflow-hidden">
         <div className="overflow-x-auto">

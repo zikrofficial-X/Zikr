@@ -16,7 +16,7 @@ if (/video_automation_ai_enabled"\s*\|\|\s*\)/.test(systemActions)) {
 }
 const permissions = read("src/features/admin/services/permissions.ts");
 const createRoute = read("src/app/api/admin/videos/create/route.ts");
-if (!createRoute.includes('requireAdminApi("video.manage")')) failures.push("video create API must require video.manage");
+if (!createRoute.includes('requireAdminStepUpApi("video.manage"')) failures.push("video create API must require video.manage step-up");
 if (!createRoute.includes("SOURCE_LOCKED_CATEGORIES")) failures.push("video create API must enforce source-locked categories");
 if (!createRoute.includes("resolveVideoSource")) failures.push("video create API must resolve the canonical source");
 if (!createRoute.includes("sourceVerifiedAtRequest: true")) failures.push("video create API must stamp source verification");
@@ -42,12 +42,16 @@ if (!socialPublishing.includes("hasVideoApprovalForQueueItem(item)")) {
 }
 
 const generation = read("src/app/api/admin/video-generation/route.ts");
-if (!generation.includes("requireAdminApi('video.manage')")) failures.push("video generation GET/PATCH must require video.manage");
-if (!generation.includes("requireAdminApi('video.delete')")) failures.push("video generation DELETE must require video.delete");
+const generationGet = generation.match(/export async function GET\([\s\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
+const generationDelete = generation.match(/export async function DELETE\([\s\S]*?(?=export async function PATCH|$)/)?.[0] ?? "";
+const generationPatch = generation.match(/export async function PATCH\([\s\S]*$/)?.[0] ?? "";
+if (!generationGet.includes("requireAdminApi('video.manage')")) failures.push("video generation GET must require video.manage");
+if (!generationPatch.includes("requireAdminStepUpApi('video.manage'")) failures.push("video generation PATCH must require video.manage step-up");
+if (!generationDelete.includes("requireAdminStepUpApi('video.delete'")) failures.push("video generation DELETE must require video.delete step-up");
 if (!generation.includes("updated_at=eq.") || !generation.includes("current.updated_at")) failures.push("admin publish retry must use optimistic concurrency");
 
 const retryPublishStart = generation.search(/if\s*\(\s*action\s*===\s*["']retry_publish["']\s*\)/);
-const retryPublishEnd = generation.indexOf("if (!ALLOWED_STATUSES.has(status))", retryPublishStart);
+const retryPublishEnd = generation.indexOf("DIRECT_VIDEO_STATUS_MUTATION_RETIRED", retryPublishStart);
 const retryPublishBlock = retryPublishStart >= 0 && retryPublishEnd > retryPublishStart
   ? generation.slice(retryPublishStart, retryPublishEnd)
   : "";
@@ -70,7 +74,7 @@ const sources = read("src/app/api/admin/video-generation/sources/route.ts");
 if (!sources.includes('requireAdminApi("video.manage")')) failures.push("video source API must require video.manage");
 
 const upload = read("src/app/api/admin/video-generation/narration-upload/route.ts");
-if (!upload.includes('requireAdminApi("video.manage")')) failures.push("narration upload must require video.manage");
+if (!upload.includes('requireAdminStepUpApi("video.manage"')) failures.push("narration upload must require video.manage step-up");
 if (!upload.includes("hasValidAudioSignature")) failures.push("narration upload must validate file signatures");
 for (const token of ["ID3", "ftyp", "RIFF", "WAVE", "OggS", "0x1a", "0x45", "0xdf", "0xa3"]) if (!upload.includes(token)) failures.push(`audio signature contract missing: ${token}`);
 if (!upload.includes("audio-human-") || !upload.includes("/video/upload")) failures.push("narration upload must use the dedicated Cloudinary audio prefix");
@@ -200,8 +204,8 @@ if (!templateApi.includes("recordAdminAuditEvent")) failures.push("template acti
 const worker = read("scripts/jobs/template-video-automation.ts");
 if (!worker.includes("async function bindTemplateVersion")) failures.push("video worker must bind requests to an immutable template version");
 if (!worker.includes("request.content.templatePreview === true")) failures.push("template preview mode must be recognized by the renderer");
-if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request)")) failures.push("internal template previews must avoid external generative planning");
-if (!worker.includes("registerGeneratedVideoOnSite(request, rendered)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
+if (!worker.includes("if (!isTemplatePreview) aiPlan = await generateAiVideoPlan(request, signal)")) failures.push("internal template previews must avoid external generative planning");
+if (!worker.includes("registerGeneratedVideoOnSite(request, rendered, {}, signal)") || !worker.includes('generator: "zikr_internal_video_factory"')) {
   failures.push("successfully generated videos must be persisted in the internal ZIKR catalog");
 }
 if (!read("scripts/jobs/content-publishing.ts").includes('"videos"')) failures.push("scheduled site publisher must support videos records");
@@ -213,11 +217,25 @@ if (!worker.includes("source_hash: rendered.sourceHash") || !worker.includes("co
   failures.push("completed manual renders must persist source, content and template integrity fingerprints");
 }
 const generationWorkflow = read(".github/workflows/generate-ai-video.yml");
-if (!worker.includes("async function queueSocialItems") ||
-    !worker.includes("await queueSocialItems(request, rendered.videoUrl)") ||
+const leaseWrappedSocialEnqueue = /await\s+withLeaseHeartbeat\s*\(\s*\(signal\)\s*=>\s*queueSocialItems\s*\(\s*request\s*,\s*rendered\.videoUrl\s*,\s*signal\s*\)\s*,?\s*\)/.test(worker);
+if (!/async\s+function\s+queueSocialItems\s*\(/.test(worker) ||
+    !leaseWrappedSocialEnqueue ||
     !worker.includes('status: "queued"') ||
-    !worker.includes("automation_key: socialKey")) {
+    !worker.includes("automation_key: queueAutomationKey") ||
+    !worker.includes("buildQueuePayload(targets, socialKey)")) {
   failures.push("new generated videos may create only idempotent queued social candidates");
+}
+const processingSocialQueueBranch = worker.match(
+  /if\s*\(\s*existing\.status\s*===\s*["']processing["']\s*\)\s*\{([\s\S]*?)\n\s*\}/,
+)?.[1] ?? "";
+if (!/newlyEnabledTargets\.length\s*>\s*0/.test(processingSocialQueueBranch) ||
+    !/queueSupplementalTargets\(newlyEnabledTargets\)/.test(processingSocialQueueBranch) ||
+    !/return\s+["']queued["']/.test(processingSocialQueueBranch) ||
+    !worker.includes(":late:${target}") ||
+    !/buildVideoSocialQueueUpdateFilter\s*\(\s*existing\.id,\s*existing\.status,\s*existing\.updated_at\s*\)/.test(worker) ||
+    !/const\s+latest\s*=\s*await\s+findSocialQueueByAutomationKey\(socialKey,\s*signal\)/.test(worker) ||
+    !/queueSupplementalTargets\(latestNewTargets\)/.test(worker)) {
+  failures.push("video social queue expansion must preserve active publisher leases and use compare-and-set for non-processing rows");
 }
 if (worker.includes("publishToYoutube(") || worker.includes("publishToFacebook(") ||
     worker.includes("https://www.googleapis.com/upload/youtube/v3/videos") ||

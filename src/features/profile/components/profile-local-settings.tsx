@@ -62,6 +62,7 @@ export function ProfileLocalSettings({ initialReminder }: Props) {
           quran_enabled: nextEnabled,
           quran_time: time,
           quran_message: message,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         }),
       });
 

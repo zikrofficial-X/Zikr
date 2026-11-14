@@ -33,7 +33,6 @@ const OPTIONAL = [
   "YOUTUBE_CHANNEL_ID",
   "YOUTUBE_CLIENT_ID",
   "YOUTUBE_CLIENT_SECRET",
-  "YOUTUBE_REFRESH_TOKEN",
   "FACEBOOK_APP_ID",
   "FACEBOOK_APP_SECRET",
   "FACEBOOK_PAGE_ID",
@@ -57,6 +56,7 @@ const OPTIONAL = [
   "QURAN_VIDEO_RECITER_CODE",
   "QURAN_AYAH_AUDIO_RECITER_CODE",
   "IOS_ASSOCIATED_DOMAIN_APP_ID",
+  "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID",
 ];
 
 const CANONICAL_SITE = "https://zikrmediaofficial.vercel.app";
@@ -74,6 +74,15 @@ for (const name of REQUIRED) {
 }
 for (const name of OPTIONAL) {
   if (!env(name)) add("warn", name, "optional integration is not configured");
+}
+
+const googleWebClientId = env("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID");
+if (googleWebClientId && !/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(googleWebClientId)) {
+  add("fail", "NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID", "must be a Google Web OAuth client ID");
+}
+const iosAssociatedDomainAppId = env("IOS_ASSOCIATED_DOMAIN_APP_ID");
+if (iosAssociatedDomainAppId && !/^[A-Z0-9]{10}\.com\.zikr\.app$/.test(iosAssociatedDomainAppId)) {
+  add("fail", "IOS_ASSOCIATED_DOMAIN_APP_ID", "must be a 10-character Apple Team ID plus .com.zikr.app");
 }
 
 function parseUrl(name) {

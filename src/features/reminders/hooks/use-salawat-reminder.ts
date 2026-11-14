@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
+import { createAsyncSerialQueue } from "@/lib/async-serial-queue";
 import { unlockAudioContext, refreshSiteAudio } from "@/lib/audio/spiritual-tones";
 import { getNativeAudio } from "@/lib/audio/config";
 import {
@@ -8,49 +10,37 @@ import {
   isInQuietHours,
 } from "@/features/notifications/services/notifications";
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
+import { syncBackgroundReminderTimeZone } from "@/features/reminders/services/reminder-timezone-sync";
 
-export type SalawatInterval = 15 | 30 | 60 | 120 | 0; // 0 = disabled
-
-export interface QuietHours {
-  enabled: boolean;
-  from: string; // "HH:MM"
-  to: string; // "HH:MM"
-}
-
-export interface SalawatSettings {
-  enabled: boolean;
-  intervalMinutes: SalawatInterval;
-  quietHours: QuietHours;
-}
+export type { SalawatInterval, QuietHours, SalawatSettings } from "@/features/reminders/services/reminder-settings";
+import {
+  DEFAULT_SALAWAT_SETTINGS,
+  normalizeSalawatSettings,
+} from "@/features/reminders/services/reminder-settings";
+import type { SalawatInterval, QuietHours, SalawatSettings } from "@/features/reminders/services/reminder-settings";
 
 const SETTINGS_KEY = "zikr_salawat_settings";
 const SETTINGS_UPDATED_EVENT = "zikr:salawat-settings-updated";
 
-const DEFAULT_SETTINGS: SalawatSettings = {
-  enabled: false, // opt-in: user must explicitly enable
-  intervalMinutes: 60,
-  quietHours: { enabled: false, from: "22:00", to: "06:00" },
-};
+const DEFAULT_SETTINGS: SalawatSettings = DEFAULT_SALAWAT_SETTINGS;
 
 function loadSettings(): SalawatSettings {
-  if (typeof window === "undefined") return DEFAULT_SETTINGS;
+  if (typeof window === "undefined") return normalizeSalawatSettings(null);
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
-    const parsed = JSON.parse(raw);
-    return {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      quietHours: { ...DEFAULT_SETTINGS.quietHours, ...parsed.quietHours },
-    };
+    return raw ? normalizeSalawatSettings(JSON.parse(raw)) : normalizeSalawatSettings(null);
   } catch {
-    return DEFAULT_SETTINGS;
+    return normalizeSalawatSettings(null);
   }
 }
 
 function saveSettings(s: SalawatSettings): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch {
+    // Storage may be unavailable in private or quota-limited browser contexts.
+  }
 }
 
 type NativeSalawatFacade = {
@@ -84,16 +74,28 @@ function isQuietAt(date: Date, quietHours: QuietHours): boolean {
 }
 
 let salawatScheduleGeneration = 0;
+const enqueueNativeSalawatSchedule = createAsyncSerialQueue();
 
 async function scheduleNativeSalawatReminders(
   settings: SalawatSettings
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  const generation = ++salawatScheduleGeneration;
+  await enqueueNativeSalawatSchedule(async () => {
+    if (generation !== salawatScheduleGeneration) return;
+    await scheduleNativeSalawatRemindersNow(settings, generation);
+  });
+}
+
+async function scheduleNativeSalawatRemindersNow(
+  settings: SalawatSettings,
+  generation: number,
 ): Promise<void> {
   if (typeof window === "undefined") return;
   const native = (window as Window & { zikrNative?: NativeSalawatFacade })
     .zikrNative;
   if (!native?.scheduleLocalNotification) return;
 
-  const generation = ++salawatScheduleGeneration;
   await native.cancelLocalNotifications?.(SALAWAT_NATIVE_IDS);
   if (
     generation !== salawatScheduleGeneration ||
@@ -173,15 +175,19 @@ export function useSalawatReminder(
         if (!response.ok) return;
         const data = await response.json();
         if (cancelled) return;
-        const next: SalawatSettings = {
-          enabled: Boolean(data.salawat_enabled),
-          intervalMinutes: data.salawat_interval_minutes ?? 60,
+        void syncBackgroundReminderTimeZone({
+          userId: session.user.id,
+          serverTimeZone: data.timezone,
+        });
+        const next = normalizeSalawatSettings({
+          enabled: data.salawat_enabled === true,
+          intervalMinutes: data.salawat_interval_minutes,
           quietHours: {
             enabled: Boolean(data.quiet_hours_start && data.quiet_hours_end),
-            from: data.quiet_hours_start?.slice(0, 5) ?? "22:00",
-            to: data.quiet_hours_end?.slice(0, 5) ?? "06:00",
+            from: data.quiet_hours_start?.slice(0, 5),
+            to: data.quiet_hours_end?.slice(0, 5),
           },
-        };
+        });
         saveSettings(next);
         setSettings(next);
       } catch {
@@ -201,6 +207,44 @@ export function useSalawatReminder(
       window.removeEventListener(SETTINGS_UPDATED_EVENT, syncSettings);
   }, []);
 
+  // Reconcile the server's account-level timezone when the user signs in or
+  // returns to the app after changing the device timezone.
+  useEffect(() => {
+    if (passive) return;
+    let cancelled = false;
+    const syncTimeZone = () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      void getAuthenticatedSession().then(session => {
+        if (cancelled || !session?.user) return;
+        void syncBackgroundReminderTimeZone({ userId: session.user.id });
+      });
+    };
+
+    let unsubscribe = () => {};
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { data } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          void syncBackgroundReminderTimeZone({ userId: session.user.id });
+        }
+      });
+      unsubscribe = () => data.subscription.unsubscribe();
+    } catch {
+      // The regular authenticated preference load remains the primary path.
+    }
+
+    window.addEventListener("zikr:native-app-state", syncTimeZone);
+    window.addEventListener("focus", syncTimeZone);
+    document.addEventListener("visibilitychange", syncTimeZone);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      window.removeEventListener("zikr:native-app-state", syncTimeZone);
+      window.removeEventListener("focus", syncTimeZone);
+      document.removeEventListener("visibilitychange", syncTimeZone);
+    };
+  }, [passive]);
+
   // Set up native reminders whenever settings change; these continue when the app is closed.
   // Re-run after the Capacitor bridge is ready and whenever Android resumes the
   // WebView so cancelled/expired alarms are replenished.
@@ -216,10 +260,12 @@ export function useSalawatReminder(
     };
     schedule();
     window.addEventListener("zikr:native-ready", schedule);
+    window.addEventListener("zikr:native-audio-channels-ready", schedule);
     window.addEventListener("zikr:native-app-state", schedule);
     document.addEventListener("visibilitychange", schedule);
     return () => {
       window.removeEventListener("zikr:native-ready", schedule);
+      window.removeEventListener("zikr:native-audio-channels-ready", schedule);
       window.removeEventListener("zikr:native-app-state", schedule);
       document.removeEventListener("visibilitychange", schedule);
     };
@@ -259,7 +305,14 @@ export function useSalawatReminder(
     ) => {
       setSettings(prev => {
         const patch = typeof partial === "function" ? partial(prev) : partial;
-        const next = { ...prev, ...patch };
+        const quietHoursPatch = patch.quietHours && typeof patch.quietHours === "object"
+          ? patch.quietHours
+          : {};
+        const next = normalizeSalawatSettings({
+          ...prev,
+          ...patch,
+          quietHours: { ...prev.quietHours, ...quietHoursPatch },
+        });
         saveSettings(next);
         window.dispatchEvent(new Event(SETTINGS_UPDATED_EVENT));
         void getAuthenticatedSession().then(session => {
@@ -276,6 +329,7 @@ export function useSalawatReminder(
               quiet_hours_end: next.quietHours.enabled
                 ? next.quietHours.to
                 : null,
+              timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
             }),
           }).catch(() => undefined);
         });

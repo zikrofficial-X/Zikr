@@ -7,6 +7,75 @@ const activity = read("android/app/src/main/java/com/zikr/app/MainActivity.java"
 const pkg = JSON.parse(read("package.json"));
 const lock = read("pnpm-lock.yaml");
 const proxy = read("src/proxy.ts");
+const authActions = read("src/features/auth/actions.ts");
+const googleOAuth = read("src/features/auth/integrations/google-oauth.ts");
+const androidManifest = read("android/app/src/main/AndroidManifest.xml");
+const nativeBridge = read("src/components/layout/native-capacitor-bridge.tsx");
+const nativeHandler = read("src/components/layout/native-google-oauth-handler.tsx");
+assert.ok(nativeHandler.includes('import { PRODUCTION_URL } from "@/lib/site"'), "native callback validation must use the canonical production origin");
+assert.ok(nativeHandler.includes("url.origin === new URL(PRODUCTION_URL).origin"), "HTTPS callback URLs must match the exact canonical origin, including port");
+assert.ok(!nativeHandler.includes('url.hostname === "zikrmediaofficial.vercel.app"'), "native callback validation must not hardcode a stale production hostname");
+assert.ok(nativeHandler.includes('url.searchParams.get("native") === "1"'), "native callback URLs must carry the explicit native-flow marker");
+assert.ok(nativeHandler.includes('url.username === ""') && nativeHandler.includes('url.password === ""') && nativeHandler.includes('url.port === ""'), "custom-scheme callbacks must reject credentials and non-default ports");
+
+const deployEnvValidator = read("scripts/validate-deployment-env.mjs");
+assert.ok(deployEnvValidator.includes('"NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"'), "deployment environment audit must warn when the public native Google client ID is missing");
+assert.ok(deployEnvValidator.includes("must be a Google Web OAuth client ID"), "deployment environment audit must reject malformed Google Web client IDs");
+assert.ok(deployEnvValidator.includes("must be a 10-character Apple Team ID plus .com.zikr.app"), "deployment environment audit must reject malformed iOS associated-domain app IDs");
+assert.ok(deployEnvValidator.includes(String.raw`/^[0-9]+-[a-z0-9-]+\.apps\.googleusercontent\.com$/i`), "Google client ID validator must escape literal domain dots");
+assert.ok(deployEnvValidator.includes(String.raw`/^[A-Z0-9]{10}\.com\.zikr\.app$/`), "iOS app ID validator must escape literal bundle-ID dots");
+
+const authCallback = read("src/app/auth/callback/route.ts");
+const appleAssociationRoute = read("src/app/.well-known/apple-app-site-association/route.ts");
+const projectIntegrity = read("scripts/verify-project-integrity.mjs");
+assert.ok(
+  projectIntegrity.includes("name.startsWith('@capgo/')"),
+  "project integrity must recognize installed @capgo native plugins in the mobile dependency manifest",
+);
+const capacitor = JSON.parse(read("capacitor.config.json"));
+const mobileDependencies = JSON.parse(read("mobile/capacitor-dependencies.json"));
+const packageDependencies = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+const manifestDependencies = { ...(mobileDependencies.dependencies || {}), ...(mobileDependencies.devDependencies || {}) };
+const nativeDependencyNames = name => /^(?:@capacitor|@capawesome|@capgo)\//.test(name);
+assert.deepEqual(
+  Object.keys(manifestDependencies).filter(nativeDependencyNames).sort(),
+  Object.keys(packageDependencies).filter(nativeDependencyNames).sort(),
+  "the mobile dependency manifest must contain every installed native package and no stale native packages",
+);
+for (const dependency of Object.keys(packageDependencies).filter(nativeDependencyNames)) {
+  assert.equal(
+    manifestDependencies[dependency],
+    packageDependencies[dependency],
+    `mobile dependency manifest version must match package.json for ${dependency}`,
+  );
+}
+const iosProject = read("ios/App/App.xcodeproj/project.pbxproj");
+const iosPodfile = read("ios/App/Podfile");
+assert.equal(
+  capacitor.ios?.scheme ?? "App",
+  "App",
+  "Capacitor ios.scheme must name the existing Xcode App scheme, not the custom URL scheme",
+);
+assert.match(iosProject, /name = App;/, "The Xcode project must contain the App target");
+assert.match(iosPodfile, /target 'App' do/, "CocoaPods must target the same App scheme");
+const iosDeploymentTargets = [...iosProject.matchAll(/IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);/g)]
+  .map(match => match[1]);
+assert.ok(
+  iosDeploymentTargets.length > 0 && iosDeploymentTargets.every(target => target === "15.0"),
+  "Every Xcode configuration must target iOS 15.0, the supported minimum for Capacitor 7",
+);
+assert.match(iosPodfile, /platform :ios, '15\.0'/, "CocoaPods must use the same iOS 15.0 deployment minimum");
+const iosPlist = read("ios/App/App/Info.plist");
+const appBoundDomainBlock = iosPlist.split("<key>WKAppBoundDomains</key>")[1]?.split("</array>")[0] ?? "";
+const appBoundDomains = new Set(
+  appBoundDomainBlock.split("<string>").slice(1).map(value => value.split("</string>")[0]).filter(Boolean),
+);
+assert.ok(appBoundDomains.has("localhost"), "Capacitor local bridge hostname must be app-bound when navigation limits are enabled");
+for (const host of ["www.youtube.com", "www.youtube-nocookie.com"]) {
+  assert.ok(capacitor.server?.allowNavigation?.includes(host), `${host} must remain an allowed Capacitor destination`);
+  assert.ok(appBoundDomains.has(host), `${host} must be app-bound when WKWebView navigation limits are enabled`);
+}
+assert.ok(appBoundDomains.size <= 10, "WKAppBoundDomains must not exceed Apple’s 10-domain limit");
 
 assert.ok(pkg.dependencies?.["@capgo/capacitor-social-login"], "Capgo Social Login dependency is required");
 assert.ok(lock.includes("@capgo/capacitor-social-login@7.20.0"), "pnpm lockfile must include the resolved native plugin");
@@ -15,17 +84,111 @@ assert.ok(button.includes("SocialLogin.initialize("), "Native Google plugin must
 assert.ok(button.includes("SocialLogin.login("), "Native Google Credential Manager must be invoked");
 assert.ok(button.includes("supabase.auth.signInWithIdToken("), "Google ID token must be exchanged with Supabase");
 assert.ok(button.includes("NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Native login must use the Web OAuth client ID");
+assert.doesNotMatch(
+  button,
+  /host\.endsWith\("\.vercel\.app"\)/,
+  "untrusted Vercel preview aliases must not bypass the exact Supabase redirect allowlist",
+);
+assert.ok(button.includes("return PRODUCTION_URL;"), "non-v0 browser OAuth must use the canonical production origin");
+assert.match(read(".env.example"), /^NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID=/m, "the public native OAuth client ID must be documented in the environment template");
+assert.match(read("scripts/verify-mobile-readiness.mjs"), /NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID is required for Android native Google sign-in/, "store-readiness must fail when the native Google client ID is absent");
 assert.ok(button.includes("window.location.replace(safeNext)"), "Native success must return to the in-app route");
 assert.ok(button.includes('Capacitor.isPluginAvailable("SocialLogin")'), "Credential Manager must only run when the installed APK contains the native plugin");
 assert.ok(button.includes("startBrowserGoogleOAuth("), "Native-compatible browser OAuth fallback must remain available");
 assert.ok(button.includes("browserFallbackAvailable"), "Native Google failure must expose a browser fallback");
 assert.ok(button.includes("المتابعة عبر المتصفح الآمن"), "Browser fallback must be visible to users");
 assert.ok(button.includes("buildNativeOAuthRedirect(safeNext)"), "Native browser fallback must return through the app HTTPS/deep-link bridge");
+assert.equal((button.match(/import\s*\{\s*sanitizeInternalPath\s*\}\s*from\s*["\']@\/lib\/safe-redirect["\'];/g) ?? []).length, 1, "Google button must import the redirect sanitizer exactly once");
+assert.equal((authActions.match(/import\s*\{\s*sanitizeInternalPath\s*\}\s*from\s*["\']@\/lib\/safe-redirect["\'];/g) ?? []).length, 1, "Auth actions must import the redirect sanitizer exactly once");
+assert.ok(button.includes('new URL("/auth/callback", PRODUCTION_URL)'), "Native browser fallback must use the canonical HTTPS callback origin");
+assert.ok(button.includes('url.searchParams.set("native", "1")'), "Native callback must opt into the deep-link handoff");
+assert.ok(button.includes('url.searchParams.set("next", nextPath)'), "Native callback must preserve only the sanitized in-app destination");
+assert.doesNotMatch(
+  androidManifest,
+  /android:scheme="https"[\s\S]*?android:pathPrefix="\/auth\/callback"/,
+  "Android must not intercept the HTTPS OAuth callback before the server can exchange its code",
+);
+assert.match(
+  appleAssociationRoute,
+  /\{\s*'\/':\s*'\/auth\/callback\*',\s*exclude:\s*true\s*\}/,
+  "iOS universal links must leave OAuth callbacks in the browser for the server handoff",
+);
+assert.match(appleAssociationRoute, /IOS_ASSOCIATED_DOMAIN_APP_ID/);
+assert.match(appleAssociationRoute, /status: 503/, "AASA must not return an empty success document when the Apple app ID is missing");
+assert.match(appleAssociationRoute, /\[A-Z0-9\]\{10\}\\\.com\\\.zikr\\\.app/, "AASA must validate the Apple Team ID plus the registered bundle ID");
+assert.match(appleAssociationRoute, /webcredentials:\s*\{\s*apps:\s*\[appId\],?\s*\}/);
+assert.match(read(".env.example"), /^IOS_ASSOCIATED_DOMAIN_APP_ID=/m, "the Apple Team ID and bundle ID must be documented in the environment template");
 assert.ok(button.includes("Android OAuth غير مطابق"), "Credential Manager configuration errors must be explained accurately");
 assert.ok(activity.includes("ModifiedMainActivityForSocialLoginPlugin"), "MainActivity must implement the required plugin marker interface");
 assert.ok(activity.includes("handleGoogleLoginIntent"), "MainActivity must forward Google activity results");
 assert.ok(proxy.includes('request.headers.get("host")'), "Canonical-host logic must inspect the incoming Host header");
 assert.ok(proxy.includes('process.env.VERCEL_ENV === "production"'), "Preview deployments must not be redirected to production");
 assert.ok(proxy.includes("PRODUCTION_URL"), "Production canonical host must come from the single source of truth");
+assert.match(proxy, /isProductionDeployment\s*&&\s*requestHost !== canonicalHost/, "all non-canonical production hosts must redirect before auth cookie creation");
+assert.ok(!proxy.includes('requestHost.endsWith(".vercel.app")'), "production canonicalization must cover custom domains as well as Vercel aliases");
+assert.ok(googleOAuth.includes("request.nextUrl.origin !== canonicalOrigin.origin"), "OAuth start must reject a non-canonical cookie origin");
+assert.ok(googleOAuth.includes("NextResponse.redirect(canonicalStart, 307)"), "OAuth start must redirect before generating PKCE state");
+assert.ok(googleOAuth.includes('response.headers.set("Cache-Control", "private, no-store, max-age=0")'), "OAuth origin redirects must not be cached");
+
+assert.match(nativeBridge, /registerPluginListener\(app, "appUrlOpen"/);
+assert.match(nativeBridge, /target\.origin !== PRODUCTION_URL/);
+assert.match(nativeBridge, /target\.pathname\.startsWith\("\/auth\/callback"\)/);
+assert.match(nativeBridge, /sanitizeInternalPath\(target\.pathname \+ target\.search \+ target\.hash\)/, "Universal-link paths must be sanitized before in-app navigation");
+assert.match(nativeBridge, /window\.location\.assign\(path\)/);
+assert.match(nativeHandler, /let disposed = false/);
+assert.match(nativeHandler, /const nextUrlListener = await App\.addListener/);
+assert.match(nativeHandler, /if \(disposed\)[\s\S]*?await nextUrlListener\.remove\(\)/);
+assert.match(nativeHandler, /const nextStateListener = await App\.addListener/);
+assert.match(nativeHandler, /if \(disposed\)[\s\S]*?await nextStateListener\.remove\(\)/);
+assert.match(nativeHandler, /void subscribe\(\)\.catch/);
+assert.match(nativeHandler, /disposed = true;[\s\S]*?urlListener\?\.remove\(\)[\s\S]*?stateListener\?\.remove\(\)/);
+assert.match(authCallback, /return redirectNoStore\(nativeUrl\)/, "native OAuth authorization codes must be handed off through a no-store redirect");
+assert.match(authCallback, /nativeUrl\.searchParams\.set\([\'"]native[\'"], [\'"]1[\'"]\)/, "the server must preserve the native flow marker on the custom-scheme deep link");
+const httpsBridgeStart = nativeHandler.indexOf("const isHttpsBridge =");
+const httpsBridgeEnd = nativeHandler.indexOf("return isAppDeepLink", httpsBridgeStart);
+const httpsBridgeSource = nativeHandler.slice(httpsBridgeStart, httpsBridgeEnd);
+assert.ok(httpsBridgeSource.includes('url.username === ""') && httpsBridgeSource.includes('url.password === ""'), "HTTPS callback validation must reject credential-bearing URLs even when their origin matches");
+
+assert.match(authCallback, /Cache-Control.*private, no-store, max-age=0/, "all OAuth callback redirects must be private and non-cacheable");
+assert.equal((authCallback.match(/NextResponse\.redirect\(/g) ?? []).length, 1, "only the no-store redirect helper may create callback redirects");
+assert.match(androidManifest, /android:scheme="com\.zikr\.app"/);
+assert.match(androidManifest, /<intent-filter android:autoVerify="true">[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"/);
+for (const routePrefix of ["/quran", "/hadith", "/articles", "/dua", "/stories", "/kids"]) {
+  assert.ok(androidManifest.includes('android:pathPrefix="' + routePrefix + '"'), "Android App Links must include " + routePrefix);
+}
+assert.doesNotMatch(
+  androidManifest,
+  /android:scheme="https"[\s\S]*?android:host="zikrmediaofficial\.vercel\.app"[\s\S]*?android:pathPrefix="\/auth\/callback"/,
+  "Android App Links must not intercept the HTTPS OAuth callback",
+);
+const androidWorkflow = read(".github/workflows/android-native-login-test.yml");
+assert.match(androidWorkflow, /pull_request:\s*[\s\S]*?paths:/, "native Android OAuth changes must trigger a PR debug build");
+assert.ok(androidWorkflow.includes('"android/**"'), "Android source changes must trigger the debug build");
+assert.ok(androidWorkflow.includes('"src/features/auth/**"'), "native OAuth source changes must trigger the debug build");
+assert.ok(androidWorkflow.includes(":app:assembleDebug"), "the PR workflow must build a debug APK");
+assert.ok(
+  !androidWorkflow.includes(":app:assembleRelease") && !androidWorkflow.includes(":app:bundleRelease"),
+  "the PR workflow must never create a release APK/AAB",
+);
+
+
+for (const action of [
+  "actions/checkout@v7",
+  "pnpm/action-setup@v6",
+  "actions/setup-node@v7",
+  "actions/cache@v6",
+  "actions/upload-artifact@v7",
+]) {
+  assert.ok(androidWorkflow.includes(action), "Android debug workflow must use Node 24-compatible action " + action);
+}
+for (const legacyAction of [
+  "actions/checkout@v4",
+  "pnpm/action-setup@v4",
+  "actions/setup-node@v4",
+  "actions/cache@v4",
+  "actions/upload-artifact@v4",
+]) {
+  assert.ok(!androidWorkflow.includes(legacyAction), "Android debug workflow must not retain " + legacyAction);
+}
 
 console.log("Native Google OAuth and canonical-host contracts passed.");

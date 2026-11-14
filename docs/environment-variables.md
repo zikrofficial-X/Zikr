@@ -1,6 +1,6 @@
 # ZIKR Environment Variables
 
-Last reconciled: **2026-11-07**
+Last reconciled: **2026-11-11**
 
 This document describes the current environment contract for the web application, GitHub Actions/background workers, CircleCI recovery jobs, and Supabase Edge Functions.
 
@@ -48,12 +48,13 @@ YouTube:
 - `YOUTUBE_CHANNEL_ID`
 - `YOUTUBE_CLIENT_ID`
 - `YOUTUBE_CLIENT_SECRET`
-- `YOUTUBE_REFRESH_TOKEN`
+- `YOUTUBE_UPLOAD_PRIVACY` — visibility for automatic video uploads (`public`, `unlisted`, or `private`; defaults to `public`).
+- `YOUTUBE_REFRESH_TOKEN` — legacy/ignored by active workers; do not provision it.
  
-YouTube remote deletion additionally requires an explicit OAuth grant containing `https://www.googleapis.com/auth/youtube.force-ssl` (or `youtube` / `youtubepartner`). The upload-only scope and API key do not authorize deletion. Reconnect YouTube from Admin to store the new credential and its granted scopes in the server-only `youtube_oauth_credentials` table. The stored credential takes precedence over `YOUTUBE_REFRESH_TOKEN`; the environment value remains a rollback fallback. Never expose either token to the browser.
+YouTube remote deletion is not supported by the current integration. The Admin OAuth callback and stored credential reader intentionally reject delete-capable scopes; do not add them to the publishing token or `youtube_oauth_credentials`. A separate owner-approved delete-only credential store and OAuth flow is required before enabling remote YouTube deletion. The legacy `YOUTUBE_REFRESH_TOKEN` environment variable is ignored by the production reader. Never expose refresh tokens to the browser or copy them into Vercel/GitHub Actions environment variables.
 
 
-The channel connection check prefers OAuth. If the refresh token lacks YouTube channel-read scope, it can still read public channel name/statistics using the server-only `YOUTUBE_API_KEY` and exact `YOUTUBE_CHANNEL_ID`. This public fallback does not grant private YouTube Analytics access; 28-day owner analytics requires reauthorizing OAuth with `youtube.readonly` and `yt-analytics.readonly` scopes, then replacing the refresh token in Vercel and the GitHub production secret.
+The channel connection check prefers OAuth. If the refresh token lacks YouTube channel-read scope, it can still read public channel name/statistics using the server-only `YOUTUBE_API_KEY` and exact `YOUTUBE_CHANNEL_ID`. This public fallback does not grant private YouTube Analytics access; 28-day owner analytics requires reauthorizing OAuth with `youtube.readonly` and `yt-analytics.readonly` scopes, then reconnecting from Admin so the server-only Supabase credential is updated.
 
 Facebook / Meta:
 
@@ -204,6 +205,11 @@ Android release additionally requires:
 - `ANDROID_KEY_PASSWORD`
 - `GH_TOKEN`
 
+## iOS Universal Links
+
+- `IOS_ASSOCIATED_DOMAIN_APP_ID` — server-only App ID in the exact `<APPLE_TEAM_ID>.<BUNDLE_ID>` format used by the iOS Associated Domains entitlement. It populates `/.well-known/apple-app-site-association`; without it the endpoint intentionally returns no app association. This is not a web-runtime requirement, but it is required before iOS Universal Link/OAuth return-to-app acceptance. Configure the real Apple Team ID and bundle identifier in Vercel Production, then redeploy so the statically generated association file is refreshed.
+- `ANDROID_APP_LINKS_SHA256` — public SHA-256 signing-certificate fingerprint used by `/.well-known/assetlinks.json`; it must match the certificate used for the distributed Android build.
+
 ## 7. System-managed Vercel variables
 
 These are not application secrets and should not be manually provisioned just to make the application work:
@@ -224,7 +230,7 @@ The deployment validator rejects the legacy public Google client ID and warns on
 - `POSTGRES_URL_NON_POOLING`
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`
 
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not retired: they are server-only OAuth client credentials for optional GA4 reporting, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and numeric `GA4_PROPERTY_ID`. If any GA4 credential is missing, the reporting panel remains `not_configured`. Google sign-in continues to use Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not retired: they are server-only OAuth client credentials for optional GA4 reporting, not Google sign-in. GA4 also requires `GA4_REFRESH_TOKEN` and numeric `GA4_PROPERTY_ID`. If any GA4 credential is missing, the reporting panel remains `not_configured`. Google sign-in continues to use Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`. For Android native Credential Manager builds, define `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID` in the build environment; it is a public OAuth client ID, not a secret. Store-release readiness checks require it, while ordinary web deployments may continue to use the browser OAuth fallback.
 
 Do not provision a direct Postgres application URL. Database schema changes are managed through Supabase migrations and Supabase client/API access.
 
@@ -299,7 +305,7 @@ Read-only verification of the connected production Vercel project confirmed thes
 The following variables were found in Vercel and are cleanup candidates after confirming ownership:
 
 - Android signing material: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`. These belong in the protected CircleCI `android-signing` context only.
-- Obsolete Google OAuth application variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Google web/native login uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
+- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are server-only GA4 OAuth credentials, not obsolete Google sign-in variables. GA4 also requires `GA4_REFRESH_TOKEN` and `GA4_PROPERTY_ID`; keep the credentials server-only when GA4 reporting is enabled. Google web/native sign-in uses Supabase Auth and `NEXT_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
 - Retired/stale application variables: `VIDEO_AUTO_PUBLISH`, `SOCIAL_SYNC_SECRET`.
 - `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`, `POSTGRES_HOST`, `POSTGRES_DATABASE`, `POSTGRES_USER`, `POSTGRES_PASSWORD` are integration-managed database connection variables. They are not used by the Next.js runtime; **review their Vercel/Supabase integration ownership before removal** and do not delete them blindly.
 

@@ -21,7 +21,8 @@ export const ADMIN_PERMISSIONS = {
   'analytics.read': 'عرض التحليلات',
   'audio.manage': 'إدارة المقاطع الصوتية',
   'android.manage': 'إدارة إصدارات Android',
-  'settings.manage': 'إدارة إعدادات الموقع',
+  'site.metadata.manage': 'إدارة البيانات العامة للموقع (SEO والصفحة الرئيسية وروابط التواصل)',
+  'settings.manage': 'إدارة إعدادات النظام والإدارة العامة',
   'audit.read': 'عرض سجل الإدارة',
   'notifications.manage': 'إدارة إشعارات الإدارة',
   'security.manage': 'إدارة أمن لوحة الإدارة',
@@ -71,7 +72,7 @@ export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[
     'analytics.read', 'audit.read',
   ],
   seo_manager: [
-    'admin.access', 'dashboard.view', 'content.manage', 'analytics.read', 'settings.manage',
+    'admin.access', 'dashboard.view', 'content.manage', 'analytics.read', 'site.metadata.manage',
     'audit.read',
   ],
   analyst: [
@@ -81,6 +82,27 @@ export const ADMIN_ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[
     'admin.access', 'dashboard.view', 'users.read', 'analytics.read', 'notifications.manage',
   ],
 };
+
+/**
+ * Resolve the effective admin role from the legacy profile flag and the
+ * delegated-role assignment. The assignment lookup is security-critical:
+ * uncertainty must never promote a delegated admin to full administrator.
+ */
+export function resolveAdminRole(
+  profileRole: unknown,
+  assignmentRole: unknown,
+  assignmentLookupFailed = false,
+): AdminRole {
+  if (profileRole !== "admin" || assignmentLookupFailed) return "user";
+  if (assignmentRole === null || assignmentRole === undefined) return "admin";
+  if (
+    typeof assignmentRole !== "string" ||
+    !Object.prototype.hasOwnProperty.call(ADMIN_ROLE_PERMISSIONS, assignmentRole)
+  ) {
+    return "user";
+  }
+  return assignmentRole as AdminRole;
+}
 
 export function hasAdminPermission(role: AdminRole, permission: AdminPermission): boolean {
   return Boolean(ADMIN_ROLE_PERMISSIONS[role]?.includes(permission));

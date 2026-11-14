@@ -51,54 +51,60 @@ function hasSupabaseConfig() {
   );
 }
 
-const CACHE_TTL = 5 * 60 * 1000;
-let cachedStories: { data: Story[]; timestamp: number } | null = null;
+const CACHE_TTL = 60_000;
+
+export function invalidateStoriesCache(): void {
+  cachedStories.clear();
+}
+const cachedStories = new Map<number, { data: Story[]; timestamp: number }>();
 
 export async function getStories(limit = 100): Promise<Story[]> {
-  try {
-    if (cachedStories && Date.now() - cachedStories.timestamp < CACHE_TTL) {
-      return cachedStories.data;
-    }
+  const safeLimit = Math.max(1, Math.min(1000, Math.floor(limit) || 1));
+  const cached = cachedStories.get(safeLimit);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
 
-    if (!hasSupabaseConfig()) {
-      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
-      return FALLBACK_STORIES;
-    }
+  const fallback = () => {
+    const data = FALLBACK_STORIES.slice(0, safeLimit);
+    cachedStories.set(safeLimit, { data, timestamp: Date.now() });
+    return data;
+  };
+
+  try {
+    if (!hasSupabaseConfig()) return fallback();
 
     let response: StoryRow[] | undefined;
     try {
       response = await supabaseServerAnonRequest<StoryRow[]>(
-        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${limit}&order=created_at.desc`,
-        { cache: "force-cache", next: { revalidate: 1800 } }
+        `/rest/v1/stories?select=id,slug,title,summary,content,category,mood,metadata,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${safeLimit}&order=created_at.desc`,
+        { cache: "force-cache", next: { revalidate: 60, tags: ["public-stories"] } }
       );
     } catch (summaryError) {
       console.warn("[stories] Summary column may not exist, trying without it", summaryError);
       response = await supabaseServerAnonRequest<StoryRow[]>(
-        `/rest/v1/stories?select=id,slug,title,category,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${limit}&order=created_at.desc`,
-        { cache: "force-cache", next: { revalidate: 1800 } }
+        `/rest/v1/stories?select=id,slug,title,category,published,created_at,updated_at&published=eq.true&is_approved=eq.true&user_id=is.null&limit=${safeLimit}&order=created_at.desc`,
+        { cache: "force-cache", next: { revalidate: 60, tags: ["public-stories"] } }
       );
     }
 
     if (!Array.isArray(response)) {
       console.warn("[stories] Invalid response type from Supabase, got:", typeof response);
-      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
-      return FALLBACK_STORIES;
+      return fallback();
     }
 
     if (response.length === 0) {
       console.info("[stories] Supabase returned no published stories; using curated fallback");
-      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
-      return FALLBACK_STORIES;
+      return fallback();
     }
 
     if (!response.every(isStoryRow)) {
       console.error("[stories] Response validation failed; using curated fallback");
-      cachedStories = { data: FALLBACK_STORIES, timestamp: Date.now() };
-      return FALLBACK_STORIES;
+      return fallback();
     }
 
     const mapped = response.map(mapStoryRow);
-    cachedStories = { data: mapped, timestamp: Date.now() };
+    cachedStories.set(safeLimit, { data: mapped, timestamp: Date.now() });
     return mapped;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -113,7 +119,7 @@ export async function getStories(limit = 100): Promise<Story[]> {
       );
     }
 
-    return FALLBACK_STORIES;
+    return fallback();
   }
 }
 
@@ -140,7 +146,7 @@ export async function searchStories(query: string): Promise<Story[]> {
 }
 
 export async function getStoryBySlug(slug: string): Promise<Story | null> {
-  const stories = await getStories();
+  const stories = await getStories(1000);
   const story = stories.find((s) => s.slug === slug);
   return story || null;
 }

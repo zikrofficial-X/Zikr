@@ -19,6 +19,7 @@ const requiredTables = [
   "video_generation_requests",
   "social_publish_queue",
   "social_post_insights",
+  "site_audio_upload_intents",
   "youtube_oauth_credentials",
 ];
 const functionStart = source.indexOf("Functions: {");

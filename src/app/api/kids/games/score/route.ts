@@ -1,4 +1,5 @@
 import { recordCurrentKidsGameResult } from "@/features/kids/services/games";
+import { MAX_REQUEST_BODY_BYTES, readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { requireSupabaseAuth } from "@/lib/supabase/guard";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -6,24 +7,14 @@ export async function POST(request: NextRequest) {
   const unavailable = requireSupabaseAuth();
   if (unavailable) return unavailable;
 
-  const declaredLength = Number(request.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > 16_384) {
-    return NextResponse.json({ error: "Request body is too large" }, { status: 413 });
-  }
-
-  let body: unknown;
-  try {
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 16_384) {
-      return NextResponse.json({ error: "Request body is too large" }, { status: 413 });
-    }
-    body = JSON.parse(rawBody);
-  } catch {
+  const parsedBody = await readBoundedJsonBody(request, MAX_REQUEST_BODY_BYTES);
+  if (!parsedBody.ok) {
     return NextResponse.json(
-      { error: "Invalid JSON payload" },
-      { status: 400 },
+      { error: parsedBody.error },
+      { status: parsedBody.status },
     );
   }
+  const body = parsedBody.value;
 
   try {
     const result = await recordCurrentKidsGameResult(body);

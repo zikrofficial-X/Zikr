@@ -13,8 +13,9 @@ const read = (file) => {
 const audit = read("scripts/jobs/audit-video-media.ts");
 for (const token of [
   "social_publish_queue",
-  "platformResults",
-  "youtube.remoteId",
+  "resolveLatestConfirmedYoutubeQueueState",
+  "reconcileYoutubeFallbackMetadata",
+  "published_at",
   "metadata.videoGenerationRequestId",
   "probeCloudinary",
   'method: "HEAD"',
@@ -24,19 +25,61 @@ for (const token of [
   "youtube_only",
   "youtube_id",
   "updated_at",
+  "getConfirmedYoutubeFallbackId",
+  "hasConfirmedYoutubeFallback",
+  "catalog_row_missing_updated_at_for_compare_and_set",
+  "catalog_row_changed_during_media_audit",
+  "buildNextRowVersionUpdatedAt(updatedAt)",
 ]) {
   if (!audit.includes(token)) failures.push("Video media audit is missing required evidence/reconciliation behavior: " + token);
+}
+if (!audit.includes("assertCompleteVideoMediaAuditInventory") ||
+    !audit.includes("isBlockingVideoMediaAuditOutcome") ||
+    !audit.includes("process.exitCode = 1")) {
+  failures.push("Video media audit must reject truncated inventories and fail the job when a published item has a blocking media result");
 }
 if (!audit.includes("concurrency = Math.min(5")) failures.push("Cloudinary availability probing must use bounded concurrency");
 if (!audit.includes('status: "unknown"')) failures.push("Transient media probe failures must remain unknown and must not mark valid assets missing");
 if (!audit.includes("return null") || !audit.includes("unavailable")) failures.push("Video media audit must distinguish missing media from a valid YouTube fallback");
 
+const outcome = read("src/features/videos/services/video-media-audit-outcome.ts");
+const supabaseConfig = read("supabase/config.toml");
+if (!audit.includes('supabaseServerAdminExactCount("videos")') ||
+    !audit.includes('supabaseServerAdminExactCount("social_publish_queue")') ||
+    !audit.includes("&limit=1000") ||
+    audit.includes("&limit=2000") ||
+    !outcome.includes("VIDEO_MEDIA_AUDIT_SOCIAL_QUEUE_LIMIT = 1000") ||
+    !supabaseConfig.includes("max_rows = 1000")) {
+  failures.push("Video media audit must verify exact table counts and fail closed at the configured Supabase PostgREST max_rows cap");
+}
+
 const service = read("src/features/videos/services/videos.ts");
 const mediaContract = read("src/features/videos/services/video-media-contract.ts");
-if (!mediaContract.includes('["cloudinary_missing", "unavailable", "purged"].includes(mediaState)')) {
-  failures.push("Public video media contract must prefer YouTube when the Cloudinary playback master is confirmed missing or purged");
+const requiredFallbackStates = ["cloudinary_missing", "unavailable", "youtube_only", "purged"];
+if (!requiredFallbackStates.every((state) => mediaContract.includes(JSON.stringify(state)))) {
+  failures.push("Public video media contract must cover every unavailable internal-media state before using a confirmed YouTube fallback");
+}
+if (!mediaContract.includes("normalizeSocialPlatformResults") ||
+    !mediaContract.includes("platformResults") ||
+    !mediaContract.includes("platformDeletions") ||
+    !mediaContract.includes("youtubeDeletion.remoteId") ||
+    !mediaContract.includes("deletions.get(publication.id)") ||
+    !mediaContract.includes("deletion.timestamp < publication.timestamp")) {
+  failures.push("YouTube media fallback reconciliation must normalize legacy result ledgers and respect confirmed deletion timestamps");
 }
 if (!mediaContract.includes("youtubeUrl")) failures.push("Public video media contract must retain the canonical YouTube playback fallback");
+if (!mediaContract.includes("metadata.mediaState === \"unlinked\"") ||
+    !audit.includes("isUnlinkedInternalVideoMedia(row)") ||
+    !audit.includes('state: "skipped"')) {
+  failures.push("Explicitly unlinked internal media must remain hidden and must not be restored by the scheduled media audit");
+}
+if (!mediaContract.includes("metadata.mediaState === \"purged\"") ||
+    !audit.includes("isPurgedInternalVideoMedia(row)") ||
+    !audit.includes("const assetUrl = explicitlyPurged ? null : cloudinaryAssetUrl(metadata)") ||
+    !audit.includes('if (explicitlyPurged) mediaState = "purged"') ||
+    !audit.includes("row.thumbnail_url, !explicitlyPurged")) {
+  failures.push("An explicit purge tombstone must survive media reconciliation; retained source URLs must not be probed or promoted back into playback");
+}
 if (!service.includes('from "./video-media-contract"') || !service.includes("resolveVideoMediaUrl(row)")) {
   failures.push("Public video service must use the canonical media resolver contract");
 }
@@ -59,14 +102,87 @@ if (!disposal.includes("stagingCleanupEligibleAt") || disposal.includes("deleteM
   failures.push("Social delivery must preserve the permanent Cloudinary media master and defer staging-copy cleanup");
 }
 
+const retention = read("scripts/cleanup-supabase-storage.mjs");
+for (const token of ["probeCloudinaryPlayback", "assertExpectedSupabaseProject", "assertRetentionApplyConfirmation", "textReferencePatterns", "storagePathReferencePatterns", "MAX_CLOUDINARY_PROBES"]) {
+  if (!retention.includes(token)) failures.push("Storage retention is missing a fail-closed safety contract: " + token);
+}
+const referenceScanStart = retention.indexOf("async function loadUnexpectedVideoReferences");
+const referenceScanEnd = retention.indexOf("  ];", referenceScanStart);
+const referenceScan = referenceScanStart >= 0 && referenceScanEnd > referenceScanStart
+  ? retention.slice(referenceScanStart, referenceScanEnd)
+  : "";
+for (const token of [
+  '...textReferencePatterns("social_publish_queue", "video_url")',
+  '...textReferencePatterns("pinned_messages", "cta_href")',
+  '...textReferencePatterns("social_platform_profiles", "website")',
+  '...textReferencePatterns("social_platform_profiles", "description")',
+  '...textReferencePatterns("youtube_feed_cache", "description")',
+  '...textReferencePatterns("social_sync_jobs", "description")',
+  '...textReferencePatterns("social_sync_jobs", "last_error")',
+  '...textReferencePatterns("profiles", "bio")',
+  '...textReferencePatterns("scholars", "bio_ar")',
+  '...textReferencePatterns("scholars", "bio_en")',
+  '...textReferencePatterns("tawasheeh", "description_ar")',
+  '...textReferencePatterns("tawasheeh", "description_en")',
+  '...textReferencePatterns("video_generation_requests", "description")',
+  '...textReferencePatterns("video_generation_requests", "error_details")',
+  '...textReferencePatterns("video_generation_requests", "error_message")',
+  '...textReferencePatterns("video_generation_requests", "scene")',
+  '...textReferencePatterns("social_publish_queue", "error_message")',
+  '...textReferencePatterns("content_agent_queue", "error_message")',
+  '...textReferencePatterns("video_generation_requests", "video_url")',
+  '...storagePathReferencePatterns("media_assets", "storage_path")',
+  "const MAX_VIDEO_REFERENCE_ENCODING_DEPTH = 5;",
+  "const VIDEO_STORAGE_REFERENCE_PATTERNS = Object.freeze([",
+  '"%automated%"',
+  '"%61%"',
+  '"%75%"',
+  '"%74%"',
+  '"%6f%"',
+  '"%6d%"',
+  '"%65%"',
+  '"%64%"',
+  "function videoStorageReferenceFilter(query, column)",
+  "return query.or(",
+  "for (let pass = 0; pass < MAX_VIDEO_REFERENCE_ENCODING_DEPTH; pass += 1)",
+  "for (const [key, item] of Object.entries(entry))",
+  "visit(key);",
+  "if (/%[0-9a-f]{2}/i.test(decoded)) {",
+  "Managed Storage reference exceeds the safe URL decoding depth; refusing cleanup.",
+]) {
+  if (!retention.includes(token)) failures.push("Storage retention is missing raw/encoded and JSON-key reference protection: " + token);
+}
+if (/filter: \\(query\\) => query\\.(?:ilike|like)/.test(referenceScan)) {
+  failures.push("Storage retention reference columns must use the shared raw/encoded filters instead of raw-only query predicates");
+}
+const retentionWorkflow = read(".github/workflows/storage-retention.yml");
+if (!retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk") ||
+    !retentionWorkflow.includes("RETENTION_CONFIRMATION: ${{ inputs.confirmation }}")) {
+  failures.push("Storage retention workflow must pass the canonical project ref and explicit owner confirmation to the cleanup CLI");
+}
+
 const workflow = read(".github/workflows/audit-video-media.yml");
 if (!workflow.includes('cron: "41 4 * * *"') ||
     !workflow.includes("workflow_dispatch:") ||
+    !workflow.includes("inputs.confirmation == 'RUN_MEDIA_AUDIT'") ||
+    workflow.includes("\n  push:") ||
     !workflow.includes("environment: production") ||
     !workflow.includes("SUPABASE_SERVICE_ROLE_KEY") ||
     !workflow.includes("pnpm video:media:audit")) {
-  failures.push("Daily video media audit must run in the production environment with validated service-role credentials");
+  failures.push("Daily video media audit must be production-gated and scheduled, require explicit confirmation for manual dispatch, and must not auto-run on source pushes");
 }
+const retentionMigration = read("supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql");
+if (!retentionMigration.includes("regexp_count(definition, '\\mUPDATE\\M', 1, 'i') = 2") ||
+    !retentionMigration.includes("UPDATE public.social_publish_queue") ||
+    !retentionMigration.includes("UPDATE public.video_generation_requests")) {
+  failures.push("Video Storage-retention contract must count every UPDATE across schemas and allow only the two fenced queue/request updates");
+}
+const retentionIntegration = read("scripts/tests/video-storage-retention-contract.integration.sql");
+if (!retentionIntegration.includes("CREATE SCHEMA retention_probe") ||
+    !retentionIntegration.includes("UPDATE retention_probe.retention_contract_probe")) {
+  failures.push("Video Storage-retention integration must prove that a non-public third UPDATE is rejected");
+}
+
 const migration = read("supabase/migrations/20261110025303_reconcile_published_youtube_ids_to_video_catalog.sql");
 for (const token of [
   "platformResults",

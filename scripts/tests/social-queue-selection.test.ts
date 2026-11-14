@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
-import { selectEligibleSocialPublishItems } from "../../src/features/social/services/social-queue-selection";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { buildDueSocialQueueClaimFilter, buildSocialPublishLeaseFilter, buildVideoSocialQueueUpdateFilter, mergeUniqueSocialPublishCandidates, requireSocialQueueRows, scanSocialQueueCandidatePages, SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS, selectEligibleSocialPublishItems, validateStoredSocialTargetPlatforms } from "../../src/features/social/services/social-queue-selection";
+import { buildStaleSocialPublishRecoveryFilter } from "../../src/features/social/services/social-publish-recovery-policy";
+import {
+  canAttemptSocialPlatform,
+  getManualReconciliationPlatforms,
+  getRetryableSocialPlatforms,
+} from "../../src/features/social/services/platform-availability";
+import { buildNextRowVersionUpdatedAt } from "../../src/lib/supabase/row-version";
 
 const videos = Array.from({ length: 74 }, (_, index) => ({
   id: `video-${index}`,
@@ -18,6 +27,203 @@ const writtenPosts = [
 const candidates = [...videos, ...writtenPosts];
 const enabledPlatforms = ["facebook", "facebook_reels", "youtube"] as const;
 
+assert.equal(SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS, 5_000, "social queue pagination must have an explicit bounded scan ceiling");
+const pageScanCalls: Array<{ offset: number; limit: number }> = [];
+const pageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 6,
+  fetchPage: async (offset, limit) => {
+    pageScanCalls.push({ offset, limit });
+    if (offset === 0) {
+      return [
+        { id: "held-page-1", publishable: false },
+        { id: "held-page-2", publishable: false },
+      ];
+    }
+    if (offset === 2) {
+      return [
+        { id: "held-page-3", publishable: false },
+        { id: "eligible-after-first-window", publishable: true },
+      ];
+    }
+    return [];
+  },
+  hasEnoughCandidates: (rows) => rows.some((item) => item.publishable),
+});
+assert.deepEqual(pageScanCalls, [{ offset: 0, limit: 2 }, { offset: 2, limit: 2 }]);
+assert.deepEqual(
+  pageScan.rows.map((item) => item.id),
+  ["held-page-1", "held-page-2", "held-page-3", "eligible-after-first-window"],
+  "the social queue scan must continue past a full page of held rows to find a later eligible item",
+);
+assert.equal(pageScan.scanned, 4);
+assert.equal(pageScan.truncated, false);
+
+const cappedPageScanCalls: number[] = [];
+const cappedPageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 4,
+  fetchPage: async (offset, limit) => {
+    cappedPageScanCalls.push(offset);
+    return Array.from({ length: limit }, (_, index) => ({
+      id: `held-${offset + index}`,
+      publishable: false,
+    }));
+  },
+  hasEnoughCandidates: () => false,
+});
+assert.deepEqual(cappedPageScanCalls, [0, 2]);
+assert.equal(cappedPageScan.scanned, 4);
+assert.equal(cappedPageScan.truncated, true, "the scanner must report when its explicit safety cap is reached");
+
+const emptyPageScan = await scanSocialQueueCandidatePages({
+  pageSize: 2,
+  maxRows: 4,
+  fetchPage: async () => [],
+  hasEnoughCandidates: () => false,
+});
+assert.equal(emptyPageScan.scanned, 0);
+assert.equal(emptyPageScan.truncated, false, "an exhausted queue is not a truncated scan");
+
+await assert.rejects(
+  scanSocialQueueCandidatePages({
+    pageSize: 2,
+    maxRows: 4,
+    fetchPage: async () => [{ id: "" }],
+    hasEnoughCandidates: () => false,
+  }),
+  /stable non-empty ID/,
+  "malformed page rows must fail closed rather than disappear from the queue scan",
+);
+await assert.rejects(
+  scanSocialQueueCandidatePages({
+    pageSize: 0,
+    maxRows: 4,
+    fetchPage: async () => [],
+    hasEnoughCandidates: () => false,
+  }),
+  /positive safe page and row limits/,
+  "invalid scan bounds must be rejected",
+);
+
+
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "youtube"]),
+  { ok: true, platforms: ["facebook", "youtube"] },
+  "a unique supported target list must remain publishable",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "instagram"]),
+  { ok: false, reason: "unsupported_or_duplicate", invalidValues: ["instagram"] },
+  "unsupported stored targets must be rejected rather than silently dropped",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(["facebook", "facebook"]),
+  { ok: false, reason: "unsupported_or_duplicate", invalidValues: ["facebook"] },
+  "duplicate stored targets must not trigger duplicate provider calls",
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms([]),
+  { ok: false, reason: "empty", invalidValues: [] },
+);
+assert.deepEqual(
+  validateStoredSocialTargetPlatforms(null),
+  { ok: false, reason: "not_array", invalidValues: [] },
+);
+
+const malformedTargetCandidates = [
+  { id: "unsupported-target", content_type: "written_post", target_platforms: ["facebook", "instagram"], metadata: null },
+  { id: "duplicate-target", content_type: "written_post", target_platforms: ["facebook", "facebook"], metadata: null },
+  { id: "empty-target", content_type: "written_post", target_platforms: [], metadata: null },
+  { id: "non-array-target", content_type: "written_post", target_platforms: null, metadata: null },
+];
+const quarantinedTargets = selectEligibleSocialPublishItems(malformedTargetCandidates, {
+  enabledPlatforms: [],
+  approvedVideoQueueItemIds: new Set(),
+  maxAttemptsFor: () => 5,
+  limit: 10,
+});
+assert.deepEqual(
+  quarantinedTargets.map((item) => item.id),
+  ["unsupported-target", "duplicate-target", "empty-target", "non-array-target"],
+  "malformed queue targets must reach the worker quarantine path even when no target is runnable",
+);
+assert.deepEqual(
+  selectEligibleSocialPublishItems(
+    [{ ...malformedTargetCandidates[0], metadata: { targetPlatformsValidation: { status: "blocked" } } }],
+    { enabledPlatforms: [], approvedVideoQueueItemIds: new Set(), maxAttemptsFor: () => 5, limit: 10 },
+  ),
+  [],
+  "already-quarantined invalid rows must not be reclaimed on every worker cycle",
+);
+
+const publisherSource = readFileSync(
+  resolve(process.cwd(), "src/features/social/services/social-publishing.ts"),
+  "utf8",
+);
+const processStart = publisherSource.indexOf("export async function processSocialPublishItem");
+const targetValidationPosition = publisherSource.indexOf(
+  "validateStoredSocialTargetPlatforms(item.target_platforms)",
+  processStart,
+);
+const providerCallPosition = publisherSource.indexOf("publishPlatform(item, platform)", processStart);
+assert.ok(
+  processStart >= 0 && targetValidationPosition > processStart && providerCallPosition > targetValidationPosition,
+  "stored target validation must occur inside the item processor before any external provider call",
+);
+assert.match(publisherSource, /targetPlatformsValidation:\s*\{\s*status:\s*"blocked"/);
+
+const malformedResultLedgers: unknown[] = [
+  "corrupt",
+  7,
+  { youtube: "not-a-result-object" },
+  { youtube: { ok: true } },
+  { youtube: { ok: false } },
+  [{ ok: false, error: "missing platform key" }],
+  [{ platform: "youtube", ok: true }],
+  [
+    { platform: "youtube", ok: false, error: "first result" },
+    { platform: "youtube", ok: false, error: "duplicate result" },
+  ],
+];
+for (const platformResults of malformedResultLedgers) {
+  const metadata = { platformResults };
+  assert.deepEqual(
+    getManualReconciliationPlatforms(metadata),
+    ["facebook", "facebook_reels", "youtube"],
+    "malformed or ambiguous result-ledger shapes must require manual reconciliation for every supported target",
+  );
+  assert.equal(
+    canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata, maxAttempts: 5 }),
+    false,
+    "the publisher must not automatically retry a malformed result ledger",
+  );
+  assert.deepEqual(
+    getRetryableSocialPlatforms(["youtube"], metadata),
+    [],
+    "admin retry selection must not silently widen a malformed ledger into a publish attempt",
+  );
+  assert.deepEqual(
+    getRetryableSocialPlatforms(["youtube"], metadata, true),
+    [],
+    "manual ambiguous-outcome confirmation must not override a malformed result ledger",
+  );
+}
+for (const emptyLedger of [{}, []]) {
+  const metadata = { platformResults: emptyLedger };
+  assert.deepEqual(getManualReconciliationPlatforms(metadata), [], "a valid explicit empty ledger is not malformed");
+  assert.equal(
+    canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata, maxAttempts: 5 }),
+    true,
+    "a valid empty ledger may publish because it records no prior provider outcome",
+  );
+}
+assert.equal(
+  canAttemptSocialPlatform({ platform: "youtube", enabledPlatforms, metadata: null, maxAttempts: 5 }),
+  true,
+  "legacy rows with no result ledger retain the bounded legacy-attempt path",
+);
+
 const missingSourceMedia = {
   id: "missing-source-media",
   content_type: "video",
@@ -31,6 +237,34 @@ const missingMediaSelection = selectEligibleSocialPublishItems([missingSourceMed
   limit: 1,
 });
 assert.deepEqual(missingMediaSelection, [], "source-media-missing videos must stay out of the worker queue even when QA approval exists");
+
+const boundedHeldVideos = Array.from({ length: 125 }, (_, index) => ({
+  id: `held-video-${index}`,
+  content_type: "video",
+  target_platforms: ["youtube", "facebook_reels"] as const,
+  metadata: null,
+}));
+const separatelyFetchedWrittenPost = {
+  id: "written-beyond-general-window",
+  content_type: "written_post",
+  target_platforms: ["facebook"] as const,
+  metadata: null,
+};
+const mergedBeyondWindow = mergeUniqueSocialPublishCandidates(
+  boundedHeldVideos,
+  [separatelyFetchedWrittenPost],
+);
+const reservedBeyondWindow = selectEligibleSocialPublishItems(mergedBeyondWindow, {
+  enabledPlatforms,
+  approvedVideoQueueItemIds: new Set(),
+  maxAttemptsFor: () => 5,
+  limit: 1,
+});
+assert.deepEqual(
+  reservedBeyondWindow.map((item) => item.id),
+  ["written-beyond-general-window"],
+  "a dedicated written-post query must prevent a held-video window from hiding later eligible posts",
+);
 
 const selectedPosts = selectEligibleSocialPublishItems(candidates, {
   enabledPlatforms,
@@ -86,4 +320,162 @@ assert.deepEqual(
   "disabled YouTube targets must be skipped without blocking Facebook posts",
 );
 
+
+assert.equal(
+  buildDueSocialQueueClaimFilter("queue id/1", "queued", "2026-11-11T17:30:00.000Z", "2026-11-11T17:29:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.queued&updated_at=eq.2026-11-11T17%3A29%3A00.000Z&or=(scheduled_at.is.null,scheduled_at.lte.2026-11-11T17%3A30%3A00.000Z)",
+  "the atomic claim must compare the exact row version and recheck scheduled_at before publishing a snapshot",
+);
+assert.throws(
+  () => buildDueSocialQueueClaimFilter("queue-1", "published", "2026-11-11T17:30:00.000Z", "2026-11-11T17:29:00.000Z"),
+  /retryable queue status/,
+  "published rows must never be eligible for a new publisher claim",
+);
+assert.throws(
+  () => buildDueSocialQueueClaimFilter("queue-1", "queued", "not-a-date", "2026-11-11T17:29:00.000Z"),
+  /valid due-time and updated_at timestamps/,
+  "a malformed due-time must not weaken the atomic queue claim",
+);
+
+assert.equal(
+  buildSocialPublishLeaseFilter("queue id/1", "processing", "2026-11-11T17:30:00.000Z"),
+  "id=eq.queue%20id%2F1&status=eq.processing&updated_at=eq.2026-11-11T17%3A30%3A00.000Z",
+  "a publisher must advance a queue row only while its exact processing lease version is still current",
+);
+assert.throws(
+  () => buildSocialPublishLeaseFilter("queue-1", "processing", "not-a-date"),
+  /valid updated_at timestamp/,
+  "publisher lease compare-and-set must fail closed when the claimed row version is invalid",
+);
+assert.throws(
+  () => buildSocialPublishLeaseFilter(" ", "processing", "2026-11-11T17:30:00.000Z"),
+  /queue item ID/,
+  "publisher lease compare-and-set must reject an empty queue ID",
+);
+
+assert.equal(
+  buildStaleSocialPublishRecoveryFilter(
+    "queue id/1",
+    "2026-11-11T17:30:00.000Z",
+    "2026-11-11T17:20:00.000Z",
+  ),
+  "id=eq.queue%20id%2F1&status=eq.processing&and=(updated_at.eq.2026-11-11T17%3A20%3A00.000Z,updated_at.lt.2026-11-11T17%3A30%3A00.000Z)",
+  "stale recovery must compare the exact row version and cutoff to avoid overwriting a row refreshed by a live publisher",
+);
+assert.throws(
+  () => buildStaleSocialPublishRecoveryFilter("queue-1", "not-a-date", "2026-11-11T17:20:00.000Z"),
+  /valid row-version timestamps/,
+  "stale recovery must reject an invalid cutoff instead of weakening the compare-and-set",
+);
+assert.throws(
+  () => buildStaleSocialPublishRecoveryFilter("queue-1", "2026-11-11T17:30:00.000Z", "2026-11-11T17:30:00.000Z"),
+  /older than the stale cutoff/,
+  "stale recovery must reject a row version that is not older than the cutoff",
+);
+
+const socialPublisher = readFileSync("src/features/social/services/social-publishing.ts", "utf8");
+assert.match(
+  socialPublisher,
+  /buildStaleSocialPublishRecoveryFilter\(item\.id, staleBefore, item\.updated_at\)/,
+  "stale recovery updates must include the same stale cutoff that selected the candidate",
+);
+assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
+assert.match(socialPublisher, /scanSocialQueueCandidatePages/, "the worker must page beyond held queue rows before declaring a batch empty");
+assert.match(socialPublisher, /&offset=\$\{offset\}/, "the worker must advance through deterministic PostgREST candidate pages");
+assert.match(socialPublisher, /SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS/, "candidate pagination must remain bounded");
+assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
+assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
+assert.equal(
+  (socialPublisher.match(/resolveSocialPublishCutoff\(process\.env\.SOCIAL_PUBLISH_AFTER\)/g) ?? []).length,
+  2,
+  "queue reads and stale recovery must both use the shared validated cutoff rather than silently returning an empty batch",
+);
+assert.match(socialPublisher, /buildDueSocialQueueClaimFilter\(item\.id, claimStatus, claimAt, item\.updated_at\)/, "the worker claim must compare the exact candidate row version and due time");
+assert.match(socialPublisher, /buildSocialPublishLeaseFilter\(item\.id, claimLease\.status, claimLease\.updatedAt\)/, "the provider in-flight marker must compare the exact initial worker lease");
+assert.match(socialPublisher, /const finalized = await markQueueItem\(item\.id, persistedStatus,[\s\S]*?\}, inFlightLease\);/, "provider results must only finalize while the same in-flight lease is current");
+assert.match(socialPublisher, /Provider result arrived after the worker lease was recovered/, "a stale provider result must leave the newer recovery state untouched");
+assert.match(socialPublisher, /expectedLease\s*\?\s*buildSocialPublishLeaseFilter\(itemId, expectedLease\.status, expectedLease\.updatedAt\)/, "status updates with a lease must use the versioned compare-and-set filter");
+
+const markQueueItemStart = socialPublisher.indexOf("async function markQueueItem(");
+const markQueueItemEnd = socialPublisher.indexOf("async function hasVideoApprovalForQueueItem", markQueueItemStart);
+const markQueueItemSource = socialPublisher.slice(markQueueItemStart, markQueueItemEnd);
+assert.match(markQueueItemSource, /buildNextRowVersionUpdatedAt\(expectedLease\.updatedAt, now\)/,
+  "a leased queue transition must advance updated_at strictly beyond the lease it consumes");
+assert.doesNotMatch(markQueueItemSource, /updated_at:\s*new Date\(\)\.toISOString\(\)/,
+  "a same-millisecond queue transition must not leave an old publisher lease reusable");
+assert.equal(
+  (socialPublisher.match(/const claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/g) ?? []).length,
+  1,
+  "the batch publisher claim must advance the row-version token",
+);
+assert.equal(
+  (socialPublisher.match(/^\s*claimUpdatedAt = buildNextRowVersionUpdatedAt\(item\.updated_at, claimNow\)/gm) ?? []).length,
+  1,
+  "the single-item publisher claim must advance the outer lease token before the server response is applied",
+);
+assert.equal(
+  buildNextRowVersionUpdatedAt("2026-11-13T01:30:00.123Z", new Date("2026-11-13T01:30:00.123Z")),
+  "2026-11-13T01:30:00.124Z",
+  "a row updated in the same millisecond must still receive a strictly newer CAS token",
+);
+const adminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
+assert.ok(adminRoute.includes('id=eq.${encodeURIComponent(item.id)}&status=eq.${encodeURIComponent(item.status)}'));
+assert.ok(adminRoute.includes('Prefer: "return=representation"'));
+assert.ok(adminRoute.includes("if (Array.isArray(updated) && updated[0]) affected += 1"));
+
 console.log("Social queue starvation regression checks passed.");
+
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "queued", "2026-11-11T22:40:00.000Z"),
+  "id=eq.queue-1&status=eq.queued&updated_at=eq.2026-11-11T22%3A40%3A00.000Z",
+  "video queue reconciliation must compare-and-set the exact social queue row revision",
+);
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "processing", "2026-11-11T22:40:00.000Z"),
+  null,
+  "a video worker must never rewrite an active social publisher lease",
+);
+assert.equal(
+  buildVideoSocialQueueUpdateFilter("queue-1", "queued", null),
+  null,
+  "video queue reconciliation must fail closed when updated_at is unavailable",
+);
+
+const templateVideoWorker = readFileSync("scripts/jobs/template-video-automation.ts", "utf8");
+assert.ok(
+  templateVideoWorker.includes("select=id,status,target_platforms,metadata,updated_at"),
+  "video social queue lookup must read the revision used by compare-and-set",
+);
+assert.ok(
+  templateVideoWorker.includes('if (existing.status === "processing")') &&
+    templateVideoWorker.includes("if (newlyEnabledTargets.length > 0) await queueSupplementalTargets(newlyEnabledTargets)") &&
+    templateVideoWorker.includes(":late:${target}") &&
+    templateVideoWorker.includes("buildQueuePayload([target], supplementalKey)"),
+  "newly enabled targets must use idempotent supplemental rows while the original social row is processing",
+);
+assert.ok(
+  templateVideoWorker.includes("buildVideoSocialQueueUpdateFilter(existing.id, existing.status, existing.updated_at)"),
+  "normal social target expansion must use an exact row-version filter",
+);
+assert.ok(
+  templateVideoWorker.includes("buildVideoSocialQueueUpdateFilter(item.id, item.status, item.updated_at)"),
+  "missing-media social recovery must also compare-and-set its queue row revision",
+);
+
+assert.ok(
+  templateVideoWorker.includes("const latest = await findSocialQueueByAutomationKey(socialKey, signal)") &&
+    templateVideoWorker.includes("queueSupplementalTargets(latestNewTargets)"),
+  "a publisher claim racing the initial compare-and-set must be reconciled without resetting its active lease or losing new targets",
+);
+
+assert.deepEqual(requireSocialQueueRows([], "empty queue"), []);
+assert.throws(
+  () => requireSocialQueueRows({}, "social publish queue"),
+  /invalid row set; refusing to report an empty successful batch/,
+  "a malformed PostgREST object must not be treated as an empty queue",
+);
+assert.throws(
+  () => requireSocialQueueRows(null, "written-post queue"),
+  /invalid row set; refusing to report an empty successful batch/,
+  "a null PostgREST payload must not be treated as an empty written-post queue",
+);

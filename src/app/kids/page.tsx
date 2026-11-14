@@ -4,11 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
-import { kidsContent } from "@/features/kids/data/content";
+import type { KidsItem } from "@/features/kids/data/content";
+import {
+  getOfflineKidsContent,
+  shouldUseOfflineKidsContentForNetworkError,
+  shouldUseOfflineKidsContentForStatus,
+} from "@/features/kids/services/kids-offline-content";
 import { GAME_REGISTRY } from "@/lib/games/registry";
 import { KidsGameArt } from "@/features/kids/components/games/kids-game-art";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/layout/language-provider";
+import { isKidsContentType } from "@/features/kids/services/kids-content-validation";
 
 type KidsWrittenPost = {
   id: string;
@@ -52,8 +58,14 @@ const journeys = [
 ];
 
 const contentTypeLabels = {
-  ar: { story: "قصة", prayer: "دعاء", wudu: "تعلم", quiz: "اختبار", memorize: "حفظ", puzzle: "لغز" },
-  en: { story: "Story", prayer: "Dua", wudu: "Learning", quiz: "Quiz", memorize: "Memorization", puzzle: "Puzzle" },
+  ar: {
+    story: "قصة", prayer: "دعاء", wudu: "تعلم", quiz: "اختبار", game: "لعبة",
+    video: "فيديو", memorize: "حفظ", puzzle: "لغز", coloring: "تلوين", matching: "توصيل",
+  },
+  en: {
+    story: "Story", prayer: "Dua", wudu: "Learning", quiz: "Quiz", game: "Game",
+    video: "Video", memorize: "Memorization", puzzle: "Puzzle", coloring: "Coloring", matching: "Matching",
+  },
 } as const;
 
 const contentTypeIcons: Record<string, string> = {
@@ -61,38 +73,136 @@ const contentTypeIcons: Record<string, string> = {
   prayer: "🤲",
   wudu: "💧",
   quiz: "🧠",
+  game: "🎮",
+  video: "🎬",
   memorize: "🌟",
   puzzle: "🧩",
+  coloring: "🎨",
+  matching: "🔗",
 };
 
 export default function KidsPage() {
   const { isEnglish } = useLanguage();
-  const [contentItems, setContentItems] = useState(kidsContent);
+  const [contentItems, setContentItems] = useState<KidsItem[]>([]);
+  const [contentStatus, setContentStatus] = useState<"loading" | "ready" | "error">("loading");
   const [generatedKidsItems, setGeneratedKidsItems] = useState<KidsGeneratedItem[]>([]);
   const [kidsWrittenPosts, setKidsWrittenPosts] = useState<KidsWrittenPost[]>([]);
+  const [generatedKidsStatus, setGeneratedKidsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [kidsWrittenPostsStatus, setKidsWrittenPostsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [visibleContentCount, setVisibleContentCount] = useState(12);
   useEffect(() => {
     let active = true;
-    fetch("/api/kids/content", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setContentItems(data);
-      })
-      .catch(() => undefined);
-    fetch("/api/kids/videos", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setGeneratedKidsItems(data);
-      })
-      .catch(() => undefined);
-    fetch("/api/kids/social-posts", { credentials: "include", cache: "no-store" })
-      .then((response) => response.ok ? response.json() : [])
-      .then((data) => {
-        if (active && Array.isArray(data)) setKidsWrittenPosts(data);
-      })
-      .catch(() => undefined);
+    setGeneratedKidsStatus("loading");
+    setKidsWrittenPostsStatus("loading");
+    setContentStatus("loading");
+    const loadOfflineContent = async () => {
+      const offlineItems = await getOfflineKidsContent(isEnglish ? "en" : "ar");
+      if (!active) return;
+      if (offlineItems.length > 0) {
+        setContentItems(offlineItems);
+        setVisibleContentCount(12);
+        setContentStatus("ready");
+      } else {
+        setContentItems([]);
+        setContentStatus("error");
+      }
+    };
+    void (async () => {
+      let response: Response;
+      try {
+        response = await fetch("/api/kids/content", { cache: "no-store" });
+      } catch (error) {
+        if (shouldUseOfflineKidsContentForNetworkError(error)) {
+          await loadOfflineContent();
+        } else if (active) {
+          console.error("[kids] Failed to load the public content list:", error);
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        if (shouldUseOfflineKidsContentForStatus(response.status)) {
+          await loadOfflineContent();
+          return;
+        }
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      let data: unknown;
+      try {
+        data = await response.json();
+      } catch (error) {
+        if (shouldUseOfflineKidsContentForNetworkError(error)) {
+          await loadOfflineContent();
+          return;
+        }
+        console.error("[kids] Public content response could not be parsed:", error);
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (!Array.isArray(data)) {
+        console.error("[kids] Public content response was not a list.");
+        if (active) {
+          setContentItems([]);
+          setContentStatus("error");
+        }
+        return;
+      }
+
+      if (active) {
+        setContentItems(data as KidsItem[]);
+        setVisibleContentCount(12);
+        setContentStatus("ready");
+      }
+    })();
+    void (async () => {
+      try {
+        const response = await fetch("/api/kids/videos", { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error("Kids video feed request failed.");
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Kids video feed returned an invalid payload.");
+        if (active) {
+          setGeneratedKidsItems(data as KidsGeneratedItem[]);
+          setGeneratedKidsStatus("ready");
+        }
+      } catch {
+        if (active) {
+          setGeneratedKidsItems([]);
+          setGeneratedKidsStatus("error");
+        }
+      }
+    })();
+    void (async () => {
+      try {
+        const response = await fetch("/api/kids/social-posts", { credentials: "include", cache: "no-store" });
+        if (!response.ok) throw new Error("Kids written-post feed request failed.");
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) throw new Error("Kids written-post feed returned an invalid payload.");
+        if (active) {
+          setKidsWrittenPosts(data as KidsWrittenPost[]);
+          setKidsWrittenPostsStatus("ready");
+        }
+      } catch {
+        if (active) {
+          setKidsWrittenPosts([]);
+          setKidsWrittenPostsStatus("error");
+        }
+      }
+    })();
     return () => { active = false; };
   }, [isEnglish]);
-  const featuredContent = contentItems.filter((item) => ["story", "prayer", "wudu", "quiz"].includes(item.type)).slice(0, 6);
+  const featuredContent = contentItems.filter((item) => isKidsContentType(item.type));
+  const visibleContent = featuredContent.slice(0, visibleContentCount);
   const typeLabels = isEnglish ? contentTypeLabels.en : contentTypeLabels.ar;
   const featuredGames = [GAME_REGISTRY["zikr-runner"], GAME_REGISTRY["zikr-memory"], GAME_REGISTRY["wudu-challenge"], GAME_REGISTRY["mosque-adventure"], GAME_REGISTRY["good-deeds"], GAME_REGISTRY["zikr-coloring"]];
 
@@ -134,6 +244,16 @@ export default function KidsPage() {
           <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">{journeys.map((journey) => <Link key={journey.titleAr} href={journey.href} className="group"><Card className={`h-full border-brand-cream/10 bg-gradient-to-br ${journey.color} p-4 transition duration-200 hover:-translate-y-1 hover:border-brand-gold/50 sm:p-6`}><span className="text-4xl" aria-hidden="true">{journey.icon}</span><h3 className="mt-5 text-xl font-bold text-brand-gold">{isEnglish ? journey.titleEn : journey.titleAr}</h3><p className="mt-2 leading-8 text-brand-cream/70">{isEnglish ? journey.descriptionEn : journey.descriptionAr}</p><span className="mt-5 inline-block text-sm font-bold text-brand-cream underline decoration-brand-gold/50 underline-offset-4 group-hover:text-brand-gold">{isEnglish ? "Open path →" : "افتح المسار ←"}</span></Card></Link>)}</div>
         </section>
 
+        {generatedKidsStatus === "error" && (
+          <p role="alert" className="text-sm text-amber-700">
+            {isEnglish ? "Kids videos are temporarily unavailable. Please try again later." : "فيديوهات الأطفال غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا."}
+          </p>
+        )}
+        {kidsWrittenPostsStatus === "error" && (
+          <p role="alert" className="text-sm text-amber-700">
+            {isEnglish ? "Kids written posts are temporarily unavailable. Please try again later." : "منشورات الأطفال غير متاحة مؤقتًا. حاول مرة أخرى لاحقًا."}
+          </p>
+        )}
         {generatedKidsItems.length > 0 && (
           <>
             <section aria-labelledby="kids-generated-stories-heading" className="space-y-5">
@@ -252,8 +372,26 @@ export default function KidsPage() {
         )}
 
         <section id="learning" aria-labelledby="learning-heading" className="space-y-5 scroll-mt-6">
-          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "All activities →" : "كل الأنشطة ←"}</Link></div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{featuredContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full min-w-0 border-brand-cream/10 bg-black/20 p-4 transition hover:-translate-y-1 hover:border-brand-emerald/50 sm:p-5"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{typeLabels[item.type as keyof typeof typeLabels] ?? (isEnglish ? "Activity" : "نشاط")}</span></div><h3 className="mt-4 break-words text-lg font-bold text-brand-cream group-hover:text-brand-gold sm:mt-5 sm:text-xl">{isEnglish ? item.title_en : item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{isEnglish ? (item.content_en?.split("\n")[0] ?? "English content is not available for this activity yet.") : (item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع.")}</p><p className="mt-4 text-sm font-bold text-brand-emerald">{isEnglish ? "Age " : "مناسب لعمر "} {item.age_group} {isEnglish ? "years" : "سنوات"} ←</p></Card></Link>)}</div>
+          <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm font-bold text-brand-emerald">{isEnglish ? "Age-appropriate content" : "محتوى مناسب للعمر"}</p><h2 id="learning-heading" className="mt-2 break-words text-2xl font-black text-brand-cream sm:text-3xl">{isEnglish ? "Learn together" : "نتعلم معًا"}</h2></div><Link href="/kids/adventures" className="text-sm font-bold text-brand-gold underline underline-offset-4">{isEnglish ? "Interactive adventures →" : "مغامرات تفاعلية ←"}</Link></div>
+          {contentStatus === "loading" && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "Loading activities..." : "جاري تحميل الأنشطة..."}</p>}
+          {contentStatus === "error" && <p role="alert" className="text-sm text-amber-200">{isEnglish ? "Activities are temporarily unavailable." : "تعذر تحميل الأنشطة الآن."}</p>}
+          {contentStatus === "ready" && featuredContent.length === 0 && <p role="status" className="text-sm text-brand-cream/60">{isEnglish ? "No published activities are available right now." : "لا توجد أنشطة منشورة حالياً."}</p>}
+          {contentStatus === "ready" && featuredContent.length > 0 && (
+          <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{visibleContent.map((item) => <Link key={item.slug} href={`/kids/${item.slug}`} className="group"><Card className="h-full min-w-0 border-brand-cream/10 bg-black/20 p-4 transition hover:-translate-y-1 hover:border-brand-emerald/50 sm:p-5"><div className="flex items-start justify-between gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-emerald/10 text-2xl" aria-hidden="true">{contentTypeIcons[item.type] ?? "✨"}</span><span className="rounded-full border border-brand-gold/20 bg-brand-gold/10 px-3 py-1 text-xs font-bold text-brand-gold">{typeLabels[item.type as keyof typeof typeLabels] ?? (isEnglish ? "Activity" : "نشاط")}</span></div><h3 className="mt-4 break-words text-lg font-bold text-brand-cream group-hover:text-brand-gold sm:mt-5 sm:text-xl">{isEnglish ? item.title_en : item.title_ar}</h3><p className="mt-2 line-clamp-3 text-sm leading-7 text-brand-cream/65">{isEnglish ? (item.content_en?.split("\n")[0] ?? "English content is not available for this activity yet.") : (item.content_ar?.split("\n")[0] ?? "نشاط تعليمي قصير وممتع.")}</p><p className="mt-4 text-sm font-bold text-brand-emerald">{isEnglish ? "Age " : "مناسب لعمر "} {item.age_group} {isEnglish ? "years" : "سنوات"} ←</p></Card></Link>)}</div>
+          {visibleContent.length < featuredContent.length && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setVisibleContentCount((count) => Math.min(count + 12, featuredContent.length))}
+                className="min-h-11 rounded-xl border border-brand-gold/40 px-5 py-3 text-sm font-bold text-brand-gold transition hover:bg-brand-gold hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-gold"
+              >
+                {isEnglish ? "Show more activities" : "عرض المزيد من الأنشطة"}
+              </button>
+            </div>
+          )}
+          </>
+          )}
         </section>
 
         <section aria-labelledby="games-heading" className="space-y-5">

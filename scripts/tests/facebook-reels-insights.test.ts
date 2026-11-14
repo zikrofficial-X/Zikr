@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   FACEBOOK_REELS_INSIGHT_METRICS,
+  facebookReelId,
   parseFacebookReelsInsights,
   resolveFacebookReelVideoIdFromPagePostsPayload,
   shouldRefreshFacebookReelsInsights,
@@ -18,6 +19,17 @@ assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({
 }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload({ data: [] }, "123456789012345"), null);
 assert.equal(resolveFacebookReelVideoIdFromPagePostsPayload(null, "123456789012345"), null);
+const reelMetadata = (videoId: unknown, remoteId: unknown) => ({
+  platformResults: { facebook_reels: { ok: true, videoId, remoteId } },
+});
+assert.equal(facebookReelId(reelMetadata("123456789012345", "111111111111111_222222222222222")), "123456789012345");
+assert.equal(facebookReelId(reelMetadata(null, "111111111111111_222222222222222")), "111111111111111_222222222222222");
+assert.equal(
+  facebookReelId(reelMetadata("not-a-video-id", "111111111111111_222222222222222")),
+  "111111111111111_222222222222222",
+  "invalid optional video IDs must not suppress the legacy Page-post resolver",
+);
+assert.equal(facebookReelId(reelMetadata("invalid", "short")), null);
 
 assert.equal(shouldRefreshFacebookReelsInsights(null, now), true);
 assert.equal(shouldRefreshFacebookReelsInsights({
@@ -74,15 +86,23 @@ const facebookCallback = readFileSync(
   resolve("src/app/api/admin/social/facebook/callback/route.ts"),
   "utf8",
 );
+const facebookOAuthPolicy = readFileSync(
+  resolve("src/features/social/services/facebook-oauth-policy.ts"),
+  "utf8",
+);
 assert.match(facebookConnect, /requireAdminApi\("social.manage"\)/);
 assert.ok(facebookConnect.includes("dialog/oauth"));
-assert.match(facebookConnect, /pages_manage_posts/);
+assert.ok(facebookConnect.includes("FACEBOOK_REQUESTED_PERMISSIONS.join"));
+assert.match(facebookOAuthPolicy, /pages_manage_posts/);
+assert.match(facebookOAuthPolicy, /read_insights/);
 assert.doesNotMatch(facebookConnect, /pages_manage_engagement/);
 assert.doesNotMatch(facebookConnect, /FACEBOOK_INTEGRATION_RETIRED/);
 assert.match(facebookCallback, /requireAdminApi\("social.manage"\)/);
 assert.match(facebookCallback, /timingSafeEqual/);
 assert.match(facebookCallback, /saveFacebookPageCredential/);
-assert.match(facebookCallback, /pages_show_list/);
+assert.match(facebookCallback, /hasFacebookPublishingPermissions\(grantedPermissions\)/);
+assert.match(facebookCallback, /hasFacebookInsightsPermission\(grantedPermissions\)/);
+assert.match(facebookCallback, /insights:\s*"missing"/);
 assert.doesNotMatch(facebookCallback, /pages_manage_engagement/);
 assert.match(facebookCallback, /page_selection_required/);
 assert.doesNotMatch(facebookCallback, /FACEBOOK_INTEGRATION_RETIRED/);
@@ -113,6 +133,9 @@ assert.ok(insightsService.includes('.replaceAll(pageAccessToken, "[redacted]")')
 assert.ok(insightsService.includes('[id]'));
 assert.ok(insightsService.includes('[url]'));
 assert.ok(insightsService.includes("Meta could not list Page posts to resolve historical Reel video IDs"));
+assert.ok(insightsService.includes("requireSocialQueueRows<QueueRow>"), "a malformed Reel queue query must fail closed");
+assert.ok(insightsService.includes("requireSocialQueueRows<ExistingFacebookInsightRow>"), "a failed freshness query must not be treated as an empty cache and trigger redundant Meta reads");
+assert.doesNotMatch(insightsService, /\.catch\(\(\) => \[\]\)/, "Facebook insights database read failures must remain visible to the worker");
 assert.ok(!insightsService.includes("object_id"));
 
 console.log("Facebook Reels metric parsing and secure Page OAuth flow tests passed.");

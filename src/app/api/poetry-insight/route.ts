@@ -1,5 +1,16 @@
 import { generatePoetryInsight } from '@/features/poetry/services/poetry-insight';
 import { getSupabaseUser } from '@/lib/supabase/server';
+import { consumePoetryInsightRateLimit } from '@/features/spiritual-ai/services/rate-limit';
+import { readBoundedJsonBody } from '@/lib/request/bounded-json-body';
+
+const MAX_POETRY_INSIGHT_REQUEST_BYTES = 64 * 1024;
+
+function jsonNoStore(body: unknown, init: ResponseInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+  return Response.json(body, { ...init, headers });
+}
+
 
 /**
  * @openapi
@@ -30,20 +41,19 @@ export async function POST(request: Request) {
   try {
     const user = await getSupabaseUser();
     if (!user) {
-      return Response.json({ error: 'Authentication required.' }, { status: 401 });
+      return jsonNoStore({ error: 'Authentication required.' }, { status: 401 });
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return Response.json(
-        { error: 'Malformed JSON request body.' },
-        { status: 400 },
+    const parsedBody = await readBoundedJsonBody(request, MAX_POETRY_INSIGHT_REQUEST_BYTES);
+    if (!parsedBody.ok) {
+      return jsonNoStore(
+        { error: parsedBody.error },
+        { status: parsedBody.status },
       );
     }
+    const body = parsedBody.value;
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
-      return Response.json(
+      return jsonNoStore(
         { error: 'Request body must be a JSON object.' },
         { status: 400 },
       );
@@ -51,31 +61,47 @@ export async function POST(request: Request) {
     const { poem, title } = body as { poem?: unknown; title?: unknown };
 
     if (typeof poem !== 'string' || typeof title !== 'string' || !poem.trim() || !title.trim()) {
-      return Response.json(
+      return jsonNoStore(
         { error: 'Missing poem or title' },
         { status: 400 },
       );
     }
     if (title.length > 200 || poem.length > 12000) {
-      return Response.json(
+      return jsonNoStore(
         { error: 'The poem or title is too long.' },
         { status: 400 },
+      );
+    }
+
+    let rateLimitAllowed = false;
+    try {
+      rateLimitAllowed = await consumePoetryInsightRateLimit(user.id);
+    } catch {
+      return jsonNoStore(
+        { error: 'AI rate limit is temporarily unavailable.' },
+        { status: 503 },
+      );
+    }
+    if (!rateLimitAllowed) {
+      return jsonNoStore(
+        { error: 'Rate limit exceeded. Try again later.' },
+        { status: 429 },
       );
     }
 
     const insight = await generatePoetryInsight(poem, title);
 
     if (!insight) {
-      return Response.json(
+      return jsonNoStore(
         { error: 'Failed to generate insight' },
         { status: 500 },
       );
     }
 
-    return Response.json({ insight });
+    return jsonNoStore({ insight });
   } catch (error) {
     console.error('[poetry-insight] Error:', error);
-    return Response.json(
+    return jsonNoStore(
       { error: 'Internal server error' },
       { status: 500 },
     );

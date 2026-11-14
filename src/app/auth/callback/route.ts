@@ -1,4 +1,5 @@
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { syncAuthProfile } from '@/features/profile/services/profile';
 import {
   extractNextPath,
   getTrustedAuthOrigin,
@@ -6,19 +7,18 @@ import {
 } from '@/lib/auth-enhanced';
 import { NextRequest, NextResponse } from 'next/server';
 
-function getOAuthProfileValue(metadata: Record<string, unknown>, ...keys: string[]) {
-  for (const key of keys) {
-    const value = metadata[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
+
+function redirectNoStore(destination: string | URL) {
+  const response = NextResponse.redirect(destination);
+  response.headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return response;
 }
 
 function loginRedirect(origin: string, code: string, next?: string) {
   const url = new URL('/auth/login', origin);
   url.searchParams.set('error', code);
   if (next) url.searchParams.set('next', next);
-  return NextResponse.redirect(url);
+  return redirectNoStore(url);
 }
 
 export async function GET(request: NextRequest) {
@@ -36,6 +36,7 @@ export async function GET(request: NextRequest) {
     const oauthError = searchParams.get('error');
     const oauthErrorDescription = searchParams.get('error_description');
     const nativeUrl = new URL('com.zikr.app://auth/callback');
+    nativeUrl.searchParams.set('native', '1');
     nativeUrl.searchParams.set('next', safePath);
     if (flowId) nativeUrl.searchParams.set('sb_flow_id', flowId);
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       nativeUrl.searchParams.set('error', 'auth_callback_failed');
     }
 
-    return NextResponse.redirect(nativeUrl);
+    return redirectNoStore(nativeUrl);
   }
 
   // Supabase may forward OAuth errors directly to the callback
@@ -86,40 +87,20 @@ export async function GET(request: NextRequest) {
         const missingSessionUrl = new URL('/auth/login', origin);
         missingSessionUrl.searchParams.set('error', 'auth_session_missing');
         missingSessionUrl.searchParams.set('next', safePath);
-        return NextResponse.redirect(missingSessionUrl);
+        return redirectNoStore(missingSessionUrl);
       }
 
       try {
-        const metadata = user.user_metadata ?? {};
-        const displayName =
-          getOAuthProfileValue(metadata, 'full_name', 'name', 'display_name') ??
-          user.email?.split('@')[0] ??
-          null;
-        const avatarUrl = getOAuthProfileValue(metadata, 'avatar_url', 'picture');
-
-        // Use the service-role admin client to bypass RLS for the upsert.
-        // The anon-key client bound to the just-exchanged session may not yet
-        // have its cookies flushed to the response, so RLS checks can fail for
-        // brand-new users who have no row in `profiles` yet.
-        const adminClient = createAdminClient();
-        const { error: upsertError } = await adminClient.from('profiles').upsert(
-          {
-            id: user.id,
-            email: user.email ?? null,
-            display_name: displayName,
-            avatar_url: avatarUrl,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'id' },
-        );
-        if (upsertError) {
-          console.error('[auth/callback] Profile upsert error:', upsertError.message);
+        const profileSync = await syncAuthProfile(user);
+        if (!profileSync.ok) {
+          console.error('[auth/callback] Profile sync failed:', profileSync.error);
         }
       } catch (profileErr) {
-        console.error('[auth/callback] Profile upsert exception:', profileErr);
+        // Authentication must still complete when profile enrichment is unavailable.
+        console.error('[auth/callback] Profile sync exception:', profileErr);
       }
 
-      return NextResponse.redirect(`${origin}${safePath}`);
+      return redirectNoStore(`${origin}${safePath}`);
     } catch (err) {
       console.error('[auth/callback] Unexpected error:', err);
       return loginRedirect(origin, 'google_oauth_failed', safePath);

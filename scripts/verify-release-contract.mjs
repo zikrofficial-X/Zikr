@@ -23,6 +23,16 @@ assert.ok(releaseManager.includes("/releases"), "Admin release manager must crea
 assert.ok(releaseManager.includes("draft: true"), "Admin release manager must create Android releases as drafts until artifacts are verified");
 assert.ok(releaseManager.includes('const REPO = process.env.GITHUB_REPOSITORY?.trim() || "zikrofficial-X/Zikr";'), "Admin release manager must use the canonical repository");
 assert.ok(releaseAction.includes("prepareAndroidRelease"), "Admin release action must use the canonical Android release manager");
+
+assert.ok(releaseAction.includes('requireAdminStepUp("release.manage", "/admin/release")'), "Android release preparation must honor the destructive-action step-up policy");
+assert.ok(!releaseAction.includes(".catch(() => [])"), "Android release preparation must fail closed when the operation-state read fails");
+assert.ok(releaseAction.includes("تعذر التحقق من حالة الإصدار الحالية"), "Android release preparation must stop before GitHub side effects when operation state cannot be verified");
+const androidAdminAction = read("src/app/admin/android/actions.ts");
+assert.ok(androidAdminAction.includes('requireAdminStepUp("android.manage", "/admin/android")'), "Android release-setting changes must honor the destructive-action step-up policy");
+assert.ok(androidAdminAction.includes("getStableReleaseByTag"), "Pinned Android releases must be validated against a published stable GitHub release");
+assert.ok(androidAdminAction.includes("لا يمكن تثبيت إصدار غير منشور"), "Pinned Android releases must fail closed when APK/AAB artifacts are missing");
+const androidAdminPage = read("src/app/admin/android/page.tsx");
+assert.ok(androidAdminPage.includes('endsWith(".apk")') && androidAdminPage.includes('endsWith(".aab")'), "Admin Android release choices must contain both APK and AAB artifacts");
 assert.ok(!releaseManager.includes("buildTag"), "Android release manager must not create a redundant -build tag");
 
 const androidCircle = read(".circleci/config.yml");
@@ -203,6 +213,8 @@ assert.ok(circle.includes("APK versionCode ($VERSION_CODE) does not match Gradle
 assert.ok(!circle.includes('VERSION_CODE="56"'), "Android release must not silently substitute an obsolete versionCode");
 
 const finalization = read(".github/workflows/release-finalization.yml");
+const appleAssociationChecks = finalization.match(/- name: Verify Apple App Site Association configuration before production build/g) ?? [];
+assert.equal(appleAssociationChecks.length, 1, "production release workflow must contain exactly one Apple App Site Association preflight");
 assert.ok(finalization.includes("github.ref == 'refs/heads/main'"), "web production release must be main-only");
 assert.ok(finalization.includes("environment:\n      name: production"), "web production release must use the protected production environment");
 assert.ok(finalization.includes("secrets.ZIKR_VERCEL_TOKEN"), "web production release must prefer the dedicated Vercel credential secret");
@@ -217,13 +229,16 @@ assert.ok(finalization.includes('supabase db push --db-url "${SUPABASE_DB_URL}" 
 assert.equal(finalization.split("secrets.SUPABASE_DB_URL || secrets.POSTGRES_URL_NON_POOLING").length - 1, 5, "the explicitly configured Supabase release URL must take precedence over a stale generic Postgres secret in every release phase");
 assert.ok(!finalization.includes("secrets.POSTGRES_URL_NON_POOLING || secrets.SUPABASE_DB_URL"), "a generic Postgres secret must not silently override the dedicated Supabase release URL");
 const baselineStep = finalization.indexOf("Verify production data and baseline schema against parent commit");
+const vercelPullStep = finalization.indexOf("Pull production Vercel configuration");
 const buildStep = finalization.indexOf("Build production artifact");
+const preMigrationShaStep = finalization.indexOf("Recheck approved main SHA immediately before production database changes");
 const deployStep = finalization.indexOf("Deploy prebuilt artifact to production");
-const migrationStep = finalization.indexOf("Apply pending production migrations after deployment");
+const migrationStep = finalization.indexOf("Apply pending production migrations before deployment");
 const schemaStep = finalization.indexOf("Verify production schema after migration");
-const finalSmokeStep = finalization.indexOf("Post-migration production smoke test");
-assert.ok(baselineStep >= 0 && baselineStep < buildStep, "pre-release schema/data preflight must occur before building");
-assert.ok(buildStep < deployStep && deployStep < migrationStep && migrationStep < schemaStep && schemaStep < finalSmokeStep, "deploy compatible code before applying breaking access-policy changes, then verify schema and smoke-test");
+const finalSmokeStep = finalization.indexOf("Production smoke test after schema migration and deployment");
+assert.ok(baselineStep >= 0 && baselineStep < vercelPullStep && vercelPullStep < buildStep && buildStep < preMigrationShaStep && preMigrationShaStep < migrationStep, "Vercel configuration pull, production build, and exact-main recheck must complete before any production database mutation");
+assert.ok(migrationStep < schemaStep && schemaStep < deployStep && deployStep < finalSmokeStep, "production migrations and schema verification must finish before deploying dependent code and smoke-testing it");
+assert.ok(!finalization.includes("Smoke test deployed app before schema migration"), "the application must never be smoke-tested against a schema that has not received its pending migrations");
 
 const gameRegistry = read("src/lib/games/registry.ts");
 const productionSmoke = read("scripts/verify-production-smoke.mjs");

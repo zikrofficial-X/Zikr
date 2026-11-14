@@ -133,6 +133,39 @@ const ASSET_CHECKS = [
   { path: "/sitemap-index.xml", label: "sitemap index", expected: /<sitemapindex/i },
 ];
 
+const ASSOCIATION_CHECKS = [
+  {
+    path: "/.well-known/apple-app-site-association",
+    label: "iOS Universal Links and web credentials association",
+    expectedJson: (payload) => {
+      const validAppId = (value) => typeof value === "string" && /^[A-Z0-9]{10}\.com\.zikr\.app$/.test(value);
+      const appIds = (payload?.applinks?.details ?? []).flatMap((detail) =>
+        Array.isArray(detail?.appIDs) ? detail.appIDs : [],
+      );
+      const webCredentials = Array.isArray(payload?.webcredentials?.apps)
+        ? payload.webcredentials.apps
+        : [];
+      return appIds.some(validAppId) && webCredentials.some(validAppId);
+    },
+  },
+  {
+    path: "/.well-known/assetlinks.json",
+    label: "Android App Links signing association",
+    expectedJson: (payload) =>
+      Array.isArray(payload) &&
+      payload.some((entry) =>
+        Array.isArray(entry?.relation) &&
+        entry.relation.includes("delegate_permission/common.handle_all_urls") &&
+        entry?.target?.namespace === "android_app" &&
+        entry?.target?.package_name === "com.zikr.app" &&
+        Array.isArray(entry?.target?.sha256_cert_fingerprints) &&
+        entry.target.sha256_cert_fingerprints.some(
+          (fingerprint) => typeof fingerprint === "string" && /^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/i.test(fingerprint),
+        ),
+      ),
+  },
+];
+
 const checks = [
   ...CORE_CHECKS,
   ...ROUTE_CHECKS,
@@ -140,6 +173,7 @@ const checks = [
   QURAN_CATALOG_API_CHECK,
   ...KIDS_GAME_API_CHECKS,
   ...ASSET_CHECKS,
+  ...ASSOCIATION_CHECKS,
 ];
 
 function extractText(html) {

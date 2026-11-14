@@ -1,6 +1,7 @@
 import { getServerEnv } from '@/lib/env';
 import { supabaseServerAdminRequest } from '@/lib/supabase/admin-rest';
 import { readStoredFacebookCredential } from '@/features/social/services/facebook-credentials';
+import { buildFacebookPublicProfileSyncUpsert } from '@/features/social/services/facebook-profile-contract';
 
 export type FacebookPageProfile = {
   id: string;
@@ -26,7 +27,7 @@ const PROFILE_TTL_MS = 30 * 60 * 1000;
 const FALLBACK_PAGE_URL = 'https://www.facebook.com/zikrmediaofficial1';
 
 function toProfile(row: CachedRow | null, pageId: string): FacebookPageProfile | null {
-  if (!row || row.platform !== 'facebook') return null;
+  if (!row || row.platform !== 'facebook' || String(row.external_id ?? '') !== pageId) return null;
   return {
     id: String(row.external_id ?? pageId),
     name: String(row.name ?? 'ذِكر | ZIKR'),
@@ -107,7 +108,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
   const env = getServerEnv();
   const storedCredential = await readStoredFacebookCredential();
   const pageId = storedCredential?.page_id?.trim() || env.FACEBOOK_PAGE_ID?.trim() || '';
-  const pageAccessToken = storedCredential?.page_access_token?.trim() || env.FACEBOOK_PAGE_ACCESS_TOKEN?.trim() || '';
+  const pageAccessToken = storedCredential?.page_access_token?.trim() || '';
   const graphVersion = env.FACEBOOK_GRAPH_API_VERSION || 'v26.0';
   if (!pageId) return null;
 
@@ -148,27 +149,23 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
   try {
     const body = await fetchGraphProfile(pageId, pageAccessToken, graphVersion);
     const syncedAt = new Date().toISOString();
-    const profile = {
-      platform: 'facebook',
-      external_id: String(body.id ?? pageId),
-      handle: null,
-      name: String(body.name ?? 'ذِكر | ZIKR'),
-      description: String(body.description ?? body.about ?? 'تابع أحدث محتوى ذِكر على صفحتنا الرسمية على فيسبوك.'),
-      category: body.category ? String(body.category) : null,
-      website: body.website ? String(body.website) : null,
-      avatar_url: body?.picture?.data?.url ? String(body.picture.data.url) : fallbackAvatar,
-      cover_url: body?.cover?.source ? String(body.cover.source) : null,
-      page_url: String(body.link ?? FALLBACK_PAGE_URL),
-      subscribers_count: null,
-      followers_count: body.followers_count == null ? null : Number(body.followers_count),
-      likes_count: body.fan_count == null ? null : Number(body.fan_count),
-      following_count: null,
-      view_count: null,
-      video_count: null,
-      synced_at: syncedAt,
-      status: 'ok',
-      last_error: null,
-    };
+    const profile = buildFacebookPublicProfileSyncUpsert({
+      pageId,
+      name: body.name,
+      description: typeof body.description === 'string' && body.description.trim()
+        ? body.description
+        : body.about,
+      category: body.category,
+      website: body.website,
+      avatarUrl: body?.picture?.data?.url,
+      coverUrl: body?.cover?.source,
+      pageUrl: body.link,
+      followersCount: body.followers_count,
+      likesCount: body.fan_count,
+      fallbackAvatar,
+      syncedAt,
+      cached,
+    });
 
     await supabaseServerAdminRequest(
       "/rest/v1/social_platform_profiles?on_conflict=platform",
@@ -193,7 +190,7 @@ export async function getFacebookPageProfile(): Promise<FacebookPageProfile | nu
       pageUrl: profile.page_url,
       likesCount: profile.likes_count,
       followersCount: profile.followers_count,
-      followingCount: profile.following_count,
+      followingCount: cached?.followingCount ?? null,
       syncedAt,
       stale: false,
       configured: true,

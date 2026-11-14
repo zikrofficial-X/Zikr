@@ -10,6 +10,8 @@ import {
 
 import type { DuaCategory, Dua } from "@/features/dua/types/dua";
 import { resolveCanonicalPublished } from "@/lib/data/content-merge";
+import { getDatabasePublicationState } from "@/lib/data/publication-visibility";
+import { shouldSuppressOfflineFallback } from "@/lib/data/publication-visibility-contract";
 import {
   FALLBACK_DUA_CATEGORIES,
   FALLBACK_DUAS,
@@ -118,7 +120,7 @@ export async function getDuas(
   locale?: Locale,
 ): Promise<Dua[]> {
   const activeLocale = locale ?? await getRequestLocale();
-  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
+  const safeLimit = Math.max(1, Math.min(1000, Math.trunc(limit)));
   const localDuas = await getOfflineOrFallbackDuas();
   const localeReady = (dua: Dua) =>
     activeLocale === "en"
@@ -142,14 +144,21 @@ export async function getDuas(
 
   query += `&limit=${safeLimit}`;
 
+  let databaseLookupFailed = false;
   const rows = await supabaseServerAnonRequest<DuaRow[]>(query).catch(
     (error) => {
+      databaseLookupFailed = true;
       console.error("[dua] Failed to fetch duas:", error);
       return [];
     },
   );
 
-  if (rows.length === 0) return fallback.slice(0, safeLimit);
+  if (rows.length === 0) {
+    const source = databaseLookupFailed ? fallbackBase : FALLBACK_DUAS.filter(
+      dua => !categoryId || categoryId === "all" || dua.categoryId === categoryId,
+    );
+    return source.filter(localeReady).slice(0, safeLimit);
+  }
 
   const mapped = rows
     .map(mapDuaRow)
@@ -159,6 +168,7 @@ export async function getDuas(
 }
 
 export async function searchDuas(query: string, locale: Locale = "ar"): Promise<Dua[]> {
+  let databaseLookupFailed = false;
   const cleanQuery = query.trim().slice(0, 100);
   const normalizedQuery = normalizeArabicSearchText(cleanQuery);
   if (!normalizedQuery) return [];
@@ -175,12 +185,20 @@ export async function searchDuas(query: string, locale: Locale = "ar"): Promise<
           : Boolean(dua.titleAr?.trim() && dua.textAr?.trim())),
       );
       if (matches.length) return matches;
+      return FALLBACK_DUAS.filter((dua) =>
+        [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
+          .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
+      ).slice(0, 6);
     } catch (error) {
+      databaseLookupFailed = true;
       console.error("[dua] Indexed search failed; using bounded fallback:", error);
     }
   }
 
-  return (await getOfflineOrFallbackDuas()).filter((dua) =>
+  const fallbackSource = !isSupabaseConfigured() || databaseLookupFailed
+    ? await getOfflineOrFallbackDuas()
+    : FALLBACK_DUAS;
+  return fallbackSource.filter((dua) =>
     [dua.titleAr, dua.textAr, dua.titleEn ?? "", dua.textEn ?? "", dua.occasionAr ?? "", dua.sourceAr ?? "", dua.benefitsAr ?? ""]
       .some((value) => normalizeArabicSearchText(value).includes(normalizedQuery)),
   ).slice(0, 6);
@@ -214,14 +232,22 @@ export async function getDuaBySlug(slug: string, locale?: Locale): Promise<Dua |
   }
 
   const safeSlug = encodeURIComponent(cleanSlug);
+  let databaseLookupFailed = false;
   const rows = await supabaseServerAnonRequest<DuaRow[]>(
     `/rest/v1/duas?select=id,title_ar,title_en,slug,text_ar,text_en,occasion_ar,source_ar,benefits_ar,category_id,published&slug=eq.${safeSlug}&published=eq.true&limit=1`,
     { timeoutMs: 8000, retries: 1, cache: "no-store" },
   ).catch(error => {
+    databaseLookupFailed = true;
     console.error("[dua] Failed to fetch dua by slug:", error);
     return [];
   });
 
+  if (!rows.length && !databaseLookupFailed && localMatch) {
+    const publicationState = await getDatabasePublicationState("duas", cleanSlug);
+    if (shouldSuppressOfflineFallback(publicationState)) return null;
+  }
+
   if (!rows.length) return resolveDuaLocale(localMatch, activeLocale);
+
   return resolveDuaLocale(mapDuaRow(rows[0]), activeLocale) ?? resolveDuaLocale(localMatch, activeLocale);
 }

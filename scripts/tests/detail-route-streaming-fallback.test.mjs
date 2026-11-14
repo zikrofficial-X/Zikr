@@ -19,9 +19,13 @@ assert.match(duaPage, /if \(!hasPublicDuaContent\(dua\)\)\s*\{\s*return\s*\(/,
   "dua route must return its inline missing/unapproved-content state before dereferencing the dua");
 assert.match(duaPage, /noindex:\s*!hasPublicDuaContent\(dua\)/,
   "missing or unapproved dua details must remain noindex");
-assert.match(videoService, /timeoutMs:\s*8000,\s*retries:\s*1,\s*cache:\s*["']force-cache["']/,
-  "video-by-slug Supabase lookup must use an explicit bounded timeout and one retry");
-assert.match(videoService, /next:\s*\{\s*revalidate:\s*900\s*\}/,
-  "video-by-slug lookup must preserve the established 15-minute revalidation policy");
+const videoBySlug = videoService.slice(
+  videoService.indexOf("export async function getVideoBySlug"),
+  videoService.indexOf("function hasPassedKidsVideoQa"),
+);
+assert.match(videoBySlug, /timeoutMs:\s*8000,\s*retries:\s*1,\s*cache:\s*["']no-store["']/,
+  "video-by-slug Supabase lookup must bypass stale caches after moderation with a bounded timeout and one retry");
+assert.doesNotMatch(videoBySlug, /next:\s*\{\s*revalidate:/,
+  "video-by-slug lookup must not retain a positive Next data-cache lifetime after moderation");
 
 console.log("✅ Dynamic content detail routes render missing-content states without late streaming notFound throws");

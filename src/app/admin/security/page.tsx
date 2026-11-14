@@ -5,6 +5,7 @@ import { Container } from "@/components/ui/container";
 import { requireAdminPermission, getCurrentProfile } from "@/features/admin/services/admin";
 import { getAdminSettings } from "@/features/admin/services/platform";
 import { getAdminPermissions, ADMIN_PERMISSIONS, type AdminPermission } from "@/features/admin/services/permissions";
+import { resolveDestructiveMfaRequirement } from "@/features/admin/services/security-policy";
 
 export const metadata: Metadata = { title: "أمن لوحة الإدارة | الأدمن" };
 
@@ -13,7 +14,7 @@ export default async function AdminSecurityPage() {
   const profile = await getCurrentProfile();
   const settings = await getAdminSettings();
   const permissions = getAdminPermissions(profile?.role ?? "user");
-  const mfaRequired = settings.require_mfa_for_destructive === true;
+  const mfaRequired = resolveDestructiveMfaRequirement(settings.require_mfa_for_destructive);
 
   return (
     <Container className="py-10 space-y-6" dir="rtl">

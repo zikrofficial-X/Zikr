@@ -1,5 +1,8 @@
 const supabaseUrl = process.env.SUPABASE_URL?.trim();
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+const SUPABASE_REQUEST_TIMEOUT_MS = 15_000;
+const HADITH_API_TIMEOUT_MS = 10_000;
+
 const apiBase = (
   process.env.HADITH_API_BASE_URL ?? "https://ummahapi.com/api/hadith"
 ).replace(/\/$/, "");
@@ -23,6 +26,7 @@ if (!supabaseUrl || !serviceRoleKey) {
 type BookRow = { id: string; slug: string; name_en: string | null };
 type HadithRow = {
   hadith_number: string;
+  text_ar: string;
   text_en: string | null;
   book_id: string;
   ref: string | null;
@@ -46,6 +50,7 @@ async function supabase<T>(path: string, init: RequestInit = {}): Promise<T> {
       Prefer: "return=representation",
       ...(init.headers ?? {}),
     },
+    signal: init.signal ?? AbortSignal.timeout(SUPABASE_REQUEST_TIMEOUT_MS),
   });
   if (!response.ok) {
     throw new Error(`Supabase ${response.status}: ${await response.text()}`);
@@ -59,9 +64,16 @@ async function fetchEnglish(
 ): Promise<string | null> {
   const response = await fetch(
     `${apiBase}/${encodeURIComponent(bookSlug)}/${encodeURIComponent(number)}`,
-    { headers: { Accept: "application/json" } }
+    {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(HADITH_API_TIMEOUT_MS),
+    }
   );
-  if (!response.ok) return null;
+  if (response.status === 404 || response.status === 204) return null;
+  if (!response.ok) {
+    const details = (await response.text()).slice(0, 300);
+    throw new Error(`Hadith API ${response.status}: ${details || "request failed"}`);
+  }
   const payload = (await response.json()) as UmmahResponse;
   if (!payload.success || !payload.data) return null;
   const text =
@@ -79,7 +91,7 @@ async function main() {
   const bookById = new Map(books.map(book => [book.id, book]));
 
   const rows = await supabase<HadithRow[]>(
-    "/rest/v1/hadiths?select=hadith_number,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" +
+    "/rest/v1/hadiths?select=hadith_number,text_ar,text_en,book_id,ref&published=eq.true&or=(text_en.is.null,text_en.eq.)&order=book_id.asc,hadith_number.asc&limit=" +
       batchSize
   );
 
@@ -88,7 +100,7 @@ async function main() {
   let failed = 0;
   for (const row of rows) {
     const book = bookById.get(row.book_id);
-    if (!book?.slug) continue;
+    if (!book?.slug || !row.text_ar?.trim()) continue;
 
     try {
       const english = await fetchEnglish(book.slug, row.hadith_number);
@@ -99,8 +111,8 @@ async function main() {
         continue;
       }
 
-      await supabase(
-        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}`,
+      const updatedRows = await supabase<Array<{ hadith_number: string }>>(
+        `/rest/v1/hadiths?book_id=eq.${encodeURIComponent(row.book_id)}&hadith_number=eq.${encodeURIComponent(row.hadith_number)}&published=eq.true&text_ar=eq.${encodeURIComponent(row.text_ar)}&or=(text_en.is.null,text_en.eq.)`,
         {
           method: "PATCH",
           body: JSON.stringify({
@@ -108,6 +120,12 @@ async function main() {
           }),
         }
       );
+      if (!updatedRows.length) {
+        console.log(
+          `Skipped ${book.slug}/${row.hadith_number}; an English value was added while the external source was fetched.`
+        );
+        continue;
+      }
       synced += 1;
       console.log(`Synced ${book.slug}/${row.hadith_number}`);
     } catch (error) {

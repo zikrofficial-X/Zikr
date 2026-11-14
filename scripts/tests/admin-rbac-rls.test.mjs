@@ -21,6 +21,43 @@ const atomicRoleMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20261101170000_admin_atomic_role_update.sql"),
   "utf8",
 );
+const selfRoleMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql"),
+  "utf8",
+);
+const roleAssignmentWritesMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql"),
+  "utf8",
+);
+const revokePublicAdminPredicateMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql"),
+  "utf8",
+);
+const defaultFunctionExecuteMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261114020000_revoke_client_default_function_execute.sql"),
+  "utf8",
+);
+const supabaseApiConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
+const defaultFunctionExecuteSetup = readFileSync(
+  resolve(process.cwd(), "scripts/tests/client-table-privilege-hardening.integration-setup.sql"),
+  "utf8",
+);
+const defaultFunctionExecuteIntegration = readFileSync(
+  resolve(process.cwd(), "scripts/tests/client-table-privilege-hardening.integration.sql"),
+  "utf8",
+);
+const publicAdminPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260929062722_security_seo_hardening_20260929.sql"),
+  "utf8",
+);
+const contentHubPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20260901123902_final_rls_security_cleanup.sql"),
+  "utf8",
+);
+const publicReadPolicyMigration = readFileSync(
+  resolve(process.cwd(), "supabase/migrations/20261008082203_20261008120000_consolidate_duplicate_public_read_policies.sql"),
+  "utf8",
+);
 const contentService = readFileSync(
   resolve(process.cwd(), "src/features/admin/services/content.ts"),
   "utf8",
@@ -49,8 +86,28 @@ const socialRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/social/route.ts"),
   "utf8",
 );
+const writtenSocialRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/social/written/route.ts"),
+  "utf8",
+);
 const videoRoute = readFileSync(
   resolve(process.cwd(), "src/app/api/admin/videos/[id]/route.ts"),
+  "utf8",
+);
+const videoGenerationRoute = readFileSync(
+  resolve(process.cwd(), "src/app/api/admin/video-generation/route.ts"),
+  "utf8",
+);
+const videoAutomation = readFileSync(
+  resolve(process.cwd(), "src/features/videos/services/video-automation.ts"),
+  "utf8",
+);
+const systemActions = readFileSync(
+  resolve(process.cwd(), "src/app/admin/system-actions.ts"),
+  "utf8",
+);
+const videoVisualsPage = readFileSync(
+  resolve(process.cwd(), "src/app/admin/video/visuals/page.tsx"),
   "utf8",
 );
 
@@ -82,27 +139,80 @@ assert.doesNotMatch(
   "RLS policies must not infer full administrator access from profiles.role alone",
 );
 
-requireMatch(
-  /CREATE POLICY admin_role_assignments_insert[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment inserts must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /REVOKE ALL PRIVILEGES ON TABLE public\.admin_role_assignments[\s\S]*?FROM PUBLIC, anon, authenticated/i,
+  "browser roles must not mutate role assignments outside the audited service RPC",
 );
-requireMatch(
-  /CREATE POLICY admin_role_assignments_update[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment updates must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /GRANT SELECT ON TABLE public\.admin_role_assignments TO authenticated/i,
+  "authenticated sessions must retain the role read needed for delegated-admin resolution",
 );
-requireMatch(
-  /CREATE POLICY admin_role_assignments_delete[\s\S]*?private\.has_admin_role\(ARRAY\['super_admin'\]::text\[\]\)/i,
-  "direct role assignment deletes must be restricted to super_admin",
+assert.match(
+  roleAssignmentWritesMigration,
+  /GRANT SELECT, INSERT, UPDATE, DELETE[\s\S]*?TO service_role/i,
+  "the service role must retain the atomic role RPC's table access",
+);
+for (const policy of ["write", "insert", "update", "delete"]) {
+  assert.match(
+    roleAssignmentWritesMigration,
+    new RegExp("DROP POLICY IF EXISTS admin_role_assignments_" + policy + " ON public\\.admin_role_assignments", "i"),
+    "direct role-assignment " + policy + " policy must be removed",
+  );
+}
+assert.doesNotMatch(
+  roleAssignmentWritesMigration,
+  /CREATE POLICY admin_role_assignments_(?:write|insert|update|delete)/i,
+  "no browser-facing role-assignment write policy may remain",
 );
 assert.match(
   userActions,
-  /roleValue === "super_admin" && admin\.role !== "super_admin"/,
-  "only a super administrator may request the super_admin role",
+  /admin\.role !== "super_admin" && \(roleValue === "admin" \|\| roleValue === "super_admin"\)/,
+  "only a super administrator may assign either full-admin role",
 );
 assert.match(
   userActions,
-  /userId === admin\.id[\s\S]*?roleValue !== "admin"[\s\S]*?roleValue !== "super_admin"/,
-  "the server action must prevent an administrator from removing their own admin role",
+  /userId === admin\.id && roleValue !== admin\.role/,
+  "the server action must reject every self-role change",
+);
+assert.match(
+  selfRoleMigration,
+  /IF p_user_id = p_actor_user_id AND p_role <> v_previous_role THEN[\s\S]*?self-role changes are not allowed through this action/i,
+  "the database transaction must reject self-promotion and self-demotion",
+);
+assert.match(
+  selfRoleMigration,
+  /PERFORM profile\.id[\s\S]*?WHERE profile\.id IN \(p_actor_user_id, p_user_id\)[\s\S]*?ORDER BY profile\.id[\s\S]*?FOR UPDATE/i,
+  "actor and target profiles must be locked in a deterministic order before role authorization",
+);
+assert.match(
+  selfRoleMigration,
+  /PERFORM assignment\.user_id[\s\S]*?WHERE assignment\.user_id IN \(p_actor_user_id, p_user_id\)[\s\S]*?ORDER BY assignment\.user_id[\s\S]*?FOR UPDATE/i,
+  "actor and target role assignments must be locked in a deterministic order before role authorization",
+);
+const roleAssignmentUpsert = selfRoleMigration.match(/ON CONFLICT \(user_id\) DO UPDATE([\s\S]*?);/i)?.[1] ?? "";
+assert.match(
+  roleAssignmentUpsert,
+  /SET role = EXCLUDED\.role[\s\S]*?updated_at = EXCLUDED\.updated_at/i,
+  "role reassignment must update the role and timestamp",
+);
+assert.doesNotMatch(
+  roleAssignmentUpsert,
+  /created_by\s*=\s*EXCLUDED\.created_by/i,
+  "created_by must remain the original assignment creator when a delegated role is changed",
+);
+
+
+assert.match(
+  selfRoleMigration,
+  /IF v_actor_role <> 'super_admin' AND \([\s\S]*?v_previous_role IN \('admin', 'super_admin'\)[\s\S]*?p_role IN \('admin', 'super_admin'\)/i,
+  "only super administrators may manage full-admin accounts",
+);
+assert.match(
+  selfRoleMigration,
+  /REVOKE ALL ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?FROM PUBLIC, anon, authenticated[\s\S]*?GRANT EXECUTE ON FUNCTION public\.admin_update_user_role\(uuid, text, uuid\)[\s\S]*?TO service_role/i,
+  "the self-role protection RPC must remain service-role only",
 );
 assert.match(
   atomicRoleMigration,
@@ -143,6 +253,88 @@ assert.match(
 );
 
 assert.match(
+  revokePublicAdminPredicateMigration,
+  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM PUBLIC, anon/i,
+  "anonymous execute must be revoked from PUBLIC as well as anon so inherited grants cannot survive",
+);
+assert.doesNotMatch(
+  revokePublicAdminPredicateMigration,
+  /REVOKE EXECUTE ON FUNCTION public\.is_admin_user\(\) FROM PUBLIC, anon, authenticated/i,
+  "the authenticated compatibility grant must remain intact",
+);
+
+assert.ok(
+  supabaseApiConfig.includes('schemas = ["public", "storage", "graphql_public"]'),
+  "the API schema inventory must stay aligned with the default-function hardening scope",
+);
+assert.ok(
+  defaultFunctionExecuteMigration.includes("ARRAY['public', 'storage', 'graphql_public', 'graphql']"),
+  "the migration must cover every exposed and GraphQL API schema for postgres/supabase_admin owners",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "postgres schema-specific defaults must revoke browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "supabase_admin schema-specific defaults must revoke browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "global PUBLIC EXECUTE must be revoked for the actual Storage function owner",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future Storage functions owned by supabase_storage_admin must not inherit browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "service_role must retain explicit execution on future Storage functions",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "server-side execution must be explicitly preserved after removing PUBLIC defaults",
+);
+assert.match(defaultFunctionExecuteSetup, /CREATE ROLE supabase_storage_admin NOLOGIN/i);
+assert.match(defaultFunctionExecuteSetup, /SET ROLE supabase_storage_admin[\s\S]*?storage\.client_default_execute_supabase_storage_admin_before/i);
+assert.match(
+  defaultFunctionExecuteIntegration,
+  /storage\.client_default_execute_supabase_storage_admin_after\(\)/,
+  "the integration contract must create and verify a function under the live Storage function owner",
+);
+
+assert.doesNotMatch(
+  publicAdminPolicyMigration,
+  /CREATE POLICY[\s\S]*?TO (?:anon|public)[\s\S]*?public\.is_admin_user\(\)/i,
+  "anonymous public-read policies must not depend on the revoked public compatibility wrapper",
+);
+const publicWrapperPolicyBlocks = publicAdminPolicyMigration.split(/CREATE POLICY/i).slice(1);
+assert.ok(
+  publicWrapperPolicyBlocks.filter(block => block.includes("public.is_admin_user()")).every(block => /\bTO authenticated\b/i.test(block)),
+  "every legacy policy that calls public.is_admin_user must target authenticated sessions only",
+);
+const contentHubAdminPolicies = contentHubPolicyMigration.split(/CREATE POLICY/i).slice(1).filter(block => /_admin_all\b/i.test(block));
+assert.ok(contentHubAdminPolicies.length > 0 && contentHubAdminPolicies.every(block => /\bTO authenticated\b/i.test(block)),
+  "content-hub admin policies that resolve the compatibility predicate must remain authenticated-only",
+);
+assert.match(
+  publicReadPolicyMigration,
+  /TO public[\s\S]*?private\.is_admin_user\(\)/i,
+  "public hadith/story/scholar reads must keep using the private predicate after anonymous wrapper access is revoked",
+);
+assert.doesNotMatch(
+  publicReadPolicyMigration,
+  /TO public[\s\S]*?public\.is_admin_user\(\)/i,
+  "public read policies must not call the revoked compatibility wrapper",
+);
+
+assert.match(
   atomicRoleMigration,
   /CREATE OR REPLACE FUNCTION public\.admin_update_user_role\([\s\S]*?SECURITY INVOKER[\s\S]*?SET search_path = ''/i,
   "role updates must use a fixed-search-path invoker RPC",
@@ -169,7 +361,7 @@ assert.doesNotMatch(
 );
 assert.match(
   contentService,
-  /const filter = [\s\S]*?optimisticUpdatedAt[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\.length\)/,
+  /const encodedId = encodeURIComponent\(id\);[\s\S]*?id=eq\.\$\{encodedId\}&updated_at=eq\.\$\{encodeURIComponent\(String\(target\.updated_at\)\)\}[\s\S]*?Prefer: "return=representation"[\s\S]*?if \(!updated\?\.length\)/,
   "content publish toggles must compare-and-set and verify the affected row",
 );
 assert.match(
@@ -189,13 +381,23 @@ assert.match(
 );
 assert.match(
   socialRoute,
-  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminApi\("social\.publish"\)/,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminStepUpApi\("social\.publish"/,
   "social execution must require separate management and publishing permissions",
 );
 assert.match(
   socialRoute,
   /dispatchGitHubWorkflow\("publish-social\.yml"/,
   "social API must dispatch the controlled GitHub publisher",
+);
+assert.match(
+  writtenSocialRoute,
+  /requireAdminApi\("social\.manage"\)[\s\S]*?requireAdminStepUpApi\("social\.publish"/,
+  "written-content generation must require separate management permission and publishing permission with MFA step-up",
+);
+assert.match(
+  writtenSocialRoute,
+  /dispatchGitHubWorkflow\("generate-written-content\.yml"/,
+  "written-content generation must dispatch only the controlled GitHub workflow",
 );
 assert.doesNotMatch(
   socialRoute,
@@ -207,6 +409,26 @@ assert.match(
   /recordAdminAuditEvent\([\s\S]*?video_generation\.update[\s\S]*?recordAdminAuditEvent\([\s\S]*?video_generation\.delete_failed/,
   "video mutation endpoints must append audit events",
 );
+const legacyVideoPatch = videoRoute.match(/export async function PATCH\([\s\S]*?(?=export async function DELETE|$)/)?.[0] ?? "";
+assert.match(
+  legacyVideoPatch,
+  /body\.status !== 'pending'[\s\S]*?currentRows\[0\]\.status !== 'failed'[\s\S]*?updateVideoRequestStatus\(id, 'pending', undefined, 'failed'\)/,
+  "the legacy request reset must be limited to failed rows and use the compare-and-set retry service",
+);
+assert.match(
+  videoGenerationRoute,
+  /DIRECT_VIDEO_STATUS_MUTATION_RETIRED/,
+  "the generic admin endpoint must not let callers overwrite worker-owned video queue states",
+);
+assert.doesNotMatch(
+  videoGenerationRoute,
+  /ALLOWED_STATUSES|const patch: Record<string, unknown> = \{ status, updated_at:/,
+  "unrestricted status mutation must not remain reachable through the legacy route",
+);
+assert.match(videoAutomation, /select=content,status,updated_at/);
+assert.match(videoAutomation, /expectedUpdatedAt = existingRow\.updated_at/);
+assert.match(videoAutomation, /&updated_at=eq\.\$\{encodeURIComponent\(expectedUpdatedAt\)\}/,
+  "failed-request retry must compare the same row version that supplied its preserved content metadata");
 
 
 assert.match(
@@ -244,6 +466,39 @@ assert.equal(socialManagerPermissions?.[1].includes("'video.delete'"), false);
 assert.ok(videoManagerPermissions?.[1].includes("'video.manage'"));
 assert.equal(videoManagerPermissions?.[1].includes("'social.publish'"), false);
 assert.equal(videoManagerPermissions?.[1].includes("'social.manage'"), false);
+assert.equal(videoManagerPermissions?.[1].includes("'system.manage'"), false);
+
+const customSpacesAction = systemActions.match(
+  /export async function saveCustomVideoSpacesAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+assert.match(
+  customSpacesAction,
+  /requireAdminStepUp\("system\.manage", "\/admin\/video\/visuals"\)/,
+  "custom Hugging Face Space configuration must require system-level permission and MFA step-up",
+);
+assert.match(customSpacesAction, /permission: "system\.manage"/);
+assert.match(videoVisualsPage, /hasAdminPermission\(admin\.role, "system\.manage"\)/);
+
+
+const saveVideoAutomationAction = systemActions.match(
+  /export async function saveVideoAutomationSettingAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+const runVideoAutomationAction = systemActions.match(
+  /export async function requestVideoAutomationRunAction[\s\S]*?(?=\nexport async function |$)/,
+)?.[0] ?? "";
+for (const [name, action] of [
+  ["video automation settings", saveVideoAutomationAction],
+  ["video automation run-now", runVideoAutomationAction],
+]) {
+  const stepUpPosition = action.indexOf('requireAdminStepUp("system.manage", "/admin/automation")');
+  const firstMutationPosition = action.indexOf("supabaseServerAdminRequest(");
+  assert.ok(stepUpPosition >= 0 && firstMutationPosition > stepUpPosition, name + " must complete configured MFA step-up before any database mutation");
+  assert.doesNotMatch(action, /requireAdminPermission\("system\.manage"\)/, name + " must not bypass the destructive-action MFA policy");
+}
+assert.ok(
+  runVideoAutomationAction.indexOf("requireAdminStepUp(") < runVideoAutomationAction.indexOf('dispatchGitHubWorkflow("generate-ai-video.yml"'),
+  "run-now must step up before dispatching generation that may auto-publish",
+);
 
 assert.ok(
   rlsEventTriggerMigration.includes("to_regprocedure('public.rls_auto_enable()')") &&
@@ -251,6 +506,82 @@ assert.ok(
       "REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated",
     ),
   "RLS event-trigger function must not be callable by browser roles",
+);
+
+const videoGenerationDelete = videoGenerationRoute.match(
+  /export async function DELETE\([\s\S]*?(?=export async function PATCH|$)/,
+)?.[0] ?? "";
+assert.match(
+  videoGenerationDelete,
+  /requireAdminStepUpApi\(['"]video\.delete['"]/,
+  "bulk video-generation deletion must require the dedicated video.delete permission and MFA step-up",
+);
+assert.doesNotMatch(
+  videoGenerationDelete,
+  /requireAdminApi\(['"]video\.manage['"]/,
+  "video-generation deletion must not be authorized by the less-privileged video.manage permission",
+);
+
+const clientPrivilegeHardeningMigration = readFileSync(
+  "supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql",
+  "utf8",
+);
+assert.match(
+  clientPrivilegeHardeningMigration,
+  /REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN\s+ON ALL TABLES IN SCHEMA public\s+FROM PUBLIC, anon, authenticated/i,
+  "browser roles and PUBLIC must lose non-DML table privileges on every existing public table",
+);
+assert.match(
+  clientPrivilegeHardeningMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public\s+REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES\s+FROM PUBLIC, anon, authenticated/i,
+  "future postgres-owned public tables must not inherit browser DDL privileges",
+);
+assert.ok(
+  clientPrivilegeHardeningMigration.includes("rolname = 'supabase_admin'") &&
+    clientPrivilegeHardeningMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public REVOKE TRUNCATE, REFERENCES, TRIGGER, MAINTAIN ON TABLES FROM PUBLIC, anon, authenticated"),
+  "future supabase_admin-owned public tables must also lose browser DDL privileges",
+);
+assert.doesNotMatch(
+  clientPrivilegeHardeningMigration,
+  /GRANT\s+(?:TRUNCATE|REFERENCES|TRIGGER|MAINTAIN)\b/i,
+  "the privilege hardening migration must not re-grant non-DML table privileges",
+);
+
+
+const storageWritePolicyMigration = readFileSync(
+  "supabase/migrations/20261114030000_scope_video_storage_writes.sql",
+  "utf8",
+);
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS public_assets_admin_write ON storage.objects;"),
+  "the legacy public-assets bucket must not retain an untracked browser write/delete path",
+);
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS video_assets_admin_update ON storage.objects;"),
+  "browser clients must not overwrite stored video objects",
+);
+assert.ok(
+  storageWritePolicyMigration.includes("DROP POLICY IF EXISTS video_assets_admin_delete ON storage.objects;"),
+  "video deletion must remain behind the retention-safe server path",
+);
+assert.ok(
+  storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_insert") &&
+    storageWritePolicyMigration.includes("FOR INSERT") &&
+    storageWritePolicyMigration.includes("TO authenticated") &&
+    storageWritePolicyMigration.includes("bucket_id = 'videos'") &&
+    storageWritePolicyMigration.includes("(storage.foldername(name))[1] = (SELECT auth.uid())::text") &&
+    storageWritePolicyMigration.includes("private.has_admin_role(ARRAY['admin', 'super_admin', 'video_manager']::text[])"),
+  "only full admins and video managers may upload into their own video prefix",
+);
+assert.ok(
+  !storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_update") &&
+    !storageWritePolicyMigration.includes("CREATE POLICY video_assets_admin_delete") &&
+    !storageWritePolicyMigration.includes("CREATE POLICY public_assets_admin_write"),
+  "browser clients must not regain direct update/delete or legacy public-assets write policies",
+);
+assert.ok(
+  !storageWritePolicyMigration.includes("profiles.role"),
+  "storage policies must not treat every delegated profile.role=admin as a full administrator",
 );
 
 console.log("Admin RBAC/RLS migration contract passed.");
