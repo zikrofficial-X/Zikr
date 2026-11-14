@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -14,6 +15,16 @@ const ALLOWED_MIME_TYPES = new Set([
 
 function asString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+export function fingerprintSiteAudioStoragePath(value) {
+  const storagePath = asString(value);
+  if (!storagePath) throw new Error("A site-audio storage path is required for fingerprinting.");
+  return createHash("sha256").update(storagePath, "utf8").digest("hex").slice(0, 16);
+}
+
+function safePathLogReference(storagePath) {
+  return "path#" + fingerprintSiteAudioStoragePath(storagePath);
 }
 
 export function assertExpectedSupabaseProject(supabaseUrl, expectedProjectRef) {
@@ -188,7 +199,7 @@ async function main() {
         asset_id: referencedAsset.id,
       });
     }
-    console.log("KEEP referenced site-audio object and reconcile protected intent: " + intent.storage_path);
+    console.log("KEEP referenced site-audio object and reconcile protected intent (" + safePathLogReference(intent.storage_path) + ").");
   }
 
   const candidates = selectExpiredSiteAudioUploadIntents(expiredIntents, now.getTime());
@@ -206,14 +217,14 @@ async function main() {
           asset_id: referencedAsset.id,
         });
       }
-      console.log("KEEP referenced site-audio object: " + intent.storage_path);
+      console.log("KEEP referenced site-audio object (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
     const object = await listExactObject(client, directory, fileName);
     if (!object) {
       if (apply) await updateIntent(client, intent.storage_path, { status: "cleaned", asset_id: null });
-      console.log("RECONCILE missing site-audio object: " + intent.storage_path);
+      console.log("RECONCILE missing site-audio object (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
@@ -223,12 +234,12 @@ async function main() {
     const actualSize = Number(metadata.size ?? metadata.contentLength);
     const actualMimeType = asString(metadata.mimetype ?? metadata.contentType).toLowerCase();
     if (actualSize !== intent.size_bytes || actualMimeType !== intent.mime_type.toLowerCase()) {
-      console.log("RETAIN metadata-mismatched site-audio object for manual review: " + intent.storage_path);
+      console.log("RETAIN metadata-mismatched site-audio object for manual review (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
     if (!apply) {
-      console.log("DRY RUN would remove unreferenced expired site-audio object: " + intent.storage_path);
+      console.log("DRY RUN would remove unreferenced expired site-audio object (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
@@ -243,7 +254,7 @@ async function main() {
       .maybeSingle();
     if (currentIntentError) throw new Error("Could not recheck site-audio intent: " + currentIntentError.message);
     if (!currentIntent || Date.parse(currentIntent.upload_expires_at) > now.getTime()) {
-      console.log("SKIP changed or unexpired site-audio intent: " + intent.storage_path);
+      console.log("SKIP changed or unexpired site-audio intent (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
@@ -253,7 +264,7 @@ async function main() {
         status: "registered",
         asset_id: latestReference.id,
       });
-      console.log("KEEP newly referenced site-audio object: " + intent.storage_path);
+      console.log("KEEP newly referenced site-audio object (" + safePathLogReference(intent.storage_path) + ").");
       continue;
     }
 
@@ -266,7 +277,7 @@ async function main() {
     }
 
     await updateIntent(client, intent.storage_path, { status: "cleaned", asset_id: null });
-    console.log("REMOVED verified unreferenced site-audio object: " + intent.storage_path);
+    console.log("REMOVED verified unreferenced site-audio object (" + safePathLogReference(intent.storage_path) + ").");
   }
 
   console.log("Site-audio orphan reconciliation completed; no non-site-audio bucket or asset was inspected.");

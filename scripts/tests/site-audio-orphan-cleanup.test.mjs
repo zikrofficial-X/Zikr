@@ -4,6 +4,7 @@ import {
   assertExpectedSupabaseProject,
   assertSiteAudioCleanupApplyConfirmation,
   collectExpiredSiteAudioUploadIntents,
+  fingerprintSiteAudioStoragePath,
   isSafeSiteAudioUploadIntent,
   selectExpiredSiteAudioUploadIntents,
 } from "../cleanup-site-audio-orphans.mjs";
@@ -29,6 +30,10 @@ assert.throws(() => assertSiteAudioCleanupApplyConfirmation(true, "DELETE_UNREFE
 assert.throws(() => assertSiteAudioCleanupApplyConfirmation(true, "wrong", true), /DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS/);
 assert.doesNotThrow(() => assertSiteAudioCleanupApplyConfirmation(true, "DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS", true));
 assert.equal(isSafeSiteAudioUploadIntent(validIntent), true);
+const pathFingerprint = fingerprintSiteAudioStoragePath(validIntent.storage_path);
+assert.match(pathFingerprint, /^[a-f0-9]{16}$/);
+assert.equal(pathFingerprint.includes(ownerId), false);
+assert.equal(pathFingerprint.includes(fileName), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, storage_path: ownerId + "/../recording.mp3" }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, owner_user_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }), false);
 assert.equal(isSafeSiteAudioUploadIntent({ ...validIntent, mime_type: "application/pdf" }), false);
@@ -79,6 +84,8 @@ const adminPostEnd = adminRoute.indexOf("export async function PATCH", adminPost
 const adminPost = adminRoute.slice(adminPostStart, adminPostEnd);
 assert.ok(adminPost.indexOf("upload_expires_at") < adminPost.indexOf("validateSiteAudioStorageObject"), "the registration route must reject expired intents before checking Storage");
 assert.ok(adminPost.indexOf('.from("site_audio_assets")') < adminPost.indexOf('status: "registered"'), "the asset row must be authoritative before an intent is marked registered");
+const cleanupLogLines = cleanupScript.split(/\r?\n/).filter((line) => line.includes("console.log("));
+assert.ok(cleanupLogLines.every((line) => !line.includes("intent.storage_path") || line.includes("safePathLogReference(intent.storage_path)")), "public workflow logs must use a path fingerprint instead of owner UUIDs or uploaded filenames");
 assert.match(cleanupScript, /SITE_AUDIO_CLEANUP_CONFIRMATION/);
 assert.match(cleanupScript, /SITE_AUDIO_UPLOAD_WRITES_PAUSED/);
 assert.ok(cleanupScript.indexOf('from("site_audio_assets")') < cleanupScript.indexOf('.remove([intent.storage_path])'), "the canonical asset reference must be checked before exact-path deletion");
@@ -97,7 +104,14 @@ assert.match(migrationText, /REVOKE ALL ON TABLE public\.site_audio_upload_inten
 assert.match(migrationText, /cleanup_after >= upload_expires_at \+ interval '24 hours'/, "the database must enforce the same 24-hour cleanup grace period");
 assert.match(migrationText, /GRANT ALL ON TABLE public\.site_audio_upload_intents TO service_role/);
 assert.match(workflow, /workflow_dispatch:/);
-assert.ok(workflow.includes("${{ secrets.SUPABASE_SERVICE_ROLE_KEY"), "GitHub expressions must remain executable in the manual workflow");
+const siteAudioJobEnvStart = workflow.indexOf("    env:");
+const siteAudioStepsStart = workflow.indexOf("    steps:", siteAudioJobEnvStart);
+const siteAudioJobEnv = workflow.slice(siteAudioJobEnvStart, siteAudioStepsStart);
+assert.doesNotMatch(siteAudioJobEnv, /SUPABASE_SERVICE_ROLE_KEY/, "the service-role key must not be exposed to dependency installation or tests through job-level env");
+const siteAudioInstallStart = workflow.indexOf("- name: Install runtime dependencies");
+const siteAudioInstallEnd = workflow.indexOf("- name: Verify site-audio cleanup safety tests", siteAudioInstallStart);
+assert.doesNotMatch(workflow.slice(siteAudioInstallStart, siteAudioInstallEnd), /SUPABASE_SERVICE_ROLE_KEY/);
+assert.ok(workflow.includes("${{ secrets.SUPABASE_SERVICE_ROLE_KEY"), "the service-role key must be scoped to explicit runtime steps");
 assert.ok(workflow.includes("${{ inputs.confirmation }}"), "manual confirmation input must be passed through to the cleanup process");
 assert.ok(workflow.includes("${SITE_AUDIO_UPLOAD_WRITES_PAUSED}"), "the shell must evaluate the write-freeze confirmation");
 assert.equal(workflow.includes("\\${{"), false, "GitHub expressions must not be escaped as literal text");

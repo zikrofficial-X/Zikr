@@ -885,6 +885,21 @@ assert.ok(retentionWorkflow.includes("EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
 assert.equal(retentionWorkflow.includes("CLOUDINARY_API_KEY"), false, "the retention job must not receive an unused Cloudinary API key");
 assert.equal(retentionWorkflow.includes("CLOUDINARY_API_SECRET"), false, "the retention job must not receive an unused Cloudinary API secret");
 assert.ok(retentionWorkflow.includes("RETENTION_CONFIRMATION: ${{ inputs.confirmation }}"));
+const retentionJobEnvStart = retentionWorkflow.indexOf("    env:");
+const retentionStepsStart = retentionWorkflow.indexOf("    steps:", retentionJobEnvStart);
+const retentionJobEnv = retentionWorkflow.slice(retentionJobEnvStart, retentionStepsStart);
+assert.doesNotMatch(retentionJobEnv, /SUPABASE_SERVICE_ROLE_KEY|CLOUDINARY_CLOUD_NAME|GITHUB_TOKEN/, "production credentials must not be exposed to dependency installation or tests through job-level env");
+const retentionInstallStart = retentionWorkflow.indexOf("- name: Install runtime dependencies");
+const retentionInstallEnd = retentionWorkflow.indexOf("- name: Verify retention safety tests", retentionInstallStart);
+assert.doesNotMatch(retentionWorkflow.slice(retentionInstallStart, retentionInstallEnd), /SUPABASE_SERVICE_ROLE_KEY|CLOUDINARY_CLOUD_NAME|GITHUB_TOKEN/);
+const retentionDryRunStart = retentionWorkflow.indexOf("- name: Print deletion plan (dry run)");
+const retentionApplyStart = retentionWorkflow.indexOf("- name: Apply manually approved full storage retention", retentionDryRunStart);
+const retentionDryRunStep = retentionWorkflow.slice(retentionDryRunStart, retentionApplyStart);
+const retentionApplyStep = retentionWorkflow.slice(retentionApplyStart);
+for (const credential of ["SUPABASE_SERVICE_ROLE_KEY", "CLOUDINARY_CLOUD_NAME", "GITHUB_TOKEN"]) {
+  assert.ok(retentionDryRunStep.includes(credential), "read-only dry run must receive " + credential + " only in its step scope");
+  assert.ok(retentionApplyStep.includes(credential), "manually approved apply must receive " + credential + " only in its step scope");
+}
 assert.ok(retentionWorkflow.includes("if: github.ref == 'refs/heads/main'"), "storage retention must only run from canonical main");
 assert.ok(retentionWorkflow.includes("ref: main"), "storage retention must check out canonical main before accessing production credentials");
 

@@ -35,9 +35,6 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      SITE_AUDIO_CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
-      SITE_AUDIO_UPLOAD_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@v7
@@ -46,6 +43,9 @@ jobs:
 
       - name: Require explicit owner confirmation before cleanup
         if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        env:
+          SITE_AUDIO_CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
+          SITE_AUDIO_UPLOAD_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         shell: bash
         run: |
           set -euo pipefail
@@ -72,6 +72,8 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Validate protected runtime credentials
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -87,11 +89,17 @@ jobs:
       - name: Verify site-audio cleanup safety tests
         run: node scripts/tests/site-audio-orphan-cleanup.test.mjs
 
-      - name: Print exact-path cleanup plan (dry run)
+      - name: Print redacted site-audio cleanup plan (dry run)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
         run: pnpm site-audio:cleanup
 
       - name: Apply manually approved site-audio orphan cleanup
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_UNREFERENCED_SITE_AUDIO_UPLOADS' }}
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          SITE_AUDIO_CLEANUP_CONFIRMATION: ${{ inputs.confirmation }}
+          SITE_AUDIO_UPLOAD_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         run: pnpm site-audio:cleanup -- --apply
 
       - name: Report cleanup scope

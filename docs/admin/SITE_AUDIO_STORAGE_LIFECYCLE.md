@@ -20,6 +20,8 @@ For every candidate, the command rechecks the intent and metadata reference imme
 ## Audit restrictions
 
 - The audit and CI tests never execute the cleanup command with `--apply`.
+- Workflow logs use a truncated SHA-256 path fingerprint; raw owner UUIDs and uploaded filenames are not printed.
+- The service-role credential is step-scoped to credential validation and the cleanup dry-run/apply steps, never dependency installation or tests.
 - No production Storage object, audio asset, bucket, or database row was deleted by this repair.
 - The migration is a pending PR migration; production application requires the normal owner review and protected release process.
 - Do not dispatch the manual workflow until the dry-run output has been reviewed and all site-audio upload/registration writers can remain paused for the full apply window.

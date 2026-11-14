@@ -37,9 +37,6 @@ jobs:
     env:
       SUPABASE_URL: https://zqtssvlvmkzeeyqghqfk.supabase.co
       EXPECTED_PROJECT_REF: zqtssvlvmkzeeyqghqfk
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
-      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
-      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout canonical main
         uses: actions/checkout@v7
@@ -77,6 +74,10 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Validate protected runtime credentials
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -93,11 +94,18 @@ jobs:
         run: node scripts/tests/storage-retention.test.mjs
 
       - name: Print deletion plan (dry run)
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: pnpm storage:cleanup
 
       - name: Apply manually approved full storage retention
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.apply == true && inputs.reference_writes_paused == true && inputs.confirmation == 'DELETE_STAGING_COPIES_AFTER_REFERENCE_FREEZE' }}
         env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || secrets.SUPABASE_SERVICE_KEY }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          GITHUB_TOKEN: ${{ github.token }}
           RETENTION_CONFIRMATION: ${{ inputs.confirmation }}
           RETENTION_REFERENCE_WRITES_PAUSED: ${{ inputs.reference_writes_paused }}
         run: pnpm storage:cleanup -- --apply
