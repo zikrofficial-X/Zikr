@@ -118,8 +118,8 @@ export async function POST(request: NextRequest) {
     p_longitude: longitude,
     p_timezone: timezone,
   }).single();
-  if (error) {
-    console.error("[prayer-location] save failed:", error);
+  if (error || !data) {
+    console.error("[prayer-location] save failed:", error ?? "RPC returned no location row");
     return NextResponse.json({ error: "Unable to save prayer location." }, { status: 500, headers: { "Cache-Control": "private, no-store" } });
   }
 
