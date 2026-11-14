@@ -381,7 +381,7 @@ assert.match(
 );
 assert.match(socialPublisher, /content_type=eq\.written_post/, "the worker must query written posts independently of the bounded general queue window");
 assert.match(socialPublisher, /scanSocialQueueCandidatePages/, "the worker must page beyond held queue rows before declaring a batch empty");
-assert.match(socialPublisher, /&offset=\\$\\{offset\\}/, "the worker must advance through deterministic PostgREST candidate pages");
+assert.match(socialPublisher, /&offset=\$\{offset\}/, "the worker must advance through deterministic PostgREST candidate pages");
 assert.match(socialPublisher, /SOCIAL_QUEUE_CANDIDATE_SCAN_MAX_ROWS/, "candidate pagination must remain bounded");
 assert.match(socialPublisher, /mergeUniqueSocialPublishCandidates/, "general and written candidates must be merged without duplicate queue IDs");
 assert.match(socialPublisher, /Failed to fetch social publish queue candidates; refusing to report an empty successful batch/, "queue read failures must fail the job instead of appearing as an empty successful run");
