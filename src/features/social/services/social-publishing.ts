@@ -880,19 +880,29 @@ export async function processSocialPublishItem(
   const claimLease = { status: "processing" as const, updatedAt: claimUpdatedAt };
   const targetValidation = validateStoredSocialTargetPlatforms(item.target_platforms);
   if (!targetValidation.ok) {
-    const updated = await markQueueItem(item.id, "failed", {
+    const previousResults = normalizeSocialPlatformResults(item.metadata?.platformResults);
+    const hasPriorSuccess = Object.values(previousResults).some((value) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+      const result = value as Record<string, unknown>;
+      return result.ok === true && typeof result.remoteId === "string" && result.remoteId.trim().length > 0;
+    });
+    const manualReconciliationRequired = hasPriorSuccess || getManualReconciliationPlatforms(item.metadata).length > 0;
+    const updated = await markQueueItem(item.id, hasPriorSuccess ? "partial" : "failed", {
       scheduled_at: null,
-      error_message: "Invalid social target_platforms; the queue item was held before any provider request.",
+      error_message: hasPriorSuccess
+        ? "Invalid social target_platforms; prior provider results were preserved and require manual reconciliation."
+        : "Invalid social target_platforms; the queue item was held before any provider request.",
       metadata: {
         ...(item.metadata ?? {}),
         targetPlatformsValidation: {
           status: "blocked",
           reason: targetValidation.reason,
           invalidValues: targetValidation.invalidValues,
+          manualReconciliationRequired,
         },
       },
     }, claimLease);
-    return updated ? "failed" : "deferred";
+    return updated ? (hasPriorSuccess ? "failed" : "failed") : "deferred";
   }
   if (!(await hasVideoApprovalForQueueItem(item))) {
     const updated = await markQueueItem(item.id, "queued", {
