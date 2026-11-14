@@ -86,20 +86,38 @@ assert.ok(
   "future functions created by postgres must revoke the global PUBLIC/browser EXECUTE default",
 );
 assert.ok(
-  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public"),
-  "future public functions created by postgres must also remove explicit public-schema browser grants",
+  defaultFunctionMigration.includes("ARRAY['public', 'storage', 'graphql_public', 'graphql']"),
+  "future API functions created by postgres and supabase_admin must cover every exposed/GraphQL schema",
 );
-assert.ok(
-  defaultFunctionMigration.includes("REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
-  "future public functions must not inherit browser-role EXECUTE",
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future public functions created by postgres must remove schema-specific browser EXECUTE defaults",
 );
-assert.ok(
-  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
-  "future functions created by supabase_admin must revoke the global PUBLIC/browser EXECUTE default",
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin[\s\S]*?REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future functions created by supabase_admin must revoke global and schema-specific browser EXECUTE defaults",
 );
-assert.ok(
-  defaultFunctionMigration.includes("ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public"),
-  "future public functions created by supabase_admin must also remove explicit public-schema browser grants",
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA %I REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future public functions created by supabase_admin must remove schema-specific browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future Storage functions created by the live Storage function owner must revoke global browser EXECUTE defaults",
+);
+assert.match(
+  defaultFunctionMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "the Storage function owner must preserve explicit service_role execution",
+);
+assert.match(
+  defaultFunctionMigration,
+  /GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "service_role must remain the explicit server-side execution path",
 );
 assert.ok(
   defaultFunctionMigration.includes("BEGIN;") && defaultFunctionMigration.includes("COMMIT;"),
