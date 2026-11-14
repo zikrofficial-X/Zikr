@@ -49,7 +49,8 @@ assert.match(generationRoute, /VIDEO_REQUEST_ID_PATTERN/, "video request IDs mus
 assert.match(createRoute, /requireAdminStepUpApi\(["']video\.manage["'],\s*["']\/admin\/video\/studio["']\)/);
 assert.match(createRoute, /readBoundedJsonBody\(request, 64 \* 1024\)/);
 assert.doesNotMatch(createRoute, /request\.json\(\)/);
-assert.ok(createRoute.indexOf("requireAdminStepUpApi") < createRoute.indexOf("createVideoGenerationRequest"));
+const createPost = createRoute.slice(createRoute.indexOf("export async function POST"));
+assert.ok(createPost.indexOf("requireAdminStepUpApi") < createPost.indexOf("createVideoGenerationRequest"));
 
 const templatePost = templatesRoute.slice(templatesRoute.indexOf("export async function POST"));
 assert.match(templatePost, /requireAdminStepUpApi\(["']video\.manage["'],\s*["']\/admin\/video\/templates["']\)/);
@@ -58,9 +59,11 @@ assert.doesNotMatch(templatePost, /request\.json\(\)/);
 assert.ok(templatePost.indexOf("requireAdminStepUpApi") < templatePost.indexOf("supabaseServerAdminRequest"));
 
 assert.match(narrationUploadRoute, /requireAdminStepUpApi\(["']video\.manage["']/);
-assert.ok(narrationUploadRoute.indexOf("requireAdminStepUpApi") < narrationUploadRoute.indexOf("readBoundedRequestBytes"));
+const narrationUploadPost = narrationUploadRoute.slice(narrationUploadRoute.indexOf("export async function POST"));
+assert.ok(narrationUploadPost.indexOf("requireAdminStepUpApi") < narrationUploadPost.indexOf("readBoundedRequestBytes"));
 assert.match(videoUploadRoute, /requireAdminStepUpApi\(['"]video\.manage['"]/);
-assert.ok(videoUploadRoute.indexOf("requireAdminStepUpApi") < videoUploadRoute.indexOf("createPresignedUploadUrl"));
+const videoUploadPost = videoUploadRoute.slice(videoUploadRoute.indexOf("export async function POST"));
+assert.ok(videoUploadPost.indexOf("requireAdminStepUpApi") < videoUploadPost.indexOf("createPresignedUploadUrl"));
 
 assert.match(studioClient, /redirectToAdminStepUp/);
 assert.match(studioClient, /payload\.error === ["']step_up_required["'][\s\S]*?redirectToAdminStepUp\(payload\.nextPath\)/);
