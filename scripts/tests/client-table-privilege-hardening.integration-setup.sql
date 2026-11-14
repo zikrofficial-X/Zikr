@@ -21,6 +21,13 @@ $roles$;
 
 DO $roles$
 BEGIN
+  CREATE ROLE supabase_storage_admin NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$roles$;
+
+DO $roles$
+BEGIN
   CREATE ROLE service_role NOLOGIN;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END
@@ -32,20 +39,12 @@ CREATE SCHEMA IF NOT EXISTS graphql;
 
 GRANT USAGE, CREATE ON SCHEMA public TO supabase_admin;
 GRANT USAGE, CREATE ON SCHEMA graphql_public, graphql TO supabase_admin;
+GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;
 GRANT USAGE ON SCHEMA public, storage, graphql_public, graphql TO anon, authenticated, service_role;
 
--- Reproduce schema-specific browser grants present in the live project. The
--- hardening migration must remove anon/authenticated without removing service_role.
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  GRANT EXECUTE ON FUNCTIONS TO service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
-  GRANT EXECUTE ON FUNCTIONS TO service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA storage
-  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA graphql_public
-  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA graphql
-  GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;
+-- PostgreSQL's built-in function default grants EXECUTE to PUBLIC. The
+-- fixtures below reproduce that state for each actual function owner; the
+-- migration must remove browser inheritance and explicitly preserve service_role.
 
 -- Reproduce the permissive default EXECUTE grants before the hardening migration.
 CREATE OR REPLACE FUNCTION public.client_default_execute_postgres_before()
@@ -62,6 +61,11 @@ RESET ROLE;
 
 CREATE OR REPLACE FUNCTION storage.client_default_execute_postgres_before()
 RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
+
+SET ROLE supabase_storage_admin;
+CREATE OR REPLACE FUNCTION storage.client_default_execute_supabase_storage_admin_before()
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
+RESET ROLE;
 
 DO $default_execute_precheck$
 BEGIN
@@ -84,6 +88,10 @@ BEGIN
   IF NOT has_function_privilege('anon', 'graphql.client_default_execute_supabase_admin_before()', 'EXECUTE')
      OR NOT has_function_privilege('authenticated', 'graphql.client_default_execute_supabase_admin_before()', 'EXECUTE') THEN
     RAISE EXCEPTION 'supabase_admin graphql default function ACL fixture did not reproduce browser EXECUTE grants';
+  END IF;
+  IF NOT has_function_privilege('anon', 'storage.client_default_execute_supabase_storage_admin_before()', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'storage.client_default_execute_supabase_storage_admin_before()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'supabase_storage_admin storage default function ACL fixture did not reproduce browser EXECUTE grants';
   END IF;
 END
 $default_execute_precheck$;

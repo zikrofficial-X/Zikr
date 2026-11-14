@@ -25,6 +25,11 @@ RESET ROLE;
 CREATE OR REPLACE FUNCTION storage.client_default_execute_postgres_after()
 RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
 
+SET ROLE supabase_storage_admin;
+CREATE OR REPLACE FUNCTION storage.client_default_execute_supabase_storage_admin_after()
+RETURNS integer LANGUAGE sql AS $fn$ SELECT 1 $fn$;
+RESET ROLE;
+
 DO $admin_predicate_acl_after$
 BEGIN
   IF has_function_privilege('anon', 'public.is_admin_user()', 'EXECUTE') THEN
@@ -43,6 +48,7 @@ DECLARE
     'public.client_default_execute_postgres_after()',
     'public.client_default_execute_supabase_admin_after()',
     'storage.client_default_execute_postgres_after()',
+    'storage.client_default_execute_supabase_storage_admin_after()',
     'graphql_public.client_default_execute_supabase_admin_after()',
     'graphql.client_default_execute_supabase_admin_after()'
   ];

@@ -38,6 +38,14 @@ const defaultFunctionExecuteMigration = readFileSync(
   "utf8",
 );
 const supabaseApiConfig = readFileSync(resolve(process.cwd(), "supabase/config.toml"), "utf8");
+const defaultFunctionExecuteSetup = readFileSync(
+  resolve(process.cwd(), "scripts/tests/client-table-privilege-hardening.integration-setup.sql"),
+  "utf8",
+);
+const defaultFunctionExecuteIntegration = readFileSync(
+  resolve(process.cwd(), "scripts/tests/client-table-privilege-hardening.integration.sql"),
+  "utf8",
+);
 const publicAdminPolicyMigration = readFileSync(
   resolve(process.cwd(), "supabase/migrations/20260929062722_security_seo_hardening_20260929.sql"),
   "utf8",
@@ -259,12 +267,34 @@ assert.ok(
   supabaseApiConfig.includes('schemas = ["public", "storage", "graphql_public"]'),
   "the API schema inventory must stay aligned with the default-function hardening scope",
 );
-for (const schema of ["storage", "graphql_public", "graphql"]) {
+for (const schema of ["public", "storage", "graphql_public", "graphql"]) {
   assert.ok(
     defaultFunctionExecuteMigration.includes("IN SCHEMA " + schema + " REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated"),
     "default EXECUTE must be revoked from browser roles in schema " + schema,
   );
 }
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated/i,
+  "future Storage functions owned by supabase_storage_admin must not inherit browser EXECUTE",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /ALTER DEFAULT PRIVILEGES FOR ROLE supabase_storage_admin IN SCHEMA storage GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "service_role must retain explicit execution on future Storage functions",
+);
+assert.match(
+  defaultFunctionExecuteMigration,
+  /GRANT EXECUTE ON FUNCTIONS TO service_role/i,
+  "server-side execution must be explicitly preserved after removing PUBLIC defaults",
+);
+assert.match(defaultFunctionExecuteSetup, /CREATE ROLE supabase_storage_admin NOLOGIN/i);
+assert.match(defaultFunctionExecuteSetup, /SET ROLE supabase_storage_admin[\\s\\S]*?storage\.client_default_execute_supabase_storage_admin_before/i);
+assert.match(
+  defaultFunctionExecuteIntegration,
+  /storage\.client_default_execute_supabase_storage_admin_after\(\)/,
+  "the integration contract must create and verify a function under the live Storage function owner",
+);
 
 assert.doesNotMatch(
   publicAdminPolicyMigration,
