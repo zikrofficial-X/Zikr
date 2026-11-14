@@ -946,6 +946,7 @@ export async function processSocialPublishItem(
   const enabledPlatforms = options.enabledPlatforms ?? getEnabledSocialPlatforms(process.env);
   const previous = normalizeSocialPlatformResults(item.metadata?.platformResults);
   const previousMetadata = clearRevalidatedSocialApprovalDeferrals(item.metadata, platforms);
+  delete previousMetadata.targetPlatformsValidation;
   const maxAttempts = socialMaxAttempts(previousMetadata);
   const runnablePlatforms = platforms.filter(platform => canAttemptSocialPlatform({
     platform, enabledPlatforms, metadata: previousMetadata, maxAttempts,
