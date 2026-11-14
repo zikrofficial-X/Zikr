@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { readBoundedRequestBytes } from "@/lib/request/bounded-json-body";
@@ -57,9 +57,13 @@ function hasValidAudioSignature(bytes: Uint8Array, contentType: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("video.manage");
-  if (!auth.ok)
-    return jsonError(auth.error, auth.status);
+  const auth = await requireAdminStepUpApi("video.manage", "/admin/video/studio");
+  if (!auth.ok) {
+    return NextResponse.json(
+      { error: auth.error, nextPath: "nextPath" in auth ? auth.nextPath : undefined },
+      { status: auth.status, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const contentType = (request.headers.get("content-type") ?? "")
     .split(";")[0]

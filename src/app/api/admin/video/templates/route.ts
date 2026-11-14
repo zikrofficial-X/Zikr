@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
@@ -102,11 +104,23 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("video.manage");
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const auth = await requireAdminStepUpApi("video.manage", "/admin/video/templates");
+  if (!auth.ok) {
+    return NextResponse.json(
+      { error: auth.error, nextPath: "nextPath" in auth ? auth.nextPath : undefined },
+      { status: auth.status, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   try {
-    const body = object(await request.json().catch(() => null));
+    const bodyResult = await readBoundedJsonBody(request, 64 * 1024);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const body = object(bodyResult.value);
     if (!body || typeof body.action !== "string") {
       return NextResponse.json({ error: "طلب القالب غير صالح." }, { status: 400 });
     }

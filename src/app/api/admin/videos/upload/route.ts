@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApi } from '@/features/admin/services/admin';
+import { requireAdminStepUpApi } from '@/features/admin/services/security';
 import { recordAdminAuditEvent } from '@/features/admin/services/audit';
 import { runPostCommitAudit } from '@/features/admin/services/post-commit-audit';
 import { createPresignedUploadUrl } from '@/lib/services/storage';
@@ -20,8 +20,13 @@ function jsonError(message: string, status: number) {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = await requireAdminApi('video.manage');
-  if (!guard.ok) return jsonError(guard.error, guard.status);
+  const guard = await requireAdminStepUpApi('video.manage', '/admin/videos');
+  if (!guard.ok) {
+    return NextResponse.json(
+      { error: guard.error, nextPath: 'nextPath' in guard ? guard.nextPath : undefined },
+      { status: guard.status, headers: { 'Cache-Control': 'no-store' } },
+    );
+  }
 
   try {
     const parsedBody = await readBoundedJsonBody(request);

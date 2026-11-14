@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdminApi } from "@/features/admin/services/admin";
+import { requireAdminStepUpApi } from "@/features/admin/services/security";
+import { readBoundedJsonBody } from "@/lib/request/bounded-json-body";
 import { recordAdminAuditEvent } from "@/features/admin/services/audit";
 import { runPostCommitAudit } from "@/features/admin/services/post-commit-audit";
 import { createVideoGenerationRequest } from "@/features/videos/services/video-automation";
@@ -53,12 +54,22 @@ function ownCloudinaryAudioUrl(value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireAdminApi("video.manage");
+  const auth = await requireAdminStepUpApi("video.manage", "/admin/video/studio");
   if (!auth.ok)
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { error: auth.error, nextPath: "nextPath" in auth ? auth.nextPath : undefined },
+      { status: auth.status, headers: { "Cache-Control": "no-store" } },
+    );
 
   try {
-    const body: unknown = await request.json();
+    const bodyResult = await readBoundedJsonBody(request, 64 * 1024);
+    if (!bodyResult.ok) {
+      return NextResponse.json(
+        { error: bodyResult.error },
+        { status: bodyResult.status, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    const body: unknown = bodyResult.value;
     if (!isObject(body))
       return NextResponse.json(
         { error: "بيانات طلب الفيديو غير صالحة." },
