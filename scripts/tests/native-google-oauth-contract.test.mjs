@@ -181,10 +181,14 @@ for (const action of [
 ]) {
   assert.ok(androidWorkflow.includes(action), "Android debug workflow must use Node 24-compatible action " + action);
 }
-assert.doesNotMatch(
-  androidWorkflow,
-  /(?:actions\\/(?:checkout|setup-node|cache|upload-artifact)|pnpm\\/action-setup)@v4/,
-  "Android debug workflow must not retain the Node 20 action majors reported by GitHub runners",
-);
+for (const legacyAction of [
+  "actions/checkout@v4",
+  "pnpm/action-setup@v4",
+  "actions/setup-node@v4",
+  "actions/cache@v4",
+  "actions/upload-artifact@v4",
+]) {
+  assert.ok(!androidWorkflow.includes(legacyAction), "Android debug workflow must not retain " + legacyAction);
+}
 
 console.log("Native Google OAuth and canonical-host contracts passed.");
