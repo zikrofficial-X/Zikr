@@ -31,6 +31,10 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
   // authoritative and must not fall back to target_platforms.
   const hasPlatformResultLedger = rawPlatformResults !== undefined && rawPlatformResults !== null;
   const platformDeletions = asRecord(metadata.platformDeletions);
+  const targets = new Set(
+    (Array.isArray(row.target_platforms) ? row.target_platforms : [])
+      .filter((platform): platform is string => typeof platform === "string" && SOCIAL_PLATFORMS.has(platform)),
+  );
   const isDeleted = (platform: string, deliveryRemoteId?: string) =>
     isSocialPlatformDeletionCurrent(
       platformDeletions[platform],
@@ -40,7 +44,7 @@ export function getConfirmedPublicKidsVideoSocialPlatforms(value: unknown): stri
 
   const delivered = Object.entries(platformResults)
     .filter(([platform, value]) => {
-      if (!SOCIAL_PLATFORMS.has(platform)) return false;
+      if (!SOCIAL_PLATFORMS.has(platform) || !targets.has(platform)) return false;
       const result = asRecord(value);
       const remoteId = typeof result.remoteId === "string" ? result.remoteId.trim() : "";
       return result.ok === true && remoteId.length > 0 && !manualReconciliationPlatforms.has(platform) && !isDeleted(platform, remoteId);
