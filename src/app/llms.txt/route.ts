@@ -1,4 +1,6 @@
-const SITE_URL = 'https://zikrmediaofficial.vercel.app';
+import { siteConfig } from '@/lib/site';
+
+const SITE_URL = siteConfig.url.replace(/\/$/, '');
 
 const content = `# ZIKR | ذِكرٌ
 
@@ -34,7 +36,7 @@ ZIKR يقدّم المحتوى التعليمي بصياغة واضحة مع ت�
 
 ## Site metadata
 - Canonical site: ${SITE_URL}
-- Public sitemap: ${SITE_URL}/sitemap.xml
+- Public sitemap index: ${SITE_URL}/sitemap-index.xml
 - Robots: ${SITE_URL}/robots.txt
 - Language: Arabic first, with selected English metadata and labels.
 `;
