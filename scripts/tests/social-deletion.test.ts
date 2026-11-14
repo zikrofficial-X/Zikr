@@ -549,6 +549,7 @@ assert.equal(
   "missing source media requires a separate reconciliation path and cannot be erased by queue cleanup",
 );
 
+const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.ok(socialAdminRoute.includes("readBoundedJsonBody(request)"), "social admin actions must parse a bounded JSON body");
 assert.equal(socialAdminRoute.includes("request.json()"), false, "social admin actions must not buffer unbounded JSON");
 assert.ok(
@@ -572,7 +573,6 @@ assert.deepEqual(
   { ok: false, status: 413, error: "Request body is too large" },
   "social admin actions must reject oversized JSON before buffering it",
 );
-const socialAdminRoute = readFileSync("src/app/api/admin/social/route.ts", "utf8");
 assert.match(socialAdminRoute, /getLocalSocialQueueDeletionBlockers/);
 assert.match(socialAdminRoute, /confirmedNoRemotePublication/);
 assert.match(socialAdminRoute, /expectedRemoteId:\s*remoteId/);
