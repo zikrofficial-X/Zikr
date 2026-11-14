@@ -49,7 +49,7 @@ function result(
   readSource: YouTubeChannelReadSource = null,
 ): YouTubePublishingConnectionHealth {
   const count = (value: string | undefined) =>
-    typeof value === "string" && /^\\d+$/.test(value) ? Number(value) : null;
+    typeof value === "string" && /^\d+$/.test(value) ? Number(value) : null;
 
   return {
     status,
