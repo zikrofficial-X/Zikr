@@ -90,7 +90,7 @@ export async function getVideoBySlug(slug: string): Promise<Video | null> {
 
   const rows = await supabaseServerAnonRequest<Array<Record<string, unknown>>>(
     `/rest/v1/videos?select=*&slug=eq.${safeSlug}&published=eq.true&or=(metadata->>audience.is.null,metadata->>audience.neq.kids)&limit=1`,
-    { timeoutMs: 8000, retries: 1, cache: "force-cache", next: { revalidate: 900 } },
+    { timeoutMs: 8000, retries: 1, cache: "no-store" },
   ).catch(error => {
     console.error("[content] Failed to fetch video by slug:", error);
     return [];

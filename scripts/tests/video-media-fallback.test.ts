@@ -320,6 +320,11 @@ assert.ok(socialPublisher.includes("shouldRestorePurgedPublishedVideo(row)"), "c
 assert.ok(socialPublisher.includes("published: true"), "eligible late YouTube fallback sync must restore the previously public catalog row");
 
 
+const generalVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
+const generalVideoDetailStart = generalVideoService.indexOf("export async function getVideoBySlug");
+const generalVideoDetailEnd = generalVideoService.indexOf("function hasPassedKidsVideoQa", generalVideoDetailStart);
+assert.ok(generalVideoDetailStart >= 0 && generalVideoDetailEnd > generalVideoDetailStart);
+assert.match(generalVideoService.slice(generalVideoDetailStart, generalVideoDetailEnd), /cache: "no-store"/, "public video details must not remain cached after moderation or publication changes");
 const kidsVideoService = readFileSync("src/features/videos/services/videos.ts", "utf8");
 const kidsListStart = kidsVideoService.indexOf("export async function getKidsGeneratedVideos");
 const kidsListEnd = kidsVideoService.indexOf("const VIDEO_GENERATION_REQUEST_ID_PATTERN", kidsListStart);
