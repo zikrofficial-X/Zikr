@@ -123,6 +123,12 @@ assert.ok(
 );
 assert.match(uploadRoute, /SITE_AUDIO_ALLOWED_MIME_TYPES/);
 assert.match(uploadRoute, /SITE_AUDIO_MAX_BYTES/);
+assert.ok(uploadRoute.indexOf("createSignedUploadUrl") < uploadRoute.indexOf("recordAdminAuditEvent"), "the audit event is recorded after the signed URL is created");
+assert.match(uploadRoute, /let auditRecorded = true/);
+assert.match(uploadRoute, /catch \\(auditError\\)/);
+assert.match(uploadRoute, /auditRecorded,/);
+assert.match(manager, /const presignAuditRecorded = signed\\.auditRecorded !== false/);
+assert.match(manager, /!presignAuditRecorded/);
 assert.match(adminRoute, /recordAuditSafely/);
 assert.match(manager, /payload\.auditRecorded === false/);
 
