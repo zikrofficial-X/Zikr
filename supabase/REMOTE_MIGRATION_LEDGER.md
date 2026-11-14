@@ -173,3 +173,40 @@ Do not rewrite old migration SQL or historical snapshots to make their former pr
 - Direct admin RLS writes remain on Kids/video/social/site-audio tables; `admin_role_assignments` still permits super-admin direct writes; Kids public-read policy lacks `is_active=true`; direct site-audio/video/public-assets storage policies remain. Default function ACLs still grant EXECUTE to client roles for defaults owned by postgres/supabase_admin. Kids share-count function itself is service-role-only.
 - Baseline tables/columns and anon denial for `content_translation_queue` were verified read-only. Kids live data: 65 rows all active/published; 35 games, 3 quizzes, 26 stories, 1 wudu item; all have age_group, but 20 stories lack explicit `metadata.age_appropriate=true`. No data edited.
 - Supabase Advisors: Health clean; Security leaked-password protection disabled; Performance 79 unused-index INFO findings. No indexes or production resources were deleted.
+
+## Read-only refresh — 2026-11-14, code/test head `f9346878b80e0b645eb72a30e92abb5c6134bf10`
+
+Remote project: `zqtssvlvmkzeeyqghqfk`.
+
+- Local SQL migration files: **440**
+- Remote `supabase_migrations.schema_migrations` rows: **418**
+- Local-only / unapplied versions: **22**
+- Latest remote version: `20261110170000`
+- Comparison method: read-only migration inventory. No `db push`, `migration up`, direct SQL write, or production mutation was executed.
+
+The following local-only migrations remain owner-review and production-approval blockers:
+
+- `supabase/migrations/20261110212000_kids_content_public_read_respects_active_state.sql`
+- `supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql`
+- `supabase/migrations/20261111003000_expand_kids_content_supported_types.sql`
+- `supabase/migrations/20261111010000_background_reminders_respect_quiet_hours_timezone.sql`
+- `supabase/migrations/20261111020000_admin_role_update_blocks_self_demotion.sql`
+- `supabase/migrations/20261111030000_prophet_sections_public_read_requires_published_parent.sql`
+- `supabase/migrations/20261111040000_kids_game_levels_require_published_game.sql`
+- `supabase/migrations/20261111050000_admin_role_assignments_service_role_only.sql`
+- `supabase/migrations/20261111153000_harden_video_storage_retention_rpc.sql`
+- `supabase/migrations/20261111170000_kids_game_questions_require_published_parent.sql`
+- `supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql`
+- `supabase/migrations/20261113000000_background_reminder_intervals_allow_disabled.sql`
+- `supabase/migrations/20261113190000_harden_admin_managed_content_write_permissions.sql`
+- `supabase/migrations/20261113200000_youtube_sync_state_playlist_cache.sql`
+- `supabase/migrations/20261113210000_reconcile_source_agent_cron_project_ref.sql`
+- `supabase/migrations/20261113220000_remove_direct_site_audio_storage_write_policies.sql`
+- `supabase/migrations/20261113230000_content_publish_queue_one_active_item.sql`
+- `supabase/migrations/20261114000000_site_audio_upload_intents.sql`
+- `supabase/migrations/20261114010000_social_publish_queue_target_platform_contract.sql`
+- `supabase/migrations/20261114020000_revoke_client_default_function_execute.sql`
+- `supabase/migrations/20261114030000_scope_video_storage_writes.sql`
+- `supabase/migrations/20261114040000_save_default_prayer_location_atomically.sql`
+
+The atomic prayer-location migration `20261114040000_save_default_prayer_location_atomically.sql` is included in the local-only list. The API route now calls this RPC, so production deployment must not precede the approved migration application.

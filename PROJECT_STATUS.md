@@ -1,5 +1,23 @@
 # ZIKR Project Status
 
+## Latest verified checkpoint — 2026-11-14 (code/test head `f9346878b80e0b645eb72a30e92abb5c6134bf10`)
+
+- Audit branch: `audit/zikr-kids-daily-priority-20261110`; pull request: [#320](https://github.com/zikrofficial-X/Zikr/pull/320), base `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`, head `f9346878b80e0b645eb72a30e92abb5c6134bf10`.
+- PR scope at this checkpoint: 505 changed files, 59,917 additions, 5,189 deletions. The PR is open and unmerged; no owner approval or review-thread resolution is recorded.
+- Repository tree at the code/test head: 2,368 entries (1,869 files, 499 directories), 144,715,096 bytes.
+- GitHub Quality Gate run `43599803892`: **success**, with `QUALITY_GATE=PASSED_FULL`. The run validated all 440 local migrations, the PostgreSQL 17 integration checks (including the new atomic prayer-location save test), admin page/security checks, native OAuth contracts, social/content publication contracts, and the canonical verification suite.
+- CircleCI at the same head: `source-verify`, `application-build-docs`, and `config-guard` all report success.
+- Android Debug APK workflow run `43599803874`: **success**. Artifact `zikr-android-debug-f9346878b80e0b645eb72a30e92abb5c6134bf10` exists (26,441,938 bytes). This is a debug artifact only; no release APK/AAB or store release was created.
+- This batch repaired the prayer-location save path with a validated coordinate parser and a transactionally atomic, authenticated per-user default-location RPC; added PostgreSQL regression coverage; and added a publisher-only, step-up-protected Kids story age-review workflow using compare-and-set row versions and an audit event. The Kids review action changes only the age-eligibility metadata; it does not publish, hide, or rewrite story content.
+- Supabase read-only comparison: 440 local migration files versus 418 remote migrations; 22 local-only migrations remain unapplied. The remote ledger's latest version is `20261110170000`. **No production migration was applied.**
+- Vercel production baseline remains deployment `dpl_8LVdTi35Uc9PT5TwrcgHR1Wq1RHu`, state `READY`, created `2026-11-10T20:09:20.171Z`, on main commit `c4560d9ccb222bea5814cc4db32d4c3f1a2101b3` at `https://zikr-232iamzh2-zikr3.vercel.app`. The audit head has not been deployed and no post-deploy smoke test was run.
+- Vercel environment-name inventory: 55 variables; `IOS_ASSOCIATED_DOMAIN_APP_ID` is absent. Values were not decrypted or read.
+- No production database mutation, content generation, Gemini request, social publishing, storage-object deletion, secret change, Android/iOS release, PR merge, or Vercel deployment was triggered by this audit batch.
+- Remaining acceptance: owner/CODEOWNERS review and protected-branch approval; review and separately approve the 22 local-only migrations before any production apply; supply the iOS associated-domain app ID; perform real Android/iOS device sign-in and deep-link acceptance; and run production smoke checks only after an approved deployment. The repository audit remains open; this checkpoint does not claim the whole project is error-free or closed.
+
+Status snapshot for the 505 PR paths is recorded in `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`; the recursive repository manifest is `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`. These two snapshot artifacts are excluded from their own status scope/manifest as applicable.
+
+
 ## Latest verified checkpoint — 2026-11-14T1157Z
 
 **Audit remains OPEN.** No merge, production migration apply, content generation, Gemini request, social publishing, storage cleanup, index deletion, secret change, Android release, or Vercel deployment was initiated by this audit. Production DB calls were read-only SELECT/advisor inspection only.

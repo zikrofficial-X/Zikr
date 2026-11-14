@@ -1,5 +1,15 @@
 # ZIKR file status matrix — refreshed 2026-11-14T1157Z
 
+## Latest PR #320 snapshot — 2026-11-14
+
+- Code/test head: `f9346878b80e0b645eb72a30e92abb5c6134bf10`; PR #320 remains open and unmerged.
+- Changed-file scope: 505 paths at this checkpoint.
+- Status counts: 232 `CONTENT_READ_TESTED_PASS`, 206 `REVIEW_REQUIRED`, 45 `CONTENT_READ_PENDING_TRACE`, 22 `FIXED_TESTED_PENDING_LIVE_APPLY`.
+- Overlay: `docs/audits/PR320_FILE_STATUS_OVERLAY_20261114T1336Z.md`.
+- Recursive repository manifest: `docs/audits/PR320_REPO_MANIFEST_20261114T1336Z.jsonl`.
+- These counts are evidence-backed for the changed-file scope only; they do not represent a completed review of every file in the repository. The 22 pending migrations and owner/device acceptance remain open.
+
+
 ## Latest PR #320 overlay — 2026-11-14T1157Z
 
 - Source head `e386e2dc41221bf5f385efcc490c5944659ccf8a`; base `main@c4560d9ccb222bea5814cc4db32d4c3f1a2101b3`; 498 PR paths before the new overlay/manifest; final count 500 after them.
