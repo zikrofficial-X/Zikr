@@ -239,7 +239,7 @@ export async function retrieveSpiritualSources(question: string): Promise<Spirit
       'prophet', 'قصة نبي من مكتبة ZIKR', ['name_ar'], 'slug', ['bio_ar'], row => row.slug ? `/prophets/${row.slug}` : undefined,
     ),
     queryRows(
-      `/rest/v1/prophet_sections?select=id,title_ar,content_ar,section_type,order_num&or=${filter(['title_ar', 'content_ar'], query)}&limit=5`,
+      `/rest/v1/prophet_sections?select=id,title_ar,content_ar,section_type,order_num,prophets!inner(published)&prophets.published=eq.true&or=${filter(['title_ar', 'content_ar'], query)}&limit=5`,
       'prophet', 'قسم من قصص الأنبياء في ZIKR', ['title_ar'], 'id', ['content_ar'],
     ),
     queryRows(
