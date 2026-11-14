@@ -35,6 +35,7 @@ psql=(docker exec "$CONTAINER_NAME" psql -X -v ON_ERROR_STOP=1 -U postgres -d zi
 "${psql[@]}" -f /workspace/scripts/tests/client-table-privilege-hardening.integration-setup.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261111000000_revoke_anon_public_admin_predicate.sql
 "${psql[@]}" -f /workspace/supabase/migrations/20261112103200_revoke_client_non_dml_table_privileges.sql
+"${psql[@]}" -f /workspace/supabase/migrations/20261114020000_revoke_client_default_function_execute.sql
 "${psql[@]}" -f /workspace/scripts/tests/client-table-privilege-hardening.integration.sql
 
 echo "Client table non-DML privilege hardening integration passed."
