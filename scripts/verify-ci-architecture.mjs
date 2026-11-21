@@ -93,7 +93,7 @@ assert.ok(
     androidPublish.includes("ci/circleci: android-release-dispatch") &&
     androidPublish.includes("ZIKR / Quality Gate") &&
     androidPublish.includes("source_commit:") &&
-    androidPublish.includes("git diff --quiet \"$TAG_TARGET_SHA\"") &&
+    androidPublish.includes("contents/${release_path}?ref=${TAG_TARGET_SHA}") && androidPublish.includes("cmp -s") &&
     androidPublish.includes("RELEASE_SOURCE_SHA=$TAG_TARGET_SHA") &&
     !androidPublish.includes("github.event_name != 'workflow_dispatch'"),
   "Every Android publish/retry path must verify the exact tag source commit and all CI gates",

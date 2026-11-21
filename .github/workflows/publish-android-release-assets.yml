@@ -122,7 +122,6 @@ jobs:
               echo "::error title=Android recovery source mismatch::main recovery must provide the exact immutable tag target SHA." >&2
               exit 1
             fi
-            git fetch --no-tags origin "$TAG_TARGET_SHA" --depth=1
             RELEASE_SOURCE_PATHS=(
               package.json
               .release-tag
@@ -132,11 +131,21 @@ jobs:
               ios/App/App.xcodeproj/project.pbxproj
               ios/App/App/Info.plist
             )
-            if ! git diff --quiet "$TAG_TARGET_SHA" -- "${RELEASE_SOURCE_PATHS[@]}"; then
-              echo "::error title=Android recovery metadata drift::The current main tree differs from the exact tag target in release identity/version files. Refusing to publish assets built from the tag." >&2
-              exit 1
-            fi
-            echo "Verified release identity files on main are byte-for-byte identical to immutable source $TAG_TARGET_SHA."
+            SOURCE_COMPARE_DIR="$(mktemp -d)"
+            trap 'rm -rf "$SOURCE_COMPARE_DIR"' EXIT
+            index=0
+            for release_path in "${RELEASE_SOURCE_PATHS[@]}"; do
+              source_file="${SOURCE_COMPARE_DIR}/${index}"
+              gh api --jq '.content' "repos/${GITHUB_REPOSITORY}/contents/${release_path}?ref=${TAG_TARGET_SHA}" |
+                tr -d '\r\n' |
+                base64 --decode > "$source_file"
+              if ! cmp -s "$source_file" "$release_path"; then
+                echo "::error title=Android recovery metadata drift::The current main tree differs from the exact tag target at ${release_path}. Refusing to publish assets built from the tag." >&2
+                exit 1
+              fi
+              index=$((index + 1))
+            done
+            echo "Verified all release identity files on main against GitHub's contents API at immutable source $TAG_TARGET_SHA."
           else
             echo "::error title=Unsupported Android recovery ref::Publisher must run from the exact tag/recovery branch or the guarded main source_commit path." >&2
             exit 1
